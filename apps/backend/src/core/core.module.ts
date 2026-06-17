@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
+import { DatabaseModule } from './database/database.module';
+import { RedisModule } from './redis/redis.module';
 
 @Module({
-  imports: [
-    // DatabaseModule and RedisModule will be imported here in Phase 1D
-  ],
+  imports: [DatabaseModule, RedisModule],
 })
 export class CoreModule {}
