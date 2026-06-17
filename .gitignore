@@ -26,6 +26,12 @@ Thumbs.db
 # IDE
 .idea/
 .vscode/
+
+# AI Agent data
+.gemini/
+
+# Windows user dirs (should never be tracked)
+AppData/
 *.suo
 *.ntvs*
 *.njsproj
