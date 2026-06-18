@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import configuration from './config/configuration';
 import { HealthModule } from './modules/health/health.module';
 import { CoreModule } from './core/core.module';
+import { AuthModule } from './modules/auth/auth.module';
 
 @Module({
   imports: [
@@ -12,7 +13,7 @@ import { CoreModule } from './core/core.module';
     }),
     CoreModule,
     HealthModule,
-    // AuthModule, UsersModule will be added in Phase 1E
+    AuthModule,
   ],
 })
 export class AppModule {}

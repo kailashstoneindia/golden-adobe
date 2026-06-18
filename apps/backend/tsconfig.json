@@ -17,7 +17,9 @@
     "noImplicitAny": true,
     "strictBindCallApply": true,
     "forceConsistentCasingInFileNames": true,
-    "noUnusedParameters": false
+    "noUnusedParameters": false,
+    "noUnusedLocals": false,
+    "strictPropertyInitialization": false
   },
   "include": ["src/**/*"]
 }

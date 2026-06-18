@@ -12,34 +12,37 @@ export class RefreshToken extends Model<RefreshToken> {
     defaultValue: DataType.UUIDV4,
     primaryKey: true,
   })
-  id: string;
+  declare id: string;
 
   @Column({
     type: DataType.STRING(512),
     allowNull: false,
     unique: true,
   })
-  token: string;
+  declare token: string;
 
   @ForeignKey(() => User)
   @Column({
     type: DataType.UUID,
     allowNull: false,
+    field: 'user_id',
   })
-  userId: string;
+  declare userId: string;
 
   @BelongsTo(() => User)
-  user: User;
+  declare user: User;
 
   @Column({
     type: DataType.DATE,
     allowNull: false,
+    field: 'expires_at',
   })
-  expiresAt: Date;
+  declare expiresAt: Date;
 
   @Column({
     type: DataType.BOOLEAN,
     defaultValue: false,
+    field: 'is_revoked',
   })
-  isRevoked: boolean;
+  declare isRevoked: boolean;
 }
