@@ -20,12 +20,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   async validate(payload: JwtPayload): Promise<JwtPayload> {
     const user = await this.usersService.findById(payload.sub);
-    console.log('JWT Validate - payload.sub:', payload.sub);
-    console.log('JWT Validate - user found:', !!user);
-    if (user) {
-      console.log('JWT Validate - user.isActive:', user.isActive);
-      console.log('JWT Validate - user plain object:', user.get({ plain: true }));
-    }
     if (!user || !user.isActive) {
       throw new UnauthorizedException('User not found or deactivated');
     }

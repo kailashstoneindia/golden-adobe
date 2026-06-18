@@ -1,4 +1,5 @@
 # Phase 1: Planning & Foundation — Golden Abode
+
 ## Finalized Plan (Post-Review)
 
 > [!NOTE]
@@ -8,12 +9,12 @@
 
 ## Scope Clarity: Who Owns What
 
-| Area | Owner | Status |
-|------|-------|--------|
-| NestJS Backend | **You (backend dev)** | In scope — proceed immediately |
-| Admin Web Panel | **You (backend dev)** | In scope for monorepo setup; UI built in Phase 4 |
-| Mobile App (React Native/Expo) | **Co-developer** | Lives in `apps/mobile` — co-dev owns all mobile decisions |
-| Mobile Navigation / State Mgmt | **Co-developer** | Not your concern in Phase 1 |
+| Area                           | Owner                 | Status                                                    |
+| ------------------------------ | --------------------- | --------------------------------------------------------- |
+| NestJS Backend                 | **You (backend dev)** | In scope — proceed immediately                            |
+| Admin Web Panel                | **You (backend dev)** | In scope for monorepo setup; UI built in Phase 4          |
+| Mobile App (React Native/Expo) | **Co-developer**      | Lives in `apps/mobile` — co-dev owns all mobile decisions |
+| Mobile Navigation / State Mgmt | **Co-developer**      | Not your concern in Phase 1                               |
 
 ---
 
@@ -24,6 +25,7 @@
 All three apps (backend, admin panel, mobile) live in one monorepo: `golden-abode`. This was agreed between both developers. The co-developer owns the `apps/mobile` folder entirely — you do not touch it, they do not touch `apps/backend` or `apps/admin`.
 
 **Why this works well:**
+
 - **Shared TypeScript types** — All three apps reference `@golden-abode/types`. When you add a new API field, the mobile app and admin panel both pick it up immediately without cross-repo sync or npm publishing.
 - **Single CI pipeline** — One GitHub Actions workflow covers all apps. A breaking change in the backend is caught before mobile CI even runs.
 - **One source of truth** — One repo, one `pnpm-workspace.yaml`, one Turborepo config. No version drift between separate repos.
@@ -50,7 +52,9 @@ golden-abode/                  ← Single monorepo (both developers)
 ## What Phase 1 Demands
 
 ### 1. Architecture Design
+
 Lock all decisions before writing code:
+
 - Tech stack with version pinning
 - Monorepo tooling setup
 - Service boundaries
@@ -63,10 +67,12 @@ Lock all decisions before writing code:
 > Per your clarification, only Phase 1 entities are designed and migrated now. Other domain entities (products, orders, artisans, rewards) will be finalized and migrated **before Phase 1 closes**, once client timezone/scheduling issues are resolved.
 
 **Phase 1 schema covers:**
+
 - `users` table
 - `refresh_tokens` table
 
 **Deferred (to be finalized before Phase 1 ends):**
+
 - `vendors`, `products`, `categories`
 - `orders`, `order_items`
 - `artisans`, `reward_ledger`
@@ -74,6 +80,7 @@ Lock all decisions before writing code:
 Seed scripts for `users` (one per role) will be created for development testing.
 
 ### 3. Project Scaffold
+
 - Monorepo root initialized (pnpm workspaces + Turborepo)
 - NestJS backend project initialized
 - Admin panel shell scaffolded (empty — active in Phase 4)
@@ -83,6 +90,7 @@ Seed scripts for `users` (one per role) will be created for development testing.
 - GitHub Actions CI (lint + type-check + build on PR)
 
 ### 4. JWT Authentication System
+
 - Phone number → OTP flow (via MSG91)
 - OTP stored in **Redis** with 5-minute TTL (not a DB table — ephemeral data belongs in cache)
 - Short-lived `access_token` JWT (15 min) + opaque `refresh_token` (30 days, stored hashed in DB)
@@ -91,12 +99,14 @@ Seed scripts for `users` (one per role) will be created for development testing.
 - NestJS guards: `@JwtAuthGuard`, `@CurrentUser()` decorator
 
 ### 5. Role-Based Access Control (RBAC)
+
 - Roles: `CUSTOMER`, `VENDOR`, `ARTISAN`, `ADMIN`
 - `ADMIN` role wired into RBAC guards now even though admin panel UI comes in Phase 4 — guards are complete from day 1
 - Role embedded in JWT payload (no extra DB lookup per request)
 - Custom `@Roles()` decorator + `RolesGuard`
 
 ### 6. API Documentation & Observability
+
 - Swagger/OpenAPI auto-generated at `/api/docs`
 - All DTOs annotated with `@ApiProperty()`
 - Winston logger (structured JSON logs)
@@ -107,24 +117,24 @@ Seed scripts for `users` (one per role) will be created for development testing.
 
 ## Deliverables at End of Phase 1
 
-| # | Deliverable | Acceptance Criteria |
-|---|-------------|---------------------|
-| 1 | **Architecture Decision Record** | Full doc: stack, repo strategy, env strategy |
-| 2 | **Monorepo initialized** | `pnpm install` works, Turborepo pipeline runs |
-| 3 | **`@golden-abode/types` package** | User, Role, Auth DTOs shared across apps |
-| 4 | **Sequelize Migrations (Phase 1 entities)** | `users` + `refresh_tokens` tables created cleanly |
-| 5 | **Seed scripts** | One user per role created in dev DB |
-| 6 | **NestJS Backend** | Compiles, lints clean, Dockerized, health check at `/health` |
-| 7 | **Admin panel shell** | Empty Vite + React shell in `apps/admin/` — ready for Phase 4 |
-| 8 | **`POST /auth/otp/send`** | Sends real OTP via MSG91, stored in Redis, rate-limited |
-| 9 | **`POST /auth/otp/verify`** | Verifies OTP, returns `onboardingToken` (new) or full tokens (existing) |
-| 10 | **`POST /auth/register`** | Validates onboarding token, creates user, returns full tokens |
-| 11 | **`POST /auth/refresh`** | Rotates tokens, detects reuse, revokes family on replay |
-| 12 | **`POST /auth/logout`** | Revokes active refresh token |
-| 13 | **`GET /auth/me`** | Returns current user (JWT protected) |
-| 14 | **RBAC Guards** | Vendor-only endpoint returns `403` for customer role |
-| 15 | **Swagger Docs** | All auth endpoints visible at `/api/docs` |
-| 16 | **CI Pipeline** | Push to `main` triggers lint + type-check + build |
+| #   | Deliverable                                 | Acceptance Criteria                                                     |
+| --- | ------------------------------------------- | ----------------------------------------------------------------------- |
+| 1   | **Architecture Decision Record**            | Full doc: stack, repo strategy, env strategy                            |
+| 2   | **Monorepo initialized**                    | `pnpm install` works, Turborepo pipeline runs                           |
+| 3   | **`@golden-abode/types` package**           | User, Role, Auth DTOs shared across apps                                |
+| 4   | **Sequelize Migrations (Phase 1 entities)** | `users` + `refresh_tokens` tables created cleanly                       |
+| 5   | **Seed scripts**                            | One user per role created in dev DB                                     |
+| 6   | **NestJS Backend**                          | Compiles, lints clean, Dockerized, health check at `/health`            |
+| 7   | **Admin panel shell**                       | Empty Vite + React shell in `apps/admin/` — ready for Phase 4           |
+| 8   | **`POST /auth/otp/send`**                   | Sends real OTP via MSG91, stored in Redis, rate-limited                 |
+| 9   | **`POST /auth/otp/verify`**                 | Verifies OTP, returns `onboardingToken` (new) or full tokens (existing) |
+| 10  | **`POST /auth/register`**                   | Validates onboarding token, creates user, returns full tokens           |
+| 11  | **`POST /auth/refresh`**                    | Rotates tokens, detects reuse, revokes family on replay                 |
+| 12  | **`POST /auth/logout`**                     | Revokes active refresh token                                            |
+| 13  | **`GET /auth/me`**                          | Returns current user (JWT protected)                                    |
+| 14  | **RBAC Guards**                             | Vendor-only endpoint returns `403` for customer role                    |
+| 15  | **Swagger Docs**                            | All auth endpoints visible at `/api/docs`                               |
+| 16  | **CI Pipeline**                             | Push to `main` triggers lint + type-check + build                       |
 
 ---
 
@@ -132,53 +142,54 @@ Seed scripts for `users` (one per role) will be created for development testing.
 
 ### Backend (`apps/backend`)
 
-| Concern | Technology | Notes |
-|---------|-----------|-------|
-| Framework | **NestJS** | Modular, DI, production-grade |
-| HTTP Adapter | **Express** | Default NestJS adapter — kept as-is |
-| Language | TypeScript (strict) | Full type safety |
-| ORM | **Sequelize** (sequelize-typescript) | As per MVP proposal — retained |
-| Database | PostgreSQL 16 | Relational, strong for marketplace |
-| Cache / OTP | **Redis 7** | OTP TTL, rate limit counters |
-| Auth | Passport JWT + opaque refresh tokens | Industry standard |
-| Rate Limiting | @nestjs/throttler + Redis store | Distributed — scales across instances |
-| SMS | **MSG91** | India-first, DLT compliant, cost-effective |
-| Docs | @nestjs/swagger | Auto-generated |
-| Logging | Winston | Structured JSON logs |
-| Health | @nestjs/terminus | `/health` endpoint |
+| Concern       | Technology                           | Notes                                      |
+| ------------- | ------------------------------------ | ------------------------------------------ |
+| Framework     | **NestJS**                           | Modular, DI, production-grade              |
+| HTTP Adapter  | **Express**                          | Default NestJS adapter — kept as-is        |
+| Language      | TypeScript (strict)                  | Full type safety                           |
+| ORM           | **Sequelize** (sequelize-typescript) | As per MVP proposal — retained             |
+| Database      | PostgreSQL 16                        | Relational, strong for marketplace         |
+| Cache / OTP   | **Redis 7**                          | OTP TTL, rate limit counters               |
+| Auth          | Passport JWT + opaque refresh tokens | Industry standard                          |
+| Rate Limiting | @nestjs/throttler + Redis store      | Distributed — scales across instances      |
+| SMS           | **MSG91**                            | India-first, DLT compliant, cost-effective |
+| Docs          | @nestjs/swagger                      | Auto-generated                             |
+| Logging       | Winston                              | Structured JSON logs                       |
+| Health        | @nestjs/terminus                     | `/health` endpoint                         |
 
 ### Admin Panel (`apps/admin`) — Scaffolded Phase 1, Built Phase 4
 
-| Concern | Technology | Notes |
-|---------|-----------|-------|
+| Concern   | Technology             | Notes                                                 |
+| --------- | ---------------------- | ----------------------------------------------------- |
 | Framework | **Vite + React (SPA)** | Lightweight, fast dev server, no SSR needed for admin |
-| Language | TypeScript | Shared types with backend |
-| Auth | JWT from backend | No separate auth — uses same API |
-| Styling | TBD in Phase 4 | Tailwind CSS recommended |
+| Language  | TypeScript             | Shared types with backend                             |
+| Auth      | JWT from backend       | No separate auth — uses same API                      |
+| Styling   | TBD in Phase 4         | Tailwind CSS recommended                              |
 
 ### Mobile App (`apps/mobile` — Co-developer Owns)
 
-| Concern | Technology | Notes |
-|---------|-----------|-------|
-| Framework | React Native (Expo) | As per MVP proposal |
-| Navigation | TBD by co-developer | Expo Router or React Navigation |
-| State | Zustand + React Query | As per MVP proposal |
+| Concern       | Technology                | Notes                                                        |
+| ------------- | ------------------------- | ------------------------------------------------------------ |
+| Framework     | React Native (Expo)       | As per MVP proposal                                          |
+| Navigation    | TBD by co-developer       | Expo Router or React Navigation                              |
+| State         | Zustand + React Query     | As per MVP proposal                                          |
 | Repo location | `apps/mobile` in monorepo | Co-dev scaffolds this folder — backend dev does not touch it |
 
 ### Monorepo & Tooling
 
-| Concern | Technology | Notes |
-|---------|-----------|-------|
-| Monorepo | **pnpm workspaces + Turborepo** | All three apps — backend, admin, mobile |
-| CI/CD | GitHub Actions | Scoped pipelines per app; shared lint + type-check |
-| Containers | Docker + Docker Compose | Local PostgreSQL + Redis |
-| Secrets | `.env` + GitHub Secrets | Standard |
+| Concern    | Technology                      | Notes                                              |
+| ---------- | ------------------------------- | -------------------------------------------------- |
+| Monorepo   | **pnpm workspaces + Turborepo** | All three apps — backend, admin, mobile            |
+| CI/CD      | GitHub Actions                  | Scoped pipelines per app; shared lint + type-check |
+| Containers | Docker + Docker Compose         | Local PostgreSQL + Redis                           |
+| Secrets    | `.env` + GitHub Secrets         | Standard                                           |
 
 ---
 
 ## Folder Structure
 
 ### Monorepo Root (`golden-abode`)
+
 ```
 golden-abode/
 ├── apps/
@@ -201,6 +212,7 @@ golden-abode/
 ```
 
 ### Backend (`apps/backend`)
+
 ```
 apps/backend/
 ├── src/
@@ -264,12 +276,12 @@ apps/backend/
 
 All three share identical auth mechanics — same phone OTP, same JWT, same login flow. What differentiates them is:
 
-| Layer | What it stores | When it exists |
-|-------|---------------|----------------|
-| `users` table | Identity — phone, name, role, active status | From first registration |
-| `customers` table | Customer-specific preferences and addresses | Created Phase 2 |
-| `vendors` table | Shop profile — shop name, location, Razorpay sub-account | Created Phase 2 |
-| `artisans` table | Craft profile — trade type, verification status, rewards | Created Phase 2 |
+| Layer             | What it stores                                           | When it exists          |
+| ----------------- | -------------------------------------------------------- | ----------------------- |
+| `users` table     | Identity — phone, name, role, active status              | From first registration |
+| `customers` table | Customer-specific preferences and addresses              | Created Phase 2         |
+| `vendors` table   | Shop profile — shop name, location, Razorpay sub-account | Created Phase 2         |
+| `artisans` table  | Craft profile — trade type, verification status, rewards | Created Phase 2         |
 
 **The `role` column is the differentiator in Phase 1.** Extended profile tables are 1-to-1 with `users.id` and built in later phases.
 
@@ -288,6 +300,7 @@ To avoid forcing returning users to select their role on a Welcome screen (where
 ```
 
 This ensures:
+
 - Returning users go straight to their dashboard — they never see a role picker.
 - New users only see the role picker once.
 - The database `role` column is always `NOT NULL` — no placeholder or default values.
@@ -334,14 +347,17 @@ CREATE INDEX idx_refresh_tokens_family     ON refresh_tokens(family);
 ## Phase 1 API — Full Request & Response Payloads
 
 ### `POST /auth/otp/send`
+
 > Send OTP to a phone number. Works for both new and existing users.
 
 **Request**
+
 ```json
 { "phone": "+919876543210" }
 ```
 
 **Response `200 OK`**
+
 ```json
 { "success": true, "data": null, "message": "OTP sent successfully" }
 ```
@@ -355,14 +371,17 @@ CREATE INDEX idx_refresh_tokens_family     ON refresh_tokens(family);
 ---
 
 ### `POST /auth/otp/verify`
+
 > Verify OTP. Acts as login (existing user) or pre-registration checkpoint (new user).
 
 **Request**
+
 ```json
 { "phone": "+919876543210", "otp": "482910" }
 ```
 
 **Response `200 OK` — Existing user (login complete)**
+
 ```json
 {
   "success": true,
@@ -384,6 +403,7 @@ CREATE INDEX idx_refresh_tokens_family     ON refresh_tokens(family);
 ```
 
 **Response `200 OK` — New user (must complete registration)**
+
 ```json
 {
   "success": true,
@@ -403,9 +423,11 @@ CREATE INDEX idx_refresh_tokens_family     ON refresh_tokens(family);
 ---
 
 ### `POST /auth/register`
+
 > Complete new user registration. Validates onboarding token, creates the user record, and returns full session tokens.
 
 **Request**
+
 ```json
 {
   "onboardingToken": "eyJhbGciOiJIUzI1NiJ9...",
@@ -417,6 +439,7 @@ CREATE INDEX idx_refresh_tokens_family     ON refresh_tokens(family);
 > `role` must be one of: `"CUSTOMER"` | `"VENDOR"` | `"ARTISAN"`. The `"ADMIN"` role cannot be self-selected.
 
 **Response `201 Created`**
+
 ```json
 {
   "success": true,
@@ -447,14 +470,17 @@ CREATE INDEX idx_refresh_tokens_family     ON refresh_tokens(family);
 ---
 
 ### `POST /auth/refresh`
+
 > Exchange a valid refresh token for a new token pair. Old token is immediately revoked.
 
 **Request**
+
 ```json
 { "refreshToken": "a1b2c3d4-e5f6-7890-abcd-ef1234567890" }
 ```
 
 **Response `200 OK`**
+
 ```json
 {
   "success": true,
@@ -474,16 +500,19 @@ CREATE INDEX idx_refresh_tokens_family     ON refresh_tokens(family);
 ---
 
 ### `POST /auth/logout`
+
 > Revoke the current session's refresh token.
 
 **Headers**: `Authorization: Bearer <accessToken>`
 
 **Request Body**
+
 ```json
 { "refreshToken": "a1b2c3d4-e5f6-7890-abcd-ef1234567890" }
 ```
 
 **Response `200 OK`**
+
 ```json
 { "success": true, "data": null, "message": "Logged out successfully" }
 ```
@@ -491,11 +520,13 @@ CREATE INDEX idx_refresh_tokens_family     ON refresh_tokens(family);
 ---
 
 ### `GET /auth/me`
+
 > Get the currently authenticated user's profile.
 
 **Headers**: `Authorization: Bearer <accessToken>`
 
 **Response `200 OK`**
+
 ```json
 {
   "success": true,
@@ -520,6 +551,7 @@ CREATE INDEX idx_refresh_tokens_family     ON refresh_tokens(family);
 ---
 
 ### Standard Error Envelope
+
 All errors follow this shape (from the global exception filter):
 
 ```json
@@ -594,6 +626,7 @@ LOGOUT
 ## Verification Plan
 
 ### Automated Tests
+
 ```bash
 # Run from monorepo root
 pnpm turbo test --filter=backend
@@ -614,6 +647,7 @@ pnpm turbo test --filter=backend
 ```
 
 ### Manual Verification
+
 - [ ] Real OTP received on Indian phone via MSG91 sandbox
 - [ ] `/api/docs` Swagger UI — all auth endpoints visible and testable
 - [ ] `/health` → `{ status: "ok" }`
@@ -627,11 +661,11 @@ pnpm turbo test --filter=backend
 > [!NOTE]
 > All open questions resolved. Plan is ready to proceed to execution upon approval.
 
-| Question | Resolution |
-|----------|------------|
-| MSG91 DLT Registration | To be communicated to client. MSG91 sandbox used throughout Phase 1. |
-| Admin Panel Framework | **Vite + React SPA** confirmed. |
-| Mobile repo strategy | **Single monorepo** confirmed — `apps/mobile` owned by co-developer. |
-| ORM | **Sequelize (sequelize-typescript)** retained. |
-| HTTP adapter | **Express** retained. |
-| Role assignment flow | **Pre-Registration Flow** confirmed — role set via `POST /auth/register` post-OTP, not pre-OTP. |
+| Question               | Resolution                                                                                      |
+| ---------------------- | ----------------------------------------------------------------------------------------------- |
+| MSG91 DLT Registration | To be communicated to client. MSG91 sandbox used throughout Phase 1.                            |
+| Admin Panel Framework  | **Vite + React SPA** confirmed.                                                                 |
+| Mobile repo strategy   | **Single monorepo** confirmed — `apps/mobile` owned by co-developer.                            |
+| ORM                    | **Sequelize (sequelize-typescript)** retained.                                                  |
+| HTTP adapter           | **Express** retained.                                                                           |
+| Role assignment flow   | **Pre-Registration Flow** confirmed — role set via `POST /auth/register` post-OTP, not pre-OTP. |
