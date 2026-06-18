@@ -1,5 +1,5 @@
 import { Table, Column, Model, DataType, HasMany } from 'sequelize-typescript';
-import { Role } from '../../common/enums/role.enum';
+import { Role } from '../../../common/enums/role.enum';
 import { RefreshToken } from './refresh-token.model';
 
 @Table({
@@ -13,39 +13,41 @@ export class User extends Model<User> {
     defaultValue: DataType.UUIDV4,
     primaryKey: true,
   })
-  id: string;
+  declare id: string;
 
   @Column({
     type: DataType.STRING,
     allowNull: true,
   })
-  name: string;
+  declare name: string;
 
   @Column({
     type: DataType.STRING,
     allowNull: false,
     unique: true,
   })
-  phone: string;
+  declare phone: string;
 
   @Column({
     type: DataType.ENUM(...Object.values(Role)),
     allowNull: true, // Null initially until onboarding completes
   })
-  role: Role | null;
+  declare role: Role | null;
 
   @Column({
     type: DataType.STRING,
     allowNull: true,
+    field: 'device_token',
   })
-  deviceToken: string | null;
+  declare deviceToken: string | null;
 
   @Column({
     type: DataType.BOOLEAN,
     defaultValue: true,
+    field: 'is_active',
   })
-  isActive: boolean;
+  declare isActive: boolean;
 
   @HasMany(() => RefreshToken)
-  refreshTokens: RefreshToken[];
+  declare refreshTokens: RefreshToken[];
 }
