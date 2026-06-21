@@ -61,12 +61,12 @@ This is our live Swagger OpenAPI portal. You can literally click "Try it out" on
 The entire JWT + OTP flow is finished. You can build the login screens immediately. Here is how the flow works:
 
 ### Step 1: Send OTP
-*   **Endpoint**: `POST /api/auth/send-otp`
+*   **Endpoint**: `POST /api/auth/otp/send`
 *   **Body**: `{ "phone": "+919876543210" }`
 *   **⚠️ DEVELOPMENT HACK**: To make testing easy, if the backend is running locally (`NODE_ENV=development`), the OTP is always hardcoded to `123456`. You don't have to check terminal logs! The API will actually return the OTP in the JSON response (`devOtp: '123456'`) so you can even auto-fill it in your debug builds.
 
 ### Step 2: Verify OTP
-*   **Endpoint**: `POST /api/auth/verify-otp`
+*   **Endpoint**: `POST /api/auth/otp/verify`
 *   **Body**: `{ "phone": "+919876543210", "otp": "123456" }`
 *   **Logic**: 
     *   If it returns `isNewUser: false`, the user already exists. It will return `accessToken` and `refreshToken`. **Save these in secure storage.**
