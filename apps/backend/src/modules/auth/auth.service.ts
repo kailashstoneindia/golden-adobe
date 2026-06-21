@@ -36,7 +36,7 @@ export class AuthService {
 
   // ─── Send OTP ─────────────────────────────────────────────────────────
 
-  async sendOtp(dto: SendOtpDto): Promise<{ message: string }> {
+  async sendOtp(dto: SendOtpDto): Promise<{ message: string; devOtp?: string }> {
     const { phone } = dto;
 
     // Rate limiting check (Redis-based)
