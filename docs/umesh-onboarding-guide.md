@@ -24,7 +24,9 @@ In the real world, artisans usually work in squads under one lead contractor.
 
 When an Artisan or Vendor signs up, we need them to fill out a profile so you can decide whether to approve them.
 
-**I need you to look at the suggested fields below. Please tell me which ones to KEEP, which ones to REMOVE, and what new fields you want to ADD.**
+> [!NOTE]
+> **These are ONLY suggestions!** 
+> I have listed some possible fields below just to give you ideas and a starting point. Nothing is finalized yet. Please look over these suggestions and tell me which ones to KEEP, which ones to REMOVE entirely, and what new fields you want to ADD based on your business needs.
 
 ### Suggested Fields for an "Artisan Profile"
 *   **Full Name**: (e.g., Rajesh Kumar)
