@@ -49,8 +49,10 @@ export class AuthService {
       throw new BadRequestException(`OTP send limit exceeded. Try again after some time.`);
     }
 
-    // Generate 6-digit OTP
-    const otp = crypto.randomInt(100000, 999999).toString();
+    const env = this.configService.get<string>('env', 'development');
+    
+    // Generate 6-digit OTP (hardcoded to 123456 in development for easier testing)
+    const otp = env === 'development' ? '123456' : crypto.randomInt(100000, 999999).toString();
 
     // Hash the OTP and store in Redis with 5 minute TTL
     const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
@@ -61,16 +63,15 @@ export class AuthService {
     const currentCount = attempts ? parseInt(attempts, 10) : 0;
     await this.redisService.set(rateLimitKey, (currentCount + 1).toString(), rateTtl);
 
-    // In development: log OTP to console instead of sending SMS
-    const env = this.configService.get<string>('env', 'development');
     if (env === 'development') {
       this.logger.warn(`[DEV MODE] OTP for ${phone}: ${otp}`);
+      // Return the OTP in the response body so the app dev can easily copy or auto-fill it
+      return { message: 'OTP sent successfully (DEV MODE)', devOtp: otp };
     } else {
       // Production: call MSG91 API
       await this.sendViaMSG91(phone, otp);
+      return { message: 'OTP sent successfully' };
     }
-
-    return { message: 'OTP sent successfully' };
   }
 
   // ─── Verify OTP ───────────────────────────────────────────────────────
