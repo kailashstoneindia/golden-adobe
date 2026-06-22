@@ -2,24 +2,27 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 
-import { Colors } from '../src/theme';
+import { useAuthHydration } from '../src/hooks/auth';
 import { useFonts } from '../src/hooks/useFonts';
+import { QueryProvider } from '../src/providers/QueryProvider';
+import { Colors } from '../src/theme';
 
-// Keep the native splash visible until the design-system fonts are ready.
 SplashScreen.preventAutoHideAsync();
 SplashScreen.setOptions({ duration: 300, fade: true });
 
-export default function RootLayout() {
+function RootNavigator() {
   const { fontsLoaded, fontError } = useFonts();
+  const { isHydrated } = useAuthHydration();
+
+  const isAppReady = (fontsLoaded || !!fontError) && isHydrated;
 
   useEffect(() => {
-    if (fontsLoaded || fontError) {
+    if (isAppReady) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded, fontError]);
+  }, [isAppReady]);
 
-  // Render nothing until fonts resolve so no text flashes in a fallback font.
-  if (!fontsLoaded && !fontError) {
+  if (!isAppReady) {
     return null;
   }
 
@@ -30,5 +33,13 @@ export default function RootLayout() {
         contentStyle: { backgroundColor: Colors.background },
       }}
     />
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <QueryProvider>
+      <RootNavigator />
+    </QueryProvider>
   );
 }
