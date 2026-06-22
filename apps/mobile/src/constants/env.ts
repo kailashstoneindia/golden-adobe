@@ -9,6 +9,7 @@ const DEFAULT_PROD_API_URL = 'https://api.goldenabode.in/api';
  * Override the API URL via `EXPO_PUBLIC_API_URL` in `.env` or EAS secrets.
  */
 export const Env = {
-  apiBaseUrl: process.env.EXPO_PUBLIC_API_URL ?? (__DEV__ ? DEFAULT_DEV_API_URL : DEFAULT_PROD_API_URL),
+  apiBaseUrl:
+    process.env.EXPO_PUBLIC_API_URL ?? (__DEV__ ? DEFAULT_DEV_API_URL : DEFAULT_PROD_API_URL),
   isDev: __DEV__,
 } as const;
