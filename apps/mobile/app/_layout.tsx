@@ -1,6 +1,7 @@
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useAuthHydration } from '../src/hooks/auth';
 import { useFonts } from '../src/hooks/useFonts';
@@ -38,8 +39,10 @@ function RootNavigator() {
 
 export default function RootLayout() {
   return (
-    <QueryProvider>
-      <RootNavigator />
-    </QueryProvider>
+    <SafeAreaProvider>
+      <QueryProvider>
+        <RootNavigator />
+      </QueryProvider>
+    </SafeAreaProvider>
   );
 }
