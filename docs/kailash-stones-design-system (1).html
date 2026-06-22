@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Kailash Stones — Design System &amp; Screens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --tangerine:#D9531E;
+    --ember:#B23E14;
+    --tangerine-tint:#F6D9C4;
+    --navy:#0F2B52;
+    --navy-soft:#1B3F6E;
+    --sky:#2D6CB4;
+    --sky-tint:#DCEAF7;
+    --cream:#FAF5EC;
+    --white:#FFFFFF;
+    --ink:#221F1B;
+    --ink-soft:#6B6258;
+    --line:#E7DDD0;
+    --sage:#5B8C5E;
+    --sage-tint:#E1ECE0;
+    --brick:#B23A2E;
+    --brick-tint:#F3DEDB;
+    --radius-lg:20px;
+    --radius-md:14px;
+    --radius-sm:10px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:#EFE8DC;color:var(--ink);font-family:'Inter',sans-serif;}
+  .wrap{max-width:1320px;margin:0 auto;padding:64px 40px 120px;}
+
+  /* ---------- typography helpers ---------- */
+  .eyebrow{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--tangerine);margin:0 0 10px;}
+  .h-display{font-family:'Poppins',sans-serif;font-weight:600;font-size:46px;line-height:1.05;letter-spacing:-.01em;margin:0;}
+  .h1{font-family:'Poppins',sans-serif;font-weight:600;font-size:30px;line-height:1.15;margin:0;}
+  .h2{font-family:'Poppins',sans-serif;font-weight:600;font-size:22px;line-height:1.2;margin:0;}
+  .h3{font-family:'Poppins',sans-serif;font-weight:600;font-size:17px;line-height:1.25;margin:0;}
+  .lede{font-size:17px;line-height:1.6;color:var(--ink-soft);max-width:640px;}
+  .mono{font-family:'DM Mono',monospace;}
+
+  /* ---------- cover ---------- */
+  .cover{display:flex;justify-content:space-between;align-items:flex-end;gap:60px;padding-bottom:56px;border-bottom:1px solid var(--line);}
+  .cover-meta{font-family:'DM Mono',monospace;font-size:12px;color:var(--ink-soft);line-height:1.9;text-align:right;white-space:nowrap;}
+  .cover-meta b{color:var(--ink);}
+
+  .ridge-divider{height:54px;margin:64px 0 0;opacity:.9;}
+
+  /* ---------- section shell ---------- */
+  .section{margin-top:96px;}
+  .section-head{max-width:720px;margin-bottom:40px;}
+
+  /* ---------- palette ---------- */
+  .palette-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-top:8px;}
+  .swatch{border-radius:var(--radius-md);overflow:hidden;background:var(--white);border:1px solid var(--line);}
+  .swatch-color{height:96px;}
+  .swatch-info{padding:14px 14px 16px;}
+  .swatch-name{font-family:'Poppins',sans-serif;font-weight:600;font-size:14px;margin:0 0 4px;}
+  .swatch-hex{font-family:'DM Mono',monospace;font-size:11px;color:var(--ink-soft);margin:0 0 8px;}
+  .swatch-use{font-size:11.5px;color:var(--ink-soft);line-height:1.5;margin:0;}
+
+  /* ---------- type scale ---------- */
+  .type-grid{display:flex;flex-direction:column;gap:0;margin-top:8px;border-top:1px solid var(--line);}
+  .type-row{display:grid;grid-template-columns:140px 1fr 200px;align-items:baseline;gap:24px;padding:20px 0;border-bottom:1px solid var(--line);}
+  .type-tag{font-family:'DM Mono',monospace;font-size:11px;color:var(--tangerine);text-transform:uppercase;letter-spacing:.08em;}
+  .type-spec{font-family:'DM Mono',monospace;font-size:12px;color:var(--ink-soft);text-align:right;}
+
+  /* ---------- components ---------- */
+  .comp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:8px;}
+  .comp-card{background:var(--white);border:1px solid var(--line);border-radius:var(--radius-lg);padding:26px;}
+  .comp-card-title{font-family:'DM Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-soft);margin:0 0 18px;}
+  .stack{display:flex;flex-direction:column;gap:12px;align-items:flex-start;}
+  .row-wrap{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+
+  .btn-primary{background:var(--tangerine);color:#fff;border:none;border-radius:var(--radius-md);padding:14px 22px;font-family:'Inter';font-weight:600;font-size:14.5px;cursor:pointer;}
+  .btn-secondary{background:transparent;color:var(--navy);border:1.5px solid var(--navy);border-radius:var(--radius-md);padding:12.5px 22px;font-family:'Inter';font-weight:600;font-size:14.5px;}
+  .btn-ghost{background:transparent;color:var(--ink-soft);border:none;font-family:'Inter';font-weight:600;font-size:14.5px;text-decoration:underline;text-underline-offset:3px;}
+  .btn-disabled{background:#EFE8DC;color:#B7AE9F;border:none;border-radius:var(--radius-md);padding:14px 22px;font-family:'Inter';font-weight:600;font-size:14.5px;}
+
+  .field{width:100%;}
+  .field label{display:block;font-size:12px;color:var(--ink-soft);margin-bottom:6px;font-weight:600;}
+  .field input{width:100%;border:1.5px solid var(--line);border-radius:var(--radius-sm);padding:13px 14px;font-family:'Inter';font-size:14.5px;background:#fff;color:var(--ink);}
+  .field input:focus{outline:2px solid var(--sky);outline-offset:1px;border-color:var(--sky);}
+
+  .pill{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:20px;font-family:'DM Mono',monospace;font-size:10.5px;letter-spacing:.02em;}
+  .pill-pending{background:var(--tangerine-tint);color:var(--ember);}
+  .pill-success{background:var(--sage-tint);color:var(--sage);}
+  .pill-info{background:var(--sky-tint);color:var(--sky);}
+  .pill-error{background:var(--brick-tint);color:var(--brick);}
+
+  .mini-card{border:1px solid var(--line);border-radius:var(--radius-md);padding:16px;width:100%;background:#fff;}
+  .mini-card-top{display:flex;justify-content:space-between;align-items:flex-start;}
+  .mini-card .h3{margin-bottom:4px;}
+
+  .icon{width:20px;height:20px;}
+  .icon-row{display:flex;gap:18px;align-items:center;}
+  .icon-tile{width:44px;height:44px;border-radius:12px;background:var(--cream);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--navy);}
+
+  /* ---------- phone frames ---------- */
+  .flow-row{display:flex;gap:44px;flex-wrap:wrap;align-items:flex-start;margin-top:8px;}
+  .phone-block{width:300px;}
+  .step{font-family:'DM Mono',monospace;font-size:11px;color:var(--tangerine);letter-spacing:.08em;margin-bottom:10px;}
+  .phone-frame{width:300px;background:#161412;border-radius:42px;padding:9px;box-shadow:0 26px 50px -16px rgba(15,43,82,.45),0 0 0 1px rgba(34,31,27,.08);}
+  .phone-screen{width:100%;height:636px;background:var(--cream);border-radius:33px;overflow:hidden;position:relative;display:flex;flex-direction:column;}
+  .status-bar{height:30px;flex:0 0 auto;display:flex;justify-content:space-between;align-items:center;padding:0 20px;font-family:'DM Mono',monospace;font-size:10px;color:var(--ink);}
+  .status-bar.on-dark{color:#fff;}
+  .home-indicator{width:96px;height:4px;background:rgba(0,0,0,.18);border-radius:3px;margin:8px auto 4px;flex:0 0 auto;}
+  .home-indicator.on-dark{background:rgba(255,255,255,.45);}
+  .screen-caption{margin-top:14px;font-size:13px;color:var(--ink-soft);line-height:1.5;max-width:280px;}
+  .screen-caption b{color:var(--ink);font-weight:600;}
+
+  .scr-body{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+  .scr-pad{padding:18px 18px 0;}
+
+  /* bottom nav */
+  .bottom-nav{flex:0 0 auto;background:#fff;border-top:1px solid var(--line);display:flex;justify-content:space-around;align-items:center;padding:10px 6px 6px;}
+  .nav-item{display:flex;flex-direction:column;align-items:center;gap:3px;color:#B7AE9F;}
+  .nav-item.active{color:var(--tangerine);}
+  .nav-item span{font-size:9.5px;font-family:'DM Mono',monospace;}
+
+  /* search */
+  .search-bar{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:11px 14px;color:var(--ink-soft);font-size:13px;}
+
+  /* category grid */
+  .cat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:14px;}
+  .cat-item{display:flex;flex-direction:column;align-items:center;gap:7px;}
+  .cat-circle{width:54px;height:54px;border-radius:50%;background:#fff;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--navy);}
+  .cat-item span{font-size:10.5px;color:var(--ink-soft);text-align:center;font-weight:600;}
+
+  /* horizontal scroller fake */
+  .h-scroll{display:flex;gap:12px;overflow:hidden;}
+  .vendor-card{flex:0 0 auto;width:140px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px;}
+  .vendor-img{height:56px;border-radius:10px;background:linear-gradient(135deg,var(--sky-tint),var(--tangerine-tint));margin-bottom:8px;}
+
+  .project-pill{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:20px;padding:7px 13px 7px 9px;color:#fff;font-size:12px;}
+
+  /* ridge svg */
+  .ridge-bg{position:absolute;bottom:0;left:0;width:100%;}
+
+  .badge-dot{width:7px;height:7px;border-radius:50%;background:var(--sage);display:inline-block;}
+
+  table.spec{width:100%;border-collapse:collapse;font-size:12.5px;}
+  table.spec td{padding:7px 0;border-bottom:1px solid var(--line);}
+  table.spec td:first-child{color:var(--ink-soft);width:45%;}
+  table.spec td:last-child{font-family:'DM Mono',monospace;}
+
+  .flow-divider{margin:80px 0 32px;display:flex;align-items:center;gap:18px;}
+  .flow-divider .num{font-family:'Poppins',sans-serif;font-size:42px;color:var(--line);font-weight:600;}
+  .flow-divider .txt .h2{margin-bottom:4px;}
+  .flow-divider .line{flex:1;height:1px;background:var(--line);}
+
+  /* ---------- print ---------- */
+  @media print{
+    @page{ size: A3 landscape; margin: 14mm; }
+    body{background:#fff;}
+    .wrap{padding:0;max-width:none;}
+    .cover{break-inside:avoid;page-break-inside:avoid;}
+    .section{break-inside:avoid-page;}
+    .section-head{break-inside:avoid;page-break-inside:avoid;break-after:avoid;}
+    .palette-grid{break-inside:avoid;}
+    .swatch{break-inside:avoid;page-break-inside:avoid;}
+    .type-row{break-inside:avoid;page-break-inside:avoid;}
+    .comp-grid{break-inside:avoid;}
+    .comp-card{break-inside:avoid;page-break-inside:avoid;}
+    .flow-divider{break-inside:avoid;page-break-inside:avoid;break-after:avoid;page-break-after:avoid;}
+    .flow-row{break-before:avoid;}
+    .phone-block{break-inside:avoid;page-break-inside:avoid;}
+    .phone-frame{break-inside:avoid;page-break-inside:avoid;}
+    .ridge-divider{display:none;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ============ COVER ============ -->
+  <div class="cover">
+    <div>
+      <p class="eyebrow">Mobile App · Design System &amp; Screen Flows</p>
+      <h1 class="h-display">Kailash&nbsp;Stones</h1>
+      <p class="lede" style="margin-top:14px;">A working visual language for the Golden&nbsp;Abode home-finishing marketplace, built from the brand mark Umesh shared — Mount Kailash at first light. Sky deepening to navy, sun catching the ridge in tangerine. Covers customer, vendor and Ustaad (artisan) flows for the React&nbsp;Native MVP.</p>
+    </div>
+    <div class="cover-meta">
+      v1.0 · 19 Jun 2026<br>
+      Prepared by <b>Tarun Jawla</b><br>
+      For <b>Golden Abode</b> — client: Umesh Singh Shekhawat<br>
+      Stack: React&nbsp;Native (Expo) · NestJS · PostgreSQL
+    </div>
+  </div>
+
+  <!-- ridge divider svg -->
+  <svg class="ridge-divider" viewBox="0 0 1200 60" preserveAspectRatio="none" width="100%" height="54">
+    <polyline points="0,55 90,30 180,42 280,12 360,28 460,8 560,30 660,18 760,38 860,15 960,32 1060,20 1200,40"
+      fill="none" stroke="#0F2B52" stroke-width="2" opacity=".15"/>
+    <polyline points="0,55 90,30 180,42 280,12 360,28 460,8" fill="none" stroke="#D9531E" stroke-width="2" opacity=".55"/>
+  </svg>
+
+  <!-- ============ DESIGN SYSTEM ============ -->
+  <div class="section" id="design-system">
+    <div class="section-head">
+      <p class="eyebrow">01 · Foundations</p>
+      <h2 class="h1">Color palette</h2>
+      <p class="lede">Tangerine and sky blue, straight from the two logo lockups, anchored by a warm stone-cream canvas instead of plain white — so the app feels closer to site-visit daylight than a generic e-commerce app.</p>
+    </div>
+
+    <div class="palette-grid">
+      <div class="swatch">
+        <div class="swatch-color" style="background:#D9531E;"></div>
+        <div class="swatch-info"><p class="swatch-name">Sindoor Tangerine</p><p class="swatch-hex">#D9531E</p><p class="swatch-use">Primary CTAs, active states, the brand's "sunrise" accent.</p></div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-color" style="background:#B23E14;"></div>
+        <div class="swatch-info"><p class="swatch-name">Ember</p><p class="swatch-hex">#B23E14</p><p class="swatch-use">Pressed/hover states, gradient edge under tangerine.</p></div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-color" style="background:#0F2B52;"></div>
+        <div class="swatch-info"><p class="swatch-name">Kailash Navy</p><p class="swatch-hex">#0F2B52</p><p class="swatch-use">Headers, status bars, dark surfaces — the logo's night sky.</p></div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-color" style="background:#2D6CB4;"></div>
+        <div class="swatch-info"><p class="swatch-name">Glacier Sky</p><p class="swatch-hex">#2D6CB4</p><p class="swatch-use">Secondary actions, links, info badges.</p></div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-color" style="background:#FAF5EC;border-bottom:1px solid #E7DDD0;"></div>
+        <div class="swatch-info"><p class="swatch-name">Stone Cream</p><p class="swatch-hex">#FAF5EC</p><p class="swatch-use">App canvas and light surfaces, never stark white.</p></div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-color" style="background:#221F1B;"></div>
+        <div class="swatch-info"><p class="swatch-name">Char Ink</p><p class="swatch-hex">#221F1B</p><p class="swatch-use">Primary text — warm black, not pure #000.</p></div>
+      </div>
+    </div>
+    <div class="row-wrap" style="margin-top:14px;">
+      <span class="pill pill-success">Sage #5B8C5E — delivered / verified</span>
+      <span class="pill pill-pending">Tangerine tint #F6D9C4 — pending / in progress</span>
+      <span class="pill pill-info">Sky tint #DCEAF7 — informational</span>
+      <span class="pill pill-error">Brick #B23A2E — errors / failed payment</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-head">
+      <p class="eyebrow">Foundations</p>
+      <h2 class="h1">Type system</h2>
+      <p class="lede">Poppins for headings and display text — rounded, modern, reads well at all mobile sizes. Inter for all body and UI text — the most legible sans-serif at small sizes on screens. DM Mono for anything numeric: prices, order IDs, points — same family you've already been using for InvoiceGenie, so it stays consistent across your work.</p>
+    </div>
+    <div class="type-grid">
+      <div class="type-row"><span class="type-tag">Display</span><span style="font-family:'Poppins',sans-serif;font-weight:600;font-size:30px;">Kota Stone, Beige</span><span class="type-spec">Poppins · 600 · 30/36</span></div>
+      <div class="type-row"><span class="type-tag">H2</span><span style="font-family:'Poppins',sans-serif;font-weight:600;font-size:22px;">Categories near you</span><span class="type-spec">Poppins · 600 · 22/28</span></div>
+      <div class="type-row"><span class="type-tag">H3</span><span style="font-family:'Poppins',sans-serif;font-weight:600;font-size:17px;">Vendor: Sharma Hardware</span><span class="type-spec">Poppins · 600 · 17/22</span></div>
+      <div class="type-row"><span class="type-tag">Body</span><span style="font-family:'Inter';font-size:15px;">Natural beige stone, 12mm thickness, polished finish.</span><span class="type-spec">Inter · 400 · 15/22</span></div>
+      <div class="type-row"><span class="type-tag">Caption</span><span style="font-family:'Inter';font-size:12.5px;color:#6B6258;">Delivered to Sharma Residence · 2 days ago</span><span class="type-spec">Inter · 500 · 12.5/18</span></div>
+      <div class="type-row"><span class="type-tag">Numeric</span><span style="font-family:'DM Mono',monospace;font-size:19px;">₹2,450.00</span><span class="type-spec">DM Mono · 500 · 19/24</span></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-head">
+      <p class="eyebrow">Foundations</p>
+      <h2 class="h1">Core components</h2>
+    </div>
+    <div class="comp-grid">
+      <div class="comp-card">
+        <p class="comp-card-title">Buttons</p>
+        <div class="stack">
+          <button class="btn-primary">Place order</button>
+          <button class="btn-secondary">Add to cart</button>
+          <button class="btn-disabled">Withdraw — coming soon</button>
+          <button class="btn-ghost">View all 12 items</button>
+        </div>
+      </div>
+      <div class="comp-card">
+        <p class="comp-card-title">Inputs &amp; status</p>
+        <div class="stack">
+          <div class="field"><label>Phone number</label><input placeholder="98290 12345"></div>
+          <div class="row-wrap">
+            <span class="pill pill-pending">Processing</span>
+            <span class="pill pill-info">Out for delivery</span>
+            <span class="pill pill-success">Delivered</span>
+          </div>
+        </div>
+      </div>
+      <div class="comp-card">
+        <p class="comp-card-title">Cards</p>
+        <div class="mini-card">
+          <div class="mini-card-top">
+            <div><p class="h3">Order #GA1042</p><p style="font-size:12px;color:#6B6258;margin:2px 0 0;">Sharma Residence · 6 items</p></div>
+            <span class="pill pill-pending">Dispatched</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================
+       CUSTOMER FLOW
+  ====================================================== -->
+  <div class="flow-divider">
+    <div class="num">02</div>
+    <div class="txt"><p class="eyebrow" style="margin-bottom:2px;">Mobile screens</p><h2 class="h2">Customer flow</h2><p style="font-size:13.5px;color:#6B6258;margin:0;">Splash → login → browse → cart → checkout → track. One project (house) per customer, multi-vendor cart, Ustaad verification on delivery.</p></div>
+    <div class="line"></div>
+  </div>
+
+  <div class="flow-row">
+
+    <!-- SPLASH -->
+    <div class="phone-block">
+      <p class="step">01 — Splash</p>
+      <div class="phone-frame">
+        <div class="phone-screen" style="background:linear-gradient(180deg,#0F2B52 0%,#173a66 45%,#2D6CB4 100%);">
+          <div class="status-bar on-dark"><span>9:41</span><span>●●●  ▮▮▮  ⌁100%</span></div>
+          <div style="position:relative;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+            <div style="position:absolute;top:54px;left:46px;width:14px;height:14px;border-radius:50%;background:#caa6e6;opacity:.7;"></div>
+            <div style="width:108px;height:108px;border-radius:50%;background:radial-gradient(circle,#F6A35C 0%,#D9531E 60%,rgba(217,83,30,0) 75%);position:absolute;top:148px;left:96px;"></div>
+            <svg class="ridge-bg" viewBox="0 0 300 140" preserveAspectRatio="none" height="180">
+              <polygon points="0,140 0,95 40,60 75,90 110,35 150,70 190,20 230,55 265,30 300,75 300,140" fill="#0c1f3b"/>
+              <polygon points="110,35 150,70 190,20 200,40 150,80 120,55" fill="#D9531E" opacity=".85"/>
+            </svg>
+            <div style="position:relative;z-index:2;text-align:center;margin-top:-30px;">
+              <p style="font-family:'Poppins',sans-serif;font-weight:700;font-size:26px;color:#fff;letter-spacing:.02em;margin:0;">KAILASH STONES</p>
+              <p style="font-family:'Inter';font-size:12px;color:rgba(255,255,255,.75);margin:8px 0 0;">Materials for the home you're building</p>
+            </div>
+          </div>
+          <div class="home-indicator on-dark"></div>
+        </div>
+      </div>
+      <p class="screen-caption">Dark navy-to-sky gradient with the ridge silhouette and sun glow lifted straight from the logo. Sets tone before any UI chrome appears.</p>
+    </div>
+
+    <!-- OTP LOGIN -->
+    <div class="phone-block">
+      <p class="step">02 — Phone login</p>
+      <div class="phone-frame">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span>●●●  ▮▮▮  ⌁100%</span></div>
+          <div class="scr-body scr-pad">
+            <div style="margin-top:30px;">
+              <p class="eyebrow" style="margin-bottom:8px;">Welcome</p>
+              <h2 class="h1">Let's verify it's you</h2>
+              <p style="font-size:13.5px;color:#6B6258;margin-top:8px;">We'll text a 4-digit code to confirm your number.</p>
+            </div>
+            <div style="margin-top:28px;" class="field">
+              <label>Mobile number</label>
+              <div style="display:flex;gap:8px;">
+                <div style="width:54px;border:1.5px solid var(--line);border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:'DM Mono';font-size:14px;background:#fff;">+91</div>
+                <input style="flex:1;" placeholder="98290 12345">
+              </div>
+            </div>
+            <button class="btn-primary" style="width:100%;margin-top:22px;">Send OTP</button>
+            <p style="font-size:11.5px;color:#B7AE9F;text-align:center;margin-top:16px;">By continuing you agree to our Terms &amp; Privacy Policy</p>
+          </div>
+          <div class="home-indicator"></div>
+        </div>
+      </div>
+      <p class="screen-caption">Single field, single action. MSG91-powered OTP runs underneath — no extra UI needed beyond this.</p>
+    </div>
+
+    <!-- HOME -->
+    <div class="phone-block">
+      <p class="step">03 — Home</p>
+      <div class="phone-frame">
+        <div class="phone-screen">
+          <div style="background:var(--navy);flex:0 0 auto;padding-bottom:18px;border-radius:0 0 22px 22px;">
+            <div class="status-bar on-dark"><span>9:41</span><span>●●●  ▮▮▮  ⌁100%</span></div>
+            <div style="padding:6px 18px 0;">
+              <p style="color:rgba(255,255,255,.65);font-size:11.5px;margin:0 0 6px;">Good morning, Aditi</p>
+              <div class="project-pill">
+                <span>🏠</span> Sharma Residence, Vaishali Nagar <span style="opacity:.7;">▾</span>
+              </div>
+            </div>
+            <div style="padding:16px 18px 0;">
+              <div class="search-bar"><span>🔍</span> Search tiles, pipes, paint…</div>
+            </div>
+          </div>
+          <div class="scr-body" style="overflow-y:auto;">
+            <div class="scr-pad">
+              <p class="h3" style="margin-top:16px;">Categories</p>
+              <div class="cat-grid">
+                <div class="cat-item"><div class="cat-circle"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 14l4-4 3 3 7-7"/><path d="M14 6h4v4"/></svg></div><span>Plumbing</span></div>
+                <div class="cat-item"><div class="cat-circle" style="color:var(--tangerine);"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/></svg></div><span>Electrical</span></div>
+                <div class="cat-item"><div class="cat-circle"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div><span>Stones &amp; Tiles</span></div>
+                <div class="cat-item"><div class="cat-circle"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2c3 4 6 7 6 11a6 6 0 1 1-12 0c0-4 3-7 6-11z"/></svg></div><span>Sanitaryware</span></div>
+                <div class="cat-item"><div class="cat-circle"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 16l5-5 4 4 9-9"/><path d="M5 21h14"/></svg></div><span>Paints</span></div>
+                <div class="cat-item"><div class="cat-circle"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.2-1.6l2-1.5-2-3.4-2.4 1a7 7 0 0 0-2.8-1.6L13.2 2h-2.4l-.4 2.9a7 7 0 0 0-2.8 1.6l-2.4-1-2 3.4 2 1.5A7 7 0 0 0 5 12"/></svg></div><span>Hardware</span></div>
+              </div>
+
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:22px;">
+                <p class="h3">Verified Ustaads nearby</p>
+                <span style="font-size:11px;color:var(--tangerine);font-weight:600;">See all</span>
+              </div>
+              <div class="h-scroll" style="margin-top:10px;">
+                <div class="vendor-card"><div class="vendor-img"></div><p style="font-size:12.5px;font-weight:700;margin:0;">Ramesh Kumar</p><p style="font-size:10.5px;color:#6B6258;margin:2px 0 0;">Plumbing · 6 yrs</p></div>
+                <div class="vendor-card"><div class="vendor-img"></div><p style="font-size:12.5px;font-weight:700;margin:0;">Bittu's Team</p><p style="font-size:10.5px;color:#6B6258;margin:2px 0 0;">Electrical · Group</p></div>
+              </div>
+
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:18px;">
+                <p class="h3">Top vendors, Jaipur East</p>
+              </div>
+              <div class="h-scroll" style="margin-top:10px;padding-bottom:14px;">
+                <div class="vendor-card"><div class="vendor-img"></div><p style="font-size:12.5px;font-weight:700;margin:0;">Kailash Stones</p><p style="font-size:10.5px;color:#6B6258;margin:2px 0 0;">Stones · 4.8★</p></div>
+                <div class="vendor-card"><div class="vendor-img"></div><p style="font-size:12.5px;font-weight:700;margin:0;">Sharma Hardware</p><p style="font-size:10.5px;color:#6B6258;margin:2px 0 0;">Hardware · 4.6★</p></div>
+              </div>
+            </div>
+          </div>
+          <div class="bottom-nav">
+            <div class="nav-item active"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg><span>HOME</span></div>
+            <div class="nav-item"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg><span>BROWSE</span></div>
+            <div class="nav-item"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 7h12l-1 13H7L6 7z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg><span>CART</span></div>
+            <div class="nav-item"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h4"/></svg><span>ORDERS</span></div>
+            <div class="nav-item"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1.5-4 4-5.5 7-5.5S17.5 16 19 20"/></svg><span>YOU</span></div>
+          </div>
+        </div>
+      </div>
+      <p class="screen-caption">The <b>project pill</b> is the Zomato-style address selector from your call with Umesh — every order ties back to one house/project. Ustaads and vendors surface based on it.</p>
+    </div>
+
+    <!-- PRODUCT DETAIL -->
+    <div class="phone-block">
+      <p class="step">04 — Product detail</p>
+      <div class="phone-frame">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span>●●●  ▮▮▮  ⌁100%</span></div>
+          <div class="scr-body" style="overflow-y:auto;">
+            <div style="height:200px;background:linear-gradient(135deg,#DCEAF7,#F6D9C4);flex:0 0 auto;position:relative;">
+              <div style="position:absolute;top:14px;left:16px;width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.85);display:flex;align-items:center;justify-content:center;">←</div>
+              <div style="position:absolute;bottom:12px;right:16px;font-size:10px;font-family:'DM Mono';background:rgba(0,0,0,.35);color:#fff;padding:3px 8px;border-radius:10px;">1 / 4</div>
+            </div>
+            <div class="scr-pad">
+              <p class="eyebrow" style="margin-top:14px;margin-bottom:4px;color:var(--sky);">Kailash Stones · Jaipur East</p>
+              <h2 class="h1">Kota Stone — Natural Beige</h2>
+              <p class="mono" style="font-size:22px;margin:10px 0 0;">₹68<span style="font-size:13px;color:#6B6258;"> / sq ft</span></p>
+              <div class="row-wrap" style="margin-top:12px;">
+                <span class="pill pill-success">In stock</span>
+                <span class="pill pill-info">Delivers in 2 days</span>
+              </div>
+              <p class="h3" style="margin-top:18px;">Specifications</p>
+              <table class="spec" style="margin-top:8px;">
+                <tr><td>Thickness</td><td>12 mm</td></tr>
+                <tr><td>Finish</td><td>Polished</td></tr>
+                <tr><td>Unit</td><td>per sq ft</td></tr>
+                <tr><td>Minimum order</td><td>50 sq ft</td></tr>
+              </table>
+            </div>
+          </div>
+          <div style="flex:0 0 auto;padding:14px 18px;background:#fff;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;">
+            <div style="display:flex;align-items:center;border:1.5px solid var(--line);border-radius:10px;">
+              <span style="padding:8px 12px;">–</span><span class="mono" style="padding:0 4px;">50</span><span style="padding:8px 12px;">+</span>
+            </div>
+            <button class="btn-primary" style="flex:1;">Add to cart · ₹3,400</button>
+          </div>
+        </div>
+      </div>
+      <p class="screen-caption">Price set in DM Mono so quantities/totals always read as data, not prose — matches the numeric treatment you already use in InvoiceGenie.</p>
+    </div>
+
+    <!-- CART -->
+    <div class="phone-block">
+      <p class="step">05 — Cart</p>
+      <div class="phone-frame">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span>●●●  ▮▮▮  ⌁100%</span></div>
+          <div class="scr-pad"><h2 class="h1" style="margin-top:6px;">Your cart</h2></div>
+          <div class="scr-body scr-pad" style="overflow-y:auto;">
+            <p class="eyebrow" style="margin-top:14px;color:var(--sky);">Kailash Stones</p>
+            <div class="mini-card" style="margin-top:6px;"><div class="mini-card-top"><div><p class="h3">Kota Stone, Beige</p><p style="font-size:11.5px;color:#6B6258;margin:3px 0 0;">50 sq ft</p></div><p class="mono" style="margin:0;">₹3,400</p></div></div>
+            <p style="font-size:11px;color:#6B6258;text-align:right;margin:6px 0 0;">Vendor subtotal: <b style="color:var(--ink);">₹3,400</b></p>
+
+            <p class="eyebrow" style="margin-top:18px;color:var(--sky);">Sharma Hardware</p>
+            <div class="mini-card" style="margin-top:6px;"><div class="mini-card-top"><div><p class="h3">PVC Pipe, 2"</p><p style="font-size:11.5px;color:#6B6258;margin:3px 0 0;">12 pieces</p></div><p class="mono" style="margin:0;">₹1,860</p></div></div>
+            <p style="font-size:11px;color:#6B6258;text-align:right;margin:6px 0 0;">Vendor subtotal: <b style="color:var(--ink);">₹1,860</b></p>
+          </div>
+          <div style="flex:0 0 auto;padding:14px 18px;background:#fff;border-top:1px solid var(--line);">
+            <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;"><span style="color:#6B6258;">Items total</span><span class="mono">₹5,260</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:10px;"><span style="color:#6B6258;">Delivery (2 vendors)</span><span class="mono">₹120</span></div>
+            <button class="btn-primary" style="width:100%;">Proceed to checkout · ₹5,380</button>
+          </div>
+        </div>
+      </div>
+      <p class="screen-caption">Cart groups line items by vendor — mirrors how the multi-vendor checkout actually settles funds on the backend.</p>
+    </div>
+
+    <!-- CHECKOUT -->
+    <div class="phone-block">
+      <p class="step">06 — Checkout</p>
+      <div class="phone-frame">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span>●●●  ▮▮▮  ⌁100%</span></div>
+          <div class="scr-body scr-pad" style="overflow-y:auto;">
+            <h2 class="h1" style="margin-top:6px;">Checkout</h2>
+            <p class="eyebrow" style="margin-top:18px;">Delivering to project</p>
+            <div class="mini-card" style="margin-top:6px;">
+              <p class="h3">Sharma Residence</p>
+              <p style="font-size:12px;color:#6B6258;margin:4px 0 0;">Plot 14, Vaishali Nagar, Jaipur East</p>
+              <span class="btn-ghost" style="font-size:12px;margin-top:6px;display:inline-block;">Change project</span>
+            </div>
+
+            <p class="eyebrow" style="margin-top:18px;">Payment method</p>
+            <div class="stack" style="margin-top:6px;">
+              <div class="mini-card" style="display:flex;justify-content:space-between;align-items:center;border-color:var(--tangerine);">
+                <span style="font-size:13.5px;font-weight:600;">UPI</span><span style="width:16px;height:16px;border-radius:50%;border:5px solid var(--tangerine);"></span>
+              </div>
+              <div class="mini-card" style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:13.5px;">Card</span><span style="width:16px;height:16px;border-radius:50%;border:1.5px solid var(--line);"></span>
+              </div>
+              <div class="mini-card" style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:13.5px;">Netbanking</span><span style="width:16px;height:16px;border-radius:50%;border:1.5px solid var(--line);"></span>
+              </div>
+            </div>
+            <p style="font-size:10.5px;color:#B7AE9F;margin-top:8px;">Secured by Razorpay</p>
+          </div>
+          <div style="flex:0 0 auto;padding:14px 18px;background:#fff;border-top:1px solid var(--line);">
+            <button class="btn-primary" style="width:100%;">Pay ₹5,380</button>
+          </div>
+        </div>
+      </div>
+      <p class="screen-caption">Project selection sits above payment — the customer always confirms <i>which house</i> before money moves, since that's what ties vendors and Ustaads together later.</p>
+    </div>
+
+    <!-- ORDER TRACKING (signature) -->
+    <div class="phone-block">
+      <p class="step">07 — Track order</p>
+      <div class="phone-frame">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span>●●●  ▮▮▮  ⌁100%</span></div>
+          <div class="scr-pad"><h2 class="h1" style="margin-top:6px;">Order #GA1042</h2><p style="font-size:12px;color:#6B6258;margin-top:4px;">Sharma Residence · 2 vendors · 7 items</p></div>
+          <div class="scr-body" style="overflow-y:auto;">
+            <div style="padding:10px 10px 0;">
+              <svg viewBox="0 0 280 170" width="100%" height="170">
+                <polyline points="20,150 75,100 130,125 185,55" fill="none" stroke="#D9531E" stroke-width="3" stroke-linecap="round"/>
+                <polyline points="185,55 245,85" fill="none" stroke="#E7DDD0" stroke-width="3" stroke-dasharray="2 7" stroke-linecap="round"/>
+                <circle cx="185" cy="30" r="16" fill="#F6A35C" opacity=".55"/>
+                <circle cx="20" cy="150" r="6" fill="#D9531E"/>
+                <circle cx="75" cy="100" r="6" fill="#D9531E"/>
+                <circle cx="130" cy="125" r="6" fill="#D9531E"/>
+                <circle cx="185" cy="55" r="8" fill="#D9531E" stroke="#fff" stroke-width="2"/>
+                <circle cx="245" cy="85" r="6" fill="#fff" stroke="#E7DDD0" stroke-width="2"/>
+                <text x="6" y="168" font-family="DM Mono" font-size="8.5" fill="#6B6258">Placed</text>
+                <text x="55" y="118" font-family="DM Mono" font-size="8.5" fill="#6B6258">Confirmed</text>
+                <text x="100" y="143" font-family="DM Mono" font-size="8.5" fill="#6B6258">Dispatched</text>
+                <text x="145" y="40" font-family="DM Mono" font-size="8.5" fill="#D9531E" font-weight="700">Out for delivery</text>
+                <text x="218" y="105" font-family="DM Mono" font-size="8.5" fill="#B7AE9F">Delivered</text>
+              </svg>
+            </div>
+            <div class="scr-pad">
+              <div class="mini-card" style="display:flex;align-items:center;gap:12px;">
+                <div class="icon-tile" style="background:var(--sage-tint);color:var(--sage);">✓</div>
+                <div><p style="font-size:12.5px;font-weight:700;margin:0;">Ramesh Kumar (Ustaad)</p><p style="font-size:11px;color:#6B6258;margin:2px 0 0;">Will check items on arrival</p></div>
+              </div>
+              <p style="font-size:11.5px;color:#6B6258;margin-top:14px;">Estimated arrival <b style="color:var(--ink);">Today, 4:30 PM</b></p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="screen-caption">The <b>Ridge Tracker</b> — order status climbing the same silhouette as the logo, sun glow marking the current stage. Doubles as the literal product of "reducing pain at the gate," the artisan check-mark moment Umesh described.</p>
+    </div>
+
+    <!-- PROFILE -->
+    <div class="phone-block">
+      <p class="step">08 — Profile</p>
+      <div class="phone-frame">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span>●●●  ▮▮▮  ⌁100%</span></div>
+          <div class="scr-pad">
+            <div style="display:flex;align-items:center;gap:14px;margin-top:10px;">
+              <div style="width:56px;height:56px;border-radius:50%;background:var(--tangerine-tint);display:flex;align-items:center;justify-content:center;font-family:'Poppins';font-weight:700;font-size:20px;color:var(--ember);">A</div>
+              <div><p class="h3">Aditi Sharma</p><p style="font-size:12px;color:#6B6258;margin:3px 0 0;">+91 98290 12345</p></div>
+            </div>
+          </div>
+          <div class="scr-body scr-pad" style="overflow-y:auto;margin-top:18px;">
+            <div class="stack">
+              <div class="mini-card" style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:13.5px;font-weight:600;">My Projects</span><span>›</span></div>
+              <div class="mini-card" style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:13.5px;font-weight:600;">Order History</span><span>›</span></div>
+              <div class="mini-card" style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:13.5px;font-weight:600;">Saved Addresses</span><span>›</span></div>
+              <div class="mini-card" style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:13.5px;font-weight:600;">Help &amp; Support</span><span>›</span></div>
+              <div class="mini-card" style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:13.5px;font-weight:600;color:var(--brick);">Log out</span><span>›</span></div>
+            </div>
+          </div>
+          <div class="bottom-nav">
+            <div class="nav-item"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg><span>HOME</span></div>
+            <div class="nav-item"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg><span>BROWSE</span></div>
+            <div class="nav-item"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 7h12l-1 13H7L6 7z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg><span>CART</span></div>
+            <div class="nav-item"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h4"/></svg><span>ORDERS</span></div>
+            <div class="nav-item active"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1.5-4 4-5.5 7-5.5S17.5 16 19 20"/></svg><span>YOU</span></div>
+          </div>
+        </div>
+      </div>
+      <p class="screen-caption">"My Projects" sits at the top — a customer with two houses under construction switches between them from here.</p>
+    </div>
+
+  </div>
+
+  <!-- =====================================================
+       VENDOR FLOW
+  ====================================================== -->
+  <div class="flow-divider">
+    <div class="num">03</div>
+    <div class="txt"><p class="eyebrow" style="margin-bottom:2px;">Mobile screens</p><h2 class="h2">Vendor flow</h2><p style="font-size:13.5px;color:#6B6258;margin:0;">Shop owners managing stock and orders from the same app, role-routed after login.</p></div>
+    <div class="line"></div>
+  </div>
+
+  <div class="flow-row">
+
+    <!-- VENDOR DASHBOARD -->
+    <div class="phone-block">
+      <p class="step">01 — Dashboard</p>
+      <div class="phone-frame">
+        <div class="phone-screen">
+          <div style="background:var(--navy);flex:0 0 auto;padding-bottom:20px;border-radius:0 0 22px 22px;">
+            <div class="status-bar on-dark"><span>9:41</span><span>●●●  ▮▮▮  ⌁100%</span></div>
+            <div style="padding:8px 18px 0;">
+              <p style="color:rgba(255,255,255,.65);font-size:11.5px;margin:0;">Namaste,</p>
+              <p style="font-family:'Poppins';font-weight:600;color:#fff;font-size:20px;margin:2px 0 0;">Kailash Stones</p>
+              <div class="row-wrap" style="margin-top:14px;">
+                <div style="background:rgba(255,255,255,.1);border-radius:12px;padding:10px 14px;"><p style="font-size:10px;color:rgba(255,255,255,.6);margin:0;">Today's orders</p><p class="mono" style="color:#fff;font-size:18px;margin:2px 0 0;">07</p></div>
+                <div style="background:rgba(255,255,255,.1);border-radius:12px;padding:10px 14px;"><p style="font-size:10px;color:rgba(255,255,255,.6);margin:0;">This week</p><p class="mono" style="color:#fff;font-size:18px;margin:2px 0 0;">₹38.2k</p></div>
+              </div>
+            </div>
+          </div>
+          <div class="scr-body scr-pad" style="overflow-y:auto;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;">
+              <p class="h3">Pending orders</p><span style="font-size:11px;color:var(--tangerine);font-weight:600;">See all</span>
+            </div>
+            <div class="stack" style="margin-top:10px;">
+              <div class="mini-card"><div class="mini-card-top"><div><p class="h3" style="font-size:14px;">#GA1042</p><p style="font-size:11px;color:#6B6258;margin:3px 0 0;">Sharma Residence · 3 items</p></div><span class="pill pill-pending">Confirm</span></div></div>
+              <div class="mini-card"><div class="mini-card-top"><div><p class="h3" style="font-size:14px;">#GA1039</p><p style="font-size:11px;color:#6B6258;margin:3px 0 0;">Mehta Residence · 1 item</p></div><span class="pill pill-info">Dispatched</span></div></div>
+            </div>
+          </div>
+          <div style="position:absolute;right:18px;bottom:78px;width:48px;height:48px;border-radius:14px;background:var(--tangerine);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 10px 20px -6px rgba(217,83,30,.5);">+</div>
+          <div class="bottom-nav">
+            <div class="nav-item active"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="7" height="7"/><rect x="13" y="4" width="7" height="7"/><rect x="4" y="13" width="7" height="7"/><rect x="13" y="13" width="7" height="7"/></svg><span>HOME</span></div>
+            <div class="nav-item"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="7" width="16" height="13" rx="2"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/></svg><span>PRODUCTS</span></div>
+            <div class="nav-item"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h4"/></svg><span>ORDERS</span></div>
+            <div class="nav-item"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1.5-4 4-5.5 7-5.5S17.5 16 19 20"/></svg><span>SHOP</span></div>
+          </div>
+        </div>
+      </div>
+      <p class="screen-caption">Same navy header treatment as the customer Home — keeps both roles feeling like one app, not two bolted-together products.</p>
+    </div>
+
+    <!-- ADD PRODUCT -->
+    <div class="phone-block">
+      <p class="step">02 — Add product</p>
+      <div class="phone-frame">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span>●●●  ▮▮▮  ⌁100%</span></div>
+          <div class="scr-pad"><h2 class="h1" style="margin-top:6px;">Add product</h2></div>
+          <div class="scr-body scr-pad" style="overflow-y:auto;">
+            <div style="height:90px;border:1.5px dashed var(--line);border-radius:14px;display:flex;align-items:center;justify-content:center;color:#B7AE9F;font-size:12px;margin-top:14px;">+ Upload photo</div>
+            <div class="field" style="margin-top:14px;"><label>Title</label><input placeholder="Kota Stone — Natural Beige"></div>
+            <div class="field" style="margin-top:12px;"><label>Category</label><input placeholder="Stones &amp; Tiles"></div>
+            <div style="display:flex;gap:10px;margin-top:12px;">
+              <div class="field"><label>Price / unit</label><input placeholder="₹68"></div>
+              <div class="field"><label>Unit type</label><input placeholder="sq ft"></div>
+            </div>
+            <div class="field" style="margin-top:12px;"><label>Stock quantity</label><input placeholder="800"></div>
+          </div>
+          <div style="flex:0 0 auto;padding:14px 18px;background:#fff;border-top:1px solid var(--line);">
+            <button class="btn-primary" style="width:100%;">Save product</button>
+          </div>
+        </div>
+      </div>
+      <p class="screen-caption">Plain form, no clever pattern needed — vendors fill this quickly between customers, so it stays predictable.</p>
+    </div>
+
+    <!-- VENDOR ORDERS -->
+    <div class="phone-block">
+      <p class="step">03 — Orders</p>
+      <div class="phone-frame">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span>●●●  ▮▮▮  ⌁100%</span></div>
+          <div class="scr-pad"><h2 class="h1" style="margin-top:6px;">Orders</h2></div>
+          <div class="scr-body scr-pad" style="overflow-y:auto;">
+            <div class="row-wrap" style="margin-top:12px;">
+              <span class="pill pill-pending" style="padding:6px 12px;">New (2)</span>
+              <span class="pill" style="background:#fff;border:1px solid var(--line);color:#6B6258;padding:6px 12px;">Dispatched</span>
+              <span class="pill" style="background:#fff;border:1px solid var(--line);color:#6B6258;padding:6px 12px;">Delivered</span>
+            </div>
+            <div class="mini-card" style="margin-top:14px;">
+              <div class="mini-card-top"><p class="h3" style="font-size:14px;">#GA1042</p><span class="pill pill-pending">New</span></div>
+              <p style="font-size:11.5px;color:#6B6258;margin:6px 0 10px;">Sharma Residence · Kota Stone × 50 sq ft</p>
+              <div class="row-wrap">
+                <button class="btn-secondary" style="padding:9px 14px;font-size:12.5px;">Confirm</button>
+                <button class="btn-ghost" style="font-size:12.5px;">Reject</button>
+              </div>
+            </div>
+            <div class="mini-card" style="margin-top:10px;">
+              <div class="mini-card-top"><p class="h3" style="font-size:14px;">#GA1039</p><span class="pill pill-info">Dispatched</span></div>
+              <p style="font-size:11.5px;color:#6B6258;margin:6px 0 10px;">Mehta Residence · PVC Pipe × 8</p>
+              <button class="btn-secondary" style="padding:9px 14px;font-size:12.5px;">Mark delivered</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="screen-caption">One status update per tap — confirm, dispatch, deliver. No free-text status, keeps the order_status enum clean on your end.</p>
+    </div>
+
+  </div>
+
+  <!-- =====================================================
+       ARTISAN (USTAAD) FLOW
+  ====================================================== -->
+  <div class="flow-divider">
+    <div class="num">04</div>
+    <div class="txt"><p class="eyebrow" style="margin-bottom:2px;">Mobile screens</p><h2 class="h2">Ustaad (artisan) flow</h2><p style="font-size:13.5px;color:#6B6258;margin:0;">Skill-tagged profile, manual admin verification, and the rewards ledger — wallet payouts intentionally locked for MVP per the proposal.</p></div>
+    <div class="line"></div>
+  </div>
+
+  <div class="flow-row">
+
+    <!-- ARTISAN PROFILE -->
+    <div class="phone-block">
+      <p class="step">01 — Profile &amp; skills</p>
+      <div class="phone-frame">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span>●●●  ▮▮▮  ⌁100%</span></div>
+          <div class="scr-pad">
+            <div style="display:flex;align-items:center;gap:14px;margin-top:10px;">
+              <div style="width:60px;height:60px;border-radius:50%;background:var(--sky-tint);display:flex;align-items:center;justify-content:center;font-family:'Poppins';font-weight:700;font-size:22px;color:var(--navy);">R</div>
+              <div>
+                <div style="display:flex;align-items:center;gap:6px;"><p class="h3">Ramesh Kumar</p><span style="color:var(--sage);font-size:13px;">✓</span></div>
+                <p style="font-size:11.5px;color:#6B6258;margin:3px 0 0;">★ 4.8 · 6 years · Works with a team of 3</p>
+              </div>
+            </div>
+          </div>
+          <div class="scr-body scr-pad" style="overflow-y:auto;margin-top:14px;">
+            <p class="h3">Skills</p>
+            <div class="row-wrap" style="margin-top:8px;">
+              <span class="pill" style="background:var(--sky-tint);color:var(--navy);padding:7px 13px;">Plumbing</span>
+              <span class="pill" style="background:var(--sky-tint);color:var(--navy);padding:7px 13px;">Stone fabrication</span>
+            </div>
+            <p class="h3" style="margin-top:18px;">Verification</p>
+            <div class="mini-card" style="margin-top:8px;display:flex;align-items:center;gap:10px;">
+              <span class="badge-dot"></span><span style="font-size:12.5px;">Admin-verified · background checked</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="screen-caption">The green check and "verified" line address Umesh's biggest worry from the call — fake-onboarding risk. Verification badge sits front and center, set by admin, not the artisan.</p>
+    </div>
+
+    <!-- ARTISAN PROJECTS -->
+    <div class="phone-block">
+      <p class="step">02 — My projects</p>
+      <div class="phone-frame">
+        <div class="phone-screen">
+          <div class="status-bar"><span>9:41</span><span>●●●  ▮▮▮  ⌁100%</span></div>
+          <div class="scr-pad"><h2 class="h1" style="margin-top:6px;">My projects</h2><p style="font-size:12px;color:#6B6258;margin-top:4px;">Sites you're currently working on</p></div>
+          <div class="scr-body scr-pad" style="overflow-y:auto;margin-top:6px;">
+            <div class="mini-card">
+              <div class="mini-card-top"><p class="h3" style="font-size:14px;">Sharma Residence</p><span class="pill pill-info">Arriving today</span></div>
+              <p style="font-size:11.5px;color:#6B6258;margin:6px 0 0;">Kota Stone, 50 sq ft · ETA 4:30 PM</p>
+            </div>
+            <div class="mini-card" style="margin-top:10px;">
+              <div class="mini-card-top"><p class="h3" style="font-size:14px;">Mehta Residence</p><span class="pill pill-success">Delivered</span></div>
+              <p style="font-size:11.5px;color:#6B6258;margin:6px 0 0;">PVC Pipe × 8 · Checked-in yesterday</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="screen-caption">Lets Ramesh decide which site to head to next based on what's actually arrived — the exact scheduling pain point Umesh described.</p>
+    </div>
+
+    <!-- REWARDS WALLET -->
+    <div class="phone-block">
+      <p class="step">03 — Rewards</p>
+      <div class="phone-frame">
+        <div class="phone-screen">
+          <div style="background:var(--navy);flex:0 0 auto;padding-bottom:22px;border-radius:0 0 22px 22px;">
+            <div class="status-bar on-dark"><span>9:41</span><span>●●●  ▮▮▮  ⌁100%</span></div>
+            <div style="padding:10px 18px 0;text-align:center;">
+              <p style="color:rgba(255,255,255,.6);font-size:11px;margin:6px 0 0;">USTAAD REWARDS</p>
+              <p class="mono" style="color:#fff;font-size:34px;margin:6px 0 0;">2,140 <span style="font-size:13px;color:rgba(255,255,255,.6);">pts</span></p>
+            </div>
+          </div>
+          <div class="scr-pad" style="margin-top:14px;">
+            <button class="btn-disabled" style="width:100%;">Withdraw — coming soon</button>
+          </div>
+          <div class="scr-body scr-pad" style="overflow-y:auto;margin-top:14px;">
+            <p class="h3">Recent activity</p>
+            <div class="stack" style="margin-top:8px;">
+              <div class="mini-card" style="display:flex;justify-content:space-between;align-items:center;"><div><p style="font-size:12.5px;font-weight:700;margin:0;">Sharma Residence</p><p style="font-size:10.5px;color:#6B6258;margin:2px 0 0;">Order #GA1042</p></div><span class="mono" style="color:var(--sage);">+40</span></div>
+              <div class="mini-card" style="display:flex;justify-content:space-between;align-items:center;"><div><p style="font-size:12.5px;font-weight:700;margin:0;">Mehta Residence</p><p style="font-size:10.5px;color:#6B6258;margin:2px 0 0;">Order #GA1039</p></div><span class="mono" style="color:var(--sage);">+25</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="screen-caption">Withdrawals stay disabled, on purpose — your proposal scopes wallet payouts out of MVP, so the UI is honest about that instead of implying a feature that isn't there yet.</p>
+    </div>
+
+  </div>
+
+</div>
+</body>
+</html>
