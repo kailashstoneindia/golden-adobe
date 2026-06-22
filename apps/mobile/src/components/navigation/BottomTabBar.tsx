@@ -17,11 +17,9 @@ interface BottomTabBarProps {
     routes: TabRoute[];
   };
   navigation: {
-    emit: (event: {
-      type: 'tabPress';
-      target: string;
-      canPreventDefault: boolean;
-    }) => { defaultPrevented: boolean };
+    emit: (event: { type: 'tabPress'; target: string; canPreventDefault: true }) => {
+      defaultPrevented: boolean;
+    };
     navigate: (name: string) => void;
   };
 }
@@ -35,7 +33,9 @@ export function BottomTabBar({ state, navigation }: BottomTabBarProps) {
       <SafeAreaView edges={['bottom']} style={styles.safeArea}>
         <View style={styles.bar}>
           {tabs.map((tab) => {
-            const routeIndex = state.routes.findIndex((route: TabRoute) => route.name === tab.routeName);
+            const routeIndex = state.routes.findIndex(
+              (route: TabRoute) => route.name === tab.routeName,
+            );
             if (routeIndex === -1) {
               return null;
             }

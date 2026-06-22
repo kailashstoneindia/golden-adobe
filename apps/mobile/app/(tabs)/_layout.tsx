@@ -18,7 +18,9 @@ export default function TabsLayout() {
 
   return (
     <Tabs
-      tabBar={(props) => <BottomTabBar {...props} />}
+      tabBar={(props) => (
+        <BottomTabBar state={props.state} navigation={props.navigation as never} />
+      )}
       screenOptions={{
         headerShown: false,
         sceneStyle: { backgroundColor: Colors.cream },
