@@ -48,6 +48,13 @@ export class User extends Model<User> {
   })
   declare isActive: boolean;
 
+  @Column({
+    type: DataType.BOOLEAN,
+    defaultValue: false,
+    field: 'is_approved',
+  })
+  isApproved: boolean;
+
   @HasMany(() => RefreshToken)
   declare refreshTokens: RefreshToken[];
 }

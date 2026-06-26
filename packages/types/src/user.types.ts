@@ -11,6 +11,7 @@ export interface UserDto {
   role: Role;
   deviceToken: string | null;
   isActive: boolean;
+  isApproved: boolean;
   createdAt: string;
   updatedAt: string;
 }

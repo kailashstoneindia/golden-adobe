@@ -32,4 +32,8 @@ export class UsersService {
   async updateDeviceToken(userId: string, deviceToken: string): Promise<void> {
     await this.userModel.update({ deviceToken }, { where: { id: userId } });
   }
+
+  async approveUser(userId: string): Promise<void> {
+    await this.userModel.update({ isApproved: true }, { where: { id: userId } });
+  }
 }
