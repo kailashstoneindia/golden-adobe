@@ -307,6 +307,7 @@ export class AuthService {
       role: plain.role,
       deviceToken: plain.deviceToken ?? plain.device_token ?? null,
       isActive: plain.isActive ?? plain.is_active ?? true,
+      isApproved: plain.isApproved ?? plain.is_approved ?? false,
       createdAt: plain.createdAt ?? plain.created_at,
       updatedAt: plain.updatedAt ?? plain.updated_at,
     };

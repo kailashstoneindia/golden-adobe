@@ -53,7 +53,7 @@ export class User extends Model<User> {
     defaultValue: false,
     field: 'is_approved',
   })
-  isApproved: boolean;
+  declare isApproved: boolean;
 
   @HasMany(() => RefreshToken)
   declare refreshTokens: RefreshToken[];
