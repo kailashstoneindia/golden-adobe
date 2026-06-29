@@ -2,6 +2,7 @@
 export const ROUTES = {
   entry: '/',
   home: '/(tabs)',
+  pendingApproval: '/pending-approval',
   tabs: {
     home: '/(tabs)',
     browse: '/(tabs)/browse',

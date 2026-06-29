@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
     gap: Spacing.sm + 2,
   },
   sectionTitle: {
-    marginTop: Spacing.sm,
+    marginBottom: 0,
   },
   sectionHeader: {
     flexDirection: 'row',

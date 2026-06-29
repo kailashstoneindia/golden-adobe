@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 
 import { ApiError } from '../../src/api';
 import { OtpInput } from '../../src/components/auth/OtpInput';
+import { BrandLogo } from '../../src/components/brand/BrandLogo';
 import { Screen } from '../../src/components/layout/Screen';
 import { Button, Text } from '../../src/components/ui';
 import { Env, ROUTES } from '../../src/constants';
@@ -11,6 +12,7 @@ import { useSendOtp, useVerifyOtp } from '../../src/hooks/auth';
 import { useOnboardingStore } from '../../src/stores/onboarding.store';
 import { Colors, Spacing } from '../../src/theme';
 import { formatPhoneDisplay } from '../../src/utils/phone';
+import { resolveAuthenticatedRoute } from '../../src/utils/user';
 
 export default function VerifyOtpScreen() {
   const phone = useOnboardingStore((s) => s.phone);
@@ -53,7 +55,7 @@ export default function VerifyOtpScreen() {
             router.replace(ROUTES.auth.register);
             return;
           }
-          router.replace(ROUTES.home);
+          router.replace(resolveAuthenticatedRoute(data.user));
         },
         onError: (err) => {
           setError(err instanceof ApiError ? err.message : 'Invalid code. Try again.');
@@ -94,6 +96,7 @@ export default function VerifyOtpScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
+            <BrandLogo size={72} style={styles.logo} />
             <Text variant="label">Verification</Text>
             <Text variant="h1" style={styles.title}>
               Enter the code
@@ -142,6 +145,10 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: Spacing.xxl + 4,
+    alignItems: 'center',
+  },
+  logo: {
+    marginBottom: Spacing.lg,
   },
   title: {
     marginTop: Spacing.sm,

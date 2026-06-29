@@ -55,13 +55,12 @@ export const authService = {
   async logout(): Promise<LogoutResult | null> {
     const refreshToken = await tokenManager.getRefreshToken();
 
-    if (!refreshToken) {
-      return null;
-    }
-
-    const body: LogoutDto = { refreshToken };
-
     try {
+      if (!refreshToken) {
+        return null;
+      }
+
+      const body: LogoutDto = { refreshToken };
       return await apiClient.post<LogoutResult>(API_ENDPOINTS.auth.logout, body);
     } finally {
       await tokenManager.clearRefreshToken();

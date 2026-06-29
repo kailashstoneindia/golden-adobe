@@ -34,6 +34,17 @@ export const Colors = {
   sageTint: '#E1ECE0',
   brick: '#B23A2E',
   brickTint: '#F3DEDB',
+
+  // Category tile tints (home screen grid)
+  categoryElectricalBg: '#FEE9DC',
+  categoryStonesBg: '#EDE9FE',
+  categorySanitaryBg: '#D1FAE5',
+  categoryPaintsBg: '#FEF3C7',
+  categoryHardwareBg: '#FCE7F3',
+  categoryStonesIcon: '#7C3AED',
+  categorySanitaryIcon: '#059669',
+  categoryPaintsIcon: '#D97706',
+  categoryHardwareIcon: '#DB2777',
 } as const;
 
 export type ColorToken = keyof typeof Colors;
