@@ -25,6 +25,12 @@ import { LogoutDto } from './dto/logout.dto';
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
+  /** Fixed OTP while MSG91 / DLT is not live yet. */
+  private static readonly DEMO_OTP = '123456';
+
+  /** Flip to true once MSG91_AUTH_KEY and DLT template are production-ready. */
+  private static readonly USE_MSG91_SMS = false;
+
   constructor(
     private jwtService: JwtService,
     private configService: ConfigService,
@@ -51,8 +57,9 @@ export class AuthService {
 
     const env = this.configService.get<string>('env', 'development');
 
-    // Generate 6-digit OTP (hardcoded to 123456 in development for easier testing)
-    const otp = env === 'development' ? '123456' : crypto.randomInt(100000, 999999).toString();
+    const otp = AuthService.USE_MSG91_SMS
+      ? crypto.randomInt(100000, 999999).toString()
+      : AuthService.DEMO_OTP;
 
     // Hash the OTP and store in Redis with 5 minute TTL
     const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
@@ -63,15 +70,19 @@ export class AuthService {
     const currentCount = attempts ? parseInt(attempts, 10) : 0;
     await this.redisService.set(rateLimitKey, (currentCount + 1).toString(), rateTtl);
 
-    if (env === 'development') {
-      this.logger.warn(`[DEV MODE] OTP for ${phone}: ${otp}`);
-      // Return the OTP in the response body so the app dev can easily copy or auto-fill it
-      return { message: 'OTP sent successfully (DEV MODE)', devOtp: otp };
-    } else {
-      // Production: call MSG91 API
+    if (AuthService.USE_MSG91_SMS) {
       await this.sendViaMSG91(phone, otp);
       return { message: 'OTP sent successfully' };
     }
+
+    this.logger.warn(
+      `[DEMO OTP] ${phone}: ${otp} (${env}) — MSG91 skipped until USE_MSG91_SMS is enabled`,
+    );
+
+    return {
+      message: 'OTP sent successfully (demo)',
+      devOtp: otp,
+    };
   }
 
   // ─── Verify OTP ───────────────────────────────────────────────────────
@@ -313,6 +324,7 @@ export class AuthService {
     };
   }
 
+  /** Sends OTP via MSG91 — only called when `USE_MSG91_SMS` is true. */
   private async sendViaMSG91(phone: string, otp: string): Promise<void> {
     const authKey = this.configService.get<string>('msg91.authKey');
     const templateId = this.configService.get<string>('msg91.templateId');
