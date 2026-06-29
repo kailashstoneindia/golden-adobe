@@ -7,7 +7,7 @@ import { OtpInput } from '../../src/components/auth/OtpInput';
 import { BrandLogo } from '../../src/components/brand/BrandLogo';
 import { Screen } from '../../src/components/layout/Screen';
 import { Button, Text } from '../../src/components/ui';
-import { Env, ROUTES } from '../../src/constants';
+import { ROUTES } from '../../src/constants';
 import { useSendOtp, useVerifyOtp } from '../../src/hooks/auth';
 import { useOnboardingStore } from '../../src/stores/onboarding.store';
 import { Colors, Spacing } from '../../src/theme';
@@ -32,7 +32,7 @@ export default function VerifyOtpScreen() {
   }, [phone]);
 
   useEffect(() => {
-    if (Env.isDev && devOtp) {
+    if (devOtp) {
       setOtp(devOtp);
     }
   }, [devOtp]);
@@ -108,9 +108,9 @@ export default function VerifyOtpScreen() {
 
           <OtpInput value={otp} onChange={setOtp} error={error ?? undefined} />
 
-          {Env.isDev && devOtp ? (
+          {devOtp ? (
             <Text variant="caption" color={Colors.sky} style={styles.devHint}>
-              Dev OTP: {devOtp}
+              Your code: {devOtp}
             </Text>
           ) : null}
 

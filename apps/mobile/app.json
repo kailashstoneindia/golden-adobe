@@ -5,11 +5,15 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
+    "scheme": "kailashstones",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.rishujawla.mobile",
-      "appleTeamId": "H8876S2VKZ"
+      "appleTeamId": "H8876S2VKZ",
+      "infoPlist": {
+        "CFBundleDisplayName": "Kailash Stones"
+      }
     },
     "android": {
       "package": "com.rishujawla.mobile",
