@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { RequestMethod } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
@@ -11,8 +12,10 @@ async function bootstrap() {
     logger: ['error', 'warn', 'log', 'debug', 'verbose'],
   });
 
-  // Global Prefix
-  app.setGlobalPrefix('api');
+  // Global Prefix — keep /health at root for Railway/load balancer probes
+  app.setGlobalPrefix('api', {
+    exclude: [{ path: 'health', method: RequestMethod.GET }],
+  });
 
   // Security
   app.use(helmet());
@@ -44,6 +47,7 @@ async function bootstrap() {
   await app.listen(port);
 
   Logger.log(`🚀 Application is running on: http://localhost:${port}/api`);
+  Logger.log(`❤️ Health check available at: http://localhost:${port}/health`);
   Logger.log(`📚 Swagger documentation available at: http://localhost:${port}/api/docs`);
 }
 bootstrap();
