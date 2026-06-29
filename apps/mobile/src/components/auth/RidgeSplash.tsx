@@ -2,8 +2,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, View } from 'react-native';
 import Svg, { Polygon } from 'react-native-svg';
 
+import { BrandLogo } from '../brand/BrandLogo';
 import { Text } from '../ui';
-import { Colors } from '../../theme';
+import { Colors, Spacing } from '../../theme';
 
 /**
  * Branded splash — navy-to-sky gradient, ridge silhouette, and sun glow
@@ -31,6 +32,7 @@ export function RidgeSplash() {
         </Svg>
       </View>
       <View style={styles.brand}>
+        <BrandLogo size={132} style={styles.logo} />
         <Text variant="h1" color={Colors.white} style={styles.brandTitle}>
           KAILASH STONES
         </Text>
@@ -67,7 +69,10 @@ const styles = StyleSheet.create({
   brand: {
     alignItems: 'center',
     zIndex: 2,
-    marginTop: 40,
+    marginTop: 24,
+  },
+  logo: {
+    marginBottom: Spacing.lg,
   },
   brandTitle: {
     letterSpacing: 0.5,

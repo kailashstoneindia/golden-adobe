@@ -2,11 +2,14 @@ import { Redirect, Tabs } from 'expo-router';
 
 import { BottomTabBar } from '../../src/components/navigation/BottomTabBar';
 import { ROUTES } from '../../src/constants';
-import { useAuth } from '../../src/hooks/auth';
+import { useAuth, useMe } from '../../src/hooks/auth';
 import { Colors } from '../../src/theme';
+import { isPendingApproval } from '../../src/utils/user';
 
 export default function TabsLayout() {
-  const { isAuthenticated, isHydrated } = useAuth();
+  const { isAuthenticated, isHydrated, user } = useAuth();
+
+  useMe();
 
   if (!isHydrated) {
     return null;
@@ -14,6 +17,10 @@ export default function TabsLayout() {
 
   if (!isAuthenticated) {
     return <Redirect href={ROUTES.auth.login} />;
+  }
+
+  if (user && isPendingApproval(user)) {
+    return <Redirect href={ROUTES.pendingApproval} />;
   }
 
   return (

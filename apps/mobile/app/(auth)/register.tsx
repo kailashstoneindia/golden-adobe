@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { Role } from '@golden-abode/types';
 
 import { RoleCard, type RoleOption } from '../../src/components/auth/RoleCard';
+import { BrandLogo } from '../../src/components/brand/BrandLogo';
 import { Screen } from '../../src/components/layout/Screen';
 import { Button, Text, TextInput } from '../../src/components/ui';
 import { ROUTES } from '../../src/constants';
@@ -11,6 +12,7 @@ import { useRegister } from '../../src/hooks/auth';
 import { useOnboardingStore } from '../../src/stores/onboarding.store';
 import { Colors, Spacing } from '../../src/theme';
 import { ApiError } from '../../src/api';
+import { resolveAuthenticatedRoute } from '../../src/utils/user';
 
 const ROLE_OPTIONS: RoleOption[] = [
   {
@@ -61,7 +63,7 @@ export default function RegisterScreen() {
       {
         onSuccess: (data) => {
           clearOnboarding();
-          router.replace(ROUTES.home);
+          router.replace(resolveAuthenticatedRoute(data.user));
         },
         onError: (err) => {
           setError(err instanceof ApiError ? err.message : 'Registration failed. Try again.');
@@ -86,6 +88,7 @@ export default function RegisterScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
+            <BrandLogo size={72} style={styles.logo} />
             <Text variant="label">Almost there</Text>
             <Text variant="h1" style={styles.title}>
               Create your profile
@@ -119,6 +122,13 @@ export default function RegisterScreen() {
             ))}
           </View>
 
+          {role === Role.VENDOR || role === Role.ARTISAN ? (
+            <Text variant="caption" color={Colors.inkSoft} style={styles.approvalNote}>
+              {role === Role.VENDOR ? 'Vendor' : 'Ustaad'} accounts need admin approval before you
+              can list inventory or take on projects.
+            </Text>
+          ) : null}
+
           {error && name.trim().length >= 2 ? (
             <Text variant="caption" color={Colors.brick} style={styles.formError}>
               {error}
@@ -149,6 +159,10 @@ const styles = StyleSheet.create({
   },
   header: {
     gap: Spacing.sm,
+    alignItems: 'center',
+  },
+  logo: {
+    marginBottom: Spacing.sm,
   },
   title: {
     marginTop: Spacing.xs,
@@ -158,6 +172,9 @@ const styles = StyleSheet.create({
   },
   roles: {
     gap: Spacing.md,
+  },
+  approvalNote: {
+    marginTop: -Spacing.xs,
   },
   formError: {
     textAlign: 'center',

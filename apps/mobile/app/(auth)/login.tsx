@@ -3,6 +3,7 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 're
 import { router } from 'expo-router';
 
 import { PhoneInput } from '../../src/components/auth/PhoneInput';
+import { BrandLogo } from '../../src/components/brand/BrandLogo';
 import { Screen } from '../../src/components/layout/Screen';
 import { Button, Text } from '../../src/components/ui';
 import { ROUTES } from '../../src/constants';
@@ -57,6 +58,7 @@ export default function LoginScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
+            <BrandLogo size={88} style={styles.logo} />
             <Text variant="label">Welcome</Text>
             <Text variant="h1" style={styles.title}>
               Let&apos;s verify it&apos;s you
@@ -102,13 +104,19 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: Spacing.xxl + 4,
+    alignItems: 'center',
+  },
+  logo: {
+    marginBottom: Spacing.lg,
   },
   title: {
     marginTop: Spacing.sm,
+    textAlign: 'center',
   },
   subtitle: {
     marginTop: Spacing.sm,
     fontSize: 13.5,
+    textAlign: 'center',
   },
   button: {
     marginTop: Spacing.xl + 2,
