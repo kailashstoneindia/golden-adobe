@@ -1,15 +1,21 @@
 import { router } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
+import { MenuRow } from '../../src/components/demo/MenuRow';
 import { Screen } from '../../src/components/layout/Screen';
-import { Badge, Card, Text } from '../../src/components/ui';
+import { Badge, Text } from '../../src/components/ui';
 import { ROUTES } from '../../src/constants';
 import { useAuth } from '../../src/hooks/auth';
 import { useLogout } from '../../src/hooks/auth/useLogout';
 import { Colors, Radius, Spacing } from '../../src/theme';
-import { formatRoleLabel, requiresAdminApproval } from '../../src/utils/user';
+import { formatRoleLabel, requiresAdminApproval } from '../../src/utils';
 
-const MENU_ITEMS = ['My Projects', 'Order History', 'Saved Addresses', 'Help & Support'] as const;
+const MENU_ROUTES = [
+  { label: 'My Projects', route: ROUTES.screens.myProjects },
+  { label: 'Order History', route: ROUTES.screens.orderHistory },
+  { label: 'Saved Addresses', route: ROUTES.screens.savedAddresses },
+  { label: 'Help & Support', route: ROUTES.screens.helpSupport },
+] as const;
 
 export default function YouTabScreen() {
   const { user } = useAuth();
@@ -58,29 +64,11 @@ export default function YouTabScreen() {
         </View>
 
         <View style={styles.menu}>
-          {MENU_ITEMS.map((item) => (
-            <Card key={item} style={styles.menuItem}>
-              <View style={styles.menuRow}>
-                <Text variant="bodyMedium">{item}</Text>
-                <Text variant="bodyMedium" color={Colors.subtle}>
-                  ›
-                </Text>
-              </View>
-            </Card>
+          {MENU_ROUTES.map((item) => (
+            <MenuRow key={item.label} label={item.label} onPress={() => router.push(item.route)} />
           ))}
 
-          <Pressable onPress={handleLogout} disabled={logout.isPending}>
-            <Card style={styles.menuItem}>
-              <View style={styles.menuRow}>
-                <Text variant="bodyMedium" color={Colors.brick}>
-                  Log out
-                </Text>
-                <Text variant="bodyMedium" color={Colors.subtle}>
-                  ›
-                </Text>
-              </View>
-            </Card>
-          </Pressable>
+          <MenuRow label="Log out" destructive disabled={logout.isPending} onPress={handleLogout} />
         </View>
       </ScrollView>
     </Screen>
@@ -120,13 +108,5 @@ const styles = StyleSheet.create({
   menu: {
     marginTop: Spacing.xl,
     gap: Spacing.sm + 2,
-  },
-  menuItem: {
-    paddingVertical: Spacing.md,
-  },
-  menuRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
   },
 });

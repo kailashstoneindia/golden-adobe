@@ -17,4 +17,14 @@ export const ROUTES = {
     verifyOtp: '/(auth)/verify-otp',
     register: '/(auth)/register',
   },
+  screens: {
+    myProjects: '/(screens)/my-projects',
+    orderHistory: '/(screens)/order-history',
+    savedAddresses: '/(screens)/saved-addresses',
+    helpSupport: '/(screens)/help-support',
+    checkout: '/(screens)/checkout',
+    orderDetail: '/(screens)/order-detail',
+    productDetail: '/(screens)/product-detail',
+    addProduct: '/(screens)/add-product',
+  },
 } as const;

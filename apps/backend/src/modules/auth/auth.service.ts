@@ -313,10 +313,42 @@ export class AuthService {
     };
   }
 
-  private async sendViaMSG91(phone: string, _otp: string): Promise<void> {
+  private async sendViaMSG91(phone: string, otp: string): Promise<void> {
+    const authKey = this.configService.get<string>('msg91.authKey');
     const templateId = this.configService.get<string>('msg91.templateId');
 
-    // TODO: Implement MSG91 HTTP call when production keys are ready
-    this.logger.log(`MSG91 SMS queued for ${phone} with template ${templateId}`);
+    if (!authKey || !templateId) {
+      this.logger.error('MSG91 credentials missing — set MSG91_AUTH_KEY and MSG91_TEMPLATE_ID');
+      throw new BadRequestException('SMS service is not configured. Try again later.');
+    }
+
+    const mobile = phone.replace(/\D/g, '');
+
+    const response = await fetch('https://control.msg91.com/api/v5/otp', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        authkey: authKey,
+      },
+      body: JSON.stringify({
+        template_id: templateId,
+        mobile,
+        otp,
+        otp_length: 6,
+        otp_expiry: 5,
+      }),
+    });
+
+    const data = (await response.json().catch(() => ({}))) as {
+      type?: string;
+      message?: string;
+    };
+
+    if (!response.ok || data.type === 'error') {
+      this.logger.error(`MSG91 OTP failed for ${phone}: ${JSON.stringify(data)}`);
+      throw new BadRequestException('Could not send OTP. Try again later.');
+    }
+
+    this.logger.log(`MSG91 OTP sent to ${phone}`);
   }
 }
