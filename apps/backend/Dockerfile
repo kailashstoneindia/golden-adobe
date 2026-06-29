@@ -29,9 +29,11 @@ WORKDIR /app
 
 COPY --from=builder /prod/backend ./
 
+RUN chmod +x docker-entrypoint.sh
+
 ENV NODE_ENV=production
 ENV PORT=3000
 
 EXPOSE 3000
 
-CMD ["node", "dist/main.js"]
+ENTRYPOINT ["./docker-entrypoint.sh"]

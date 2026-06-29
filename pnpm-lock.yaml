@@ -135,6 +135,9 @@ importers:
       sequelize:
         specifier: ^6.37.3
         version: 6.37.8(pg-hstore@2.3.4)(pg@8.21.0)
+      sequelize-cli:
+        specifier: ^6.6.2
+        version: 6.6.5
       sequelize-typescript:
         specifier: ^2.1.6
         version: 2.1.6(@types/node@20.19.43)(@types/validator@13.15.10)(reflect-metadata@0.2.2)(sequelize@6.37.8(pg-hstore@2.3.4)(pg@8.21.0))
@@ -175,9 +178,6 @@ importers:
       jest:
         specifier: ^29.5.0
         version: 29.7.0(@types/node@20.19.43)(ts-node@10.9.2(@types/node@20.19.43)(typescript@5.7.2))
-      sequelize-cli:
-        specifier: ^6.6.2
-        version: 6.6.5
       source-map-support:
         specifier: ^0.5.21
         version: 0.5.21
