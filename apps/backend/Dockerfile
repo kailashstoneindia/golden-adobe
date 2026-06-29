@@ -19,6 +19,9 @@ RUN pnpm turbo build --filter=@golden-abode/backend --filter=@golden-abode/types
 # Produce a self-contained production bundle with flattened node_modules.
 RUN pnpm deploy --filter=@golden-abode/backend --prod /prod/backend
 
+# deploy copies workspace source but omits gitignored build output
+RUN cp -r /app/packages/types/dist /prod/backend/node_modules/@golden-abode/types/dist
+
 # ==========================================
 FROM node:20-alpine AS runner
 
