@@ -1,18 +1,10 @@
+import { resolveDatabaseConfig, resolveRedisConfig } from './connection-url';
+
 export default () => ({
   env: process.env.NODE_ENV || 'development',
   port: parseInt(process.env.PORT || '3000', 10),
-  database: {
-    host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT || '5432', 10),
-    name: process.env.DB_NAME || 'golden_abode',
-    user: process.env.DB_USER || 'postgres',
-    password: process.env.DB_PASS || 'postgres',
-  },
-  redis: {
-    host: process.env.REDIS_HOST || 'localhost',
-    port: parseInt(process.env.REDIS_PORT || '6379', 10),
-    password: process.env.REDIS_PASSWORD || '',
-  },
+  database: resolveDatabaseConfig(),
+  redis: resolveRedisConfig(),
   jwt: {
     accessSecret: process.env.JWT_ACCESS_SECRET,
     accessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN || '15m',

@@ -25,6 +25,13 @@ import { RefreshToken } from '../../modules/users/models/refresh-token.model';
             timestamps: true,
             underscored: true,
           },
+          ...(dbConfig.ssl
+            ? {
+                dialectOptions: {
+                  ssl: { require: true, rejectUnauthorized: false },
+                },
+              }
+            : {}),
         };
       },
     }),
