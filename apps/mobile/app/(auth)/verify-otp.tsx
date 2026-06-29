@@ -11,7 +11,7 @@ import { Env, ROUTES } from '../../src/constants';
 import { useSendOtp, useVerifyOtp } from '../../src/hooks/auth';
 import { useOnboardingStore } from '../../src/stores/onboarding.store';
 import { Colors, Spacing } from '../../src/theme';
-import { formatPhoneDisplay } from '../../src/utils/phone';
+import { formatIndianPhoneDisplay } from '../../src/utils/phone';
 import { resolveAuthenticatedRoute } from '../../src/utils/user';
 
 export default function VerifyOtpScreen() {
@@ -102,7 +102,7 @@ export default function VerifyOtpScreen() {
               Enter the code
             </Text>
             <Text variant="body" color={Colors.inkSoft} style={styles.subtitle}>
-              Sent to +91 {formatPhoneDisplay(phone)}
+              Sent to {formatIndianPhoneDisplay(phone)}
             </Text>
           </View>
 
