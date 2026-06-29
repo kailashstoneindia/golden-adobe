@@ -1,0 +1,30 @@
+# Dependencies & build output
+**/node_modules
+**/dist
+**/.turbo
+**/.cache
+
+# Mobile app (not needed for backend image)
+apps/mobile
+
+# Local dev & tooling
+.git
+.github
+**/.env
+**/.env.*
+!**/.env.example
+**/*.md
+docs
+.cursor
+.vscode
+.idea
+
+# Tests
+**/coverage
+**/*.spec.ts
+**/*.test.ts
+apps/backend/test
+
+# OS
+.DS_Store
+Thumbs.db

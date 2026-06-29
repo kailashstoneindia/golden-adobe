@@ -1,0 +1,24 @@
+# Railway config for the backend service.
+#
+# IMPORTANT: In the Railway service settings, leave "Root Directory" empty
+# (repo root). This Dockerfile copies workspace packages from the monorepo root.
+# If Root Directory is set to apps/backend, the build will fail with:
+#   "/apps/backend": not found
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "apps/backend/Dockerfile"
+watchPatterns = [
+  "apps/backend/**",
+  "packages/types/**",
+  "package.json",
+  "pnpm-lock.yaml",
+  "pnpm-workspace.yaml",
+  "turbo.json",
+  "tsconfig.base.json",
+]
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
