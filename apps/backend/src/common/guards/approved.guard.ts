@@ -22,7 +22,7 @@ export class ApprovedGuard implements CanActivate {
     // For Vendors and Artisans, fetch fresh approval status from DB
     // We fetch from DB instead of relying purely on JWT to allow instant revocation/approval
     const dbUser = await this.usersService.findById(user.sub);
-    
+
     if (!dbUser) {
       return false;
     }

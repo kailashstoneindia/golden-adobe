@@ -50,7 +50,7 @@ export class AuthService {
     }
 
     const env = this.configService.get<string>('env', 'development');
-    
+
     // Generate 6-digit OTP (hardcoded to 123456 in development for easier testing)
     const otp = env === 'development' ? '123456' : crypto.randomInt(100000, 999999).toString();
 

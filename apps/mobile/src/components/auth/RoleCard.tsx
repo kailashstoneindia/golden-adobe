@@ -24,9 +24,7 @@ export function RoleCard({ option, selected, onSelect }: RoleCardProps) {
       onPress={() => onSelect(option.role)}
       style={[styles.card, selected && styles.cardSelected]}
     >
-      <View style={styles.radio}>
-        {selected ? <View style={styles.radioDot} /> : null}
-      </View>
+      <View style={styles.radio}>{selected ? <View style={styles.radioDot} /> : null}</View>
       <View style={styles.text}>
         <Text variant="bodyMedium">{option.title}</Text>
         <Text variant="caption" style={styles.description}>

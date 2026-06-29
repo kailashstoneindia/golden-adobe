@@ -1,4 +1,12 @@
-import { Controller, Patch, Param, UseGuards, HttpCode, HttpStatus, NotFoundException } from '@nestjs/common';
+import {
+  Controller,
+  Patch,
+  Param,
+  UseGuards,
+  HttpCode,
+  HttpStatus,
+  NotFoundException,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -25,7 +33,7 @@ export class UsersController {
     if (!user) {
       throw new NotFoundException('User not found');
     }
-    
+
     await this.usersService.approveUser(id);
     return { success: true, message: 'User approved successfully' };
   }

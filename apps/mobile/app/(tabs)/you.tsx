@@ -2,18 +2,14 @@ import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Screen } from '../../src/components/layout/Screen';
-import { Card, Text } from '../../src/components/ui';
+import { Badge, Card, Text } from '../../src/components/ui';
 import { ROUTES } from '../../src/constants';
 import { useAuth } from '../../src/hooks/auth';
 import { useLogout } from '../../src/hooks/auth/useLogout';
 import { Colors, Radius, Spacing } from '../../src/theme';
+import { formatRoleLabel, requiresAdminApproval } from '../../src/utils/user';
 
-const MENU_ITEMS = [
-  'My Projects',
-  'Order History',
-  'Saved Addresses',
-  'Help & Support',
-] as const;
+const MENU_ITEMS = ['My Projects', 'Order History', 'Saved Addresses', 'Help & Support'] as const;
 
 export default function YouTabScreen() {
   const { user } = useAuth();
@@ -47,6 +43,17 @@ export default function YouTabScreen() {
           <View>
             <Text variant="h3">{user?.name ?? 'Guest'}</Text>
             <Text variant="caption">{user?.phone ?? ''}</Text>
+            {user?.role ? (
+              <View style={styles.metaRow}>
+                <Text variant="caption">{formatRoleLabel(user.role)}</Text>
+                {requiresAdminApproval(user) ? (
+                  <Badge
+                    label={user.isApproved ? 'Verified' : 'Pending approval'}
+                    variant={user.isApproved ? 'success' : 'pending'}
+                  />
+                ) : null}
+              </View>
+            ) : null}
           </View>
         </View>
 
@@ -95,6 +102,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.md,
     marginTop: Spacing.sm,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginTop: Spacing.xs,
   },
   avatar: {
     width: 56,

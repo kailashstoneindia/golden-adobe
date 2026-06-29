@@ -15,8 +15,10 @@ Instead of a complex recommendation system, we are focusing on **Order Validatio
 5.  **Admin Approval**: To ensure high quality, anyone who signs up as an Artisan or Vendor cannot use the app immediately. An Admin must review their profile and approve them.
 
 ### The Artisan "Team" Concept
+
 In the real world, artisans usually work in squads under one lead contractor.
-*   **Question to decide**: Should the lead contractor just type "I have a team of 5 people" on their profile, OR do you want the app to actually let the lead contractor invite their 5 team members to download the app and join their specific "Digital Team"? (The first option is much faster to build for the MVP).
+
+- **Question to decide**: Should the lead contractor just type "I have a team of 5 people" on their profile, OR do you want the app to actually let the lead contractor invite their 5 team members to download the app and join their specific "Digital Team"? (The first option is much faster to build for the MVP).
 
 ---
 
@@ -25,27 +27,29 @@ In the real world, artisans usually work in squads under one lead contractor.
 When an Artisan or Vendor signs up, we need them to fill out a profile so the Admin can decide whether to approve them.
 
 > [!NOTE]
-> **These are ONLY suggestions!** 
+> **These are ONLY suggestions!**
 > I have listed some possible fields below just to give you ideas and a starting point. Nothing is finalized yet. Please look over these suggestions and decide which ones to KEEP, which ones to REMOVE entirely, and what new fields to ADD based on business needs.
 
 ### Suggested Fields for an "Artisan Profile"
-*   **Full Name**: (e.g., Rajesh Kumar)
-*   **Phone Number**: (Used for login)
-*   **Primary Skill**: (e.g., Plumber, Electrician, Carpenter)
-*   **Years of Experience**: (e.g., 5 years)
-*   **Team Size**: (Does he work alone or have a team?)
-*   **Photo of ID / Aadhar**: (For background verification)
-*   **Photos of Past Work**: (To prove quality)
-*   **Service Area / City**: (Where do they work?)
+
+- **Full Name**: (e.g., Rajesh Kumar)
+- **Phone Number**: (Used for login)
+- **Primary Skill**: (e.g., Plumber, Electrician, Carpenter)
+- **Years of Experience**: (e.g., 5 years)
+- **Team Size**: (Does he work alone or have a team?)
+- **Photo of ID / Aadhar**: (For background verification)
+- **Photos of Past Work**: (To prove quality)
+- **Service Area / City**: (Where do they work?)
 
 ### Suggested Fields for a "Vendor Profile"
-*   **Business Name**: (e.g., Sharma Hardware)
-*   **Owner Name**: (e.g., Anil Sharma)
-*   **Phone Number**: (Used for login)
-*   **Business Address / Location**: (Where is the shop?)
-*   **GST Number**: (For verification)
-*   **Types of Materials Sold**: (e.g., Plumbing, Electrical, Cement)
-*   **Delivery Offered?**: (Yes/No)
+
+- **Business Name**: (e.g., Sharma Hardware)
+- **Owner Name**: (e.g., Anil Sharma)
+- **Phone Number**: (Used for login)
+- **Business Address / Location**: (Where is the shop?)
+- **GST Number**: (For verification)
+- **Types of Materials Sold**: (e.g., Plumbing, Electrical, Cement)
+- **Delivery Offered?**: (Yes/No)
 
 ---
 
@@ -62,6 +66,7 @@ Due to TRAI regulations in India, you cannot send SMS without registering your b
 ### Step-by-Step Setup Guide
 
 #### Phase 1: DLT Business Registration
+
 1. Go to a telecom DLT Portal (e.g., [Jio DLT](https://trueconnect.jio.com/) or [PingConnect](https://pingconnect.in/)).
 2. Sign up as a **Principal Entity**.
 3. Upload your business documents (GST Certificate, Business PAN, etc.).
@@ -69,6 +74,7 @@ Due to TRAI regulations in India, you cannot send SMS without registering your b
 5. Once approved (2-3 days), you will receive a unique **Entity ID**.
 
 #### Phase 2: Sender ID & Template Registration
+
 1. In the DLT portal, go to the **Headers** section and request a 6-letter Sender ID (e.g., `GOLDEN`). This must logically match your business name.
 2. Go to the **Content Templates** section.
 3. Select "Authentication/OTP" category.
@@ -76,11 +82,13 @@ Due to TRAI regulations in India, you cannot send SMS without registering your b
 5. Once approved (1-2 days), the portal will generate a **Template ID**.
 
 #### Phase 3: MSG91 Setup
+
 1. Go to **[MSG91.com](https://msg91.com/)** and create your account.
 2. Enter your **Entity ID** from Phase 1 into your MSG91 profile.
 3. Go to the **API Keys / Auth** section in the MSG91 dashboard and generate a new Auth Key.
 
 ### What to Send to the Developer
+
 Once you finish the setup, please securely send the following 3 pieces of information to the development team:
 
 1.  **MSG91 Auth Key**: (A long string of random letters and numbers)

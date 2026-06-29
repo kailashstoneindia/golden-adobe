@@ -12,14 +12,7 @@ import {
   YouIcon,
 } from './TabIcons';
 
-export type TabRouteName =
-  | 'index'
-  | 'browse'
-  | 'cart'
-  | 'orders'
-  | 'you'
-  | 'products'
-  | 'shop';
+export type TabRouteName = 'index' | 'browse' | 'cart' | 'orders' | 'you' | 'products' | 'shop';
 
 interface TabIconProps {
   color: string;

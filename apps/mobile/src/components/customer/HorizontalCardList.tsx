@@ -16,7 +16,11 @@ interface HorizontalCardListProps {
 
 export function HorizontalCardList({ items }: HorizontalCardListProps) {
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.scroll}
+    >
       {items.map((item) => (
         <View key={item.id} style={styles.card}>
           <LinearGradient
