@@ -1,6 +1,7 @@
-import { Table, Column, Model, DataType, HasMany } from 'sequelize-typescript';
+import { Table, Column, Model, DataType, HasMany, HasOne } from 'sequelize-typescript';
 import { Role } from '../../../common/enums/role.enum';
 import { RefreshToken } from './refresh-token.model';
+import { Vendor } from '../../vendors/models/vendor.model';
 
 @Table({
   tableName: 'users',
@@ -57,4 +58,7 @@ export class User extends Model<User> {
 
   @HasMany(() => RefreshToken)
   declare refreshTokens: RefreshToken[];
+
+  @HasOne(() => Vendor)
+  declare vendorProfile?: Vendor;
 }
