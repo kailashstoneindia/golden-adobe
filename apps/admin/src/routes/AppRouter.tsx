@@ -2,18 +2,25 @@ import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
 
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { ROUTES } from '@/constants/routes';
+import { useSessionBootstrap } from '@/hooks/useSessionBootstrap';
 import { tokenStorage } from '@/services/storage/tokenStorage';
 import { useAuthStore } from '@/store';
 import { ApprovalsPage } from '@/pages/ApprovalsPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { UsersPage } from '@/pages/UsersPage';
+import styles from '@/styles/shared.module.css';
 
 function ProtectedRoute() {
-  const adminUser = useAuthStore((authStore) => authStore.user);
+  const isHydrated = useAuthStore((authStore) => authStore.isHydrated);
+  const hasSession = useSessionBootstrap();
   const hasToken = Boolean(tokenStorage.getAccessToken());
 
-  if (!hasToken || !adminUser) {
+  if (!isHydrated) {
+    return <p className={styles.pageSubtitle}>Loading session…</p>;
+  }
+
+  if (!hasToken || !hasSession) {
     return <Navigate to={ROUTES.login} replace />;
   }
 

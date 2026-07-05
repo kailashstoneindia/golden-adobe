@@ -13,13 +13,13 @@ export function ApprovalCard({ user, onSelect }: ApprovalCardProps) {
   const handleClick = () => onSelect(user);
 
   return (
-    <article className={styles.card} onClick={handleClick} onKeyDown={undefined} role="button" tabIndex={0}>
+    <button type="button" className={styles.card} onClick={handleClick}>
       <div className={styles.cardTop}>
         <h3 className={styles.name}>{user.name || 'Unnamed user'}</h3>
         <span className={styles.badge}>Pending</span>
       </div>
       <p className={styles.meta}>{formatRoleLabel(user.role)}</p>
       <p className={styles.meta}>{formatPhoneDisplay(user.phone)}</p>
-    </article>
+    </button>
   );
 }

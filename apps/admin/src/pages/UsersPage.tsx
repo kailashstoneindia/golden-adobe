@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { UserDto } from '@golden-abode/types';
+import { Role } from '@golden-abode/types';
 import { isEmpty } from 'lodash';
 
 import { APP_CONSTANTS } from '@/constants/appConstants';
@@ -24,7 +25,7 @@ export function UsersPage() {
   const users = useMemo(() => usersQuery.data?.items ?? [], [usersQuery.data?.items]);
   const isSubmitting = approveMutation.isPending || rejectMutation.isPending;
   const showApprovalActions =
-    selectedUser?.role === 'VENDOR' || selectedUser?.role === 'ARTISAN';
+    selectedUser?.role === Role.VENDOR || selectedUser?.role === Role.ARTISAN;
 
   const handleApprove = async (userId: string) => {
     await approveMutation.mutateAsync(userId);
@@ -82,10 +83,11 @@ export function UsersPage() {
         </div>
       )}
 
-      {selectedUser && showApprovalActions ? (
+      {selectedUser ? (
         <UserDetailModal
           user={selectedUser}
           isSubmitting={isSubmitting}
+          showApprovalActions={showApprovalActions}
           onClose={() => setSelectedUser(null)}
           onApprove={handleApprove}
           onReject={handleReject}

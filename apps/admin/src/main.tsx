@@ -4,12 +4,9 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 
 import { AppRouter } from '@/routes/AppRouter';
-import { useAuthStore } from '@/store';
 import '@/theme/global.css';
 
 const queryClient = new QueryClient();
-
-useAuthStore.getState().hydrate();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
