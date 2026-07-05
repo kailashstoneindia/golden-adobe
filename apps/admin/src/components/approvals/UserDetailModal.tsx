@@ -8,20 +8,22 @@ import { formatDateTime } from '@/utils/date';
 type UserDetailModalProps = {
   user: UserDto;
   isSubmitting: boolean;
+  showApprovalActions?: boolean;
   onClose: () => void;
-  onApprove: (userId: string) => void;
-  onReject: (userId: string) => void;
+  onApprove?: (userId: string) => void;
+  onReject?: (userId: string) => void;
 };
 
 export function UserDetailModal({
   user,
   isSubmitting,
+  showApprovalActions = true,
   onClose,
   onApprove,
   onReject,
 }: UserDetailModalProps) {
-  const handleApprove = () => onApprove(user.id);
-  const handleReject = () => onReject(user.id);
+  const handleApprove = () => onApprove?.(user.id);
+  const handleReject = () => onReject?.(user.id);
 
   return (
     <div className={styles.overlay} onClick={onClose} role="presentation">
@@ -41,22 +43,26 @@ export function UserDetailModal({
           <button type="button" className={`${styles.button} ${styles.buttonGhost}`} onClick={onClose}>
             Close
           </button>
-          <button
-            type="button"
-            className={`${styles.button} ${styles.buttonDanger}`}
-            disabled={isSubmitting}
-            onClick={handleReject}
-          >
-            Reject
-          </button>
-          <button
-            type="button"
-            className={`${styles.button} ${styles.buttonPrimary}`}
-            disabled={isSubmitting}
-            onClick={handleApprove}
-          >
-            Approve
-          </button>
+          {showApprovalActions ? (
+            <>
+              <button
+                type="button"
+                className={`${styles.button} ${styles.buttonDanger}`}
+                disabled={isSubmitting}
+                onClick={handleReject}
+              >
+                Reject
+              </button>
+              <button
+                type="button"
+                className={`${styles.button} ${styles.buttonPrimary}`}
+                disabled={isSubmitting}
+                onClick={handleApprove}
+              >
+                Approve
+              </button>
+            </>
+          ) : null}
         </div>
       </div>
     </div>
