@@ -31,6 +31,7 @@
   "devDependencies": {
     "@types/react": "~19.2.2",
     "cross-env": "^7.0.3",
+    "eas-cli": "^16.28.0",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -48,6 +49,9 @@
     "android:release": "cross-env APP_VARIANT=production npx expo run:android --variant release",
     "prebuild:dev": "cross-env APP_VARIANT=development npx expo prebuild --clean",
     "prebuild:prod": "cross-env APP_VARIANT=production npx expo prebuild --clean",
+    "prebuild:android": "cross-env APP_VARIANT=production npx expo prebuild --platform android --clean",
+    "eas:init": "eas init",
+    "eas:login": "eas login",
     "reset-project": "node ./scripts/reset-project.js",
     "verify:google-services": "node ./scripts/verify-google-services.js",
     "build:preview:android": "eas build --profile preview --platform android",
@@ -55,6 +59,7 @@
     "build:apk": "eas build --profile preview --platform android",
     "build:aab": "eas build --profile production --platform android",
     "build:ios": "eas build --profile production --platform ios",
+    "build:ios:preview": "eas build --profile preview --platform ios",
     "submit:ios": "eas submit --profile production --platform ios",
     "submit:android": "eas submit --profile production --platform android",
     "type-check": "tsc --noEmit",
@@ -62,7 +67,8 @@
     "lint": "expo lint",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "eas-build-post-install": "cd ../.. && pnpm --filter @golden-abode/types build"
   },
   "private": true
 }

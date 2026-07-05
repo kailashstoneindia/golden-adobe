@@ -17,6 +17,8 @@ export const Colors = {
   // Blue scale
   navy: '#0F2B52',
   navySoft: '#1B3F6E',
+  navyMid: '#173A66',
+  ridgeSilhouette: '#0C1F3B',
   sky: '#2D6CB4',
   skyTint: '#DCEAF7',
 
@@ -45,6 +47,10 @@ export const Colors = {
   categorySanitaryIcon: '#059669',
   categoryPaintsIcon: '#D97706',
   categoryHardwareIcon: '#DB2777',
+
+  // Splash accents
+  lavenderMist: '#CAA6E6',
+  sunCore: '#F6A35C',
 } as const;
 
 export type ColorToken = keyof typeof Colors;

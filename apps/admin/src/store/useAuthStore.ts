@@ -1,0 +1,28 @@
+import type { UserDto } from '@golden-abode/types';
+import { create } from 'zustand';
+
+import { tokenStorage } from '@/services/storage/tokenStorage';
+
+type AuthStoreState = {
+  user: UserDto | null;
+  isHydrated: boolean;
+  setSession: (user: UserDto, accessToken: string, refreshToken: string) => void;
+  setUser: (user: UserDto) => void;
+  clearSession: () => void;
+  hydrate: () => void;
+};
+
+export const useAuthStore = create<AuthStoreState>((set) => ({
+  user: null,
+  isHydrated: false,
+  setSession: (user, accessToken, refreshToken) => {
+    tokenStorage.setTokens(accessToken, refreshToken);
+    set({ user });
+  },
+  setUser: (user) => set({ user }),
+  clearSession: () => {
+    tokenStorage.clearTokens();
+    set({ user: null });
+  },
+  hydrate: () => set({ isHydrated: true }),
+}));
