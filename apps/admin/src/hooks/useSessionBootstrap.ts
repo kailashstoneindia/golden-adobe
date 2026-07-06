@@ -3,14 +3,21 @@ import { Role } from '@golden-abode/types';
 
 import { authService } from '@/services';
 import { tokenStorage } from '@/services/storage/tokenStorage';
-import { useAuthStore } from '@/store';
+import {
+  selectAdminUser,
+  selectClearSession,
+  selectHydrate,
+  selectIsHydrated,
+  selectSetUser,
+  useAuthStore,
+} from '@/store';
 
 export function useSessionBootstrap(): boolean {
-  const adminUser = useAuthStore((authStore) => authStore.user);
-  const isHydrated = useAuthStore((authStore) => authStore.isHydrated);
-  const setUser = useAuthStore((authStore) => authStore.setUser);
-  const clearSession = useAuthStore((authStore) => authStore.clearSession);
-  const markHydrated = useAuthStore((authStore) => authStore.hydrate);
+  const adminUser = useAuthStore(selectAdminUser);
+  const isHydrated = useAuthStore(selectIsHydrated);
+  const setUser = useAuthStore(selectSetUser);
+  const clearSession = useAuthStore(selectClearSession);
+  const markHydrated = useAuthStore(selectHydrate);
 
   useEffect(() => {
     if (isHydrated) {

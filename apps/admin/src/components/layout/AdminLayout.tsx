@@ -2,13 +2,13 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 
 import { APP_CONSTANTS } from '@/constants/appConstants';
 import { ROUTES } from '@/constants/routes';
-import { useAuthStore } from '@/store';
+import { selectAdminUser, selectClearSession, useAuthStore } from '@/store';
 import styles from '@/styles/shared.module.css';
 
 export function AdminLayout() {
   const navigate = useNavigate();
-  const adminUser = useAuthStore((authStore) => authStore.user);
-  const clearSession = useAuthStore((authStore) => authStore.clearSession);
+  const adminUser = useAuthStore(selectAdminUser);
+  const clearSession = useAuthStore(selectClearSession);
 
   const handleLogout = () => {
     clearSession();

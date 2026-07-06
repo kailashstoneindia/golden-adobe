@@ -7,14 +7,14 @@ import { ERROR_MESSAGES } from '@/constants/error.constants';
 import { ROUTES } from '@/constants/routes';
 import { useSendOtpMutation, useVerifyOtpMutation } from '@/queries';
 import { ApiClientError, isAuthResponse } from '@/services';
-import { useAuthStore } from '@/store';
+import { selectSetSession, useAuthStore } from '@/store';
 import type { LoginStep } from '@/types';
 import styles from '@/styles/shared.module.css';
 import { isValidIndianMobile, sanitizePhoneDigits, toE164 } from '@/utils/phone';
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const setSession = useAuthStore((authStore) => authStore.setSession);
+  const setSession = useAuthStore(selectSetSession);
 
   const [loginStep, setLoginStep] = useState<LoginStep>('phone');
   const [phoneDigits, setPhoneDigits] = useState('');

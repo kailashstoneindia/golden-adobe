@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { Colors, Radius, Spacing } from '../../theme';
@@ -12,9 +12,10 @@ export interface HorizontalCardItem {
 
 interface HorizontalCardListProps {
   items: HorizontalCardItem[];
+  onItemPress?: (item: HorizontalCardItem) => void;
 }
 
-export function HorizontalCardList({ items }: HorizontalCardListProps) {
+export function HorizontalCardList({ items, onItemPress }: HorizontalCardListProps) {
   return (
     <ScrollView
       horizontal
@@ -22,7 +23,7 @@ export function HorizontalCardList({ items }: HorizontalCardListProps) {
       contentContainerStyle={styles.scroll}
     >
       {items.map((item) => (
-        <View key={item.id} style={styles.card}>
+        <Pressable key={item.id} style={styles.card} onPress={() => onItemPress?.(item)}>
           <LinearGradient
             colors={[Colors.skyTint, Colors.tangerineTint]}
             start={{ x: 0, y: 0 }}
@@ -33,7 +34,7 @@ export function HorizontalCardList({ items }: HorizontalCardListProps) {
             {item.title}
           </Text>
           <Text variant="caption">{item.subtitle}</Text>
-        </View>
+        </Pressable>
       ))}
     </ScrollView>
   );

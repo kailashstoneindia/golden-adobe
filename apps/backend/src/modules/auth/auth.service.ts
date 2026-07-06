@@ -28,8 +28,8 @@ export class AuthService {
   /** Fixed OTP while MSG91 / DLT is not live yet. */
   private static readonly DEMO_OTP = '123456';
 
-  /** Flip to true once MSG91_AUTH_KEY and DLT template are production-ready. */
-  private static readonly USE_MSG91_SMS = false;
+  /** Flip via USE_MSG91_SMS=true once MSG91 DLT template is production-ready. */
+  private readonly useMsg91Sms: boolean;
 
   constructor(
     private jwtService: JwtService,
@@ -38,7 +38,9 @@ export class AuthService {
     private redisService: RedisService,
     @InjectModel(RefreshToken)
     private refreshTokenModel: typeof RefreshToken,
-  ) {}
+  ) {
+    this.useMsg91Sms = this.configService.get<boolean>('msg91.useSms', false);
+  }
 
   // ─── Send OTP ─────────────────────────────────────────────────────────
 
@@ -57,7 +59,7 @@ export class AuthService {
 
     const env = this.configService.get<string>('env', 'development');
 
-    const otp = AuthService.USE_MSG91_SMS
+    const otp = this.useMsg91Sms
       ? crypto.randomInt(100000, 999999).toString()
       : AuthService.DEMO_OTP;
 
@@ -70,13 +72,13 @@ export class AuthService {
     const currentCount = attempts ? parseInt(attempts, 10) : 0;
     await this.redisService.set(rateLimitKey, (currentCount + 1).toString(), rateTtl);
 
-    if (AuthService.USE_MSG91_SMS) {
+    if (this.useMsg91Sms) {
       await this.sendViaMSG91(phone, otp);
       return { message: 'OTP sent successfully' };
     }
 
     this.logger.warn(
-      `[DEMO OTP] ${phone}: ${otp} (${env}) — MSG91 skipped until USE_MSG91_SMS is enabled`,
+      `[DEMO OTP] ${phone}: ${otp} (${env}) — set USE_MSG91_SMS=true to send real SMS`,
     );
 
     return {

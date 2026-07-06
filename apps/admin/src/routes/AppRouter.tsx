@@ -4,7 +4,7 @@ import { AdminLayout } from '@/components/layout/AdminLayout';
 import { ROUTES } from '@/constants/routes';
 import { useSessionBootstrap } from '@/hooks/useSessionBootstrap';
 import { tokenStorage } from '@/services/storage/tokenStorage';
-import { useAuthStore } from '@/store';
+import { selectIsHydrated, useAuthStore } from '@/store';
 import { ApprovalsPage } from '@/pages/ApprovalsPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { LoginPage } from '@/pages/LoginPage';
@@ -12,7 +12,7 @@ import { UsersPage } from '@/pages/UsersPage';
 import styles from '@/styles/shared.module.css';
 
 function ProtectedRoute() {
-  const isHydrated = useAuthStore((authStore) => authStore.isHydrated);
+  const isHydrated = useAuthStore(selectIsHydrated);
   const hasSession = useSessionBootstrap();
   const hasToken = Boolean(tokenStorage.getAccessToken());
 

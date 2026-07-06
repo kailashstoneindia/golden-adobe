@@ -16,6 +16,7 @@ export default () => ({
     authKey: process.env.MSG91_AUTH_KEY,
     templateId: process.env.MSG91_TEMPLATE_ID,
     senderId: process.env.MSG91_SENDER_ID || 'GOLDEN',
+    useSms: process.env.USE_MSG91_SMS === 'true',
   },
   throttle: {
     otpSendLimit: parseInt(process.env.THROTTLE_OTP_SEND_LIMIT || '3', 10),
