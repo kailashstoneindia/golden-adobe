@@ -1,28 +1,31 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, Polygon, RadialGradient, Stop } from 'react-native-svg';
 
 import { Text } from '../ui';
 import { Colors, FontFamily, Spacing } from '../../theme';
 
-/**
- * Branded splash — navy-to-sky gradient, ridge silhouette, and sun glow
- * (design doc § 01 — Splash).
- */
+const SPLASH_GRADIENT = [Colors.navy, Colors.navyMid, Colors.sky] as const;
+const SPLASH_GRADIENT_STOPS = [0, 0.45, 1] as const;
+
 export function RidgeSplash() {
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
+  const sunLeft = (screenWidth - 108) / 2;
 
   return (
     <LinearGradient
-      colors={[Colors.navy, Colors.navyMid, Colors.sky]}
-      locations={[0, 0.45, 1]}
+      colors={[...SPLASH_GRADIENT]}
+      locations={[...SPLASH_GRADIENT_STOPS]}
       style={styles.gradient}
     >
-      <View style={[styles.accentDot, { top: insets.top + Spacing.xl + 6, left: Spacing.xxl + 6 }]} />
+      <View
+        style={[styles.accentDot, { top: insets.top + 54, left: Spacing.xxl + Spacing.lg + 2 }]}
+      />
 
       <View style={styles.center}>
-        <View style={styles.sunGlow}>
+        <View style={[styles.sunGlow, { left: sunLeft, top: '22%' }]}>
           <Svg width={108} height={108} viewBox="0 0 108 108">
             <Defs>
               <RadialGradient id="sunGlow" cx="50%" cy="50%" rx="50%" ry="50%">
@@ -58,6 +61,8 @@ export function RidgeSplash() {
           />
         </Svg>
       </View>
+
+      <View style={[styles.homeIndicator, { bottom: insets.bottom + 8 }]} />
     </LinearGradient>
   );
 }
@@ -81,7 +86,6 @@ const styles = StyleSheet.create({
   },
   sunGlow: {
     position: 'absolute',
-    top: '18%',
     width: 108,
     height: 108,
   },
@@ -111,5 +115,13 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 180,
+  },
+  homeIndicator: {
+    position: 'absolute',
+    alignSelf: 'center',
+    width: 120,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.35)',
   },
 });

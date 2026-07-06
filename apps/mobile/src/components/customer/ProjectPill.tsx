@@ -1,22 +1,23 @@
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
 
 import { Colors, Radius, Spacing } from '../../theme';
 import { Text } from '../ui';
 
 interface ProjectPillProps {
   label: string;
+  onPress?: () => void;
 }
 
-export function ProjectPill({ label }: ProjectPillProps) {
+export function ProjectPill({ label, onPress }: ProjectPillProps) {
   return (
-    <View style={styles.pill}>
+    <Pressable style={styles.pill} onPress={onPress}>
       <Text variant="bodyMedium" color={Colors.white}>
         🏠 {label}
       </Text>
       <Text variant="caption" color="rgba(255,255,255,0.7)">
         ▾
       </Text>
-    </View>
+    </Pressable>
   );
 }
 

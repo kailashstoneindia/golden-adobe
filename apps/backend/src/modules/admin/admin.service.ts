@@ -90,14 +90,17 @@ export class AdminService {
     if (query.isActive !== undefined) {
       where.isActive = query.isActive;
     }
-    if (query.search) {
-      where[Op.or] = [
-        { name: { [Op.iLike]: `%${query.search}%` } },
-        { phone: { [Op.iLike]: `%${query.search}%` } },
-      ];
+    if (!query.search) {
+      return where;
     }
 
-    return where;
+    return {
+      ...where,
+      [Op.or]: [
+        { name: { [Op.iLike]: `%${query.search}%` } },
+        { phone: { [Op.iLike]: `%${query.search}%` } },
+      ],
+    };
   }
 
   private async findApprovalTarget(userId: string): Promise<User> {
@@ -112,17 +115,26 @@ export class AdminService {
   }
 
   private toUserDto(user: User): UserDto {
-    const plain = user.get({ plain: true }) as Record<string, unknown>;
     return {
-      id: plain.id as string,
-      name: plain.name as string,
-      phone: plain.phone as string,
-      role: plain.role as Role,
-      deviceToken: (plain.deviceToken ?? plain.device_token ?? null) as string | null,
-      isActive: (plain.isActive ?? plain.is_active ?? true) as boolean,
-      isApproved: (plain.isApproved ?? plain.is_approved ?? false) as boolean,
-      createdAt: (plain.createdAt ?? plain.created_at) as string,
-      updatedAt: (plain.updatedAt ?? plain.updated_at) as string,
+      id: user.id,
+      name: user.name,
+      phone: user.phone,
+      role: user.role as Role,
+      deviceToken: user.deviceToken,
+      isActive: user.isActive,
+      isApproved: user.isApproved,
+      createdAt: this.formatTimestamp(user.get('createdAt')),
+      updatedAt: this.formatTimestamp(user.get('updatedAt')),
     };
+  }
+
+  private formatTimestamp(value: unknown): string {
+    if (value instanceof Date) {
+      return value.toISOString();
+    }
+    if (typeof value === 'string') {
+      return value;
+    }
+    return '';
   }
 }

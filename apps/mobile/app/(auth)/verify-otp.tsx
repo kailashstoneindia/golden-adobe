@@ -7,7 +7,7 @@ import { OtpInput } from '../../src/components/auth/OtpInput';
 import { BrandLogo } from '../../src/components/brand/BrandLogo';
 import { Screen } from '../../src/components/layout/Screen';
 import { Button, Text } from '../../src/components/ui';
-import { ROUTES } from '../../src/constants';
+import { APP_CONSTANTS, ROUTES } from '../../src/constants';
 import { useSendOtp, useVerifyOtp } from '../../src/hooks/auth';
 import { useOnboardingStore } from '../../src/stores/onboarding.store';
 import { Colors, Spacing } from '../../src/theme';
@@ -21,9 +21,22 @@ export default function VerifyOtpScreen() {
 
   const [otp, setOtp] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [resendCooldownSeconds, setResendCooldownSeconds] = useState(0);
 
   const verifyOtp = useVerifyOtp();
   const resendOtp = useSendOtp();
+
+  useEffect(() => {
+    if (resendCooldownSeconds <= 0) {
+      return;
+    }
+
+    const timerId = setTimeout(() => {
+      setResendCooldownSeconds((current) => Math.max(current - 1, 0));
+    }, 1000);
+
+    return () => clearTimeout(timerId);
+  }, [resendCooldownSeconds]);
 
   useEffect(() => {
     if (!phone) {
@@ -65,13 +78,16 @@ export default function VerifyOtpScreen() {
   };
 
   const handleResend = () => {
-    if (!phone) return;
+    if (!phone || resendCooldownSeconds > 0) {
+      return;
+    }
     setError(null);
     resendOtp.mutate(
       { phone },
       {
         onSuccess: (data) => {
           useOnboardingStore.getState().setDevOtp(data.devOtp ?? null);
+          setResendCooldownSeconds(APP_CONSTANTS.otpResendCooldownSeconds);
         },
         onError: (err) => {
           setError(err instanceof ApiError ? err.message : 'Could not resend OTP.');
@@ -79,6 +95,13 @@ export default function VerifyOtpScreen() {
       },
     );
   };
+
+  const resendLabel =
+    resendCooldownSeconds > 0
+      ? `Resend in ${resendCooldownSeconds}s`
+      : resendOtp.isPending
+        ? 'Resending…'
+        : 'Resend code';
 
   if (!phone) {
     return null;
@@ -124,8 +147,8 @@ export default function VerifyOtpScreen() {
 
           <Button
             variant="ghost"
-            title={resendOtp.isPending ? 'Resending…' : 'Resend code'}
-            disabled={resendOtp.isPending}
+            title={resendLabel}
+            disabled={resendOtp.isPending || resendCooldownSeconds > 0}
             onPress={handleResend}
             style={styles.resend}
           />

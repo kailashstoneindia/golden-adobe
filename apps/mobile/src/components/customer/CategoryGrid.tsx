@@ -1,5 +1,5 @@
 import { type ComponentType } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
 import { Colors, FontFamily, Radius } from '../../theme';
@@ -8,6 +8,10 @@ import { Text } from '../ui';
 interface CategoryIconProps {
   color: string;
   size?: number;
+}
+
+interface CategoryGridProps {
+  onCategoryPress?: (categoryName: string) => void;
 }
 
 const ICON_SIZE = 26;
@@ -120,16 +124,20 @@ const CATEGORIES = [
   Icon: ComponentType<CategoryIconProps>;
 }>;
 
-export function CategoryGrid() {
+export function CategoryGrid({ onCategoryPress }: CategoryGridProps) {
   return (
     <View style={styles.grid}>
-      {CATEGORIES.map((cat) => (
-        <View key={cat.name} style={styles.item}>
-          <View style={[styles.tile, { backgroundColor: cat.bg }]}>
-            <cat.Icon color={cat.iconColor} />
+      {CATEGORIES.map((category) => (
+        <Pressable
+          key={category.name}
+          style={styles.item}
+          onPress={() => onCategoryPress?.(category.name)}
+        >
+          <View style={[styles.tile, { backgroundColor: category.bg }]}>
+            <category.Icon color={category.iconColor} />
           </View>
-          <Text style={styles.label}>{cat.name}</Text>
-        </View>
+          <Text style={styles.label}>{category.name}</Text>
+        </Pressable>
       ))}
     </View>
   );

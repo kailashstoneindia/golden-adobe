@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { MenuRow } from '../../src/components/demo/MenuRow';
 import { Screen } from '../../src/components/layout/Screen';
@@ -40,7 +40,7 @@ export default function YouTabScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.profileRow}>
+        <Pressable style={styles.profileRow} onPress={() => router.push(ROUTES.screens.myProjects)}>
           <View style={styles.avatar}>
             <Text variant="h2" color={Colors.ember}>
               {initials ?? '?'}
@@ -61,7 +61,7 @@ export default function YouTabScreen() {
               </View>
             ) : null}
           </View>
-        </View>
+        </Pressable>
 
         <View style={styles.menu}>
           {MENU_ROUTES.map((item) => (
