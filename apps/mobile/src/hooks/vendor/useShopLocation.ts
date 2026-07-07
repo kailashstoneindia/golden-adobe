@@ -1,24 +1,52 @@
 import { useState } from 'react';
-import * as Location from 'expo-location';
 
 import { ERROR_MESSAGES } from '../../constants';
+import {
+  captureCurrentShopLocation,
+  ShopLocationNativeError,
+} from '../../services/location';
 import type { ShopCoordinates } from '../../types';
+import { parseManualCoordinates } from '../../utils/coordinates';
 
 type ShopLocationState = {
   coordinates: ShopCoordinates | null;
+  manualLatitude: string;
+  manualLongitude: string;
   locationError: string | null;
   isLoadingLocation: boolean;
   captureLocation: () => Promise<void>;
-  clearLocationError: () => void;
+  updateManualLatitude: (value: string) => void;
+  updateManualLongitude: (value: string) => void;
+  applyManualCoordinates: () => boolean;
 };
 
 export function useShopLocation(): ShopLocationState {
   const [coordinates, setCoordinates] = useState<ShopCoordinates | null>(null);
+  const [manualLatitude, setManualLatitude] = useState('');
+  const [manualLongitude, setManualLongitude] = useState('');
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
 
-  const clearLocationError = (): void => {
+  const updateManualLatitude = (value: string): void => {
+    setManualLatitude(value);
     setLocationError(null);
+  };
+
+  const updateManualLongitude = (value: string): void => {
+    setManualLongitude(value);
+    setLocationError(null);
+  };
+
+  const applyManualCoordinates = (): boolean => {
+    const parsed = parseManualCoordinates(manualLatitude, manualLongitude);
+    if (!parsed) {
+      setLocationError(ERROR_MESSAGES.invalidCoordinates);
+      return false;
+    }
+
+    setCoordinates(parsed);
+    setLocationError(null);
+    return true;
   };
 
   const captureLocation = async (): Promise<void> => {
@@ -26,22 +54,12 @@ export function useShopLocation(): ShopLocationState {
     setLocationError(null);
 
     try {
-      const permission = await Location.requestForegroundPermissionsAsync();
-      if (!permission.granted) {
-        setLocationError(ERROR_MESSAGES.locationPermissionDenied);
-        return;
-      }
-
-      const position = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-
-      setCoordinates({
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-      });
-    } catch {
-      setLocationError(ERROR_MESSAGES.locationRequired);
+      const captured = await captureCurrentShopLocation();
+      setCoordinates(captured);
+      setManualLatitude(String(captured.latitude));
+      setManualLongitude(String(captured.longitude));
+    } catch (error) {
+      setLocationError(resolveLocationErrorMessage(error));
     } finally {
       setIsLoadingLocation(false);
     }
@@ -49,9 +67,29 @@ export function useShopLocation(): ShopLocationState {
 
   return {
     coordinates,
+    manualLatitude,
+    manualLongitude,
     locationError,
     isLoadingLocation,
     captureLocation,
-    clearLocationError,
+    updateManualLatitude,
+    updateManualLongitude,
+    applyManualCoordinates,
   };
+}
+
+function resolveLocationErrorMessage(error: unknown): string {
+  if (!(error instanceof ShopLocationNativeError)) {
+    return ERROR_MESSAGES.locationRequired;
+  }
+
+  if (error.message === 'LOCATION_PERMISSION_DENIED') {
+    return ERROR_MESSAGES.locationPermissionDenied;
+  }
+
+  if (error.message === 'LOCATION_NATIVE_MODULE_MISSING') {
+    return ERROR_MESSAGES.locationNativeModuleMissing;
+  }
+
+  return ERROR_MESSAGES.locationRequired;
 }
