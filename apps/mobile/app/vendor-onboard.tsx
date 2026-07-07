@@ -10,6 +10,7 @@ import { useAuth } from '../src/hooks/auth';
 import { useShopLocation, useVendorOnboardForm } from '../src/hooks/vendor';
 import { Colors, Spacing } from '../src/theme';
 import { needsVendorOnboarding, resolveAuthenticatedRoute } from '../src/utils/user';
+import { parseManualCoordinates } from '../src/utils/coordinates';
 
 export default function VendorOnboardScreen() {
   const { isAuthenticated, isHydrated, user } = useAuth();
@@ -37,7 +38,12 @@ export default function VendorOnboardScreen() {
   }, [isAuthenticated, isHydrated, user]);
 
   const handleSubmit = (): void => {
-    vendorForm.handleSubmit(shopLocation.coordinates);
+    const hasManualCoordinates = shopLocation.applyManualCoordinates();
+    const resolvedCoordinates = hasManualCoordinates
+      ? parseManualCoordinates(shopLocation.manualLatitude, shopLocation.manualLongitude)
+      : shopLocation.coordinates;
+
+    vendorForm.handleSubmit(resolvedCoordinates);
   };
 
   if (!isHydrated || !user || user.role !== Role.VENDOR || !needsVendorOnboarding(user)) {
@@ -104,6 +110,20 @@ export default function VendorOnboardScreen() {
                 {shopLocation.locationError}
               </Text>
             ) : null}
+            <TextInput
+              label="Latitude"
+              placeholder="26.9124"
+              value={shopLocation.manualLatitude}
+              onChangeText={shopLocation.updateManualLatitude}
+              keyboardType="decimal-pad"
+            />
+            <TextInput
+              label="Longitude"
+              placeholder="75.7873"
+              value={shopLocation.manualLongitude}
+              onChangeText={shopLocation.updateManualLongitude}
+              keyboardType="decimal-pad"
+            />
           </Card>
 
           <Text variant="h3" style={styles.sectionTitle}>
