@@ -8,7 +8,7 @@ import { ROUTES } from '../src/constants';
 import { useAuth, useMe } from '../src/hooks/auth';
 import { useLogout } from '../src/hooks/auth/useLogout';
 import { Colors, Spacing } from '../src/theme';
-import { formatRoleLabel, isPendingApproval } from '../src/utils/user';
+import { formatRoleLabel, isPendingApproval, needsVendorOnboarding } from '../src/utils/user';
 
 export default function PendingApprovalScreen() {
   const { isAuthenticated, isHydrated, user } = useAuth();
@@ -20,6 +20,11 @@ export default function PendingApprovalScreen() {
 
     if (!isAuthenticated) {
       router.replace(ROUTES.auth.login);
+      return;
+    }
+
+    if (user && needsVendorOnboarding(user)) {
+      router.replace(ROUTES.vendorOnboard);
       return;
     }
 
@@ -63,6 +68,14 @@ export default function PendingApprovalScreen() {
         <View style={styles.details}>
           <Text variant="bodyMedium">{user.name}</Text>
           <Text variant="caption">{user.phone}</Text>
+          {user.vendorProfile ? (
+            <>
+              <Text variant="bodyMedium" style={styles.shopName}>
+                {user.vendorProfile.shopName}
+              </Text>
+              <Text variant="caption">{user.vendorProfile.address}</Text>
+            </>
+          ) : null}
         </View>
 
         <Button
@@ -102,6 +115,9 @@ const styles = StyleSheet.create({
   details: {
     gap: Spacing.xs,
     paddingVertical: Spacing.sm,
+  },
+  shopName: {
+    marginTop: Spacing.sm,
   },
   logout: {
     marginTop: Spacing.sm,

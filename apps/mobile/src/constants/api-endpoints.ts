@@ -12,6 +12,9 @@ export const API_ENDPOINTS = {
     logout: '/auth/logout',
     me: '/auth/me',
   },
+  vendors: {
+    onboard: '/vendors/onboard',
+  },
 } as const;
 
 /** Endpoints that must not trigger a token-refresh retry on 401. */

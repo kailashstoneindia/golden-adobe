@@ -124,8 +124,9 @@ export default function RegisterScreen() {
 
           {role === Role.VENDOR || role === Role.ARTISAN ? (
             <Text variant="caption" color={Colors.inkSoft} style={styles.approvalNote}>
-              {role === Role.VENDOR ? 'Vendor' : 'Ustaad'} accounts need admin approval before you
-              can list inventory or take on projects.
+              {role === Role.VENDOR
+                ? 'Next you will add shop details. Admin approval is required before you can list inventory.'
+                : 'Ustaad accounts need admin approval before you can take on projects.'}
             </Text>
           ) : null}
 
