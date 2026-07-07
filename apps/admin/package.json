@@ -11,11 +11,17 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@golden-abode/types": "workspace:*",
+    "@tanstack/react-query": "^5.101.0",
+    "axios": "^1.18.0",
+    "lodash": "^4.17.21",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "@golden-abode/types": "workspace:*"
+    "react-router-dom": "^6.28.0",
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@types/lodash": "^4.17.13",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",

@@ -1,5 +1,6 @@
 import { Role } from '@golden-abode/types';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { router } from 'expo-router';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CategoryGrid } from '../../src/components/customer/CategoryGrid';
@@ -7,6 +8,7 @@ import { HorizontalCardList } from '../../src/components/customer/HorizontalCard
 import { ProjectPill } from '../../src/components/customer/ProjectPill';
 import { SearchBar } from '../../src/components/customer/SearchBar';
 import { Badge, Card, Text } from '../../src/components/ui';
+import { ROUTES } from '../../src/constants';
 import { useAuth } from '../../src/hooks/auth';
 import { Colors, Radius, Spacing } from '../../src/theme';
 
@@ -43,6 +45,10 @@ export default function HomeTabScreen() {
 }
 
 function CustomerHome({ firstName }: { firstName: string }) {
+  const handleBrowsePress = () => router.push(ROUTES.tabs.browse);
+  const handleProjectPress = () => router.push(ROUTES.screens.myProjects);
+  const handleProductPress = () => router.push(ROUTES.screens.productDetail);
+
   return (
     <View style={styles.root}>
       <View style={styles.header}>
@@ -50,9 +56,9 @@ function CustomerHome({ firstName }: { firstName: string }) {
           <Text variant="caption" color="rgba(255,255,255,0.65)" style={styles.greeting}>
             {getGreeting()}, {firstName}
           </Text>
-          <ProjectPill label="Sharma Residence, Vaishali Nagar" />
+          <ProjectPill label="Sharma Residence, Vaishali Nagar" onPress={handleProjectPress} />
           <View style={styles.searchWrap}>
-            <SearchBar />
+            <SearchBar onPress={handleBrowsePress} />
           </View>
         </SafeAreaView>
       </View>
@@ -65,19 +71,23 @@ function CustomerHome({ firstName }: { firstName: string }) {
         <Text variant="h3" style={styles.sectionTitle}>
           Categories
         </Text>
-        <CategoryGrid />
+        <CategoryGrid onCategoryPress={handleBrowsePress} />
 
-        <SectionHeader title="Verified Ustaads nearby" actionLabel="See all" />
-        <HorizontalCardList items={USTAADS} />
+        <SectionHeader title="Verified Ustaads nearby" actionLabel="See all" onActionPress={handleBrowsePress} />
+        <HorizontalCardList items={USTAADS} onItemPress={() => handleProductPress()} />
 
-        <SectionHeader title="Top vendors, Jaipur East" />
-        <HorizontalCardList items={VENDORS} />
+        <SectionHeader title="Top vendors, Jaipur East" onActionPress={handleBrowsePress} />
+        <HorizontalCardList items={VENDORS} onItemPress={() => handleProductPress()} />
       </ScrollView>
     </View>
   );
 }
 
 function VendorHome() {
+  const handleOrdersPress = () => router.push(ROUTES.tabs.orders);
+  const handleOrderPress = (orderId: string) =>
+    router.push({ pathname: ROUTES.screens.orderDetail, params: { id: orderId } });
+
   return (
     <View style={styles.root}>
       <View style={styles.header}>
@@ -100,35 +110,41 @@ function VendorHome() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.statsRow}>
-          <Card style={styles.statCard}>
-            <Text variant="numericSm">12</Text>
-            <Text variant="caption">Active products</Text>
-          </Card>
-          <Card style={styles.statCard}>
-            <Text variant="numericSm">2</Text>
-            <Text variant="caption">Pending orders</Text>
-          </Card>
+          <Pressable style={styles.statPressable} onPress={() => router.push(ROUTES.tabs.products)}>
+            <Card style={styles.statCard}>
+              <Text variant="numericSm">12</Text>
+              <Text variant="caption">Active products</Text>
+            </Card>
+          </Pressable>
+          <Pressable style={styles.statPressable} onPress={handleOrdersPress}>
+            <Card style={styles.statCard}>
+              <Text variant="numericSm">2</Text>
+              <Text variant="caption">Pending orders</Text>
+            </Card>
+          </Pressable>
         </View>
 
-        <SectionHeader title="Pending orders" actionLabel="See all" />
+        <SectionHeader title="Pending orders" actionLabel="See all" onActionPress={handleOrdersPress} />
         <View style={styles.orderList}>
           {PENDING_ORDERS.map((order) => (
-            <Card key={order.id}>
-              <View style={styles.orderTop}>
-                <View>
-                  <Text variant="bodyMedium" style={styles.orderId}>
-                    #{order.id}
-                  </Text>
-                  <Text variant="caption">
-                    {order.customer} · {order.items}
-                  </Text>
+            <Pressable key={order.id} onPress={() => handleOrderPress(order.id)}>
+              <Card>
+                <View style={styles.orderTop}>
+                  <View>
+                    <Text variant="bodyMedium" style={styles.orderId}>
+                      #{order.id}
+                    </Text>
+                    <Text variant="caption">
+                      {order.customer} · {order.items}
+                    </Text>
+                  </View>
+                  <Badge
+                    label={order.status}
+                    variant={order.status === 'Confirm' ? 'pending' : 'info'}
+                  />
                 </View>
-                <Badge
-                  label={order.status}
-                  variant={order.status === 'Confirm' ? 'pending' : 'info'}
-                />
-              </View>
-            </Card>
+              </Card>
+            </Pressable>
           ))}
         </View>
       </ScrollView>
@@ -136,14 +152,24 @@ function VendorHome() {
   );
 }
 
-function SectionHeader({ title, actionLabel }: { title: string; actionLabel?: string }) {
+function SectionHeader({
+  title,
+  actionLabel,
+  onActionPress,
+}: {
+  title: string;
+  actionLabel?: string;
+  onActionPress?: () => void;
+}) {
   return (
     <View style={styles.sectionHeader}>
       <Text variant="h3">{title}</Text>
       {actionLabel ? (
-        <Text variant="label" color={Colors.tangerine} style={styles.seeAll}>
-          {actionLabel}
-        </Text>
+        <Pressable onPress={onActionPress}>
+          <Text variant="label" color={Colors.tangerine} style={styles.seeAll}>
+            {actionLabel}
+          </Text>
+        </Pressable>
       ) : null}
     </View>
   );
@@ -198,8 +224,10 @@ const styles = StyleSheet.create({
     gap: Spacing.sm + 2,
     marginTop: Spacing.sm,
   },
-  statCard: {
+  statPressable: {
     flex: 1,
+  },
+  statCard: {
     gap: Spacing.xs,
   },
   orderList: {

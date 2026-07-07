@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useAuthHydration } from '../src/hooks/auth';
+import { RidgeSplash } from '../src/components/auth/RidgeSplash';
 import { useFonts } from '../src/hooks/useFonts';
 import { QueryProvider } from '../src/providers/QueryProvider';
 import { Colors } from '../src/theme';
@@ -24,7 +25,7 @@ function RootNavigator() {
   }, [isAppReady]);
 
   if (!isAppReady) {
-    return null;
+    return <RidgeSplash />;
   }
 
   return (

@@ -1,0 +1,36 @@
+export const tokens = {
+  colors: {
+    navy: '#0F2B52',
+    navyMid: '#173A66',
+    sky: '#2D6CB4',
+    tangerine: '#D9531E',
+    ember: '#B23E14',
+    cream: '#FAF5EC',
+    background: '#EFE8DC',
+    white: '#FFFFFF',
+    ink: '#221F1B',
+    inkSoft: '#6B6258',
+    line: '#E7DDD0',
+    subtle: '#B7AE9F',
+    sage: '#5B8C5E',
+    sageTint: '#E1ECE0',
+    brick: '#B23A2E',
+    brickTint: '#F3DEDB',
+    pendingTint: '#FEF3C7',
+    infoTint: '#DCEAF7',
+  },
+  radius: {
+    sm: '8px',
+    md: '12px',
+    lg: '16px',
+    pill: '999px',
+  },
+  shadow: {
+    card: '0 8px 24px rgba(15, 43, 82, 0.08)',
+    modal: '0 24px 48px rgba(15, 43, 82, 0.18)',
+  },
+  font: {
+    sans: "'Inter', system-ui, sans-serif",
+    display: "'Poppins', system-ui, sans-serif",
+  },
+} as const;
