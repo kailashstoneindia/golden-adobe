@@ -1,4 +1,5 @@
 import { Role } from './role.enum';
+import { VendorProfileDto } from './vendor.types';
 
 /**
  * Full user DTO returned by the API.
@@ -12,6 +13,7 @@ export interface UserDto {
   deviceToken: string | null;
   isActive: boolean;
   isApproved: boolean;
+  vendorProfile?: VendorProfileDto;
   createdAt: string;
   updatedAt: string;
 }

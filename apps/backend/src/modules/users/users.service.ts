@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { User } from './models/user.model';
 import { Role } from '../../common/enums/role.enum';
+import { Vendor } from '../vendors/models/vendor.model';
+
 
 @Injectable()
 export class UsersService {
@@ -14,8 +16,9 @@ export class UsersService {
     return this.userModel.findOne({ where: { phone } });
   }
 
-  async findById(id: string): Promise<User | null> {
-    return this.userModel.findByPk(id);
+  async findById(id: string, role?: Role): Promise<User | null> {
+    const include = role === Role.VENDOR ? [Vendor] : [];
+    return this.userModel.findByPk(id, { include });
   }
 
   async create(data: { name: string; phone: string; role: Role }): Promise<User> {

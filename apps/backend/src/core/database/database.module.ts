@@ -3,6 +3,7 @@ import { SequelizeModule } from '@nestjs/sequelize';
 import { ConfigService } from '@nestjs/config';
 import { User } from '../../modules/users/models/user.model';
 import { RefreshToken } from '../../modules/users/models/refresh-token.model';
+import { Vendor } from '../../modules/vendors/models/vendor.model';
 
 @Module({
   imports: [
@@ -17,7 +18,7 @@ import { RefreshToken } from '../../modules/users/models/refresh-token.model';
           username: dbConfig.user,
           password: dbConfig.password,
           database: dbConfig.name,
-          models: [User, RefreshToken],
+          models: [User, RefreshToken, Vendor],
           autoLoadModels: true,
           synchronize: false, // Managed by migrations
           logging: false,

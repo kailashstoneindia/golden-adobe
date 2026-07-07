@@ -268,8 +268,8 @@ export class AuthService {
 
   // ─── Get Profile ──────────────────────────────────────────────────────
 
-  async getProfile(userId: string) {
-    const user = await this.usersService.findById(userId);
+  async getProfile(userId: string, role?: Role) {
+    const user = await this.usersService.findById(userId, role);
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
@@ -319,6 +319,19 @@ export class AuthService {
       deviceToken: plain.deviceToken ?? plain.device_token ?? null,
       isActive: plain.isActive ?? plain.is_active ?? true,
       isApproved: plain.isApproved ?? plain.is_approved ?? false,
+      vendorProfile: plain.vendorProfile ? {
+        id: plain.vendorProfile.id,
+        userId: plain.vendorProfile.userId ?? plain.vendorProfile.user_id,
+        shopName: plain.vendorProfile.shopName ?? plain.vendorProfile.shop_name,
+        address: plain.vendorProfile.address,
+        latitude: plain.vendorProfile.latitude,
+        longitude: plain.vendorProfile.longitude,
+        upiId: plain.vendorProfile.upiId ?? plain.vendorProfile.upi_id,
+        bankDetails: plain.vendorProfile.bankDetails ?? plain.vendorProfile.bank_details,
+        gstin: plain.vendorProfile.gstin,
+        createdAt: plain.vendorProfile.createdAt ?? plain.vendorProfile.created_at,
+        updatedAt: plain.vendorProfile.updatedAt ?? plain.vendorProfile.updated_at,
+      } : undefined,
       createdAt: plain.createdAt ?? plain.created_at,
       updatedAt: plain.updatedAt ?? plain.updated_at,
     };

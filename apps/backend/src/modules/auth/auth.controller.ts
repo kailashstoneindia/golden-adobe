@@ -69,6 +69,6 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'User profile returned' })
   @ApiResponse({ status: 401, description: 'Authentication required' })
   getMe(@CurrentUser() user: JwtPayload) {
-    return this.authService.getProfile(user.sub);
+    return this.authService.getProfile(user.sub, user.role);
   }
 }
