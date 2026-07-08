@@ -1,0 +1,24 @@
+# Railway config for the admin frontend service.
+#
+# In Railway admin service settings:
+# - Root Directory: empty (repo root)
+# - Config file path: apps/admin/railway.toml
+# - Dockerfile path: apps/admin/Dockerfile (or leave to this file)
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "apps/admin/Dockerfile"
+watchPatterns = [
+  "apps/admin/**",
+  "packages/types/**",
+  "package.json",
+  "pnpm-lock.yaml",
+  "pnpm-workspace.yaml",
+  "turbo.json",
+  "tsconfig.base.json",
+]
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
