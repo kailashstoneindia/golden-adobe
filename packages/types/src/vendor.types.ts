@@ -1,3 +1,23 @@
+export interface VendorAccountDetailsDto {
+  id: string;
+  vendorId: string;
+  accountHolderName: string;
+  bankName: string;
+  ifscCode: string;
+  branchName: string;
+  accountNumber: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VendorAccountDetailsInputDto {
+  accountHolderName: string;
+  bankName: string;
+  ifscCode: string;
+  branchName: string;
+  accountNumber: string;
+}
+
 export interface VendorProfileDto {
   id: string;
   userId: string;
@@ -7,6 +27,7 @@ export interface VendorProfileDto {
   longitude: number;
   upiId: string | null;
   bankDetails: string | null;
+  accountDetails: VendorAccountDetailsDto | null;
   gstin: string | null;
   createdAt: string;
   updatedAt: string;
@@ -19,5 +40,6 @@ export interface VendorOnboardDto {
   longitude: number;
   upiId?: string;
   bankDetails?: string;
+  accountDetails: VendorAccountDetailsInputDto;
   gstin?: string;
 }

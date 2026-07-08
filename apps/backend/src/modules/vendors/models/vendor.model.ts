@@ -1,5 +1,6 @@
-import { Table, Column, Model, DataType, ForeignKey, BelongsTo, Index } from 'sequelize-typescript';
+import { Table, Column, Model, DataType, ForeignKey, BelongsTo, HasOne, Index } from 'sequelize-typescript';
 import { User } from '../../users/models/user.model';
+import { VendorAccountDetails } from './vendor-account-details.model';
 
 @Table({
   tableName: 'vendors',
@@ -71,4 +72,7 @@ export class Vendor extends Model<Vendor> {
 
   @BelongsTo(() => User)
   declare user: User;
+
+  @HasOne(() => VendorAccountDetails)
+  declare accountDetails?: VendorAccountDetails;
 }

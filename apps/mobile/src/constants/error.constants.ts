@@ -8,5 +8,10 @@ export const ERROR_MESSAGES = {
     'GPS is unavailable in this build. Enter latitude and longitude manually, or rebuild the app after prebuild.',
   invalidCoordinates: 'Enter valid latitude (-90 to 90) and longitude (-180 to 180).',
   gstinLength: 'GSTIN must be exactly 15 characters.',
+  accountHolderNameRequired: 'Enter the account holder name.',
+  bankNameRequired: 'Select a bank name.',
+  ifscCodeInvalid: 'Enter a valid 11-character IFSC code.',
+  branchNameRequired: 'Enter the branch name.',
+  accountNumberInvalid: 'Enter a valid account number.',
   vendorOnboardFailed: 'Could not save your shop profile. Try again.',
 } as const;
