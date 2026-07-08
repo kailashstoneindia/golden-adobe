@@ -1,11 +1,19 @@
 import { useEffect } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { router } from 'expo-router';
 import { Role } from '@golden-abode/types';
 
 import { Screen } from '../src/components/layout/Screen';
 import { Button, Card, Text, TextInput } from '../src/components/ui';
 import { ROUTES } from '../src/constants';
+import indianBanks from '../src/data/indian-banks.json';
 import { useAuth } from '../src/hooks/auth';
 import { useShopLocation, useVendorOnboardForm } from '../src/hooks/vendor';
 import { Colors, Spacing } from '../src/theme';
@@ -129,9 +137,6 @@ export default function VendorOnboardScreen() {
           <Text variant="h3" style={styles.sectionTitle}>
             Payout details
           </Text>
-          <Text variant="caption" color={Colors.inkSoft} style={styles.optionalHint}>
-            Optional now — you can update these later.
-          </Text>
           <TextInput
             label="UPI ID"
             placeholder="yourname@okicici"
@@ -140,11 +145,58 @@ export default function VendorOnboardScreen() {
             autoCapitalize="none"
           />
           <TextInput
-            label="Bank details"
-            placeholder="HDFC Bank, Acc: 1234567890, IFSC: HDFC0000123"
-            value={vendorForm.formValues.bankDetails}
-            onChangeText={(value) => vendorForm.updateField('bankDetails', value)}
-            multiline
+            label="Account holder name"
+            placeholder="Tarun Jawla"
+            value={vendorForm.formValues.accountDetails.accountHolderName}
+            onChangeText={(value) => vendorForm.updateAccountDetailsField('accountHolderName', value)}
+            autoCapitalize="words"
+          />
+          <View style={styles.dropdownContainer}>
+            <Text variant="caption" color={Colors.inkSoft}>
+              Bank name
+            </Text>
+            <View style={styles.bankOptionsWrap}>
+              {indianBanks.map((bankName) => {
+                const isSelectedBank = vendorForm.formValues.accountDetails.bankName === bankName;
+                return (
+                  <Pressable
+                    key={bankName}
+                    onPress={() => vendorForm.updateAccountDetailsField('bankName', bankName)}
+                    style={[styles.bankOption, isSelectedBank ? styles.bankOptionSelected : null]}
+                  >
+                    <Text
+                      variant="caption"
+                      color={isSelectedBank ? Colors.navy : Colors.inkSoft}
+                      style={styles.bankOptionText}
+                    >
+                      {bankName}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+          <TextInput
+            label="Account number"
+            placeholder="123456789012"
+            value={vendorForm.formValues.accountDetails.accountNumber}
+            onChangeText={(value) => vendorForm.updateAccountDetailsField('accountNumber', value)}
+            keyboardType="number-pad"
+          />
+          <TextInput
+            label="IFSC code"
+            placeholder="HDFC0000123"
+            value={vendorForm.formValues.accountDetails.ifscCode}
+            onChangeText={(value) => vendorForm.updateAccountDetailsField('ifscCode', value.toUpperCase())}
+            autoCapitalize="characters"
+            maxLength={11}
+          />
+          <TextInput
+            label="Branch name"
+            placeholder="Vaishali Nagar"
+            value={vendorForm.formValues.accountDetails.branchName}
+            onChangeText={(value) => vendorForm.updateAccountDetailsField('branchName', value)}
+            autoCapitalize="words"
           />
           <TextInput
             label="GSTIN"
@@ -193,11 +245,31 @@ const styles = StyleSheet.create({
   sectionTitle: {
     marginTop: Spacing.sm,
   },
-  optionalHint: {
-    marginTop: -Spacing.xs,
-  },
   locationCard: {
     gap: Spacing.sm,
+  },
+  dropdownContainer: {
+    gap: Spacing.xs,
+  },
+  bankOptionsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.xs,
+  },
+  bankOption: {
+    borderWidth: 1,
+    borderColor: Colors.line,
+    borderRadius: 999,
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.sm,
+    backgroundColor: Colors.white,
+  },
+  bankOptionSelected: {
+    borderColor: Colors.navy,
+    backgroundColor: Colors.skyTint,
+  },
+  bankOptionText: {
+    textAlign: 'center',
   },
   formError: {
     textAlign: 'center',

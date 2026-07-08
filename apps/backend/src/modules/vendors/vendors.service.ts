@@ -2,12 +2,15 @@ import { Injectable, ConflictException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { Vendor } from './models/vendor.model';
 import { OnboardVendorDto } from './dto/onboard-vendor.dto';
+import { VendorAccountDetails } from './models/vendor-account-details.model';
 
 @Injectable()
 export class VendorsService {
   constructor(
     @InjectModel(Vendor)
     private readonly vendorModel: typeof Vendor,
+    @InjectModel(VendorAccountDetails)
+    private readonly vendorAccountDetailsModel: typeof VendorAccountDetails,
   ) {}
 
   async createProfile(userId: string, dto: OnboardVendorDto): Promise<Vendor> {
@@ -17,9 +20,34 @@ export class VendorsService {
       throw new ConflictException('Vendor profile already exists for this user');
     }
 
-    return this.vendorModel.create({
+    const vendorProfile = await this.vendorModel.create({
       userId,
-      ...dto,
+      shopName: dto.shopName,
+      address: dto.address,
+      latitude: dto.latitude,
+      longitude: dto.longitude,
+      upiId: dto.upiId,
+      bankDetails: dto.bankDetails,
+      gstin: dto.gstin,
     } as any);
+
+    await this.vendorAccountDetailsModel.create({
+      vendorId: vendorProfile.id,
+      accountHolderName: dto.accountDetails.accountHolderName,
+      bankName: dto.accountDetails.bankName,
+      ifscCode: dto.accountDetails.ifscCode,
+      branchName: dto.accountDetails.branchName,
+      accountNumber: dto.accountDetails.accountNumber,
+    } as any);
+
+    const vendorProfileWithAccountDetails = await this.vendorModel.findByPk(vendorProfile.id, {
+      include: [VendorAccountDetails],
+    });
+
+    if (!vendorProfileWithAccountDetails) {
+      throw new ConflictException('Vendor profile could not be loaded after creation');
+    }
+
+    return vendorProfileWithAccountDetails;
   }
 }
