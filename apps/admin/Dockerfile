@@ -40,6 +40,12 @@ server {
   root /usr/share/nginx/html;
   index index.html;
 
+  location = /health {
+    access_log off;
+    add_header Content-Type text/plain;
+    return 200 'ok';
+  }
+
   location / {
     try_files $uri $uri/ /index.html;
   }
