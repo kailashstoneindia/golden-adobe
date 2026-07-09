@@ -1,4 +1,5 @@
 import type { UserDto } from '@golden-abode/types';
+import { Role } from '@golden-abode/types';
 
 import styles from '@/styles/shared.module.css';
 import { formatRoleLabel } from '@/utils/role';
@@ -36,6 +37,12 @@ export function UserDetailModal({
           <DetailRow label="Phone" value={formatPhoneDisplay(user.phone)} />
           <DetailRow label="Status" value={user.isApproved ? 'Approved' : 'Pending approval'} />
           <DetailRow label="Active" value={user.isActive ? 'Yes' : 'No'} />
+          <DetailRow label="Onboarding completed" value={user.onboardingCompleted ? 'Yes' : 'No'} />
+          <DetailRow label="Onboarding stage" value={formatOnboardingStage(user)} />
+          <DetailRow
+            label="Onboarding completed at"
+            value={user.onboardingCompletedAt ? formatDateTime(user.onboardingCompletedAt) : '-'}
+          />
           <DetailRow label="Joined" value={formatDateTime(user.createdAt)} />
         </div>
 
@@ -81,4 +88,29 @@ function DetailRow({ label, value }: DetailRowProps) {
       <span>{value}</span>
     </div>
   );
+}
+
+function formatOnboardingStage(user: UserDto): string {
+  if (user.role !== Role.VENDOR) {
+    return '-';
+  }
+
+  if (!user.onboardingStage) {
+    return '-';
+  }
+
+  if (user.onboardingStage === 'BASIC_DETAILS') {
+    return 'Basic details';
+  }
+  if (user.onboardingStage === 'SHOP_DETAILS') {
+    return 'Shop details';
+  }
+  if (user.onboardingStage === 'BANK_DETAILS') {
+    return 'Bank details';
+  }
+  if (user.onboardingStage === 'COMPLETED') {
+    return 'Completed';
+  }
+
+  return user.onboardingStage;
 }

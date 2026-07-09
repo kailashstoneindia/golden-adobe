@@ -1,5 +1,8 @@
 import { useMutation } from '@tanstack/react-query';
-import type { VendorOnboardDto } from '@golden-abode/types';
+import {
+  type VendorOnboardDto,
+  type VendorOnboardingStage,
+} from '@golden-abode/types';
 import { router } from 'expo-router';
 
 import { ApiError } from '../../api';
@@ -19,6 +22,13 @@ export function useVendorOnboard() {
       queryClient.setQueryData(QUERY_KEYS.auth.me(), user);
       router.replace(ROUTES.pendingApproval);
     },
+  });
+}
+
+export function useVendorOnboardingProgress() {
+  return useMutation({
+    mutationFn: (onboardingStage: VendorOnboardingStage) =>
+      vendorService.updateOnboardingProgress(onboardingStage),
   });
 }
 

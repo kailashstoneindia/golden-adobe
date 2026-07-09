@@ -3,6 +3,8 @@ import { InjectModel } from '@nestjs/sequelize';
 import { Vendor } from './models/vendor.model';
 import { OnboardVendorDto } from './dto/onboard-vendor.dto';
 import { VendorAccountDetails } from './models/vendor-account-details.model';
+import { UsersService } from '../users/users.service';
+import { VENDOR_ONBOARDING_STAGES, VendorOnboardingStage } from '@golden-abode/types';
 
 @Injectable()
 export class VendorsService {
@@ -11,6 +13,7 @@ export class VendorsService {
     private readonly vendorModel: typeof Vendor,
     @InjectModel(VendorAccountDetails)
     private readonly vendorAccountDetailsModel: typeof VendorAccountDetails,
+    private readonly usersService: UsersService,
   ) {}
 
   async createProfile(userId: string, dto: OnboardVendorDto): Promise<Vendor> {
@@ -48,6 +51,19 @@ export class VendorsService {
       throw new ConflictException('Vendor profile could not be loaded after creation');
     }
 
+    await this.usersService.markVendorOnboardingCompleted(userId);
+
     return vendorProfileWithAccountDetails;
+  }
+
+  async updateOnboardingProgress(
+    userId: string,
+    onboardingStage: VendorOnboardingStage,
+  ): Promise<void> {
+    if (onboardingStage === VENDOR_ONBOARDING_STAGES.completed) {
+      return;
+    }
+
+    await this.usersService.updateVendorOnboardingProgress(userId, onboardingStage);
   }
 }

@@ -1,6 +1,16 @@
 import { Role } from './role.enum';
 import { VendorProfileDto } from './vendor.types';
 
+export const VENDOR_ONBOARDING_STAGES = {
+  basicDetails: 'BASIC_DETAILS',
+  shopDetails: 'SHOP_DETAILS',
+  bankDetails: 'BANK_DETAILS',
+  completed: 'COMPLETED',
+} as const;
+
+export type VendorOnboardingStage =
+  typeof VENDOR_ONBOARDING_STAGES[keyof typeof VENDOR_ONBOARDING_STAGES];
+
 /**
  * Full user DTO returned by the API.
  * Matches the shape of the `users` table row exposed to clients.
@@ -13,6 +23,9 @@ export interface UserDto {
   deviceToken: string | null;
   isActive: boolean;
   isApproved: boolean;
+  onboardingCompleted: boolean;
+  onboardingCompletedAt: string | null;
+  onboardingStage: VendorOnboardingStage | null;
   vendorProfile?: VendorProfileDto;
   createdAt: string;
   updatedAt: string;

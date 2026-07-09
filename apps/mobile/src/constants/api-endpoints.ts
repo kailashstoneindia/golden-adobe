@@ -14,6 +14,7 @@ export const API_ENDPOINTS = {
   },
   vendors: {
     onboard: '/vendors/onboard',
+    onboardingProgress: '/vendors/onboarding-progress',
   },
 } as const;
 
