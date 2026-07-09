@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { User } from './models/user.model';
-import { Role } from '../../common/enums/role.enum';
+import {
+  Role,
+  VENDOR_ONBOARDING_STAGES,
+  VendorOnboardingStage,
+} from '@golden-abode/types';
 import { Vendor } from '../vendors/models/vendor.model';
 import { VendorAccountDetails } from '../vendors/models/vendor-account-details.model';
 
@@ -23,10 +27,13 @@ export class UsersService {
   }
 
   async create(data: { name: string; phone: string; role: Role }): Promise<User> {
+    const isVendor = data.role === Role.VENDOR;
     const created = await this.userModel.create({
       name: data.name,
       phone: data.phone,
       role: data.role,
+      onboardingCompleted: !isVendor,
+      onboardingStage: isVendor ? VENDOR_ONBOARDING_STAGES.basicDetails : null,
     } as any);
     // Re-fetch to guarantee all fields are populated (underscored mapping)
     const user = await this.userModel.findByPk(created.id);
@@ -39,5 +46,28 @@ export class UsersService {
 
   async approveUser(userId: string): Promise<void> {
     await this.userModel.update({ isApproved: true }, { where: { id: userId } });
+  }
+
+  async updateVendorOnboardingProgress(
+    userId: string,
+    onboardingStage: VendorOnboardingStage,
+  ): Promise<void> {
+    await this.userModel.update(
+      {
+        onboardingStage,
+      },
+      { where: { id: userId } },
+    );
+  }
+
+  async markVendorOnboardingCompleted(userId: string): Promise<void> {
+    await this.userModel.update(
+      {
+        onboardingCompleted: true,
+        onboardingCompletedAt: new Date(),
+        onboardingStage: VENDOR_ONBOARDING_STAGES.completed,
+      },
+      { where: { id: userId } },
+    );
   }
 }

@@ -43,3 +43,7 @@ export interface VendorOnboardDto {
   accountDetails: VendorAccountDetailsInputDto;
   gstin?: string;
 }
+
+export interface UpdateVendorOnboardingProgressDto {
+  onboardingStage: import('./user.types').VendorOnboardingStage;
+}

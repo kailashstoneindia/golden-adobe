@@ -14,7 +14,15 @@ export function requiresAdminApproval(user: Pick<UserDto, 'role'>): boolean {
 }
 
 export function needsVendorOnboarding(user: UserDto): boolean {
-  return user.role === Role.VENDOR && !user.vendorProfile;
+  if (user.role !== Role.VENDOR) {
+    return false;
+  }
+
+  if (user.onboardingCompleted) {
+    return false;
+  }
+
+  return true;
 }
 
 export function isPendingApproval(user: UserApprovalFields): boolean {

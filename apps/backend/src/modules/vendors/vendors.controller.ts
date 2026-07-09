@@ -1,7 +1,8 @@
-import { Controller, Post, Body, UseGuards, Req, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Patch, Body, UseGuards, Req, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { VendorsService } from './vendors.service';
 import { OnboardVendorDto } from './dto/onboard-vendor.dto';
+import { UpdateVendorOnboardingProgressDto } from './dto/update-vendor-onboarding-progress.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -25,5 +26,21 @@ export class VendorsController {
     const userId = req.user.sub;
     const profile = await this.vendorsService.createProfile(userId, dto);
     return profile;
+  }
+
+  @Patch('onboarding-progress')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.VENDOR)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Persist vendor onboarding progress stage' })
+  @ApiResponse({ status: 200, description: 'Onboarding stage updated' })
+  async updateOnboardingProgress(
+    @Req() req: any,
+    @Body() dto: UpdateVendorOnboardingProgressDto,
+  ) {
+    const userId = req.user.sub;
+    await this.vendorsService.updateOnboardingProgress(userId, dto.onboardingStage);
+    return { success: true };
   }
 }

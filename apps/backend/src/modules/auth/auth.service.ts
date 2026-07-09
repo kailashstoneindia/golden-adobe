@@ -10,7 +10,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/sequelize';
 import * as crypto from 'crypto';
 
-import { Role, JwtPayload } from '@golden-abode/types';
+import { Role, JwtPayload, VENDOR_ONBOARDING_STAGES } from '@golden-abode/types';
 import { UsersService } from '../users/users.service';
 import { RedisService } from '../../core/redis/redis.service';
 import { RefreshToken } from '../users/models/refresh-token.model';
@@ -321,30 +321,57 @@ export class AuthService {
       deviceToken: plain.deviceToken ?? plain.device_token ?? null,
       isActive: plain.isActive ?? plain.is_active ?? true,
       isApproved: plain.isApproved ?? plain.is_approved ?? false,
-      vendorProfile: plain.vendorProfile ? {
-        id: plain.vendorProfile.id,
-        userId: plain.vendorProfile.userId ?? plain.vendorProfile.user_id,
-        shopName: plain.vendorProfile.shopName ?? plain.vendorProfile.shop_name,
-        address: plain.vendorProfile.address,
-        latitude: plain.vendorProfile.latitude,
-        longitude: plain.vendorProfile.longitude,
-        upiId: plain.vendorProfile.upiId ?? plain.vendorProfile.upi_id,
-        bankDetails: plain.vendorProfile.bankDetails ?? plain.vendorProfile.bank_details,
-        accountDetails: plain.vendorProfile.accountDetails ? {
-          id: plain.vendorProfile.accountDetails.id,
-          vendorId: plain.vendorProfile.accountDetails.vendorId ?? plain.vendorProfile.accountDetails.vendor_id,
-          accountHolderName: plain.vendorProfile.accountDetails.accountHolderName ?? plain.vendorProfile.accountDetails.account_holder_name,
-          bankName: plain.vendorProfile.accountDetails.bankName ?? plain.vendorProfile.accountDetails.bank_name,
-          ifscCode: plain.vendorProfile.accountDetails.ifscCode ?? plain.vendorProfile.accountDetails.ifsc_code,
-          branchName: plain.vendorProfile.accountDetails.branchName ?? plain.vendorProfile.accountDetails.branch_name,
-          accountNumber: plain.vendorProfile.accountDetails.accountNumber ?? plain.vendorProfile.accountDetails.account_number,
-          createdAt: plain.vendorProfile.accountDetails.createdAt ?? plain.vendorProfile.accountDetails.created_at,
-          updatedAt: plain.vendorProfile.accountDetails.updatedAt ?? plain.vendorProfile.accountDetails.updated_at,
-        } : null,
-        gstin: plain.vendorProfile.gstin,
-        createdAt: plain.vendorProfile.createdAt ?? plain.vendorProfile.created_at,
-        updatedAt: plain.vendorProfile.updatedAt ?? plain.vendorProfile.updated_at,
-      } : undefined,
+      onboardingCompleted:
+        plain.onboardingCompleted ?? plain.onboarding_completed ?? Boolean(plain.vendorProfile),
+      onboardingCompletedAt: plain.onboardingCompletedAt ?? plain.onboarding_completed_at ?? null,
+      onboardingStage:
+        plain.onboardingStage ??
+        plain.onboarding_stage ??
+        (plain.vendorProfile ? VENDOR_ONBOARDING_STAGES.completed : null),
+      vendorProfile: plain.vendorProfile
+        ? {
+            id: plain.vendorProfile.id,
+            userId: plain.vendorProfile.userId ?? plain.vendorProfile.user_id,
+            shopName: plain.vendorProfile.shopName ?? plain.vendorProfile.shop_name,
+            address: plain.vendorProfile.address,
+            latitude: plain.vendorProfile.latitude,
+            longitude: plain.vendorProfile.longitude,
+            upiId: plain.vendorProfile.upiId ?? plain.vendorProfile.upi_id,
+            bankDetails: plain.vendorProfile.bankDetails ?? plain.vendorProfile.bank_details,
+            accountDetails: plain.vendorProfile.accountDetails
+              ? {
+                  id: plain.vendorProfile.accountDetails.id,
+                  vendorId:
+                    plain.vendorProfile.accountDetails.vendorId ??
+                    plain.vendorProfile.accountDetails.vendor_id,
+                  accountHolderName:
+                    plain.vendorProfile.accountDetails.accountHolderName ??
+                    plain.vendorProfile.accountDetails.account_holder_name,
+                  bankName:
+                    plain.vendorProfile.accountDetails.bankName ??
+                    plain.vendorProfile.accountDetails.bank_name,
+                  ifscCode:
+                    plain.vendorProfile.accountDetails.ifscCode ??
+                    plain.vendorProfile.accountDetails.ifsc_code,
+                  branchName:
+                    plain.vendorProfile.accountDetails.branchName ??
+                    plain.vendorProfile.accountDetails.branch_name,
+                  accountNumber:
+                    plain.vendorProfile.accountDetails.accountNumber ??
+                    plain.vendorProfile.accountDetails.account_number,
+                  createdAt:
+                    plain.vendorProfile.accountDetails.createdAt ??
+                    plain.vendorProfile.accountDetails.created_at,
+                  updatedAt:
+                    plain.vendorProfile.accountDetails.updatedAt ??
+                    plain.vendorProfile.accountDetails.updated_at,
+                }
+              : null,
+            gstin: plain.vendorProfile.gstin,
+            createdAt: plain.vendorProfile.createdAt ?? plain.vendorProfile.created_at,
+            updatedAt: plain.vendorProfile.updatedAt ?? plain.vendorProfile.updated_at,
+          }
+        : undefined,
       createdAt: plain.createdAt ?? plain.created_at,
       updatedAt: plain.updatedAt ?? plain.updated_at,
     };

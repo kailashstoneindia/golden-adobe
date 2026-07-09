@@ -5,7 +5,9 @@ export const ERROR_MESSAGES = {
   locationRequired: 'Capture your shop location before continuing.',
   locationPermissionDenied: 'Location permission is required to pin your shop.',
   locationNativeModuleMissing:
-    'GPS is unavailable in this build. Enter latitude and longitude manually, or rebuild the app after prebuild.',
+    'GPS is unavailable in this build. Rebuild the app after prebuild.',
+  locationSearchRequired: 'Enter your shop area or address to search on map.',
+  locationSearchFailed: 'Location not found. Try a more specific address.',
   invalidCoordinates: 'Enter valid latitude (-90 to 90) and longitude (-180 to 180).',
   gstinLength: 'GSTIN must be exactly 15 characters.',
   accountHolderNameRequired: 'Enter the account holder name.',

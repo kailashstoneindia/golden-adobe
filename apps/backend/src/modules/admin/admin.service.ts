@@ -1,7 +1,13 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { Op, WhereOptions } from 'sequelize';
-import { AdminDashboardStats, PaginatedUsersResponse, Role, UserDto } from '@golden-abode/types';
+import {
+  AdminDashboardStats,
+  PaginatedUsersResponse,
+  Role,
+  UserDto,
+  VENDOR_ONBOARDING_STAGES,
+} from '@golden-abode/types';
 
 import { User } from '../users/models/user.model';
 import { ListUsersQueryDto } from './dto/list-users-query.dto';
@@ -123,6 +129,11 @@ export class AdminService {
       deviceToken: user.deviceToken,
       isActive: user.isActive,
       isApproved: user.isApproved,
+      onboardingCompleted: user.onboardingCompleted ?? Boolean(user.vendorProfile),
+      onboardingCompletedAt: this.formatTimestamp(user.get('onboardingCompletedAt')) || null,
+      onboardingStage:
+        (user.onboardingStage as UserDto['onboardingStage']) ??
+        (user.vendorProfile ? VENDOR_ONBOARDING_STAGES.completed : null),
       createdAt: this.formatTimestamp(user.get('createdAt')),
       updatedAt: this.formatTimestamp(user.get('updatedAt')),
     };

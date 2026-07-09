@@ -1,5 +1,5 @@
 import { Table, Column, Model, DataType, HasMany, HasOne } from 'sequelize-typescript';
-import { Role } from '../../../common/enums/role.enum';
+import { Role, VENDOR_ONBOARDING_STAGES, VendorOnboardingStage } from '@golden-abode/types';
 import { RefreshToken } from './refresh-token.model';
 import { Vendor } from '../../vendors/models/vendor.model';
 
@@ -55,6 +55,27 @@ export class User extends Model<User> {
     field: 'is_approved',
   })
   declare isApproved: boolean;
+
+  @Column({
+    type: DataType.BOOLEAN,
+    defaultValue: false,
+    field: 'onboarding_completed',
+  })
+  declare onboardingCompleted: boolean;
+
+  @Column({
+    type: DataType.DATE,
+    allowNull: true,
+    field: 'onboarding_completed_at',
+  })
+  declare onboardingCompletedAt: Date | null;
+
+  @Column({
+    type: DataType.ENUM(...Object.values(VENDOR_ONBOARDING_STAGES)),
+    allowNull: true,
+    field: 'onboarding_stage',
+  })
+  declare onboardingStage: VendorOnboardingStage | null;
 
   @HasMany(() => RefreshToken)
   declare refreshTokens: RefreshToken[];

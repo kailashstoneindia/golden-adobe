@@ -34,3 +34,23 @@ export async function captureCurrentShopLocation(): Promise<ShopCoordinates> {
     longitude: position.coords.longitude,
   };
 }
+
+export async function searchShopLocationByAddress(address: string): Promise<ShopCoordinates> {
+  const Location = await loadLocationModule();
+  const permission = await Location.requestForegroundPermissionsAsync();
+
+  if (!permission.granted) {
+    throw new ShopLocationNativeError('LOCATION_PERMISSION_DENIED');
+  }
+
+  const locations = await Location.geocodeAsync(address.trim());
+  const firstLocation = locations[0];
+  if (!firstLocation) {
+    throw new ShopLocationNativeError('LOCATION_SEARCH_FAILED');
+  }
+
+  return {
+    latitude: firstLocation.latitude,
+    longitude: firstLocation.longitude,
+  };
+}

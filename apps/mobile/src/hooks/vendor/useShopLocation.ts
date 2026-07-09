@@ -3,50 +3,58 @@ import { useState } from 'react';
 import { ERROR_MESSAGES } from '../../constants';
 import {
   captureCurrentShopLocation,
+  searchShopLocationByAddress,
   ShopLocationNativeError,
 } from '../../services/location';
 import type { ShopCoordinates } from '../../types';
-import { parseManualCoordinates } from '../../utils/coordinates';
 
 type ShopLocationState = {
   coordinates: ShopCoordinates | null;
-  manualLatitude: string;
-  manualLongitude: string;
+  searchAddress: string;
   locationError: string | null;
   isLoadingLocation: boolean;
+  isSearchingLocation: boolean;
   captureLocation: () => Promise<void>;
-  updateManualLatitude: (value: string) => void;
-  updateManualLongitude: (value: string) => void;
-  applyManualCoordinates: () => boolean;
+  searchLocation: () => Promise<void>;
+  updateSearchAddress: (value: string) => void;
+  setCoordinates: (value: ShopCoordinates) => void;
 };
 
 export function useShopLocation(): ShopLocationState {
   const [coordinates, setCoordinates] = useState<ShopCoordinates | null>(null);
-  const [manualLatitude, setManualLatitude] = useState('');
-  const [manualLongitude, setManualLongitude] = useState('');
+  const [searchAddress, setSearchAddress] = useState('');
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [isSearchingLocation, setIsSearchingLocation] = useState(false);
 
-  const updateManualLatitude = (value: string): void => {
-    setManualLatitude(value);
+  const updateSearchAddress = (value: string): void => {
+    setSearchAddress(value);
     setLocationError(null);
   };
 
-  const updateManualLongitude = (value: string): void => {
-    setManualLongitude(value);
+  const setCoordinatesForMap = (value: ShopCoordinates): void => {
+    setCoordinates(value);
     setLocationError(null);
   };
 
-  const applyManualCoordinates = (): boolean => {
-    const parsed = parseManualCoordinates(manualLatitude, manualLongitude);
-    if (!parsed) {
-      setLocationError(ERROR_MESSAGES.invalidCoordinates);
-      return false;
+  const searchLocation = async (): Promise<void> => {
+    const trimmedAddress = searchAddress.trim();
+    if (!trimmedAddress) {
+      setLocationError(ERROR_MESSAGES.locationSearchRequired);
+      return;
     }
 
-    setCoordinates(parsed);
+    setIsSearchingLocation(true);
     setLocationError(null);
-    return true;
+
+    try {
+      const searchedCoordinates = await searchShopLocationByAddress(trimmedAddress);
+      setCoordinates(searchedCoordinates);
+    } catch (error) {
+      setLocationError(resolveLocationErrorMessage(error));
+    } finally {
+      setIsSearchingLocation(false);
+    }
   };
 
   const captureLocation = async (): Promise<void> => {
@@ -56,8 +64,6 @@ export function useShopLocation(): ShopLocationState {
     try {
       const captured = await captureCurrentShopLocation();
       setCoordinates(captured);
-      setManualLatitude(String(captured.latitude));
-      setManualLongitude(String(captured.longitude));
     } catch (error) {
       setLocationError(resolveLocationErrorMessage(error));
     } finally {
@@ -67,14 +73,14 @@ export function useShopLocation(): ShopLocationState {
 
   return {
     coordinates,
-    manualLatitude,
-    manualLongitude,
+    searchAddress,
     locationError,
     isLoadingLocation,
+    isSearchingLocation,
     captureLocation,
-    updateManualLatitude,
-    updateManualLongitude,
-    applyManualCoordinates,
+    searchLocation,
+    updateSearchAddress,
+    setCoordinates: setCoordinatesForMap,
   };
 }
 
@@ -89,6 +95,10 @@ function resolveLocationErrorMessage(error: unknown): string {
 
   if (error.message === 'LOCATION_NATIVE_MODULE_MISSING') {
     return ERROR_MESSAGES.locationNativeModuleMissing;
+  }
+
+  if (error.message === 'LOCATION_SEARCH_FAILED') {
+    return ERROR_MESSAGES.locationSearchFailed;
   }
 
   return ERROR_MESSAGES.locationRequired;
