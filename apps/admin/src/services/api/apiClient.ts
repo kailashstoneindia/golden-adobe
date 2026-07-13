@@ -1,6 +1,7 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import type { ApiErrorResponse, ApiSuccessResponse } from '@golden-abode/types';
 
+import { APP_CONSTANTS } from '@/constants/appConstants';
 import { ROUTES } from '@/constants/routes';
 import { tokenStorage } from '@/services/storage/tokenStorage';
 
@@ -15,7 +16,7 @@ export class ApiClientError extends Error {
 }
 
 const apiClient = axios.create({
-  baseURL: '/api',
+  baseURL: APP_CONSTANTS.apiBaseUrl,
   headers: { 'Content-Type': 'application/json' },
 });
 

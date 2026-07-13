@@ -7,4 +7,11 @@ export const APP_CONSTANTS = {
   phoneCountryCode: '+91',
   otpLength: 6,
   demoAdminPhone: '+919999999999',
+  /**
+   * Vite build-time API origin.
+   * Local + Docker/nginx keep relative "/api".
+   * Vercel must set VITE_API_BASE_URL to the Railway backend, e.g.
+   * https://golden-adobe-production.up.railway.app/api
+   */
+  apiBaseUrl: import.meta.env.VITE_API_BASE_URL?.trim() || '/api',
 } as const;
