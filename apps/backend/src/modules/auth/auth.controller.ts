@@ -6,6 +6,8 @@ import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { RegisterDto } from './dto/register.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { LogoutDto } from './dto/logout.dto';
+import { AdminRegisterDto } from './dto/admin-register.dto';
+import { AdminLoginDto } from './dto/admin-login.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtPayload } from '@golden-abode/types';
@@ -43,6 +45,25 @@ export class AuthController {
   @ApiResponse({ status: 409, description: 'User with this phone already exists' })
   register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
+  }
+
+  @Post('admin/register')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Register an admin with email, password, and registration secret' })
+  @ApiResponse({ status: 201, description: 'Admin registered and tokens returned' })
+  @ApiResponse({ status: 401, description: 'Invalid registration secret' })
+  @ApiResponse({ status: 409, description: 'Email already exists' })
+  registerAdmin(@Body() dto: AdminRegisterDto) {
+    return this.authService.registerAdmin(dto);
+  }
+
+  @Post('admin/login')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Admin login with email and password' })
+  @ApiResponse({ status: 200, description: 'Admin logged in' })
+  @ApiResponse({ status: 401, description: 'Invalid credentials' })
+  loginAdmin(@Body() dto: AdminLoginDto) {
+    return this.authService.loginAdmin(dto);
   }
 
   @Post('refresh')

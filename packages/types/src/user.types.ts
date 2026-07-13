@@ -18,7 +18,8 @@ export type VendorOnboardingStage =
 export interface UserDto {
   id: string;
   name: string;
-  phone: string;
+  phone: string | null;
+  email: string | null;
   role: Role;
   deviceToken: string | null;
   isActive: boolean;

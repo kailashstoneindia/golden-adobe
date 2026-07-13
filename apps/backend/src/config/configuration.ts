@@ -18,6 +18,9 @@ export default () => ({
     senderId: process.env.MSG91_SENDER_ID || 'GOLDEN',
     useSms: process.env.USE_MSG91_SMS === 'true',
   },
+  admin: {
+    registrationSecret: process.env.ADMIN_REGISTRATION_SECRET || '',
+  },
   throttle: {
     otpSendLimit: parseInt(process.env.THROTTLE_OTP_SEND_LIMIT || '3', 10),
     otpSendTtl: parseInt(process.env.THROTTLE_OTP_SEND_TTL || '3600', 10),

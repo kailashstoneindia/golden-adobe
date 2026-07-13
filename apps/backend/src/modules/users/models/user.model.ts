@@ -24,10 +24,24 @@ export class User extends Model<User> {
 
   @Column({
     type: DataType.STRING,
-    allowNull: false,
+    allowNull: true,
     unique: true,
   })
-  declare phone: string;
+  declare phone: string | null;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+    unique: true,
+  })
+  declare email: string | null;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+    field: 'password_hash',
+  })
+  declare passwordHash: string | null;
 
   @Column({
     type: DataType.ENUM(...Object.values(Role)),

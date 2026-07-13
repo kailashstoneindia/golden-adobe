@@ -17,7 +17,6 @@ type ShopLocationState = {
   captureLocation: () => Promise<void>;
   searchLocation: () => Promise<void>;
   updateSearchAddress: (value: string) => void;
-  setCoordinates: (value: ShopCoordinates) => void;
 };
 
 export function useShopLocation(): ShopLocationState {
@@ -29,11 +28,6 @@ export function useShopLocation(): ShopLocationState {
 
   const updateSearchAddress = (value: string): void => {
     setSearchAddress(value);
-    setLocationError(null);
-  };
-
-  const setCoordinatesForMap = (value: ShopCoordinates): void => {
-    setCoordinates(value);
     setLocationError(null);
   };
 
@@ -80,7 +74,6 @@ export function useShopLocation(): ShopLocationState {
     captureLocation,
     searchLocation,
     updateSearchAddress,
-    setCoordinates: setCoordinatesForMap,
   };
 }
 

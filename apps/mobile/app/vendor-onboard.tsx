@@ -9,12 +9,6 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { Role, VENDOR_ONBOARDING_STAGES, type VendorOnboardingStage } from '@golden-abode/types';
-import MapView, {
-  Marker,
-  type MapPressEvent,
-  type MarkerDragStartEndEvent,
-  type Region,
-} from 'react-native-maps';
 
 import { Screen } from '../src/components/layout/Screen';
 import { Button, Card, Text, TextInput } from '../src/components/ui';
@@ -31,15 +25,6 @@ import { needsVendorOnboarding, resolveAuthenticatedRoute } from '../src/utils/u
 
 const VENDOR_ONBOARD_STEPS = ['Shop details', 'Bank details'] as const;
 
-function createDefaultMapRegion(): Region {
-  return {
-    latitude: VENDOR_CONSTANTS.defaultMapLatitude,
-    longitude: VENDOR_CONSTANTS.defaultMapLongitude,
-    latitudeDelta: VENDOR_CONSTANTS.defaultMapLatitudeDelta,
-    longitudeDelta: VENDOR_CONSTANTS.defaultMapLongitudeDelta,
-  };
-}
-
 export default function VendorOnboardScreen() {
   const { isAuthenticated, isHydrated, user } = useAuth();
   const shopLocation = useShopLocation();
@@ -47,7 +32,6 @@ export default function VendorOnboardScreen() {
   const vendorOnboardingProgress = useVendorOnboardingProgress();
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [stepErrorMessage, setStepErrorMessage] = useState<string | null>(null);
-  const [mapRegion, setMapRegion] = useState<Region>(createDefaultMapRegion);
 
   useEffect(() => {
     if (!user) {
@@ -82,39 +66,11 @@ export default function VendorOnboardScreen() {
     ? `${shopLocation.coordinates.latitude.toFixed(5)}, ${shopLocation.coordinates.longitude.toFixed(5)}`
     : 'Not captured yet';
 
-  useEffect(() => {
-    if (!shopLocation.coordinates) {
-      return;
-    }
-
-    setMapRegion((currentRegion) => ({
-      ...currentRegion,
-      latitude: shopLocation.coordinates?.latitude ?? currentRegion.latitude,
-      longitude: shopLocation.coordinates?.longitude ?? currentRegion.longitude,
-    }));
-  }, [shopLocation.coordinates?.latitude, shopLocation.coordinates?.longitude]);
-
   const isFinalStep = currentStepIndex === VENDOR_ONBOARD_STEPS.length - 1;
   const isFirstStep = currentStepIndex === 0;
 
   const handleSubmit = (): void => {
     vendorForm.handleSubmit(shopLocation.coordinates);
-  };
-
-  const handleMapPress = (event: MapPressEvent): void => {
-    const selectedCoordinates = event.nativeEvent.coordinate;
-    shopLocation.setCoordinates({
-      latitude: selectedCoordinates.latitude,
-      longitude: selectedCoordinates.longitude,
-    });
-  };
-
-  const handleMarkerDragEnd = (event: MarkerDragStartEndEvent): void => {
-    const selectedCoordinates = event.nativeEvent.coordinate;
-    shopLocation.setCoordinates({
-      latitude: selectedCoordinates.latitude,
-      longitude: selectedCoordinates.longitude,
-    });
   };
 
   const handleContinue = (): void => {
@@ -232,7 +188,7 @@ export default function VendorOnboardScreen() {
               />
               <Card style={styles.locationCard}>
                 <Text variant="caption" color={Colors.inkSoft}>
-                  Search location, use GPS, or drop a pin on map
+                  Use GPS or search by area/address to set your shop location
                 </Text>
                 <Text variant="bodyMedium">{locationLabel}</Text>
                 <TextInput
@@ -248,28 +204,11 @@ export default function VendorOnboardScreen() {
                   onPress={shopLocation.captureLocation}
                 />
                 <Button
-                  title={shopLocation.isSearchingLocation ? 'Searching…' : 'Search on map'}
+                  title={shopLocation.isSearchingLocation ? 'Searching…' : 'Search location'}
                   variant="secondary"
                   disabled={shopLocation.isSearchingLocation}
                   onPress={shopLocation.searchLocation}
                 />
-                <View style={styles.mapWrap}>
-                  <MapView
-                    style={styles.map}
-                    region={mapRegion}
-                    scrollEnabled={false}
-                    onRegionChangeComplete={setMapRegion}
-                    onPress={handleMapPress}
-                  >
-                    {shopLocation.coordinates ? (
-                      <Marker
-                        coordinate={shopLocation.coordinates}
-                        draggable
-                        onDragEnd={handleMarkerDragEnd}
-                      />
-                    ) : null}
-                  </MapView>
-                </View>
                 {shopLocation.locationError ? (
                   <Text variant="caption" color={Colors.brick}>
                     {shopLocation.locationError}
@@ -574,16 +513,6 @@ const styles = StyleSheet.create({
   },
   locationCard: {
     gap: Spacing.sm,
-  },
-  mapWrap: {
-    borderRadius: 12,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: Colors.line,
-  },
-  map: {
-    width: '100%',
-    height: VENDOR_CONSTANTS.mapHeight,
   },
   dropdownContainer: {
     gap: Spacing.xs,

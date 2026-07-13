@@ -1,0 +1,5 @@
+# Keep EAS upload small — native folders are regenerated on the build server.
+ios/
+android/
+.expo/
+node_modules/

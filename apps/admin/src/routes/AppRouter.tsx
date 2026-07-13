@@ -8,6 +8,7 @@ import { selectIsHydrated, useAuthStore } from '@/store';
 import { ApprovalsPage } from '@/pages/ApprovalsPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { LoginPage } from '@/pages/LoginPage';
+import { RegisterPage } from '@/pages/RegisterPage';
 import { UsersPage } from '@/pages/UsersPage';
 import styles from '@/styles/shared.module.css';
 
@@ -31,6 +32,7 @@ export function AppRouter() {
   return (
     <Routes>
       <Route path={ROUTES.login} element={<LoginPage />} />
+      <Route path={ROUTES.register} element={<RegisterPage />} />
       <Route element={<ProtectedRoute />}>
         <Route element={<AdminLayout />}>
           <Route path={ROUTES.dashboard} element={<DashboardPage />} />

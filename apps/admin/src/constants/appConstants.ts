@@ -5,6 +5,8 @@ export const APP_CONSTANTS = {
   statsStaleTimeMs: 60_000,
   loginRedirectDelayMs: 300,
   phoneCountryCode: '+91',
+  minPasswordLength: 8,
+  minSecretKeyLength: 8,
   otpLength: 6,
   demoAdminPhone: '+919999999999',
   /**

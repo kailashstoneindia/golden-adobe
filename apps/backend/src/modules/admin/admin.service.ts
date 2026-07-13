@@ -105,6 +105,7 @@ export class AdminService {
       [Op.or]: [
         { name: { [Op.iLike]: `%${query.search}%` } },
         { phone: { [Op.iLike]: `%${query.search}%` } },
+        { email: { [Op.iLike]: `%${query.search}%` } },
       ],
     };
   }
@@ -125,6 +126,7 @@ export class AdminService {
       id: user.id,
       name: user.name,
       phone: user.phone,
+      email: user.email,
       role: user.role as Role,
       deviceToken: user.deviceToken,
       isActive: user.isActive,

@@ -27,6 +27,18 @@ export interface LogoutDto {
   refreshToken: string;
 }
 
+export interface AdminRegisterDto {
+  name: string;
+  email: string;
+  password: string;
+  secretKey: string;
+}
+
+export interface AdminLoginDto {
+  email: string;
+  password: string;
+}
+
 // ─── Response DTOs ─────────────────────────────────────────────────────────────
 
 /** Returned when an existing user verifies OTP (login complete) */

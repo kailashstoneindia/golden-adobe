@@ -21,6 +21,10 @@ export class UsersService {
     return this.userModel.findOne({ where: { phone } });
   }
 
+  async findByEmail(email: string): Promise<User | null> {
+    return this.userModel.findOne({ where: { email } });
+  }
+
   async findById(id: string, role?: Role): Promise<User | null> {
     const include = role === Role.VENDOR ? [{ model: Vendor, include: [VendorAccountDetails] }] : [];
     return this.userModel.findByPk(id, { include });
@@ -35,7 +39,25 @@ export class UsersService {
       onboardingCompleted: !isVendor,
       onboardingStage: isVendor ? VENDOR_ONBOARDING_STAGES.basicDetails : null,
     } as any);
-    // Re-fetch to guarantee all fields are populated (underscored mapping)
+    const user = await this.userModel.findByPk(created.id);
+    return user!;
+  }
+
+  async createAdmin(data: {
+    name: string;
+    email: string;
+    passwordHash: string;
+  }): Promise<User> {
+    const created = await this.userModel.create({
+      name: data.name,
+      email: data.email,
+      passwordHash: data.passwordHash,
+      phone: null,
+      role: Role.ADMIN,
+      isApproved: true,
+      onboardingCompleted: true,
+      onboardingStage: null,
+    } as any);
     const user = await this.userModel.findByPk(created.id);
     return user!;
   }

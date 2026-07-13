@@ -8,6 +8,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/sequelize';
+import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 
 import { Role, JwtPayload, VENDOR_ONBOARDING_STAGES } from '@golden-abode/types';
@@ -20,6 +21,10 @@ import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { RegisterDto } from './dto/register.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { LogoutDto } from './dto/logout.dto';
+import { AdminRegisterDto } from './dto/admin-register.dto';
+import { AdminLoginDto } from './dto/admin-login.dto';
+
+const BCRYPT_SALT_ROUNDS = 12;
 
 @Injectable()
 export class AuthService {
@@ -196,6 +201,78 @@ export class AuthService {
     };
   }
 
+  // ─── Admin register / login (email + password + secret) ────────────────
+
+  async registerAdmin(dto: AdminRegisterDto) {
+    this.assertValidAdminRegistrationSecret(dto.secretKey);
+
+    const normalizedEmail = dto.email.trim().toLowerCase();
+    const existingUser = await this.usersService.findByEmail(normalizedEmail);
+    if (existingUser) {
+      throw new ConflictException('An account with this email already exists');
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, BCRYPT_SALT_ROUNDS);
+    const user = await this.usersService.createAdmin({
+      name: dto.name.trim(),
+      email: normalizedEmail,
+      passwordHash,
+    });
+
+    this.logger.log(`Admin registered: ${normalizedEmail}`);
+    const tokens = await this.generateTokenPair(user);
+    return {
+      isNewUser: false as const,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      user: this.sanitizeUser(user),
+    };
+  }
+
+  async loginAdmin(dto: AdminLoginDto) {
+    const normalizedEmail = dto.email.trim().toLowerCase();
+    const user = await this.usersService.findByEmail(normalizedEmail);
+
+    if (!user || user.role !== Role.ADMIN || !user.passwordHash) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
+
+    if (!user.isActive) {
+      throw new UnauthorizedException('Account is deactivated');
+    }
+
+    const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
+
+    const tokens = await this.generateTokenPair(user);
+    return {
+      isNewUser: false as const,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      user: this.sanitizeUser(user),
+    };
+  }
+
+  private assertValidAdminRegistrationSecret(secretKey: string): void {
+    const expectedSecret = this.configService.get<string>('admin.registrationSecret', '');
+    if (!expectedSecret) {
+      throw new BadRequestException('Admin registration is not configured');
+    }
+
+    const providedBuffer = Buffer.from(secretKey);
+    const expectedBuffer = Buffer.from(expectedSecret);
+    if (providedBuffer.length !== expectedBuffer.length) {
+      throw new UnauthorizedException('Invalid registration secret');
+    }
+
+    const isValidSecret = crypto.timingSafeEqual(providedBuffer, expectedBuffer);
+    if (!isValidSecret) {
+      throw new UnauthorizedException('Invalid registration secret');
+    }
+  }
+
   // ─── Refresh ──────────────────────────────────────────────────────────
 
   async refresh(dto: RefreshTokenDto) {
@@ -316,7 +393,8 @@ export class AuthService {
     return {
       id: plain.id,
       name: plain.name,
-      phone: plain.phone,
+      phone: plain.phone ?? null,
+      email: plain.email ?? null,
       role: plain.role,
       deviceToken: plain.deviceToken ?? plain.device_token ?? null,
       isActive: plain.isActive ?? plain.is_active ?? true,

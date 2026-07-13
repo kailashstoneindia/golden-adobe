@@ -1,9 +1,10 @@
 export const ERROR_MESSAGES = {
   generic: 'Something went wrong. Please try again.',
-  invalidOtp: 'Enter the 6-digit code.',
-  invalidPhone: 'Enter a valid 10-digit mobile number.',
+  invalidEmail: 'Enter a valid email address.',
+  invalidPassword: 'Password must be at least 8 characters.',
+  invalidName: 'Enter your full name.',
+  invalidSecretKey: 'Enter the admin registration secret key.',
   adminOnly: 'This account does not have admin access.',
-  newUserBlocked: 'Complete registration in the mobile app first.',
   sessionExpired: 'Your session expired. Please sign in again.',
   userNotFound: 'User not found.',
   loadUsersFailed: 'Could not load users.',

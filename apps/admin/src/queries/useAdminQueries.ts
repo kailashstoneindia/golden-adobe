@@ -61,16 +61,21 @@ export function useRejectUserMutation() {
   });
 }
 
-export function useSendOtpMutation() {
+export function useAdminLoginMutation() {
   return useMutation({
-    mutationFn: (phone: string) => authService.sendOtp({ phone }),
+    mutationFn: (options: { email: string; password: string }) =>
+      authService.loginAdmin(options),
   });
 }
 
-export function useVerifyOtpMutation() {
+export function useAdminRegisterMutation() {
   return useMutation({
-    mutationFn: (options: { phone: string; otp: string }) =>
-      authService.verifyOtp({ phone: options.phone, otp: options.otp }),
+    mutationFn: (options: {
+      name: string;
+      email: string;
+      password: string;
+      secretKey: string;
+    }) => authService.registerAdmin(options),
   });
 }
 
