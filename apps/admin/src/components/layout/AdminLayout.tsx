@@ -18,7 +18,12 @@ export function AdminLayout() {
   return (
     <div className={styles.layout}>
       <aside className={styles.sidebar}>
-        <h1 className={styles.sidebarBrand}>{APP_CONSTANTS.appName}</h1>
+        <div className={styles.sidebarBrandWrap}>
+          <div>
+            <p className={styles.authEyebrow}>Admin</p>
+            <h1 className={styles.sidebarBrand}>{APP_CONSTANTS.appName}</h1>
+          </div>
+        </div>
         <nav className={styles.nav}>
           <NavLink
             to={ROUTES.dashboard}
@@ -36,13 +41,17 @@ export function AdminLayout() {
           <div className={styles.subNav}>
             <NavLink
               to={ROUTES.approvalsVendors}
-              className={({ isActive }) => `${styles.subNavLink} ${isActive ? styles.subNavLinkActive : ''}`}
+              className={({ isActive }) =>
+                `${styles.subNavLink} ${isActive ? styles.subNavLinkActive : ''}`
+              }
             >
               Vendors
             </NavLink>
             <NavLink
               to={ROUTES.approvalsArtisans}
-              className={({ isActive }) => `${styles.subNavLink} ${isActive ? styles.subNavLinkActive : ''}`}
+              className={({ isActive }) =>
+                `${styles.subNavLink} ${isActive ? styles.subNavLinkActive : ''}`
+              }
             >
               Ustaads
             </NavLink>
@@ -54,15 +63,15 @@ export function AdminLayout() {
             All users
           </NavLink>
         </nav>
-      </aside>
-
-      <main className={styles.main}>
-        <div className={styles.topBar}>
-          <div className={styles.userMeta}>{adminUser?.name ?? 'Admin'}</div>
-          <button type="button" className={`${styles.button} ${styles.buttonGhost}`} onClick={handleLogout}>
+        <div className={styles.sidebarFooter}>
+          <p className={styles.sidebarUser}>{adminUser?.email ?? adminUser?.name ?? 'Admin'}</p>
+          <button type="button" className={styles.sidebarLogout} onClick={handleLogout}>
             Log out
           </button>
         </div>
+      </aside>
+
+      <main className={styles.main}>
         <Outlet />
       </main>
     </div>

@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Role } from '@golden-abode/types';
 
 import { APP_CONSTANTS } from '@/constants/appConstants';
 import { ERROR_MESSAGES } from '@/constants/error.constants';
 import { ROUTES } from '@/constants/routes';
+import { AuthBrandPanel } from '@/pages/LoginPage';
 import { useAdminRegisterMutation } from '@/queries';
 import { ApiClientError } from '@/services';
 import { selectSetSession, useAuthStore } from '@/store';
@@ -66,94 +67,112 @@ export function RegisterPage() {
     }
   };
 
-  return (
-    <div className={styles.loginPage}>
-      <div className={styles.loginCard}>
-        <h1 className={styles.brand}>{APP_CONSTANTS.appName}</h1>
-        <p className={styles.subtitle}>Create an admin account with the registration secret</p>
+  const handleSubmit = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault();
+    void handleRegister();
+  };
 
-        <div className={styles.form}>
-          <div>
-            <label className={styles.label} htmlFor="name">
-              Full name
-            </label>
-            <input
-              id="name"
-              className={styles.input}
-              value={name}
-              onChange={(event) => {
-                setName(event.target.value);
-                setErrorMessage(null);
-              }}
-              placeholder="Super Admin"
-              autoComplete="name"
-            />
-          </div>
-          <div>
-            <label className={styles.label} htmlFor="email">
-              Email
-            </label>
-            <input
-              id="email"
-              className={styles.input}
-              type="email"
-              value={email}
-              onChange={(event) => {
-                setEmail(event.target.value);
-                setErrorMessage(null);
-              }}
-              placeholder="admin@kailashstones.com"
-              autoComplete="email"
-            />
-          </div>
-          <div>
-            <label className={styles.label} htmlFor="password">
-              Password
-            </label>
-            <input
-              id="password"
-              className={styles.input}
-              type="password"
-              value={password}
-              onChange={(event) => {
-                setPassword(event.target.value);
-                setErrorMessage(null);
-              }}
-              placeholder="At least 8 characters"
-              autoComplete="new-password"
-            />
-          </div>
-          <div>
-            <label className={styles.label} htmlFor="secretKey">
-              Registration secret key
-            </label>
-            <input
-              id="secretKey"
-              className={styles.input}
-              type="password"
-              value={secretKey}
-              onChange={(event) => {
-                setSecretKey(event.target.value);
-                setErrorMessage(null);
-              }}
-              placeholder="Provided by the platform owner"
-              autoComplete="off"
-            />
-          </div>
-          <button
-            type="button"
-            className={`${styles.button} ${styles.buttonPrimary}`}
-            disabled={adminRegisterMutation.isPending}
-            onClick={handleRegister}
-          >
-            {adminRegisterMutation.isPending ? 'Creating account…' : 'Create admin account'}
-          </button>
-          {errorMessage ? <p className={styles.error}>{errorMessage}</p> : null}
-          <p className={styles.subtitle}>
-            Already registered? <Link to={ROUTES.login}>Sign in</Link>
+  return (
+    <div className={styles.authShell}>
+      <AuthBrandPanel
+        eyebrow="Secure onboarding"
+        copy="Materials for the home you're building — create an admin account with the registration secret."
+      />
+
+      <section className={styles.authFormPanel}>
+        <div className={styles.authFormInner}>
+          <p className={styles.authFormLabel}>Admin registration</p>
+          <h2 className={styles.authFormTitle}>Create your account</h2>
+          <p className={styles.authFormSubtitle}>
+            Email, password, and the registration secret are required.
+          </p>
+
+          <form className={styles.authForm} onSubmit={handleSubmit}>
+            <div className={styles.authField}>
+              <label className={styles.authLabel} htmlFor="name">
+                Full name
+              </label>
+              <input
+                id="name"
+                className={styles.authInput}
+                value={name}
+                onChange={(event) => {
+                  setName(event.target.value);
+                  setErrorMessage(null);
+                }}
+                placeholder="Super Admin"
+                autoComplete="name"
+              />
+            </div>
+            <div className={styles.authField}>
+              <label className={styles.authLabel} htmlFor="email">
+                Email
+              </label>
+              <input
+                id="email"
+                className={styles.authInput}
+                type="email"
+                value={email}
+                onChange={(event) => {
+                  setEmail(event.target.value);
+                  setErrorMessage(null);
+                }}
+                placeholder="admin@kailashstones.com"
+                autoComplete="email"
+              />
+            </div>
+            <div className={styles.authField}>
+              <label className={styles.authLabel} htmlFor="password">
+                Password
+              </label>
+              <input
+                id="password"
+                className={styles.authInput}
+                type="password"
+                value={password}
+                onChange={(event) => {
+                  setPassword(event.target.value);
+                  setErrorMessage(null);
+                }}
+                placeholder="At least 8 characters"
+                autoComplete="new-password"
+              />
+            </div>
+            <div className={styles.authField}>
+              <label className={styles.authLabel} htmlFor="secretKey">
+                Registration secret key
+              </label>
+              <input
+                id="secretKey"
+                className={styles.authInput}
+                type="password"
+                value={secretKey}
+                onChange={(event) => {
+                  setSecretKey(event.target.value);
+                  setErrorMessage(null);
+                }}
+                placeholder="Provided by the platform owner"
+                autoComplete="off"
+              />
+            </div>
+            {errorMessage ? <p className={styles.authError}>{errorMessage}</p> : null}
+            <button
+              type="submit"
+              className={styles.authSubmit}
+              disabled={adminRegisterMutation.isPending}
+            >
+              {adminRegisterMutation.isPending ? 'Creating account…' : 'Create admin account'}
+            </button>
+          </form>
+
+          <p className={styles.authFooter}>
+            Already registered?{' '}
+            <Link className={styles.authFooterLink} to={ROUTES.login}>
+              Sign in
+            </Link>
           </p>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

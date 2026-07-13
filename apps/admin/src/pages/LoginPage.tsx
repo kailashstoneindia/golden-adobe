@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type FormEvent, type ReactElement } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Role } from '@golden-abode/types';
 
@@ -9,6 +9,31 @@ import { useAdminLoginMutation } from '@/queries';
 import { ApiClientError } from '@/services';
 import { selectSetSession, useAuthStore } from '@/store';
 import styles from '@/styles/shared.module.css';
+
+export function AuthBrandPanel({ eyebrow, copy }: { eyebrow: string; copy: string }): ReactElement {
+  return (
+    <section className={styles.authBrandPanel}>
+      <div className={styles.authBrandContent}>
+        <p className={styles.authEyebrow}>{eyebrow}</p>
+        <h1 className={styles.authBrandTitle}>Kailash Stones</h1>
+        <p className={styles.authBrandCopy}>{copy}</p>
+      </div>
+      <div className={styles.authRidge} aria-hidden="true">
+        <svg viewBox="0 0 300 140" preserveAspectRatio="none">
+          <polygon
+            points="0,140 0,95 40,60 75,90 110,35 150,70 190,20 230,55 265,30 300,75 300,140"
+            fill="var(--color-ridge)"
+          />
+          <polygon
+            points="110,35 150,70 190,20 200,40 150,80 120,55"
+            fill="var(--color-tangerine)"
+            opacity="0.85"
+          />
+        </svg>
+      </div>
+    </section>
+  );
+}
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -49,61 +74,77 @@ export function LoginPage() {
     }
   };
 
-  return (
-    <div className={styles.loginPage}>
-      <div className={styles.loginCard}>
-        <h1 className={styles.brand}>{APP_CONSTANTS.appName}</h1>
-        <p className={styles.subtitle}>Sign in with your admin email and password</p>
+  const handleSubmit = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault();
+    void handleLogin();
+  };
 
-        <div className={styles.form}>
-          <div>
-            <label className={styles.label} htmlFor="email">
-              Email
-            </label>
-            <input
-              id="email"
-              className={styles.input}
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(event) => {
-                setEmail(event.target.value);
-                setErrorMessage(null);
-              }}
-              placeholder="admin@kailashstones.com"
-            />
-          </div>
-          <div>
-            <label className={styles.label} htmlFor="password">
-              Password
-            </label>
-            <input
-              id="password"
-              className={styles.input}
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(event) => {
-                setPassword(event.target.value);
-                setErrorMessage(null);
-              }}
-              placeholder="••••••••"
-            />
-          </div>
-          <button
-            type="button"
-            className={`${styles.button} ${styles.buttonPrimary}`}
-            disabled={adminLoginMutation.isPending}
-            onClick={handleLogin}
-          >
-            {adminLoginMutation.isPending ? 'Signing in…' : 'Sign in'}
-          </button>
-          {errorMessage ? <p className={styles.error}>{errorMessage}</p> : null}
-          <p className={styles.subtitle}>
-            Need an account? <Link to={ROUTES.register}>Register with secret key</Link>
+  return (
+    <div className={styles.authShell}>
+      <AuthBrandPanel
+        eyebrow="Operations console"
+        copy="Materials for the home you're building — approve vendors and keep the marketplace moving."
+      />
+
+      <section className={styles.authFormPanel}>
+        <div className={styles.authFormInner}>
+          <p className={styles.authFormLabel}>Admin sign in</p>
+          <h2 className={styles.authFormTitle}>Welcome back</h2>
+          <p className={styles.authFormSubtitle}>Use your admin email and password to continue.</p>
+
+          <form className={styles.authForm} onSubmit={handleSubmit}>
+            <div className={styles.authField}>
+              <label className={styles.authLabel} htmlFor="email">
+                Email
+              </label>
+              <input
+                id="email"
+                className={styles.authInput}
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(event) => {
+                  setEmail(event.target.value);
+                  setErrorMessage(null);
+                }}
+                placeholder="admin@kailashstones.com"
+              />
+            </div>
+            <div className={styles.authField}>
+              <label className={styles.authLabel} htmlFor="password">
+                Password
+              </label>
+              <input
+                id="password"
+                className={styles.authInput}
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(event) => {
+                  setPassword(event.target.value);
+                  setErrorMessage(null);
+                }}
+                placeholder="Enter your password"
+              />
+            </div>
+            {errorMessage ? <p className={styles.authError}>{errorMessage}</p> : null}
+            <button
+              type="submit"
+              className={styles.authSubmit}
+              disabled={adminLoginMutation.isPending}
+            >
+              {adminLoginMutation.isPending ? 'Signing in…' : 'Sign in'}
+            </button>
+          </form>
+
+          <p className={styles.authFooter}>
+            Need an account?{' '}
+            <Link className={styles.authFooterLink} to={ROUTES.register}>
+              Register with secret key
+            </Link>
           </p>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

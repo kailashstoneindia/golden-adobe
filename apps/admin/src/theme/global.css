@@ -2,9 +2,14 @@
 
 :root {
   --color-navy: #0f2b52;
+  --color-navy-soft: #1b3f6e;
   --color-navy-mid: #173a66;
+  --color-ridge: #0c1f3b;
   --color-sky: #2d6cb4;
+  --color-sky-tint: #dceaf7;
   --color-tangerine: #d9531e;
+  --color-ember: #b23e14;
+  --color-sun: #f6a35c;
   --color-cream: #faf5ec;
   --color-background: #efe8dc;
   --color-white: #ffffff;

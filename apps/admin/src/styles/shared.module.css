@@ -53,29 +53,30 @@
 
 .statsGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 16px;
-  margin-bottom: 24px;
+  margin: 28px 0 24px;
 }
 
 .statCard {
   background: var(--color-white);
-  border-radius: var(--radius-md);
-  padding: 18px;
+  border-radius: 14px;
+  padding: 22px;
   border: 1px solid var(--color-line);
   box-shadow: var(--shadow-card);
 }
 
 .statValue {
   font-family: 'Poppins', sans-serif;
-  font-size: 28px;
+  font-size: 32px;
   font-weight: 700;
   color: var(--color-navy);
 }
 
 .statLabel {
-  margin-top: 6px;
+  margin-top: 8px;
   font-size: 13px;
+  font-weight: 600;
   color: var(--color-ink-soft);
 }
 
@@ -169,7 +170,7 @@
 .tableWrap {
   overflow-x: auto;
   background: var(--color-white);
-  border-radius: var(--radius-md);
+  border-radius: 14px;
   border: 1px solid var(--color-line);
   box-shadow: var(--shadow-card);
 }
@@ -210,13 +211,15 @@
 .pageTitle {
   margin: 0;
   font-family: 'Poppins', sans-serif;
-  font-size: 28px;
+  font-size: clamp(28px, 3vw, 34px);
+  letter-spacing: -0.02em;
+  color: var(--color-navy);
 }
 
 .pageSubtitle {
-  margin: 6px 0 0;
+  margin: 8px 0 0;
   color: var(--color-ink-soft);
-  font-size: 14px;
+  font-size: 15px;
 }
 
 .tabs {
@@ -329,26 +332,306 @@
   color: var(--color-sky);
 }
 
+.authShell {
+  min-height: 100vh;
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(280px, 0.95fr) minmax(320px, 1.05fr);
+  background: var(--color-cream);
+}
+
+.authBrandPanel {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 20px;
+  padding: clamp(32px, 6vw, 72px);
+  color: var(--color-white);
+  background: linear-gradient(
+    180deg,
+    var(--color-navy) 0%,
+    var(--color-navy-mid) 45%,
+    var(--color-sky) 100%
+  );
+}
+
+.authBrandPanel::before {
+  content: '';
+  position: absolute;
+  top: 18%;
+  left: 50%;
+  width: 140px;
+  height: 140px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: radial-gradient(
+    circle,
+    var(--color-sun) 0%,
+    var(--color-tangerine) 55%,
+    transparent 72%
+  );
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.authBrandContent {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 18px;
+  margin-bottom: 48px;
+}
+
+.authEyebrow {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.authBrandTitle {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
+  font-size: clamp(34px, 5vw, 56px);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.authBrandCopy {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  max-width: 34ch;
+  font-size: clamp(15px, 2vw, 18px);
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.authRidge {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: min(34%, 220px);
+  z-index: 0;
+}
+
+.authRidge svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.authFormPanel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: clamp(28px, 5vw, 64px);
+  background: var(--color-cream);
+}
+
+.authFormInner {
+  width: 100%;
+  max-width: 520px;
+  animation: authRise 420ms ease-out;
+}
+
+.authFormLabel {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-tangerine);
+}
+
+.authFormTitle {
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
+  font-size: clamp(28px, 4vw, 36px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-navy);
+}
+
+.authFormSubtitle {
+  margin: 10px 0 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--color-ink-soft);
+}
+
+.authForm {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 32px;
+}
+
+.authField {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.authLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.authInput {
+  width: 100%;
+  border: 1.5px solid var(--color-line);
+  border-radius: 12px;
+  background: var(--color-white);
+  padding: 14px 16px;
+  color: var(--color-ink);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.authInput:focus {
+  outline: none;
+  border-color: var(--color-sky);
+  box-shadow: 0 0 0 4px rgba(45, 108, 180, 0.14);
+}
+
+.authSubmit {
+  width: 100%;
+  margin-top: 8px;
+  border: none;
+  border-radius: 12px;
+  padding: 15px 18px;
+  background: var(--color-tangerine);
+  color: var(--color-white);
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  transition: transform 160ms ease, background 160ms ease;
+}
+
+.authSubmit:hover:not(:disabled) {
+  background: var(--color-ember);
+  transform: translateY(-1px);
+}
+
+.authSubmit:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.authError {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--color-brick-tint);
+  color: var(--color-brick);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.authFooter {
+  margin: 24px 0 0;
+  font-size: 14px;
+  color: var(--color-ink-soft);
+}
+
+.authFooterLink {
+  color: var(--color-navy);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@keyframes authRise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .layout {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 260px 1fr;
+  grid-template-columns: 280px 1fr;
+  background: var(--color-background);
 }
 
 .sidebar {
-  background: linear-gradient(180deg, var(--color-navy) 0%, var(--color-navy-mid) 100%);
+  background: linear-gradient(
+    180deg,
+    var(--color-navy) 0%,
+    var(--color-navy-mid) 55%,
+    var(--color-navy-soft) 100%
+  );
   color: var(--color-white);
-  padding: 24px 18px;
+  padding: 28px 20px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 28px;
 }
 
 .sidebarBrand {
   font-family: 'Poppins', sans-serif;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
+  margin: 6px 0 0;
+  letter-spacing: -0.02em;
+}
+
+.sidebarBrandWrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sidebarFooter {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.sidebarUser {
   margin: 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.72);
+  word-break: break-word;
+}
+
+.sidebarLogout {
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--color-white);
+  padding: 10px 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+
+.sidebarLogout:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .nav {
@@ -359,13 +642,19 @@
 
 .navLink {
   padding: 12px 14px;
-  border-radius: 10px;
+  border-radius: 12px;
   color: rgba(255, 255, 255, 0.82);
-  font-weight: 500;
+  font-weight: 600;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.navLink:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-white);
 }
 
 .navLinkActive {
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.16);
   color: var(--color-white);
 }
 
@@ -389,23 +678,26 @@
 }
 
 .main {
-  padding: 28px;
-}
-
-.topBar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-.userMeta {
-  font-size: 13px;
-  color: var(--color-ink-soft);
+  padding: clamp(24px, 3vw, 40px);
+  width: 100%;
+  max-width: 1400px;
 }
 
 @media (max-width: 900px) {
+  .authShell {
+    grid-template-columns: 1fr;
+  }
+
+  .authBrandPanel {
+    min-height: 220px;
+    justify-content: center;
+    padding: 36px 24px;
+  }
+
+  .authFormPanel {
+    padding: 28px 20px 40px;
+  }
+
   .layout {
     grid-template-columns: 1fr;
   }
