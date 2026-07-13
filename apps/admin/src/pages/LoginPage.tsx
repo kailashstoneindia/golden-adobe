@@ -20,6 +20,14 @@ export function AuthBrandPanel({ eyebrow, copy }: { eyebrow: string; copy: strin
       </div>
       <div className={styles.authRidge} aria-hidden="true">
         <svg viewBox="0 0 300 140" preserveAspectRatio="none">
+          <defs>
+            <radialGradient id="authSunGlow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="var(--color-sun)" />
+              <stop offset="55%" stopColor="var(--color-tangerine)" />
+              <stop offset="100%" stopColor="var(--color-tangerine)" stopOpacity="0" />
+            </radialGradient>
+          </defs>
+          <circle cx="180" cy="40" r="38" fill="url(#authSunGlow)" />
           <polygon
             points="0,140 0,95 40,60 75,90 110,35 150,70 190,20 230,55 265,30 300,75 300,140"
             fill="var(--color-ridge)"

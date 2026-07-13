@@ -357,28 +357,9 @@
   );
 }
 
-.authBrandPanel::before {
-  content: '';
-  position: absolute;
-  top: 18%;
-  left: 50%;
-  width: 140px;
-  height: 140px;
-  transform: translateX(-50%);
-  border-radius: 999px;
-  background: radial-gradient(
-    circle,
-    var(--color-sun) 0%,
-    var(--color-tangerine) 55%,
-    transparent 72%
-  );
-  opacity: 0.9;
-  pointer-events: none;
-}
-
 .authBrandContent {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -424,8 +405,9 @@
   left: 0;
   right: 0;
   bottom: 0;
-  height: min(34%, 220px);
-  z-index: 0;
+  height: min(42%, 280px);
+  z-index: 1;
+  pointer-events: none;
 }
 
 .authRidge svg {
