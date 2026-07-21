@@ -100,7 +100,10 @@
 }
 
 .modal {
-  width: min(100%, 520px);
+  width: min(100%, 560px);
+  max-height: min(90vh, 760px);
+  display: flex;
+  flex-direction: column;
   background: var(--color-cream);
   border-radius: var(--radius-lg);
   padding: 24px;
@@ -117,6 +120,8 @@
   display: grid;
   gap: 12px;
   margin: 20px 0;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .detailRow {
@@ -129,6 +134,62 @@
 }
 
 .detailLabel {
+  color: var(--color-ink-soft);
+  flex-shrink: 0;
+}
+
+.detailValue {
+  text-align: right;
+  word-break: break-word;
+}
+
+.detailSections {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.collapsibleSection {
+  border: 1px solid var(--color-line);
+  border-radius: 12px;
+  background: var(--color-white);
+  overflow: hidden;
+}
+
+.collapsibleTrigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-navy);
+  text-align: left;
+}
+
+.collapsibleTrigger:hover {
+  background: rgba(220, 234, 247, 0.35);
+}
+
+.collapsibleChevron {
+  color: var(--color-ink-soft);
+  font-size: 12px;
+}
+
+.collapsibleBody {
+  display: grid;
+  gap: 12px;
+  padding: 0 14px 14px;
+}
+
+.sectionEmpty {
+  margin: 0;
+  font-size: 13px;
   color: var(--color-ink-soft);
 }
 

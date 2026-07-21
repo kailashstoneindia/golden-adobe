@@ -1,20 +1,31 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
-import { Op, WhereOptions } from 'sequelize';
+import { Includeable, Op, WhereOptions } from 'sequelize';
 import {
   AdminDashboardStats,
   PaginatedUsersResponse,
   Role,
   UserDto,
   VENDOR_ONBOARDING_STAGES,
+  VendorAccountDetailsDto,
+  VendorProfileDto,
 } from '@golden-abode/types';
 
 import { User } from '../users/models/user.model';
+import { Vendor } from '../vendors/models/vendor.model';
+import { VendorAccountDetails } from '../vendors/models/vendor-account-details.model';
 import { ListUsersQueryDto } from './dto/list-users-query.dto';
 
 @Injectable()
 export class AdminService {
   private readonly logger = new Logger(AdminService.name);
+
+  private readonly userIncludes: Includeable[] = [
+    {
+      model: Vendor,
+      include: [VendorAccountDetails],
+    },
+  ];
 
   constructor(
     @InjectModel(User)
@@ -48,6 +59,8 @@ export class AdminService {
 
     const { rows, count } = await this.userModel.findAndCountAll({
       where,
+      include: this.userIncludes,
+      distinct: true,
       limit,
       offset,
       order: [['created_at', 'DESC']],
@@ -63,7 +76,7 @@ export class AdminService {
   }
 
   async getUserById(userId: string): Promise<UserDto> {
-    const user = await this.userModel.findByPk(userId);
+    const user = await this.userModel.findByPk(userId, { include: this.userIncludes });
     if (!user) {
       throw new NotFoundException(`User ${userId} not found`);
     }
@@ -74,14 +87,14 @@ export class AdminService {
     const user = await this.findApprovalTarget(userId);
     await user.update({ isApproved: true });
     this.logger.log(`Approved user ${userId} (${user.role})`);
-    return this.toUserDto(await user.reload());
+    return this.toUserDto(await user.reload({ include: this.userIncludes }));
   }
 
   async rejectUser(userId: string, reason?: string): Promise<UserDto> {
     const user = await this.findApprovalTarget(userId);
     await user.update({ isApproved: false });
     this.logger.log(`Rejected user ${userId} (${user.role})${reason ? `: ${reason}` : ''}`);
-    return this.toUserDto(await user.reload());
+    return this.toUserDto(await user.reload({ include: this.userIncludes }));
   }
 
   private buildListWhereClause(query: ListUsersQueryDto): WhereOptions<User> {
@@ -111,7 +124,7 @@ export class AdminService {
   }
 
   private async findApprovalTarget(userId: string): Promise<User> {
-    const user = await this.userModel.findByPk(userId);
+    const user = await this.userModel.findByPk(userId, { include: this.userIncludes });
     if (!user) {
       throw new NotFoundException(`User ${userId} not found`);
     }
@@ -136,8 +149,50 @@ export class AdminService {
       onboardingStage:
         (user.onboardingStage as UserDto['onboardingStage']) ??
         (user.vendorProfile ? VENDOR_ONBOARDING_STAGES.completed : null),
+      vendorProfile: this.toVendorProfileDto(user.vendorProfile),
       createdAt: this.formatTimestamp(user.get('createdAt')),
       updatedAt: this.formatTimestamp(user.get('updatedAt')),
+    };
+  }
+
+  private toVendorProfileDto(vendor?: Vendor | null): VendorProfileDto | undefined {
+    if (!vendor) {
+      return undefined;
+    }
+
+    return {
+      id: vendor.id,
+      userId: vendor.userId,
+      shopName: vendor.shopName,
+      address: vendor.address,
+      latitude: vendor.latitude,
+      longitude: vendor.longitude,
+      upiId: vendor.upiId,
+      bankDetails: vendor.bankDetails,
+      accountDetails: this.toAccountDetailsDto(vendor.accountDetails),
+      gstin: vendor.gstin,
+      createdAt: this.formatTimestamp(vendor.get('createdAt')),
+      updatedAt: this.formatTimestamp(vendor.get('updatedAt')),
+    };
+  }
+
+  private toAccountDetailsDto(
+    accountDetails?: VendorAccountDetails | null,
+  ): VendorAccountDetailsDto | null {
+    if (!accountDetails) {
+      return null;
+    }
+
+    return {
+      id: accountDetails.id,
+      vendorId: accountDetails.vendorId,
+      accountHolderName: accountDetails.accountHolderName,
+      bankName: accountDetails.bankName,
+      ifscCode: accountDetails.ifscCode,
+      branchName: accountDetails.branchName,
+      accountNumber: accountDetails.accountNumber,
+      createdAt: this.formatTimestamp(accountDetails.get('createdAt')),
+      updatedAt: this.formatTimestamp(accountDetails.get('updatedAt')),
     };
   }
 

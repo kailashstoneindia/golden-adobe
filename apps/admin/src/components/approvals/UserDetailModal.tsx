@@ -1,4 +1,5 @@
-import type { UserDto } from '@golden-abode/types';
+import { useState, type ReactNode } from 'react';
+import type { UserDto, VendorAccountDetailsDto, VendorProfileDto } from '@golden-abode/types';
 import { Role } from '@golden-abode/types';
 
 import styles from '@/styles/shared.module.css';
@@ -25,6 +26,7 @@ export function UserDetailModal({
 }: UserDetailModalProps) {
   const handleApprove = () => onApprove?.(user.id);
   const handleReject = () => onReject?.(user.id);
+  const vendorProfile = user.role === Role.VENDOR ? user.vendorProfile : undefined;
 
   return (
     <div className={styles.overlay} onClick={onClose} role="presentation">
@@ -44,6 +46,8 @@ export function UserDetailModal({
             value={user.onboardingCompletedAt ? formatDateTime(user.onboardingCompletedAt) : '-'}
           />
           <DetailRow label="Joined" value={formatDateTime(user.createdAt)} />
+
+          {vendorProfile ? <VendorProfileSections profile={vendorProfile} /> : null}
         </div>
 
         <div className={styles.actions}>
@@ -76,6 +80,84 @@ export function UserDetailModal({
   );
 }
 
+type VendorProfileSectionsProps = {
+  profile: VendorProfileDto;
+};
+
+function VendorProfileSections({ profile }: VendorProfileSectionsProps) {
+  return (
+    <div className={styles.detailSections}>
+      <CollapsibleSection title="Business details" defaultOpen>
+        <DetailRow label="Shop name" value={profile.shopName} />
+        <DetailRow label="Shop address" value={profile.address} />
+        <DetailRow
+          label="Location"
+          value={formatLocation(profile.latitude, profile.longitude)}
+        />
+        <DetailRow label="GSTIN" value={profile.gstin || '-'} />
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Payout & bank details">
+        <BankDetailsRows accountDetails={profile.accountDetails} upiId={profile.upiId} />
+      </CollapsibleSection>
+    </div>
+  );
+}
+
+type BankDetailsRowsProps = {
+  accountDetails: VendorAccountDetailsDto | null;
+  upiId: string | null;
+};
+
+function BankDetailsRows({ accountDetails, upiId }: BankDetailsRowsProps) {
+  if (!accountDetails) {
+    return (
+      <>
+        <DetailRow label="UPI ID" value={upiId || '-'} />
+        <p className={styles.sectionEmpty}>No bank account details submitted.</p>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <DetailRow label="Account holder name" value={accountDetails.accountHolderName} />
+      <DetailRow label="Bank name" value={accountDetails.bankName} />
+      <DetailRow label="IFSC code" value={accountDetails.ifscCode} />
+      <DetailRow label="Branch name" value={accountDetails.branchName} />
+      <DetailRow label="Account number" value={accountDetails.accountNumber} />
+      <DetailRow label="UPI ID" value={upiId || '-'} />
+    </>
+  );
+}
+
+type CollapsibleSectionProps = {
+  title: string;
+  defaultOpen?: boolean;
+  children: ReactNode;
+};
+
+function CollapsibleSection({ title, defaultOpen = false, children }: CollapsibleSectionProps) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  return (
+    <div className={styles.collapsibleSection}>
+      <button
+        type="button"
+        className={styles.collapsibleTrigger}
+        aria-expanded={isOpen}
+        onClick={() => setIsOpen((open) => !open)}
+      >
+        <span>{title}</span>
+        <span className={styles.collapsibleChevron} aria-hidden>
+          {isOpen ? '▾' : '▸'}
+        </span>
+      </button>
+      {isOpen ? <div className={styles.collapsibleBody}>{children}</div> : null}
+    </div>
+  );
+}
+
 type DetailRowProps = {
   label: string;
   value: string;
@@ -85,9 +167,13 @@ function DetailRow({ label, value }: DetailRowProps) {
   return (
     <div className={styles.detailRow}>
       <span className={styles.detailLabel}>{label}</span>
-      <span>{value}</span>
+      <span className={styles.detailValue}>{value}</span>
     </div>
   );
+}
+
+function formatLocation(latitude: number, longitude: number): string {
+  return `${latitude}, ${longitude}`;
 }
 
 function formatOnboardingStage(user: UserDto): string {
