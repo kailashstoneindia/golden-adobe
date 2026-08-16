@@ -28,6 +28,7 @@ valid when circumstances change.
 | [0014](0014-batch-resolutions.md) | Batch resolution of open questions | 2026-08-02 | Accepted |
 | [0015](0015-per-vendor-colour-delta.md) | Colour pricing as a per-vendor delta | 2026-08-02 | Superseded by 0016 |
 | [0016](0016-colour-price-per-listing.md) | Absolute colour price per listing | 2026-08-02 | Accepted |
+| [0017](0017-search-engine-choice.md) | Search engine choice: Meilisearch | 2026-08-16 | Accepted |
 
 ## Adding a record
 
@@ -63,6 +64,10 @@ and update the old record's status. The trail of reversals is the useful part.
   attribute definitions for all 58 leaf categories.
 - [../catalog-entity-model.md](../catalog-entity-model.md) — narrative table design and the
   reasoning behind each column.
+- [../search-system-design.md](../search-system-design.md) — how Meilisearch fits the stack:
+  services, change capture, sync worker, query path and failure behaviour.
+- [../search-schema.sql](../search-schema.sql) — **canonical DDL for search sync**: the
+  outbox, its triggers, expansion and drain bookkeeping.
 
 These sit at the repo root and are referenced by the records here. Decision records point
 at them; they do not edit them.

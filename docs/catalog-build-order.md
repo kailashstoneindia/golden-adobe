@@ -153,18 +153,46 @@ chose a narrow launch, this phase is where Paint and Stone join.
 
 Only useful once products *and* listings exist, so it genuinely follows Phase 4.
 
-```
-Phase 1 (Postgres)     indexes on (category_id, status), price
-                       GIN on attributes_flat
-                       cached_best_price precomputed on write
-                       comfortable to tens of thousands of listings
+Engine decided in [0017](decisions/0017-search-engine-choice.md): **Meilisearch**,
+self-hosted on Railway, with the Postgres path kept permanently as a fallback rather than
+discarded. Architecture in [search-system-design.md](search-system-design.md); DDL in
+[search-schema.sql](search-schema.sql).
 
-Phase 2 (later)        Meilisearch / Typesense when typo tolerance
-                       or multi-filter search becomes a real need
+```
+6a  document shape       S1 — grain, and how location-dependent price
+                         is carried. BLOCKS EVERYTHING BELOW.
+                         SearchDocument lands in packages/types
+
+6b  postgres path        pg_trgm on name + GIN on attributes_flat
+                         (both indexes already exist)
+                         → ships first, then becomes the fallback
+
+6c  sync plumbing        search_outbox + 2 trigger functions
+                         + 24 statement-level triggers
+                         expansion / drain / purge / backlog view
+
+6d  meilisearch          Railway service, private networking
+                         index settings AS CODE, applied on boot
+                         typoTolerance.disableOnNumbers = true
+
+6e  worker               BullMQ on the existing Redis
+                         expand → build → add/delete → mark processed
+
+6f  query layer          SearchModule, facets per leaf category,
+                         Redis query cache, fallback switch
+
+6g  rebuild job          shadow index + atomic swap, for 'all'
 ```
 
-Per `search-architecture.md`, the flattened document shape is already designed — so moving
-to a search engine later is a sync job, not a redesign.
+Three sequencing notes:
+
+- **6b is not throwaway.** It ships as the search implementation, then stays as the
+  fallback that keeps the site up when Meilisearch is down or mid-rebuild. It needs test
+  coverage for that reason — a fallback nobody exercises is not a fallback.
+- **6a blocks 6e specifically.** The worker cannot build a document whose shape is
+  undecided. Everything else in this phase is document-agnostic and can proceed.
+- **`search-architecture.md` is superseded on the tool choice and on the claim that the
+  document shape is already designed.** It is not — that is S1, still open.
 
 ---
 

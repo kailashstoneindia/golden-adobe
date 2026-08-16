@@ -1,0 +1,598 @@
+# Search System Design — Meilisearch
+
+How search fits into the Golden Abode stack: services, change capture, sync, query path,
+and failure behaviour.
+
+Read alongside:
+
+- [search-architecture.md](../search-architecture.md) — the original stack choice (Postgres → engine)
+- [catalog-schema.sql](catalog-schema.sql) — canonical DDL for the catalog
+- [search-schema.sql](search-schema.sql) — **canonical DDL for search sync**, authoritative
+  over the SQL excerpts in this document
+- [decisions/0017-search-engine-choice.md](decisions/0017-search-engine-choice.md) — why Meilisearch
+
+> **Open dependency.** The *document shape* — what one search result represents, and how
+> location-dependent price is carried — is decision **S1** and is not settled. Everything
+> in this document holds regardless of how S1 resolves; S1 only changes the contents of
+> `SearchDocument`, marked below.
+
+---
+
+## 1. Services
+
+Meilisearch is one more container. Railway already runs everything else.
+
+```mermaid
+flowchart LR
+  subgraph client [Clients]
+    M[Mobile app]
+    A[Admin panel]
+  end
+
+  subgraph railway [Railway project - private network]
+    B[backend<br/>NestJS API]
+    W[search-worker<br/>same image, WORKER_MODE]
+    MS[(meilisearch)]
+    PG[(postgres)]
+    RD[(redis)]
+  end
+
+  M --> B
+  A --> B
+  B -->|search + facets| MS
+  B -->|hydrate, fallback| PG
+  B -->|cache, jobs| RD
+  W -->|read outbox| PG
+  W -->|batch upsert| MS
+  W -->|consume jobs| RD
+```
+
+**Meilisearch is never exposed publicly.** Railway private networking means it is reachable
+only at `meilisearch.railway.internal`, so the master key never crosses the internet and
+there is no public port to secure.
+
+| Service | New? | Notes |
+|---|---|---|
+| `backend` | existing | gains a `SearchModule` |
+| `meilisearch` | **new** | official image, private port only |
+| `search-worker` | **new** | *same Docker image as backend*, different start command |
+| `postgres` · `redis` | existing | Redis is already wired as a `@Global()` module |
+
+The worker is the same image deliberately — it shares Sequelize models and the document
+builder. A separate repo or image would duplicate both and they would drift.
+
+> **Launch shortcut:** run the worker in-process inside `backend` behind a flag, and split
+> it into its own Railway service when a bulk reindex first starts competing with API
+> latency. The code is identical either way; only the start command changes.
+
+---
+
+## 2. The five paths
+
+```mermaid
+flowchart TD
+  W1[1 WRITE<br/>admin publishes · vendor uploads price] --> PG[(Postgres<br/>source of truth)]
+  PG -->|DB trigger| OB[2 CAPTURE<br/>search_outbox]
+  OB --> WK[3 SYNC<br/>worker expands + batches]
+  WK --> MS[(Meilisearch)]
+  Q[4 QUERY<br/>customer searches] --> API[NestJS SearchService]
+  API --> MS
+  API -.->|5 FALLBACK<br/>Meili down| PG
+```
+
+Postgres stays the source of truth for every write. Meilisearch is a **derived, disposable
+index** — it can be deleted and rebuilt from Postgres at any time. Nothing is ever written
+to Meilisearch first.
+
+---
+
+## 3. Change capture — outbox, not ORM hooks
+
+### Why not Sequelize hooks
+
+The obvious approach is a Sequelize `afterSave` hook that pushes to Meilisearch. It is
+wrong here for a specific reason: **the bulk Excel import paths bypass the ORM.** Vendor
+inventory upload, admin catalog seeding and `drain_catalog_reindex_queue()` all write in
+bulk or in SQL. An ORM hook silently misses exactly the writes that change the most rows.
+
+Database triggers see every write regardless of what issued it. The schema already uses
+this pattern for `attributes_flat`, so it is a shape the team will recognise.
+
+### Statement-level, not row-level
+
+A row-level trigger can cover all three events in one declaration, which is fewer lines.
+It also fires **once per row**. A vendor uploading 500 paint price rows would invoke the
+function 500 times and write 500 outbox rows for perhaps 50 distinct products.
+
+Statement-level triggers with transition tables (Postgres 10+; this project runs 16) fire
+**once per statement** and write one deduplicated `INSERT … SELECT DISTINCT`.
+
+| | Row-level | **Statement-level** |
+|---|---|---|
+| Trigger declarations | 10 | **24** |
+| Invocations for a 500-row upload | 500 | **1** |
+| Outbox rows written | 500 | **~50** (distinct products) |
+
+The trigger count is forced by Postgres, not by preference:
+
+> *"Multiple events can be specified using `OR`, except when transition relations are
+> requested."* — PostgreSQL 16, `CREATE TRIGGER`
+
+So each event needs its own trigger. All 24 share just **two** functions, and the DDL is
+written once.
+
+### `search_outbox`
+
+Full DDL: **[search-schema.sql](search-schema.sql)**, which is canonical for search sync
+the way [catalog-schema.sql](catalog-schema.sql) is canonical for the catalog.
+
+```sql
+CREATE TABLE search_outbox (
+  id           BIGSERIAL PRIMARY KEY,
+  entity_type  TEXT NOT NULL CHECK (entity_type IN (
+                 'master_product', 'vendor_listing',
+                 'brand', 'category', 'stone_variety', 'all')),
+  entity_id    UUID,                    -- NULL only for 'all'
+  reason       TEXT NOT NULL,
+  enqueued_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  processed_at TIMESTAMPTZ,
+  CONSTRAINT search_outbox_target CHECK (
+    (entity_type =  'all' AND entity_id IS NULL) OR
+    (entity_type <> 'all' AND entity_id IS NOT NULL))
+);
+```
+
+`BIGSERIAL`, the `enqueued_at` / `processed_at` pair and the scope `CHECK` deliberately
+mirror `catalog_reindex_queue` — same shape, same drain semantics, one pattern to learn.
+
+It differs in being **polymorphic**: `catalog_reindex_queue` has two targets and can afford
+typed, foreign-keyed columns. This has five, so it carries `(entity_type, entity_id)`. The
+cost is real — no foreign key, therefore no `ON DELETE CASCADE`, therefore the worker must
+tolerate an `entity_id` that no longer exists. That turns out to be the **delete path**
+rather than a defect (below).
+
+### Ten sources, five entity types
+
+**The row records what changed, not which documents to rebuild.** A `vendor_listing` price
+change dirties one product — but renaming a brand dirties every product beneath it. If the
+trigger enqueued product IDs, renaming one row would write thousands inside that
+transaction.
+
+Child tables enqueue the **parent they can be resolved from**, not themselves — so the
+outbox never holds an entity type that cannot be expanded later:
+
+| Trigger source | Enqueues | Worker expands to |
+|---|---|---|
+| `master_product` | `master_product` | that product |
+| `master_product_attribute_value` | `master_product` | its product |
+| `master_product_media` | `master_product` | its product |
+| `vendor_listing` | `master_product` | its product |
+| `vendor_listing_colour_price` | `master_product` *(via join)* | its listing's product |
+| `inventory` | `master_product` *(via join)* | its listing's product |
+| `stone_variety_alias` | `stone_variety` | all products of that variety |
+| `brand` | `brand` | **all products of that brand** |
+| `category` | `category` | **the whole subtree** (`path LIKE 'x/%'`) |
+| `stone_variety` | `stone_variety` | **all products of that variety** |
+
+Three details that are easy to get wrong:
+
+- **`vendor_listing` enqueues its product, not itself.** On delete the listing is gone, so
+  a `vendor_listing` entity could never be resolved back to a product at drain time.
+- **The `UPDATE` branch reads both transition tables.** A re-match moves a listing to a
+  different product, and the *old* product needs reindexing just as much as the new one.
+- **Cascade-orphaned child triggers find nothing, and that is correct.** Deleting a listing
+  fires its own trigger, which already enqueued the product. The cascade path is redundant,
+  not load-bearing.
+
+### `UPDATE OF` only where the trigger fans out
+
+> **Rule:** restrict the column list on fan-out sources. Leave 1:1 sources bare.
+
+A bare `AFTER UPDATE ON brand` reindexes every Havells product because someone touched
+`updated_at`. On a 1:1 source the same over-firing costs *one* redundant rebuild — not
+worth maintaining a column list that silently rots as columns are added.
+
+So `brand`, `category` and `stone_variety` name their columns; nothing else does. Those
+three also need **no `INSERT` or `DELETE` trigger** — a new brand has no products yet, and
+all three are `ON DELETE RESTRICT` from `master_product`, so a row with products cannot be
+deleted.
+
+### The delete path
+
+Expansion returns IDs, not documents. The worker then asks Postgres which of them should
+exist in the index:
+
+```sql
+SELECT id FROM master_product WHERE id = ANY($1) AND status = 'live';
+```
+
+Every ID from expansion that is **absent** from that result is deleted from Meilisearch.
+One query covers three cases with no special handling:
+
+| Case | Result |
+|---|---|
+| product row deleted | absent → `deleteDocument` |
+| status moved off `live` | absent → `deleteDocument` |
+| product still live | rebuilt |
+
+This is why the missing foreign key is not a defect. An `entity_id` pointing at a deleted
+row is precisely the signal to remove the document.
+
+### Feeding from the existing queue
+
+`drain_catalog_reindex_queue()` rebuilds `attributes_flat` in bulk via an `UPDATE` on
+`master_product` — which fires `trg_mp_search_upd` automatically. Already handled,
+**provided the drain never runs with `search.suppress_outbox` set.**
+
+Suppression exists only for the initial seed, where 4,000 SKUs should not become 4,000
+outbox rows drained one document at a time:
+
+```sql
+BEGIN;
+  SELECT set_config('search.suppress_outbox', 'on', true);   -- txn-local
+  ... bulk writes ...
+COMMIT;
+INSERT INTO search_outbox (entity_type, reason) VALUES ('all', 'bulk seed');
+```
+
+Mirrors the existing `flat_rebuild_suppressed()` escape hatch exactly. Get this wrong — set
+suppression somewhere it does not belong — and Postgres is correct while Meilisearch is
+stale, with **nothing raising an error**. That is the failure mode this whole section
+exists to prevent, which is why `search_outbox_backlog` is a view and not an afterthought.
+
+---
+
+## 4. Sync worker
+
+BullMQ on the Redis that is already running. One new dependency (`bullmq`,
+`@nestjs/bullmq`) and one new queue.
+
+```
+cutoff := NOW()                       ← taken FIRST; everything hinges on it
+      │
+      ▼
+search_outbox_try_lock()              ← advisory lock, one drainer at a time
+      │
+      ▼
+expand_search_outbox(cutoff)          ← SQL: entity rows → distinct product IDs
+      │
+      ▼
+SELECT … WHERE id = ANY(ids) AND status='live'
+      │                        │
+   present                  absent
+      ▼                        ▼
+addDocuments(batch)     deleteDocuments(ids)
+      │                        │
+      └────────────┬───────────┘
+                   ▼
+    mark_search_outbox_processed(cutoff)
+```
+
+**Expansion is SQL; batching and HTTP are TypeScript.** The fan-outs are set operations —
+a category subtree is a prefix match against `idx_category_path`, which already exists —
+so doing them in TypeScript would mean pulling IDs over the wire to no purpose.
+
+| Concern | Setting | Why |
+|---|---|---|
+| Poll interval | 2 s | Price freshness a customer would never notice |
+| Batch size | up to 1,000 docs | Meilisearch prefers batched adds over per-document calls |
+| Dedupe | `UNION` inside `expand_search_outbox` | A vendor editing 40 prices dirties one product 40 times |
+| Concurrency | `pg_try_advisory_lock` | A rolling Railway deploy briefly runs two workers |
+| Retry | BullMQ exponential backoff | `processed_at` stays NULL until the task succeeds |
+| Ordering | not required | Documents are upserted whole, so last write wins correctly |
+
+### Why the cutoff is taken first
+
+It is the entire concurrency argument, and it is the same trick
+`drain_catalog_reindex_queue()` already uses.
+
+Changes arriving **during** a drain land with `enqueued_at > cutoff`, so
+`mark_search_outbox_processed(cutoff)` does not touch them and the next cycle picks them
+up. Worst case a document is rebuilt twice. **It is never left stale** — which matters
+because a stale document raises no error and nobody finds out until a customer sees a wrong
+price.
+
+Rows are marked processed only after Meilisearch has accepted every batch for that cutoff.
+A crash mid-drain re-delivers the whole cutoff window, and re-indexing a document that is
+already correct is harmless.
+
+### `'all'` does not go through this path
+
+A full-rebuild marker is excluded from `expand_search_outbox` deliberately. Expanding it
+would push 6,000 documents through the incremental path and leave the live index
+half-updated for the duration. It routes to the **shadow index + atomic swap** job instead
+(section 7).
+
+---
+
+## 5. Index topology
+
+**One index: `products`.** Not one per category.
+
+Facets in Meilisearch are a *query-time* parameter, not an index-time structure — the
+`facets` argument returns a `facetDistribution` scoped to the current result set. So
+per-category facets (which differ across all 58 leaves) are handled by the query layer
+asking for different facet fields once the category is known. Splitting the index per
+category would buy nothing and would break cross-category search, which is the main
+search box.
+
+Settings are **code, applied idempotently on boot** — not clicked into a dashboard.
+
+```ts
+// meili.indexes.ts — the single source of truth for index configuration
+export const PRODUCTS_INDEX = 'products';
+
+export const productsSettings = {
+  searchableAttributes: [ /* ordered: earlier = higher weight */ ],
+  filterableAttributes: [ /* category_path, brand, attributes.*, pincodes, … */ ],
+  sortableAttributes:   [ /* price, created_at */ ],
+  typoTolerance: {
+    // VERIFIED against Meilisearch docs: prevents 32A matching 32B.
+    disableOnNumbers: true,
+  },
+};
+```
+
+Settings drift between environments is otherwise guaranteed, and the symptom — "staging
+ranks differently to production" — is miserable to diagnose.
+
+### Numeric typo tolerance is the one setting that must not be missed
+
+Construction search is full of numbers where a one-character edit is a *different product*:
+
+| Query | Must not match |
+|---|---|
+| `32A MCB` | `32B` curve, `16A` |
+| `2.5 sq mm` | `1.5 sq mm` |
+| `600x600 tile` | `600x300` |
+
+Meilisearch's documented behaviour is that with `disableOnNumbers` enabled, *"queries with
+numbers only return exact matches"*. Default typo tolerance allows one typo at 5–8
+characters and two at 9+, which would actively produce wrong results across this catalog.
+
+---
+
+## 6. Query path
+
+```mermaid
+sequenceDiagram
+  participant C as Client
+  participant API as SearchController
+  participant R as Redis
+  participant MS as Meilisearch
+  participant PG as Postgres
+
+  C->>API: GET /search?q=&category=&filters=&pincode=
+  API->>API: validate DTO
+  API->>R: cache lookup
+  alt hit
+    R-->>C: cached page
+  else miss
+    API->>MS: search + facets
+    MS-->>API: hits + facetDistribution
+    API->>PG: resolve prices for visible page
+    PG-->>API: prices
+    API->>R: cache
+    API-->>C: products + facets + pagination
+  end
+```
+
+The Postgres hop exists because **price is location-dependent and Meilisearch does not
+know the customer's pincode economics** — that is decision S1. If S1 resolves to a
+per-zone price map inside the document, this hop disappears.
+
+Caching is safe because the cache key is the *normalised query + filters + pincode*, and
+the TTL is short (60 s). Price changes are the only volatile field, and a minute of
+staleness on a search results page is acceptable — the product page resolves live.
+
+### Proxy, not direct-to-Meilisearch
+
+Meilisearch supports search-only API keys that are documented as safe to expose in a
+frontend. Direct client → Meilisearch would remove a network hop and is the fastest
+possible instant-search.
+
+**We proxy through NestJS anyway at launch,** because the price hydration above, pincode
+serviceability rules, and search analytics all live server-side. Revisit for the
+autocomplete endpoint specifically, where there is no price to resolve.
+
+---
+
+## 7. Consistency and failure
+
+### Meilisearch is asynchronous
+
+Documented task states: `enqueued → processing → succeeded | failed | canceled`. Indexing
+is **not** immediate.
+
+| Path | Behaviour |
+|---|---|
+| Admin publishes a product, then searches for it | **Await the task** before returning 200, so the admin never sees a "missing" product they just created |
+| Bulk seeding / vendor price upload | Fire and forget; the outbox guarantees eventual arrival |
+
+Only the interactive admin path pays the wait. Making bulk imports synchronous would make
+a 4,000-row seed crawl.
+
+### When Meilisearch is down
+
+Search must degrade, not 500.
+
+```
+SearchService
+   ├── meilisearch (primary)
+   └── PostgresSearchService (fallback)
+         ILIKE / pg_trgm on name + GIN on attributes_flat
+         → both indexes already exist in catalog-schema.sql
+```
+
+A `SEARCH_ENGINE` config flag forces the fallback manually — useful during a reindex or a
+bad settings deploy. This costs almost nothing to keep alive because the Postgres path is
+Phase 1 anyway; it is written once and then kept as the safety net.
+
+### Full rebuild — atomic swap
+
+Adding a field to the document, or changing tokenisation, requires re-pushing every
+document. Do it into a shadow index and swap:
+
+```
+build products_next  →  verify count + spot-check  →  swapIndexes(products, products_next)
+```
+
+Meilisearch's specification states that swapping *"allows to atomically deploy several new
+versions of indexes without any downtime for the search clients"*, and that it is an atomic
+transaction — either all swap or none. The old index can be kept briefly to swap back.
+
+At 4,000–6,000 SKUs a full rebuild is minutes, so this is cheap insurance rather than a
+production ritual.
+
+---
+
+## 8. NestJS module layout
+
+```
+apps/backend/src/modules/search/
+├── search.module.ts
+├── search.controller.ts              GET /search · /search/suggest · /search/facets
+├── dto/                              validated query params
+├── search.service.ts                 orchestration + fallback decision
+├── meili/
+│   ├── meili.client.ts               wraps the official `meilisearch` client
+│   ├── meili.indexes.ts              index names + settings AS CODE
+│   └── meili.bootstrap.ts            applies settings on boot, idempotent
+├── indexing/
+│   ├── search-document.builder.ts    Postgres rows → SearchDocument   ← S1 lives here
+│   ├── outbox.poller.ts              drains search_outbox, expands entities
+│   └── indexing.processor.ts         BullMQ consumer, batching
+└── fallback/
+    └── postgres-search.service.ts    pg_trgm + GIN path, kept alive
+```
+
+`SearchDocument` belongs in **`packages/types`**, because the admin panel and the mobile
+app both render search results and must agree on the shape.
+
+---
+
+## 9. Configuration
+
+| Variable | Where | Notes |
+|---|---|---|
+| `MEILI_HOST` | backend, worker | `http://meilisearch.railway.internal:7700` |
+| `MEILI_MASTER_KEY` | meilisearch, worker | **never** in a client bundle |
+| `MEILI_SEARCH_KEY` | backend | search-only; the one that could be exposed later |
+| `SEARCH_ENGINE` | backend | `meilisearch` \| `postgres` — the kill switch |
+| `WORKER_MODE` | worker | selects the worker start path in the shared image |
+
+**One Meilisearch instance per environment.** Not a shared instance with index prefixes:
+settings are per-index but the *task queue and disk are shared*, so a staging bulk reindex
+would stall production search behind it.
+
+---
+
+## 10. What this costs
+
+| Item | Estimate |
+|---|---|
+| Railway services added | 1 (Meilisearch) at launch, 2 once the worker is split out |
+| New dependencies | `meilisearch`, `bullmq`, `@nestjs/bullmq` |
+| Migration | `search_outbox`, 2 trigger functions, 24 triggers, 5 helper functions, 1 view |
+| Resource sizing | Not a design concern at 4,000–6,000 documents |
+
+The largest genuine cost is **the sync pipeline is a permanent correctness liability**.
+Any write path that skips the outbox produces a stale index that never errors and nobody
+notices until a customer reports a wrong price. That is the price of leaving Postgres, and
+it is why the fallback path stays alive.
+
+---
+
+## 11. Portability — if the platform moves off Railway
+
+Nothing in this design is Railway-specific except deployment configuration. The application
+code moves unchanged; `railway.toml` is rewritten as an ECS task definition or Terraform.
+Taking AWS as the worked example:
+
+| Railway | AWS | Application change |
+|---|---|---|
+| `backend` container | ECS Fargate / App Runner | none — the Dockerfile already exists |
+| `search-worker` | ECS task, same image | none — same `WORKER_MODE` flag |
+| `postgres` | RDS Postgres | none. `pgcrypto` and `pg_trgm` are both supported on RDS |
+| `redis` | ElastiCache | see **hash tags** below |
+| `meilisearch` | EC2 / ECS-on-EC2 + EBS | see **storage** below |
+| `*.railway.internal` | Cloud Map / internal ALB | one env var — `MEILI_HOST` |
+| `healthcheckPath: /health` | ALB target group | none — already implemented |
+
+### Two constraints that must be honoured now, not later
+
+**1. Meilisearch needs local disk, not network storage.** It uses LMDB and memory-maps its
+database. Meilisearch's storage documentation recommends *"a low-latency disk (for example,
+an NVMe SSD)"* over *"a high-latency disk (for example, HDD, NFS, or other network-mounted
+storage)"*.
+
+> **Do not deploy Meilisearch on Fargate + EFS.** EFS is network-mounted, which is precisely
+> what that guidance excludes. Use ECS-on-EC2 or EC2 with an EBS volume — or Meilisearch
+> Cloud, which runs on AWS regardless.
+
+Sizing is not a concern: Meilisearch's own measured example is roughly 305 MB of RAM for a
+~9 MB dataset, and this catalog is smaller than that.
+
+**2. Give every BullMQ queue a bracketed prefix from day one.**
+
+```ts
+new Queue('search-index', { prefix: '{golden-abode}' })
+```
+
+BullMQ's documentation states that *"Bull internals require atomic operations that span
+different keys. This behavior breaks Redis's rules for cluster configurations"*, and
+requires a hash tag to fix it. On single-node Redis the prefix is free and invisible. On
+ElastiCache in cluster mode it is mandatory. **Adding it later changes every queue key and
+orphans in-flight jobs** — so it costs nothing now and is disruptive to retrofit.
+
+### The provider interface
+
+`SearchService` must depend on an interface, never on the Meilisearch client directly:
+
+```ts
+export interface SearchProvider {
+  search(q: SearchQuery): Promise<SearchResult>;
+  indexBatch(docs: SearchDocument[]): Promise<void>;
+  deleteDocuments(ids: string[]): Promise<void>;
+  ensureSettings(): Promise<void>;
+}
+```
+
+This is **not speculative generality**. Section 7 already requires two implementations —
+`MeilisearchProvider` and `PostgresSearchProvider` — so the interface exists by necessity.
+Recognising it as the portability boundary costs nothing extra and makes a future engine a
+single new class rather than a redesign. `SearchDocument` already lives in
+`packages/types` and carries no engine-specific fields.
+
+### One strategic note
+
+AWS offers **managed OpenSearch** (Apache 2.0) and **no managed Meilisearch**. Running on
+AWS would therefore mean self-managing an EC2 instance for Meilisearch while a managed
+alternative is available in the same account. That is not a reason to choose differently
+today — 0017 chose Meilisearch on licence and fit — but it is the concrete scenario in which
+the provider interface earns back its cost.
+
+---
+
+## Open questions
+
+1. **S1 — document grain and location-dependent price.** Blocks `search-document.builder.ts`
+   and nothing else.
+2. Does the mobile app need direct-to-Meilisearch autocomplete for latency, or is the proxy
+   fast enough? Measure before adding a second access pattern.
+3. Synonyms — Hindi and trade terms (`commode` → water closet, `patti` → strip). Meilisearch
+   supports a synonyms setting; the *list* is domain work, not engineering, and needs the
+   same seeding owner as the catalog.
+4. Do we index `draft` and `deprecated` products for admin search, or keep the index
+   `live`-only and let admin search hit Postgres? Two audiences, one index, unresolved.
+
+## Sources
+
+Facts marked verified were fetched from primary documentation during design:
+
+- [Meilisearch typo tolerance settings](https://www.meilisearch.com/docs/learn/relevancy/typo_tolerance_settings) — `disableOnNumbers`, default 5–8/9+ character thresholds
+- [Meilisearch asynchronous operations](https://www.meilisearch.com/docs/learn/async/asynchronous_operations) — task states, which operations are async
+- [Meilisearch basic security](https://www.meilisearch.com/docs/learn/security/basic_security) — master / admin / search key roles, frontend exposure
+- [Swap Indexes API specification](https://specs.meilisearch.dev/specifications/text/0191-swap-indexes-api.html) — atomicity and zero-downtime claim
+- [Meilisearch storage](https://www.meilisearch.com/docs/learn/engine/storage) — LMDB, memory-mapping, the NFS / network-mounted storage warning, RAM figures
+- [BullMQ on Redis Cluster](https://docs.bullmq.io/bull/patterns/redis-cluster) — hash-tag prefix requirement
