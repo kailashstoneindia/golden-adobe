@@ -1,0 +1,5 @@
+name*,brand*,mfr_part_number,gtin,hsn_code,gst_rate*,country_of_origin*,importer_details,sale_unit_type*,pack_content_qty*,unit_of_measure*,sheen*,application_surface,washability,coverage,drying_time,low_voc,product_grade*,stain_resistant,anti_bacterial,warranty_months,certification_mark
+Asian Paints Royale Luxury Emulsion 20L,Asian Paints,AP-RYL-20,8901234600011,3209,18,India,,tinted_to_order,20,litre,Matt,Interior Wall,High,160,4,TRUE,Luxury,TRUE,TRUE,,BIS
+Asian Paints Royale Luxury Emulsion 4L,Asian Paints,AP-RYL-04,8901234600012,3209,18,India,,tinted_to_order,4,litre,Matt,Interior Wall,High,160,4,TRUE,Luxury,TRUE,TRUE,,BIS
+Asian Paints Tractor Emulsion 20L,Asian Paints,AP-TRC-20,8901234600013,3209,18,India,,tinted_to_order,20,litre,Matt,Interior Wall,Low,140,6,FALSE,Economy,FALSE,FALSE,,BIS
+Berger Silk Glamor 10L,Berger,BRG-SLK-10,8901234600014,3209,18,India,,tinted_to_order,10,litre,Soft Sheen,Interior Wall,High,170,4,TRUE,Premium,TRUE,FALSE,,BIS
