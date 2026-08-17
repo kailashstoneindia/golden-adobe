@@ -28,15 +28,32 @@ Treat it as a workstream with an owner, not a task.
 
 Two things that cost nothing now and a lot later.
 
-| Item | Why now |
-|---|---|
-| **Name a catalog seeding owner** | 4,000–6,000 SKUs is domain work, not data entry. Someone who does not know the trade will file anchors under bolts |
-| **Verify MPN availability** | Open a real Havells and Jaquar price list. Confirm each product carries a code. This determines how much of the catalog the primary dedup constraint actually covers — and it is still unverified |
-| **Name a `pincode_city_map` owner** | Scope is known — Delhi, Gurugram, Faridabad, Noida, Ghaziabad ([0020](decisions/0020-ncr-launch-cities.md)) — but nobody has sourced the India Post data or seeded the table yet |
+| Item | Why now | Status |
+|---|---|---|
+| **Catalog seeding owner** | 4,000–6,000 SKUs is domain work, not data entry | **Assigned: the Golden Abode team**, sourcing directly from each brand's own published catalog/website |
+| **Verify MPN availability** | Confirm each product carries a code — determines how much of the catalog the primary dedup constraint actually covers | Folds into seeding itself now — the same pass through Havells' and Jaquar's sites that pulls specs also confirms MPN presence, no separate task |
+| **Name a `pincode_city_map` owner** | Scope is known — Delhi, Gurugram, Faridabad, Noida, Ghaziabad ([0020](decisions/0020-ncr-launch-cities.md)) — but nobody has sourced the India Post data or seeded the table yet | Open |
 
-Also decide: launch all eight categories, or start with two or three where brand data is
-strong (Electrical, Tiles, Plumbing). Starting narrow is strongly recommended — it proves
-the whole loop before absorbing Hardware and Stone, the two hardest.
+**Also decide: launch all eight categories, or start narrow.** The seeding method just
+confirmed sharpens this beyond "narrow is easier" — it changes *which* categories are even
+the right fit, per the data-availability read in
+[catalog-vendor-export-analysis.md](catalog-vendor-export-analysis.md):
+
+| Fits "pull from the brand's own site" | Doesn't |
+|---|---|
+| Electrical (Havells, Legrand, Anchor), Plumbing (Astral, Supreme, Prince), Sanitaryware (Jaquar, Cera, Hindware), Tiles (Kajaria, Somany, Nitco) — all rated **Good** | Hardware Tools — fragmented, much of it unbranded, no catalog to pull from at all. Stone — **no standard catalog exists**, brand extraction structurally doesn't apply |
+
+For Hardware and Stone, this isn't "slower with the same method" — it's a different sourcing
+problem entirely (trade knowledge, vendor price lists, physical yards), needing a different
+plan before those two join. **Recommendation: launch narrow with the four Good-fit
+categories**, bring in Hardware/Stone once their sourcing approach is worked out separately.
+
+One thing worth flagging now rather than after a catalog's been pulled: **specifications
+(dimensions, MPN, ratings, materials) are facts and not copyrightable — brand-authored
+marketing copy and product photography usually are.** Pull the specs freely; check
+permission before reusing a brand's own images and descriptions verbatim
+(`catalog-vendor-export-analysis.md` already assumes images are "brand-supplied where
+permitted, otherwise sourced" — this is the "otherwise sourced" case in practice).
 
 ---
 
