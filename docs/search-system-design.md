@@ -366,12 +366,53 @@ interface SearchDocument {
   category_path: string;
   brand: string | null;
   attributes: Record<string, string | number | boolean>;
-  price: number;           // plain, sortable — the ONE reason this model beats a price map
+  price: number;                    // cheapest ACTIVE listing among vendors in this city
+  cheapest_vendor_listing_id: string;  // which listing that price came from
+  vendor_count: number;             // how many vendors in this city carry it
   in_stock: boolean;
-  vendor_count: number;
   updated_at: string;
 }
 ```
+
+### `price` is a city-scoped best price, computed at build time — not dropped
+
+Worth stating plainly, because it is easy to read "the global `cached_best_price` column is
+retired" as "best price is gone." It is not — it **moved**, from one global column on
+`master_product` to this field, recomputed per `(product, city)` every time the document is
+rebuilt:
+
+```sql
+-- search-document.builder.ts runs exactly this shape for every (product, city) pair
+-- it (re)builds. Same catalog-schema.sql indexes already cover it:
+-- idx_vendor_listing_product (master_product_id, status) and vendors(city_id).
+SELECT
+  MIN(vl.price)                                    AS price,
+  (ARRAY_AGG(vl.id ORDER BY vl.price))[1]           AS cheapest_vendor_listing_id,
+  COUNT(*)                                          AS vendor_count
+FROM vendor_listing vl
+JOIN vendors v ON v.id = vl.vendor_id
+WHERE vl.master_product_id = $1
+  AND v.city_id = $2
+  AND vl.status = 'active';
+```
+
+This is the same "cheapest among vendors" idea `master_product.cached_best_price` always
+computed — just scoped to the one city that's ever relevant to a given customer, instead of
+globally. The Meilisearch document **is** the cache; there is no separate Postgres
+`cached_best_price_by_city` column, because the search index already serves that role and
+a second cache would just be one more place for staleness to hide.
+
+**PDP reads the same number, by ID, not by re-querying.** Given a resolved `city_id` and a
+`product_id`, the product page fetches `products/{product_id}:{city_id}` directly from
+Meilisearch — no search query, no ranking, just a document `GET`. That reuses the exact
+figure shown in search results instead of computing it twice, and it is what replaces the
+old *"search results and initial PDP load read `cached_best_price` directly"* behaviour
+from `search-architecture.md`, now correctly scoped to one city.
+
+**The live join is still there for exactly one case**, unchanged from the original design:
+comparing vendors within a product page. `vendor_count` tells the UI whether that toggle is
+worth showing at all — no point rendering a "compare N vendors" affordance when
+`vendor_count` is 1.
 
 **Why the ID is deterministic rather than server-generated:** it makes the delete path a
 plain ID list. No `deleteByFilter`, no query construction — the worker computes the same ID

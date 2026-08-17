@@ -99,7 +99,7 @@ erDiagram
         string country_of_origin "NOT NULL, filterable"
         enum sale_unit_type "discrete|cut_to_length|tinted_to_order"
         jsonb attributes_flat "write-time cache"
-        numeric cached_best_price "admin/ops only — never shown to a customer, 0018"
+        numeric cached_best_price "global figure, admin/ops only — city-scoped price moved to the search doc, 0018"
     }
     master_product_attribute_value {
         uuid master_product_id PK,FK

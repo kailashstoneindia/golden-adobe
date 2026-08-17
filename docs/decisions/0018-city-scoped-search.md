@@ -165,11 +165,13 @@ customers often enough to matter.
   mistaken for a docs-only change the way most of this catalog work has been so far.
 - `vendor_listing.serviceable_pincodes` and `.service_radius_km` are removed — never
   implemented in a real migration, so this is a design correction, not a data migration.
-- **`master_product.cached_best_price` can no longer be shown to a customer.** It is a
-  *global* cheapest-anywhere figure; once search is city-scoped that number is never the
-  price to display. Repurposed as admin/ops visibility only (catalog monitoring — "is
-  anyone stocking this at all"). The customer-facing price is resolved per (product, city)
-  in the search document.
+- **`master_product.cached_best_price` (the global column) can no longer be shown to a
+  customer** — but best price itself is not retired, it *relocates*. The same
+  cheapest-among-vendors figure is recomputed per `(product, city)` at search-document
+  build time and lives in the document's `price` field; PDP reads it by document ID rather
+  than re-querying. Repurposed the global column as admin/ops visibility only (catalog
+  monitoring — "is anyone stocking this at all, anywhere"). Full mechanism in
+  [`../search-system-design.md`](../search-system-design.md) §5.
 - **Search sync gains a third trigger function and 2 more triggers** (26 total, up from
   24) — one for `vendors.city_id` relocation, one for `city` rename/deactivation. Full
   detail in [`../search-schema.sql`](../search-schema.sql).
@@ -189,9 +191,9 @@ customers often enough to matter.
 
 1. **Centroid-nearest accuracy at city boundaries.** Accepted as a launch-scale trade-off;
    revisit if launch cities grow into the dozens.
-2. **What happens when a customer's pincode/GPS resolves to nowhere active** — no city
-   serves them yet. Not decided; likely a waitlist or "coming soon" state, but that is
-   product/UX, not schema.
+2. ~~What happens when a customer's pincode/GPS resolves to nowhere active.~~ **Resolved:
+   a waitlist page.** Product/UX detail (capture interest, no schema implication) —
+   noted here only so the resolved city → no-match path is not left undefined.
 3. **`pincode_city_map` seeding** — the India Post dataset needs sourcing and an owner
    before Phase 6 (search) can proceed past launch-city scope.
 4. Multi-city vendors are explicitly deferred ("for now"). The join-table migration path

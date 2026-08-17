@@ -421,12 +421,18 @@ CREATE TABLE master_product (
   -- cache that makes Phase-1 Postgres filtering a single GIN index lookup.
   attributes_flat     JSONB NOT NULL DEFAULT '{}'::jsonb,
 
-  -- GLOBAL best price — cheapest across every vendor in every city. NEVER shown
-  -- to a customer (decision 0018): the business connects buyers to LOCAL
+  -- GLOBAL best price — cheapest across every vendor in every city. NOT what a
+  -- customer is shown (decision 0018): the business connects buyers to LOCAL
   -- vendors, so the price that matters is scoped to the customer's city, and
-  -- this column cannot express that. Kept for admin/ops visibility only (catalog
-  -- monitoring, "is anyone stocking this at all") — the customer-facing price is
-  -- resolved per (product, city) in the search document; see search-schema.sql.
+  -- this single column cannot express that. Kept for admin/ops visibility only
+  -- (catalog monitoring, "is anyone stocking this at all, anywhere").
+  --
+  -- "Best price" itself is NOT retired — it moves, not disappears. The
+  -- customer-facing figure is the SAME cheapest-among-vendors computation,
+  -- just re-scoped to one city and recomputed at search-document build time
+  -- instead of stored here: see search-system-design.md §5 ("price is a
+  -- city-scoped best price") and search-schema.sql. The Meilisearch document
+  -- is that cache; there is no second Postgres column for it.
   cached_best_price             NUMERIC(12,2),
   cached_best_vendor_listing_id UUID,
   cached_updated_at             TIMESTAMPTZ,
