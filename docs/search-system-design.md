@@ -728,8 +728,10 @@ the provider interface earns back its cost.
    scale; revisit if launch cities grow into the dozens.
 3. ~~What happens when a customer's pincode/GPS resolves to no active city yet.~~
    **Resolved: a waitlist page** (0018, open question 2).
-4. `pincode_city_map` seeding — needs a source (India Post dataset, unverified) and an
-   owner, same shape of requirement as `stone_variety` in `catalog-build-order.md`.
+4. `pincode_city_map` seeding — scope now known: **Delhi, Gurugram, Faridabad, Noida,
+   Ghaziabad** ([0020](decisions/0020-ncr-launch-cities.md)), not all of India. Still needs
+   a source (India Post dataset, unverified) and an owner, same shape of requirement as
+   `stone_variety` in `catalog-build-order.md`.
 5. ~~Does the mobile app need direct-to-Meilisearch autocomplete, or is the proxy fast
    enough?~~ **Resolved: direct-to-Meilisearch, approved** — a narrower search-only key,
    separate from the general one ([0019](decisions/0019-search-followups.md)).

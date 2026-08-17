@@ -205,8 +205,9 @@ customers often enough to matter.
 2. ~~What happens when a customer's pincode/GPS resolves to nowhere active.~~ **Resolved:
    a waitlist page.** Product/UX detail (capture interest, no schema implication) —
    noted here only so the resolved city → no-match path is not left undefined.
-3. **`pincode_city_map` seeding** — the India Post dataset needs sourcing and an owner
-   before Phase 6 (search) can proceed past launch-city scope.
+3. **`pincode_city_map` seeding** — scope narrowed by [0020](0020-ncr-launch-cities.md) to
+   five named NCR areas rather than all of India. Sourcing the India Post dataset and
+   naming an owner is still open.
 4. Multi-city vendors are explicitly deferred ("for now"). The join-table migration path
    is noted above but not designed.
 

@@ -32,6 +32,7 @@ Two things that cost nothing now and a lot later.
 |---|---|
 | **Name a catalog seeding owner** | 4,000–6,000 SKUs is domain work, not data entry. Someone who does not know the trade will file anchors under bolts |
 | **Verify MPN availability** | Open a real Havells and Jaquar price list. Confirm each product carries a code. This determines how much of the catalog the primary dedup constraint actually covers — and it is still unverified |
+| **Name a `pincode_city_map` owner** | Scope is known — Delhi, Gurugram, Faridabad, Noida, Ghaziabad ([0020](decisions/0020-ncr-launch-cities.md)) — but nobody has sourced the India Post data or seeded the table yet |
 
 Also decide: launch all eight categories, or start with two or three where brand data is
 strong (Electrical, Tiles, Plumbing). Starting narrow is strongly recommended — it proves
@@ -158,12 +159,15 @@ self-hosted on Railway, with the Postgres path kept permanently — not just as 
 but as **admin's primary search path** ([0019](decisions/0019-search-followups.md)).
 Document shape — one per `(product, city)` — decided in
 [0018](decisions/0018-city-scoped-search.md); location resolution refined in
-[0019](decisions/0019-search-followups.md). Architecture in
+[0019](decisions/0019-search-followups.md). Launch scope is **Delhi NCR as five separate
+cities** — Delhi, Gurugram, Faridabad, Noida, Ghaziabad — decided in
+[0020](decisions/0020-ncr-launch-cities.md). Architecture in
 [search-system-design.md](search-system-design.md); DDL in [search-schema.sql](search-schema.sql)
 and the Geography section of [catalog-schema.sql](catalog-schema.sql).
 
 ```
-6a  geography            city, pincode_city_map, vendors.city_id
+6a  geography            city (seed: 5 NCR areas, 0020), pincode_city_map
+                         (NCR pincodes only), vendors.city_id
                          (0018 — a real migration on an existing table)
                          resolve_city() combines pincode + coordinates,
                          coordinates win on disagreement (0019)
