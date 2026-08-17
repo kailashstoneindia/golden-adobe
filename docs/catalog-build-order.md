@@ -34,26 +34,29 @@ Two things that cost nothing now and a lot later.
 | **Verify MPN availability** | Confirm each product carries a code — determines how much of the catalog the primary dedup constraint actually covers | Folds into seeding itself now — the same pass through Havells' and Jaquar's sites that pulls specs also confirms MPN presence, no separate task |
 | **Name a `pincode_city_map` owner** | Scope is known — Delhi, Gurugram, Faridabad, Noida, Ghaziabad ([0020](decisions/0020-ncr-launch-cities.md)) — but nobody has sourced the India Post data or seeded the table yet | Open |
 
-**Also decide: launch all eight categories, or start narrow.** The seeding method just
-confirmed sharpens this beyond "narrow is easier" — it changes *which* categories are even
-the right fit, per the data-availability read in
-[catalog-vendor-export-analysis.md](catalog-vendor-export-analysis.md):
+**Two sourcing paths, not one, split by data-availability rating in
+[catalog-vendor-export-analysis.md](catalog-vendor-export-analysis.md):**
 
-| Fits "pull from the brand's own site" | Doesn't |
-|---|---|
-| Electrical (Havells, Legrand, Anchor), Plumbing (Astral, Supreme, Prince), Sanitaryware (Jaquar, Cera, Hindware), Tiles (Kajaria, Somany, Nitco) — all rated **Good** | Hardware Tools — fragmented, much of it unbranded, no catalog to pull from at all. Stone — **no standard catalog exists**, brand extraction structurally doesn't apply |
+| | Electrical, Plumbing, Sanitaryware, Tiles | Hardware, Stone |
+|---|---|---|
+| Rated | **Good** | **Poor** |
+| Source | Brand websites — Havells, Jaquar, Astral, Kajaria and similar publish full specs | **The client** — fragmented/unbranded stock and no standard catalog mean brand-site extraction structurally doesn't apply; the client's own listings are the source instead |
+| Owner | Golden Abode team | Golden Abode team, requesting from the client |
 
-For Hardware and Stone, this isn't "slower with the same method" — it's a different sourcing
-problem entirely (trade knowledge, vendor price lists, physical yards), needing a different
-plan before those two join. **Recommendation: launch narrow with the four Good-fit
-categories**, bring in Hardware/Stone once their sourcing approach is worked out separately.
+Same seeding owner either way — only the source differs. Specs pulled from either source
+are facts, free to use: dimensions, MPN, ratings, materials. **Brand-authored marketing
+copy and product photography are the one thing to check permission on before reuse** —
+`catalog-vendor-export-analysis.md` already assumed images are "brand-supplied where
+permitted, otherwise sourced," which is exactly this case in practice.
 
-One thing worth flagging now rather than after a catalog's been pulled: **specifications
-(dimensions, MPN, ratings, materials) are facts and not copyrightable — brand-authored
-marketing copy and product photography usually are.** Pull the specs freely; check
-permission before reusing a brand's own images and descriptions verbatim
-(`catalog-vendor-export-analysis.md` already assumes images are "brand-supplied where
-permitted, otherwise sourced" — this is the "otherwise sourced" case in practice).
+**Sequencing: full seeding is a launch deliverable, not a build-phase one.** Current work is
+schema, flows and the admin/vendor tooling — those don't need 4,000–6,000 real rows to
+build or test against, a small representative sample per category is enough. The real
+catalog — brand-site pulls for the four Good categories, client-supplied data for Hardware
+and Stone — gets populated as launch approaches, using the tooling built in the meantime
+(Phase 3's generated import templates). Whether Hardware/Stone launch alongside the other
+four or follow once the client's data arrives is a timing call, not a blocker on anything
+being built right now.
 
 ---
 
