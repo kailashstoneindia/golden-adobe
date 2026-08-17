@@ -154,15 +154,19 @@ chose a narrow launch, this phase is where Paint and Stone join.
 Only useful once products *and* listings exist, so it genuinely follows Phase 4.
 
 Engine decided in [0017](decisions/0017-search-engine-choice.md): **Meilisearch**,
-self-hosted on Railway, with the Postgres path kept permanently as a fallback rather than
-discarded. Document shape — one per `(product, city)` — decided in
-[0018](decisions/0018-city-scoped-search.md). Architecture in
+self-hosted on Railway, with the Postgres path kept permanently — not just as a fallback,
+but as **admin's primary search path** ([0019](decisions/0019-search-followups.md)).
+Document shape — one per `(product, city)` — decided in
+[0018](decisions/0018-city-scoped-search.md); location resolution refined in
+[0019](decisions/0019-search-followups.md). Architecture in
 [search-system-design.md](search-system-design.md); DDL in [search-schema.sql](search-schema.sql)
 and the Geography section of [catalog-schema.sql](catalog-schema.sql).
 
 ```
 6a  geography            city, pincode_city_map, vendors.city_id
                          (0018 — a real migration on an existing table)
+                         resolve_city() combines pincode + coordinates,
+                         coordinates win on disagreement (0019)
                          BLOCKS 6c, 6e, 6f
 
 6b  document shape       DECIDED (0018) — (product, city), id `{product}:{city}`
@@ -170,7 +174,10 @@ and the Geography section of [catalog-schema.sql](catalog-schema.sql).
 
 6c  postgres path        pg_trgm on name + GIN on attributes_flat,
                          filtered by resolved city_id
-                         → ships first, then becomes the fallback
+                         → ships first; then DOUBLE DUTY (0019):
+                           outage fallback AND admin's primary search,
+                           since a draft product has no listing, so no
+                           document, so nothing for Meilisearch to find
 
 6d  sync plumbing        search_outbox + 3 trigger functions
                          + 26 statement-level triggers
@@ -179,12 +186,15 @@ and the Geography section of [catalog-schema.sql](catalog-schema.sql).
 6e  meilisearch           Railway service, private networking
                          index settings AS CODE, applied on boot
                          typoTolerance.disableOnNumbers = true
+                         synonyms: admin-editable table (0019)
 
 6f  worker               BullMQ on the existing Redis
                          expand → EXISTS-check pairs → add/delete → mark processed
 
 6g  query layer          SearchModule, city resolved BEFORE any query,
-                         facets per leaf category, Redis cache, fallback switch
+                         facets per leaf category, Redis cache, fallback switch.
+                         /search/suggest issues a NARROWER key so the client
+                         can hit Meilisearch directly for autocomplete (0019)
 
 6h  rebuild job          shadow index + atomic swap, for 'all'
 ```
@@ -194,9 +204,11 @@ Three sequencing notes:
 - **6a is the new long pole.** Unlike the rest of this catalog's design work, it is not
   docs-only — `vendors.city_id` is a migration on a table already running in production.
   Everything from 6c onward assumes it exists.
-- **6c is not throwaway.** It ships as the search implementation, then stays as the
-  fallback that keeps the site up when Meilisearch is down or mid-rebuild. It needs test
-  coverage for that reason — a fallback nobody exercises is not a fallback.
+- **6c is not throwaway, and now has two permanent jobs, not one.** It ships as the search
+  implementation, then stays as (a) the fallback that keeps the site up when Meilisearch is
+  down or mid-rebuild, and (b) admin's primary search path from day one — not a temporary
+  stand-in, since Meilisearch structurally cannot represent a draft product with no listing
+  yet. Needs test coverage for both reasons; a fallback nobody exercises is not a fallback.
 - **`search-architecture.md` is superseded on the tool choice and on the document shape.**
   Both are now decided (0017, 0018) — see that file's banner for the current sources of
   truth.

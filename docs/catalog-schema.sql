@@ -153,11 +153,22 @@ CREATE INDEX idx_pincode_city ON pincode_city_map (city_id);
 -- Resolved as NEAREST ACTIVE CITY CENTROID (haversine over city.centroid_lat/
 -- lng), not by reverse-geocoding to a pincode. This avoids a third-party
 -- geocoding API dependency entirely — city.centroid_lat/lng plus a small
--- distance calculation is enough at launch-city scale. Both paths converge on
--- the same city_id before any product query runs.
+-- distance calculation is enough at launch-city scale.
+--
+-- COMBINED with path 1, not chosen between (decision 0019): when both a
+-- pincode and coordinates are available and disagree, coordinates win — a
+-- pincode is an India Post administrative boundary and can straddle two
+-- cities, a coordinate pair cannot. Both converge on one city_id before any
+-- product query runs.
+--
+-- The SAME resolution logic double-serves vendor onboarding (0019): since
+-- vendors.latitude/longitude already exist (pre-dating this schema), a new
+-- vendor's city_id can be auto-suggested from them at signup rather than
+-- requiring a manual dropdown, with the admin free to override.
 --
 -- Accuracy caveat, deliberately accepted: nearest-centroid can misjudge a
--- customer near a city boundary. See open questions.
+-- customer near a genuine city boundary even with this combination. See open
+-- questions.
 
 
 -- =============================================================================

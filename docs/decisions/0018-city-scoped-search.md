@@ -107,7 +107,7 @@ does not serve a different area per product — that was modelling serviceabilit
 too fine, inherited from the original per-listing sketch in `search-architecture.md` and
 never load-bearing once a vendor has exactly one city.
 
-### Customer location — pincode or GPS, converging on one `city_id`
+### Customer location — pincode and GPS, combined — amended by [0019](0019-search-followups.md)
 
 Confirmed both are fine: *"pincode or gps both will be fine."* They resolve differently,
 and deliberately avoid a third-party dependency:
@@ -116,6 +116,13 @@ and deliberately avoid a third-party dependency:
 |---|---|---|
 | **Pincode** | `pincode_city_map` lookup table (`pincode → city_id`) | Pincodes do not self-describe a city; a lookup is unavoidable. Seeded from the public India Post pincode dataset — an open government dataset, not trade knowledge assembled by hand like `stone_variety` — filtered to launch cities and grown as new ones launch. |
 | **GPS** | Nearest **active** city by haversine distance to `city.centroid_lat/lng` | Avoids a third-party reverse-geocoding API entirely. At launch-city scale (a handful of rows), a distance calculation over `city` is enough — no external call, no per-request cost. |
+
+**Amended by 0019: this is not "use whichever is available," it's a combination with a
+tie-break.** When both are present and disagree, coordinates win — a pincode is an India
+Post *administrative* boundary and can legitimately straddle two cities, while a coordinate
+pair carries no such ambiguity. Full algorithm and the vendor-side reuse of this same logic
+(auto-suggesting `vendors.city_id` from the `latitude`/`longitude` columns that already
+exist) are in [0019](0019-search-followups.md).
 
 Both converge on a single `city_id` **before any product query runs.** Search, browse and
 PDP all take that resolved city as a hard filter — never a fallback, never a ranking
@@ -189,8 +196,12 @@ customers often enough to matter.
 
 ## Open questions
 
-1. **Centroid-nearest accuracy at city boundaries.** Accepted as a launch-scale trade-off;
-   revisit if launch cities grow into the dozens.
+1. **Centroid-nearest accuracy at city boundaries.** Partially mitigated by
+   [0019](0019-search-followups.md) — coordinates now win over pincode specifically because
+   they're more accurate, and are used whenever available rather than only as the fallback
+   when no pincode is given. Residual risk (coordinate-only resolution near a genuine
+   boundary) accepted as a launch-scale trade-off; revisit if launch cities grow into the
+   dozens.
 2. ~~What happens when a customer's pincode/GPS resolves to nowhere active.~~ **Resolved:
    a waitlist page.** Product/UX detail (capture interest, no schema implication) —
    noted here only so the resolved city → no-match path is not left undefined.

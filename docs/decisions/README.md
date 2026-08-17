@@ -30,6 +30,7 @@ valid when circumstances change.
 | [0016](0016-colour-price-per-listing.md) | Absolute colour price per listing | 2026-08-02 | Accepted |
 | [0017](0017-search-engine-choice.md) | Search engine choice: Meilisearch | 2026-08-16 | Accepted |
 | [0018](0018-city-scoped-search.md) | City-scoped search: one document per (product, city) | 2026-08-17 | Accepted |
+| [0019](0019-search-followups.md) | Search follow-ups: combined location resolution, admin search, autocomplete, synonyms | 2026-08-17 | Accepted |
 
 ## Adding a record
 

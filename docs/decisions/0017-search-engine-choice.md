@@ -207,12 +207,12 @@ strictly better than a hosted plan on both cost and exposure at this scale.
 1. ~~S1 — the search document grain, and how location-dependent price is carried.~~
    **Resolved in [0018](0018-city-scoped-search.md):** one document per `(product, city)`.
 2. Whether the official Meilisearch Docker image is purely Community Edition — a licence
-   question for the client's counsel, not an engineering one.
-3. The synonym list (Hindi and trade terms: `commode` → water closet, `patti` → strip). The
-   mechanism is a Meilisearch setting; the *list* is domain work needing the same seeding
-   owner as the catalog.
-4. Whether `draft` and `deprecated` products are indexed for admin search, or admin search
-   stays on Postgres. Two audiences, one index, unresolved.
+   question for the client's counsel, not an engineering one. Still open; nothing depends
+   on its answer (reconfirmed in [0019](0019-search-followups.md)).
+3. ~~The synonym list.~~ **Resolved: approved, admin-editable** — [0019](0019-search-followups.md).
+4. ~~Whether `draft`/`deprecated` products are indexed for admin search.~~ **Resolved:
+   admin search stays on Postgres, structurally — a draft has no listings, so no document
+   exists to find** — [0019](0019-search-followups.md).
 
 ## Sources
 

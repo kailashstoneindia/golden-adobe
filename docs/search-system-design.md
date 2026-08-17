@@ -13,6 +13,8 @@ Read alongside:
 - [decisions/0017-search-engine-choice.md](decisions/0017-search-engine-choice.md) — why Meilisearch
 - [decisions/0018-city-scoped-search.md](decisions/0018-city-scoped-search.md) — **S1,
   resolved:** one document per `(product, city)`
+- [decisions/0019-search-followups.md](decisions/0019-search-followups.md) — combined
+  pincode+coordinate resolution, admin search on Postgres, direct autocomplete, synonyms
 
 > **S1 is resolved (0018).** The business is city-scoped — every search is local vendors
 > in the customer's city, never cross-city — so the document grain is
@@ -474,8 +476,8 @@ sequenceDiagram
   participant MS as Meilisearch
   participant PG as Postgres
 
-  C->>API: GET /search?q=&category=&filters=&pincode_or_gps=
-  API->>PG: resolve city_id (pincode_city_map, or nearest active centroid)
+  C->>API: GET /search?q=&category=&filters=&pincode=&lat=&lng=
+  API->>PG: resolve_city(pincode?, coordinates?) — combined, coords win on disagreement (0019)
   PG-->>API: city_id
   API->>R: cache lookup (key includes city_id)
   alt hit
@@ -494,25 +496,31 @@ This is the direct payoff of the per-`(product, city)` document (0018): the sear
 already holds the one number that matters for the customer's resolved city, so there is
 nothing left to hydrate.
 
-The one Postgres call left is **city resolution** — pincode lookup or nearest-centroid —
+The one Postgres call left is **city resolution** — combining pincode lookup and
+nearest-centroid, not choosing between them ([0019](decisions/0019-search-followups.md)) —
 and it happens once per request, before Meilisearch is touched at all, not once per result.
 
 Caching is safe because the cache key is the *normalised query + filters + resolved
 `city_id`*, and the TTL is short (60 s). A minute of price staleness on a search results
 page is acceptable — the product page resolves live against `vendor_listing`.
 
-### Proxy, not direct-to-Meilisearch
+### Proxy for full search; direct-to-Meilisearch for autocomplete — [0019](decisions/0019-search-followups.md)
 
 Meilisearch supports search-only API keys that are documented as safe to expose in a
 frontend. Direct client → Meilisearch would remove a network hop and is the fastest
 possible instant-search.
 
-**We proxy through NestJS anyway at launch,** because city resolution (pincode/GPS →
-`city_id`, above) and search analytics both live server-side, and the `city_id` filter must
-be applied by the server, not trusted from the client. A tampered or stale client-side
-`city_id` would leak cross-city results — exactly what 0018 exists to prevent. Revisit for
-the autocomplete endpoint specifically, once a city is already resolved and cached client
-side.
+**Full search stays proxied through NestJS**, because city resolution (pincode + GPS
+combined → `city_id`, above) and search analytics both live server-side, and the `city_id`
+filter must be applied by the server, not trusted from the client. A tampered or stale
+client-side `city_id` would leak cross-city results — exactly what 0018 exists to prevent.
+
+**The autocomplete/suggestion dropdown goes direct-to-Meilisearch, approved in 0019** — a
+query-string suggestion the customer hasn't committed to yet carries no `city_id` trust
+boundary the way a priced, purchase-ready result does, so there's nothing here for the
+proxy to protect. Uses its **own, narrower search-only key** scoped to the suggestion index
+path — not the general one — so a compromised client key can't be replayed against full
+search.
 
 ---
 
@@ -571,20 +579,30 @@ production ritual.
 apps/backend/src/modules/search/
 ├── search.module.ts
 ├── search.controller.ts              GET /search · /search/suggest · /search/facets
+│                                      /search/suggest issues an autocomplete-scoped
+│                                      Meilisearch key (0019) — client calls Meilisearch
+│                                      directly after that, not through this controller
 ├── dto/                              validated query params
 ├── search.service.ts                 orchestration + fallback decision
 ├── meili/
 │   ├── meili.client.ts               wraps the official `meilisearch` client
 │   ├── meili.indexes.ts              index names + settings AS CODE
+│   │                                 + synonyms, admin-editable (0019)
 │   └── meili.bootstrap.ts            applies settings on boot, idempotent
 ├── geo/
-│   └── city-resolver.service.ts      pincode_city_map lookup, GPS nearest-centroid
+│   └── city-resolver.service.ts      resolve_city(pincode?, coordinates?) — COMBINED,
+│                                      coordinates win on disagreement (0019, amends 0018).
+│                                      Also backs vendor onboarding's city_id auto-suggest
+│                                      from vendors.latitude/longitude.
 ├── indexing/
 │   ├── search-document.builder.ts    Postgres rows → (product, city) SearchDocument[]
 │   ├── outbox.poller.ts              drains search_outbox, expands to (product, city) pairs
 │   └── indexing.processor.ts         BullMQ consumer, batching + delete resolution
 └── fallback/
-    └── postgres-search.service.ts    pg_trgm + GIN path, city-filtered, kept alive
+    └── postgres-search.service.ts    pg_trgm + GIN path, city-filtered — outage fallback
+                                       AND admin's primary search path (0019: a draft
+                                       product has no listing, so no document, so no way
+                                       for Meilisearch to represent it at all)
 ```
 
 `SearchDocument` belongs in **`packages/types`**, because the admin panel and the mobile
@@ -704,19 +722,26 @@ the provider interface earns back its cost.
 
 1. ~~S1 — document grain and location-dependent price.~~ **Resolved — see
    [0018](decisions/0018-city-scoped-search.md).** One document per `(product, city)`.
-2. Centroid-nearest GPS resolution can misjudge a customer near a city boundary — accepted
-   at launch-city scale (0018). Revisit if launch cities grow into the dozens.
-3. What happens when a customer's pincode/GPS resolves to no active city yet — likely a
-   waitlist state, not decided (0018, open question 2).
+2. Centroid-nearest GPS resolution can misjudge a customer near a city boundary — partially
+   mitigated by combining pincode + coordinates rather than choosing between them
+   ([0019](decisions/0019-search-followups.md)). Residual risk accepted at launch-city
+   scale; revisit if launch cities grow into the dozens.
+3. ~~What happens when a customer's pincode/GPS resolves to no active city yet.~~
+   **Resolved: a waitlist page** (0018, open question 2).
 4. `pincode_city_map` seeding — needs a source (India Post dataset, unverified) and an
    owner, same shape of requirement as `stone_variety` in `catalog-build-order.md`.
-5. Does the mobile app need direct-to-Meilisearch autocomplete for latency, or is the proxy
-   fast enough? Measure before adding a second access pattern.
-6. Synonyms — Hindi and trade terms (`commode` → water closet, `patti` → strip). Meilisearch
-   supports a synonyms setting; the *list* is domain work, not engineering, and needs the
-   same seeding owner as the catalog.
-7. Do we index `draft` and `deprecated` products for admin search, or keep the index
-   `live`-only and let admin search hit Postgres? Two audiences, one index, unresolved.
+5. ~~Does the mobile app need direct-to-Meilisearch autocomplete, or is the proxy fast
+   enough?~~ **Resolved: direct-to-Meilisearch, approved** — a narrower search-only key,
+   separate from the general one ([0019](decisions/0019-search-followups.md)).
+6. ~~Synonyms — Hindi and trade terms.~~ **Resolved: approved, admin-editable table**, kept
+   open-ended rather than a one-time seed ([0019](decisions/0019-search-followups.md)). The
+   list itself still needs a seeding owner.
+7. ~~Do we index `draft`/`deprecated` products for admin search, or keep Meilisearch
+   `live`-only?~~ **Resolved: admin search stays on `PostgresSearchService` entirely** — a
+   draft product usually has no listings yet, so it structurally has no document to find
+   ([0019](decisions/0019-search-followups.md)).
+8. New from 0019: customer location source — live GPS vs. a saved project/site address.
+   Address-capture / ordering-domain question, doesn't block the resolution algorithm.
 
 ## Sources
 
