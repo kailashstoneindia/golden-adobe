@@ -155,44 +155,51 @@ Only useful once products *and* listings exist, so it genuinely follows Phase 4.
 
 Engine decided in [0017](decisions/0017-search-engine-choice.md): **Meilisearch**,
 self-hosted on Railway, with the Postgres path kept permanently as a fallback rather than
-discarded. Architecture in [search-system-design.md](search-system-design.md); DDL in
-[search-schema.sql](search-schema.sql).
+discarded. Document shape — one per `(product, city)` — decided in
+[0018](decisions/0018-city-scoped-search.md). Architecture in
+[search-system-design.md](search-system-design.md); DDL in [search-schema.sql](search-schema.sql)
+and the Geography section of [catalog-schema.sql](catalog-schema.sql).
 
 ```
-6a  document shape       S1 — grain, and how location-dependent price
-                         is carried. BLOCKS EVERYTHING BELOW.
+6a  geography            city, pincode_city_map, vendors.city_id
+                         (0018 — a real migration on an existing table)
+                         BLOCKS 6c, 6e, 6f
+
+6b  document shape       DECIDED (0018) — (product, city), id `{product}:{city}`
                          SearchDocument lands in packages/types
 
-6b  postgres path        pg_trgm on name + GIN on attributes_flat
-                         (both indexes already exist)
+6c  postgres path        pg_trgm on name + GIN on attributes_flat,
+                         filtered by resolved city_id
                          → ships first, then becomes the fallback
 
-6c  sync plumbing        search_outbox + 2 trigger functions
-                         + 24 statement-level triggers
+6d  sync plumbing        search_outbox + 3 trigger functions
+                         + 26 statement-level triggers
                          expansion / drain / purge / backlog view
 
-6d  meilisearch          Railway service, private networking
+6e  meilisearch           Railway service, private networking
                          index settings AS CODE, applied on boot
                          typoTolerance.disableOnNumbers = true
 
-6e  worker               BullMQ on the existing Redis
-                         expand → build → add/delete → mark processed
+6f  worker               BullMQ on the existing Redis
+                         expand → EXISTS-check pairs → add/delete → mark processed
 
-6f  query layer          SearchModule, facets per leaf category,
-                         Redis query cache, fallback switch
+6g  query layer          SearchModule, city resolved BEFORE any query,
+                         facets per leaf category, Redis cache, fallback switch
 
-6g  rebuild job          shadow index + atomic swap, for 'all'
+6h  rebuild job          shadow index + atomic swap, for 'all'
 ```
 
 Three sequencing notes:
 
-- **6b is not throwaway.** It ships as the search implementation, then stays as the
+- **6a is the new long pole.** Unlike the rest of this catalog's design work, it is not
+  docs-only — `vendors.city_id` is a migration on a table already running in production.
+  Everything from 6c onward assumes it exists.
+- **6c is not throwaway.** It ships as the search implementation, then stays as the
   fallback that keeps the site up when Meilisearch is down or mid-rebuild. It needs test
   coverage for that reason — a fallback nobody exercises is not a fallback.
-- **6a blocks 6e specifically.** The worker cannot build a document whose shape is
-  undecided. Everything else in this phase is document-agnostic and can proceed.
-- **`search-architecture.md` is superseded on the tool choice and on the claim that the
-  document shape is already designed.** It is not — that is S1, still open.
+- **`search-architecture.md` is superseded on the tool choice and on the document shape.**
+  Both are now decided (0017, 0018) — see that file's banner for the current sources of
+  truth.
 
 ---
 

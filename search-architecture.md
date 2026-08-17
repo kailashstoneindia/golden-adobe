@@ -2,21 +2,23 @@
 
 > ## ⚠️ Partially superseded — read this first
 >
-> This document predates the catalog design. Two of its conclusions no longer hold:
+> This document predates the catalog design. Three of its conclusions no longer hold:
 >
 > | Claim here | Current position |
 > |---|---|
 > | *"Meilisearch / Typesense"* — tool undecided | **Meilisearch**, decided in [0017](docs/decisions/0017-search-engine-choice.md) after the options were actually tested against a **4,000–6,000 SKU** catalog |
-> | *"the flattened document shape is already designed"* | **It is not.** The document grain, and how location-dependent price is carried, is decision **S1** — still open |
+> | *"the flattened document shape is already designed"* | **It is, now.** One document per **`(product, city)`** — decided in [0018](docs/decisions/0018-city-scoped-search.md), because the business connects customers to *local* vendors only. Not what this file's sample document shows (below) |
 > | Phase 1 Postgres → Phase 2 engine → Phase 3 Redis | Postgres is not a disposable Phase 1. It ships first and then **stays permanently as the fallback**, so search degrades instead of 500-ing |
 >
 > The sample document in "The sync pipeline" below is illustrative only and predates
-> decisions 0007–0016 — it still shows a `cement` example with fields this catalog does not
-> have.
+> decisions 0007–0016 **and 0018** — it shows a `cement` example with fields this catalog
+> does not have, one document per product rather than per `(product, city)`, and no
+> `city_id`.
 >
 > **Current sources of truth:**
 >
 > - [docs/decisions/0017-search-engine-choice.md](docs/decisions/0017-search-engine-choice.md) — engine choice, licensing, graded sources
+> - [docs/decisions/0018-city-scoped-search.md](docs/decisions/0018-city-scoped-search.md) — document grain, city entity, location resolution
 > - [docs/search-system-design.md](docs/search-system-design.md) — services, change capture, sync worker, query path, failure behaviour
 > - [docs/search-schema.sql](docs/search-schema.sql) — canonical DDL for search sync
 >

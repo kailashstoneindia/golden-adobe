@@ -29,6 +29,7 @@ valid when circumstances change.
 | [0015](0015-per-vendor-colour-delta.md) | Colour pricing as a per-vendor delta | 2026-08-02 | Superseded by 0016 |
 | [0016](0016-colour-price-per-listing.md) | Absolute colour price per listing | 2026-08-02 | Accepted |
 | [0017](0017-search-engine-choice.md) | Search engine choice: Meilisearch | 2026-08-16 | Accepted |
+| [0018](0018-city-scoped-search.md) | City-scoped search: one document per (product, city) | 2026-08-17 | Accepted |
 
 ## Adding a record
 

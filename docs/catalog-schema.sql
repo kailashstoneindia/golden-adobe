@@ -105,6 +105,62 @@ CREATE TABLE brand (
 
 
 -- =============================================================================
+-- 2b. GEOGRAPHY  (decision 0018 — the business connects customers to LOCAL
+-- vendors; every search is scoped to exactly one city, never cross-city)
+-- =============================================================================
+
+-- Admin-curated, not user-generated. Launching a city is a business decision
+-- (onboard vendors, seed serviceability) — it is never inferred from a pincode
+-- or a coordinate on the fly. Small table: a handful of rows at launch.
+CREATE TABLE city (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name          VARCHAR(64)  NOT NULL,
+  slug          VARCHAR(80)  NOT NULL UNIQUE,
+  state         VARCHAR(64)  NOT NULL,   -- disambiguates same-named cities across states
+
+  -- Centroid, for the GPS resolution path below. A city, not a precise
+  -- boundary — see the open question on edge-of-city accuracy.
+  centroid_lat  NUMERIC(9,6) NOT NULL,
+  centroid_lng  NUMERIC(9,6) NOT NULL,
+
+  is_active     BOOLEAN      NOT NULL DEFAULT TRUE,   -- pausing ops in a city
+  created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+
+  CONSTRAINT city_name_unique_per_state UNIQUE (name, state)
+);
+
+CREATE INDEX idx_city_active ON city (is_active);
+
+
+-- Customer location resolution, path 1 of 2: pincode entry.
+--
+-- A LOOKUP table, not a computed mapping — pincodes do not self-describe their
+-- city. Seeded from the public India Post pincode dataset (an open government
+-- dataset, not trade knowledge like stone_variety), filtered to launch cities
+-- only and grown as new cities launch. One pincode belongs to exactly one city
+-- — this is a real-world fact, not a platform choice.
+CREATE TABLE pincode_city_map (
+  pincode     VARCHAR(6) PRIMARY KEY,
+  city_id     UUID NOT NULL REFERENCES city(id) ON DELETE RESTRICT,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_pincode_city ON pincode_city_map (city_id);
+
+-- Customer location resolution, path 2 of 2: GPS.
+--
+-- Resolved as NEAREST ACTIVE CITY CENTROID (haversine over city.centroid_lat/
+-- lng), not by reverse-geocoding to a pincode. This avoids a third-party
+-- geocoding API dependency entirely — city.centroid_lat/lng plus a small
+-- distance calculation is enough at launch-city scale. Both paths converge on
+-- the same city_id before any product query runs.
+--
+-- Accuracy caveat, deliberately accepted: nearest-centroid can misjudge a
+-- customer near a city boundary. See open questions.
+
+
+-- =============================================================================
 -- 3. CATEGORY TREE  (decision 0001 — variable depth 2–3, hard cap at 3)
 -- =============================================================================
 
@@ -365,9 +421,12 @@ CREATE TABLE master_product (
   -- cache that makes Phase-1 Postgres filtering a single GIN index lookup.
   attributes_flat     JSONB NOT NULL DEFAULT '{}'::jsonb,
 
-  -- Precomputed for search (search-architecture.md). For tinted products this is
-  -- the UNTINTED base price — the zero-delta floor — so the UI must render it as
-  -- "from ₹X", since any colour the customer picks adds a delta (0007, 0015).
+  -- GLOBAL best price — cheapest across every vendor in every city. NEVER shown
+  -- to a customer (decision 0018): the business connects buyers to LOCAL
+  -- vendors, so the price that matters is scoped to the customer's city, and
+  -- this column cannot express that. Kept for admin/ops visibility only (catalog
+  -- monitoring, "is anyone stocking this at all") — the customer-facing price is
+  -- resolved per (product, city) in the search document; see search-schema.sql.
   cached_best_price             NUMERIC(12,2),
   cached_best_vendor_listing_id UUID,
   cached_updated_at             TIMESTAMPTZ,
@@ -476,13 +535,15 @@ CREATE TABLE vendor_listing (
   -- stone price lists quote per grade — one Excel row per grade.
   stated_grade      VARCHAR(64),
 
+  -- serviceable_pincodes / service_radius_km REMOVED (decision 0018). A vendor
+  -- does not serve different areas for different products — that was modelling
+  -- serviceability a level too fine. It now lives once, on the existing
+  -- `vendors` table, as `vendors.city_id` (see docs/decisions/0018 for the
+  -- migration this implies on a table that already exists in production).
   status            vendor_listing_status NOT NULL DEFAULT 'active',
-  serviceable_pincodes TEXT[],
-  service_radius_km NUMERIC(6,2),
 
   created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- One listing per vendor per product PER GRADE (decision 0009), so a stone yard
@@ -497,7 +558,8 @@ CREATE INDEX idx_vendor_listing_product ON vendor_listing (master_product_id, st
 CREATE INDEX idx_vendor_listing_vendor  ON vendor_listing (vendor_id, status);
 CREATE INDEX idx_vendor_listing_price   ON vendor_listing (master_product_id, price)
   WHERE status = 'active';
-CREATE INDEX idx_vendor_listing_pincodes ON vendor_listing USING GIN (serviceable_pincodes);
+-- Serviceability filtering now goes through vendors.city_id, not this table —
+-- see the removal note above and decision 0018.
 
 
 -- Paint colour pricing (decisions 0007, 0016). The client prices by COLOUR

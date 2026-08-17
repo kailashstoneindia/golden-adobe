@@ -204,8 +204,8 @@ strictly better than a hosted plan on both cost and exposure at this scale.
 
 ## Open questions
 
-1. **S1 — the search document grain**, and how location-dependent price is carried. Blocks
-   `search-document.builder.ts`. Settled in the next discussion.
+1. ~~S1 — the search document grain, and how location-dependent price is carried.~~
+   **Resolved in [0018](0018-city-scoped-search.md):** one document per `(product, city)`.
 2. Whether the official Meilisearch Docker image is purely Community Edition — a licence
    question for the client's counsel, not an engineering one.
 3. The synonym list (Hindi and trade terms: `commode` → water closet, `patti` → strip). The
@@ -232,8 +232,8 @@ Fetched and verified during this discussion. Graded, because
 - [Typesense search API](https://typesense.org/docs/29.0/api/search.html) — `enable_typos_for_numerical_tokens`
 - [ParadeDB repository](https://github.com/paradedb/paradedb) — AGPL-3.0; Tantivy-based
 - [Elastic — "Elasticsearch is Open Source, Again"](https://www.elastic.co/blog/elasticsearch-is-open-source-again) — AGPL added alongside ELv2 and SSPL, 29 August 2024
-- [Algolia — B2B personalized pricing](https://www.algolia.com/doc/guides/solutions/ecommerce/b2b-catalog-management/tutorials/personalized-pricing) — *"fewer than 100 pricing levels per product"* → nested attribute; relevant to S1
-- [PostgreSQL 16 — `CREATE TRIGGER`](https://www.postgresql.org/docs/16/sql-createtrigger.html) — *"Multiple events can be specified using `OR`, except when transition relations are requested"*; `OLD TABLE` only on `UPDATE`/`DELETE`, `NEW TABLE` only on `UPDATE`/`INSERT`. This is what forces 24 triggers rather than 10.
+- [Algolia — B2B personalized pricing](https://www.algolia.com/doc/guides/solutions/ecommerce/b2b-catalog-management/tutorials/personalized-pricing) — *"fewer than 100 pricing levels per product"* → nested attribute; the option S1 ultimately did **not** take, once the business was confirmed as single-city per search (0018)
+- [PostgreSQL 16 — `CREATE TRIGGER`](https://www.postgresql.org/docs/16/sql-createtrigger.html) — *"Multiple events can be specified using `OR`, except when transition relations are requested"*; `OLD TABLE` only on `UPDATE`/`DELETE`, `NEW TABLE` only on `UPDATE`/`INSERT`. This is what forces one trigger per event rather than one per table (26 triggers over 12 tables as of 0018, up from 24 over 10).
 
 **Third-party, weaker — used only for the "industry standard" framing:**
 

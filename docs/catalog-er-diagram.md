@@ -1,10 +1,13 @@
 # Catalog ER Diagram
 
 Entities and relationships for the product catalog, derived from
-[catalog-schema.sql](catalog-schema.sql). 21 tables, 31 relationships — 30 foreign keys
+[catalog-schema.sql](catalog-schema.sql). 23 tables, 33 relationships — 32 foreign keys
 defined in the schema file, plus the pre-existing `users` → `vendors` link.
 
-`users` and `vendors` already exist in the codebase; everything else is new.
+`users` and `vendors` already exist in the codebase; everything else is new, **except
+`vendors.city_id`** — decision [0018](decisions/0018-city-scoped-search.md) adds that one
+column to the existing `vendors` table. See its consequences section before treating this
+diagram as docs-only.
 
 **Cardinality legend** — `||` exactly one · `|o` zero or one (nullable FK) ·
 `o{` zero or more.
@@ -16,6 +19,9 @@ defined in the schema file, plus the pre-existing `users` → `vendors` link.
 ```mermaid
 erDiagram
     users                ||--o| vendors : "is a"
+
+    city                 ||--o{ vendors : "based in (0018)"
+    city                 ||--o{ pincode_city_map : "covers"
 
     category             ||--o{ category : "parent of"
     unit_of_measure      |o--o{ category : "default UOM"
@@ -93,7 +99,7 @@ erDiagram
         string country_of_origin "NOT NULL, filterable"
         enum sale_unit_type "discrete|cut_to_length|tinted_to_order"
         jsonb attributes_flat "write-time cache"
-        numeric cached_best_price "floor price"
+        numeric cached_best_price "admin/ops only — never shown to a customer, 0018"
     }
     master_product_attribute_value {
         uuid master_product_id PK,FK
@@ -112,6 +118,38 @@ erDiagram
 The composite primary key on `master_product_attribute_value` means one value per
 attribute per product — no multi-valued attributes. `attributes_flat` is the derived
 JSONB of the same data with inheritance already resolved.
+
+---
+
+## Geography — 0018, one document per (product, city)
+
+```mermaid
+erDiagram
+    city {
+        uuid id PK
+        string name
+        string state
+        numeric centroid_lat "GPS resolution"
+        numeric centroid_lng
+        boolean is_active "pausing ops in a city"
+    }
+    vendors {
+        uuid id PK
+        uuid city_id FK "one city, for now — 0018"
+    }
+    pincode_city_map {
+        string pincode PK
+        uuid city_id FK
+    }
+
+    city ||--o{ vendors : "based in"
+    city ||--o{ pincode_city_map : "covers"
+```
+
+`serviceable_pincodes` / `service_radius_km` (per-listing, on `vendor_listing`) are
+**removed** by this decision — a vendor doesn't serve a different area per product. `city_id`
+lives once, on `vendors`. Customer location (pincode or GPS) resolves to one `city_id`
+*before* any product query runs; see [0018](decisions/0018-city-scoped-search.md).
 
 ---
 
@@ -236,6 +274,8 @@ needs nothing to join against.
 | 29 | hsn_code | master_product | hsn_code | 0..1:N | — |
 | 30 | vendors | vendor_product_map | vendor_id | 1:N | CASCADE |
 | 31 | master_product | vendor_product_map | master_product_id | 1:N | CASCADE |
+| 32 | city | vendors | city_id | 1:N | RESTRICT *(0018 — new column on an existing table)* |
+| 33 | city | pincode_city_map | city_id | 1:N | RESTRICT |
 
 ---
 
