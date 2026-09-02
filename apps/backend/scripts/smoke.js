@@ -31,6 +31,17 @@ const REQUIRED_ROUTES = [
   { method: 'GET', path: '/api/admin/catalog/products' },
   { method: 'PATCH', path: '/api/admin/catalog/products/:productId/publish' },
   { method: 'GET', path: '/api/admin/catalog-review-queue' },
+  // Phase 2 completion — vendor profile CRUD + city (workstream 1)
+  { method: 'GET', path: '/api/vendors/me' },
+  { method: 'PATCH', path: '/api/vendors/me' },
+  { method: 'PATCH', path: '/api/vendors/me/account-details' },
+  { method: 'GET', path: '/api/admin/vendors' },
+  { method: 'GET', path: '/api/admin/vendors/:id' },
+  { method: 'PATCH', path: '/api/admin/vendors/:id/city' },
+  // Phase 2 completion — vendor categories (workstream 2)
+  { method: 'GET', path: '/api/vendors/me/categories' },
+  { method: 'GET', path: '/api/admin/vendors/:id/categories' },
+  { method: 'PUT', path: '/api/admin/vendors/:id/categories' },
 ];
 
 async function main() {

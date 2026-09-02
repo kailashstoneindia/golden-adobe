@@ -12,6 +12,8 @@ import { User } from '../../users/models/user.model';
 import { VendorAccountDetails } from './vendor-account-details.model';
 import { City } from '../../catalog/models/city.model';
 
+export type VendorCitySource = 'gps' | 'admin';
+
 @Table({
   tableName: 'vendors',
   timestamps: true,
@@ -91,6 +93,17 @@ export class Vendor extends Model<Vendor> {
     field: 'city_id',
   })
   declare cityId: string | null;
+
+  // Which writer set cityId — 'gps' (auto-resolved from lat/lng, safe to
+  // re-resolve on the next address change) or 'admin' (pinned by an
+  // override, left alone). NULL means never set. See
+  // 20260902090000-add-city-source-to-vendors.js.
+  @Column({
+    type: DataType.STRING(16),
+    allowNull: true,
+    field: 'city_source',
+  })
+  declare citySource: VendorCitySource | null;
 
   @BelongsTo(() => User)
   declare user: User;

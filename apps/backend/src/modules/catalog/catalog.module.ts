@@ -34,6 +34,7 @@ import { CatalogImportUploadService } from './catalog-import-upload.service';
 import { CatalogImportController } from './catalog-import.controller';
 import { VendorMatchLadderService } from './vendor-match-ladder.service';
 import { VendorCatalogExportService } from './vendor-catalog-export.service';
+import { VendorCategoriesService } from './vendor-categories.service';
 import { VendorCatalogImportService } from './vendor-catalog-import.service';
 import { VendorCatalogImportController } from './vendor-catalog-import.controller';
 import { CatalogReviewQueueController } from './catalog-review-queue.controller';
@@ -125,6 +126,7 @@ import { AdminCatalogService } from './admin-catalog.service';
     VendorCatalogImportService,
     CityResolverService,
     BrandResolverService,
+    VendorCategoriesService,
     AdminCatalogService,
   ],
   exports: [
@@ -133,6 +135,7 @@ import { AdminCatalogService } from './admin-catalog.service';
     VendorMatchLadderService,
     CityResolverService,
     BrandResolverService,
+    VendorCategoriesService,
   ],
 })
 export class CatalogModule {}

@@ -25,6 +25,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Vendor } from '../vendors/models/vendor.model';
 import { VendorCatalogExportService } from './vendor-catalog-export.service';
 import { VendorCatalogImportService } from './vendor-catalog-import.service';
+import { VendorCategoriesService } from './vendor-categories.service';
 import { VendorExportScopeDto } from './dto/vendor-export-scope.dto';
 import { ChoosePendingCandidateDto } from './dto/choose-pending-candidate.dto';
 
@@ -49,15 +50,23 @@ export class VendorCatalogImportController {
     private readonly vendorModel: typeof Vendor,
     private readonly exportService: VendorCatalogExportService,
     private readonly importService: VendorCatalogImportService,
+    private readonly vendorCategoriesService: VendorCategoriesService,
   ) {}
 
   @Get('export/count')
   @ApiOperation({
     summary: 'Live row count for a proposed export scope',
     description:
-      'Call before downloading — the guard against an unusable export (decision 0011). A Hardware vendor scoped only to their registered categories can easily hit thousands of rows; narrowing by brand or since-date is expected.',
+      'Call before downloading — the guard against an unusable export (decision 0011). A Hardware vendor scoped only to their registered categories can easily hit thousands of rows; narrowing by brand or since-date is expected. Rejects with 400 if the scope names a category your shop is not registered for. NOTE: a vendor with no registered categories at all is currently unrestricted rather than denied, until vendor_category is backfilled.',
   })
   async exportCount(@Req() req: any, @Query() scope: VendorExportScopeDto) {
+    // Enforced on the count route too, not just the download: otherwise
+    // it becomes an oracle telling any authenticated vendor how many
+    // products sit in categories they may not export, and the two routes
+    // would disagree about what counts as a valid scope.
+    const vendor = await this.resolveVendor(req);
+    await this.vendorCategoriesService.assertExportScopeAllowed(vendor.id, scope.leafCategoryIds);
+
     const count = await this.exportService.countRows({
       leafCategoryIds: scope.leafCategoryIds,
       brandIds: scope.brandIds,
@@ -70,9 +79,12 @@ export class VendorCatalogImportController {
   @ApiOperation({
     summary: 'Download the pre-filled catalog export for the given scope',
     description:
-      'product_code and product_name are locked/pre-filled; price, qty and grade are blank for the vendor to fill.',
+      'product_code and product_name are locked/pre-filled; price, qty and grade are blank for the vendor to fill. Scoped to the categories your shop is registered for — requesting others is rejected with 400 naming them, rather than silently narrowed. A vendor with no registered categories is currently unrestricted (see the count endpoint).',
   })
   async exportFile(@Req() req: any, @Query() scope: VendorExportScopeDto, @Res() res: Response) {
+    const vendor = await this.resolveVendor(req);
+    await this.vendorCategoriesService.assertExportScopeAllowed(vendor.id, scope.leafCategoryIds);
+
     const { buffer, filename, rowCount } = await this.exportService.generate({
       leafCategoryIds: scope.leafCategoryIds,
       brandIds: scope.brandIds,
