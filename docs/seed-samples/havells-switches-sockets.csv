@@ -1,0 +1,18 @@
+brand,category_path,product_name,mfr_part_number,device_type,module_size,current_rating_a,series,finish,price_inr,source_url
+Havells,electrical/switches-sockets,Adiva 6 AX One Way Switch White,,One-way Switch,1,6,Adiva,White,44.00,https://havells.com/switches/modular-range.html
+Havells,electrical/switches-sockets,Adiva 6 AX One Way Switch Grey,,One-way Switch,1,6,Adiva,Grey,55.00,https://havells.com/switches/modular-range.html
+Havells,electrical/switches-sockets,Adiva 6 AX One Way Switch Black,,One-way Switch,1,6,Adiva,Black,55.00,https://havells.com/switches/modular-range.html
+Havells,electrical/switches-sockets,Adiva 16 AX One Way Switch White,,One-way Switch,1,16,Adiva,White,149.00,https://havells.com/switches/modular-range.html
+Havells,electrical/switches-sockets,Adiva 16 AX One Way Switch Grey,,One-way Switch,1,16,Adiva,Grey,181.00,https://havells.com/switches/modular-range.html
+Havells,electrical/switches-sockets,Adiva 6 AX Two Way Switch White,,Two-way Switch,1,6,Adiva,White,123.00,https://havells.com/switches/modular-range.html
+Havells,electrical/switches-sockets,Adiva 6 AX Two Way Switch Grey,,Two-way Switch,1,6,Adiva,Grey,150.00,https://havells.com/switches/modular-range.html
+Havells,electrical/switches-sockets,Adiva 6A 3 Pin Socket White,,Socket 6A,1,6,Adiva,White,134.00,https://havells.com/switches/modular-range.html
+Havells,electrical/switches-sockets,Adiva 6A 3 Pin Socket Black,,Socket 6A,1,6,Adiva,Black,163.00,https://havells.com/switches/modular-range.html
+Havells,electrical/switches-sockets,Adiva 1M Fan Regulator White,,Fan Regulator,1,,Adiva,White,456.00,https://havells.com/switches/modular-range.html
+Havells,electrical/switches-sockets,Coral Modular Switch,,One-way Switch,1,,Coral,,372.00,https://havells.com/switches/modular-range/coral-modular-range.html
+Havells,electrical/switches-sockets,Coral 3 Pin Shuttered Socket,,Socket 16A,1,16,Coral,,241.00,https://havells.com/switches/modular-range/coral-modular-range.html
+Havells,electrical/switches-sockets,Coral Fan Regulator,,Fan Regulator,1,,Coral,,414.00,https://havells.com/switches/modular-range/coral-modular-range.html
+Havells,electrical/switches-sockets,Apogee 16AX Mega One Way Switch,,One-way Switch,1,16,Apogee,,391.00,https://havells.com/switches.html
+
+# NOTE: module_size, current_rating and finish left blank where the listing page did not state them explicitly (Coral/Apogee rows) — verify against product detail pages before import.
+# NOTE: Adiva plates/dummy plates/indicator lamps omitted — they belong under switch-plates (electrical/switch-plates), not switches-sockets. See havells-switch-plates.csv.

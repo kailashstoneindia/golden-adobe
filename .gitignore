@@ -58,3 +58,9 @@ apps/mobile/*.key
 apps/mobile/*.mobileprovision
 apps/mobile/google-services.json
 apps/mobile/GoogleService-Info.plist
+
+# Commercial / client documents — these live in the shared drive, not the code repo
+*.pdf
+
+# TypeScript incremental build artifacts
+*.tsbuildinfo

@@ -32,6 +32,33 @@ services:
       timeout: 5s
       retries: 5
 
+  # Phase 6e (decision 0021). Same image and API as the eventual Railway
+  # service — moving there is an env var change (MEILI_HOST), not a code
+  # change. Meilisearch memory-maps LMDB, so this volume must stay local
+  # disk and never network storage (search-system-design.md section 11).
+  meilisearch:
+    # Pinned exactly. v1.11 does NOT support typoTolerance.disableOnNumbers —
+    # the server rejects the field outright — and that setting is load-bearing
+    # for this catalog (32A must never match 42A). It landed in a later
+    # release; see decision 0021 and search-system-design.md section 5.
+    image: getmeili/meilisearch:v1.53.1
+    container_name: golden-abode-meilisearch
+    restart: unless-stopped
+    environment:
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-local_dev_master_key_change_me}
+      MEILI_ENV: development
+      MEILI_NO_ANALYTICS: 'true'
+    ports:
+      - '7700:7700'
+    volumes:
+      - meili_data:/meili_data
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:7700/health']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   postgres_data:
   redis_data:
+  meili_data:

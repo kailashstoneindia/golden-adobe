@@ -18,6 +18,11 @@ export interface VendorAccountDetailsInputDto {
   accountNumber: string;
 }
 
+export interface VendorCityDto {
+  id: string;
+  name: string;
+}
+
 export interface VendorProfileDto {
   id: string;
   userId: string;
@@ -29,8 +34,30 @@ export interface VendorProfileDto {
   bankDetails: string | null;
   accountDetails: VendorAccountDetailsDto | null;
   gstin: string | null;
+  // Decision 0018 — one vendor, one city. Null until resolved from
+  // lat/lng at onboarding or set by an admin override; rows predating
+  // the column stay null until the backfill runs.
+  cityId: string | null;
+  city: VendorCityDto | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface UpdateVendorProfileDto {
+  shopName?: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+  upiId?: string;
+  bankDetails?: string;
+  gstin?: string;
+}
+
+export interface VendorCategoryDto {
+  categoryId: string;
+  name: string;
+  path: string;
+  level: number;
 }
 
 export interface VendorOnboardDto {

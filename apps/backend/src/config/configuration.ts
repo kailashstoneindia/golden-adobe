@@ -27,4 +27,36 @@ export default () => ({
     otpVerifyLimit: parseInt(process.env.THROTTLE_OTP_VERIFY_LIMIT || '5', 10),
     otpVerifyTtl: parseInt(process.env.THROTTLE_OTP_VERIFY_TTL || '600', 10),
   },
+  // Phase 6 search runtime (decision 0021). Host and keys are configuration
+  // ONLY — moving from the local Docker container to Railway must be an env
+  // var change, never a code edit.
+  search: {
+    // 'meilisearch' | 'postgres' — the kill switch (search-system-design.md
+    // section 9). Falling back to Postgres is a supported permanent mode, not
+    // a degraded one: it is also admin's primary search path (0019).
+    engine: process.env.SEARCH_ENGINE || 'meilisearch',
+    // 'all' | 'api' | 'worker' (search-system-design.md section 9).
+    //
+    //   all    — HTTP endpoints AND the outbox drain in one process (default;
+    //            what a single Railway service or local dev runs)
+    //   api    — HTTP only, no drain scheduled
+    //   worker — the drain only
+    //
+    // Splitting the worker onto its own Railway service is then an env var
+    // rather than a refactor. It also makes the drain externally controllable,
+    // which matters for tests and for one-off maintenance: with WORKER_MODE=api
+    // nothing competes for search_outbox_try_lock(), so a manual drain is
+    // deterministic instead of racing the scheduler.
+    workerMode: process.env.WORKER_MODE || 'all',
+    meili: {
+      host: process.env.MEILI_HOST || 'http://127.0.0.1:7700',
+      // Full-access key. Used by the backend for indexing and by the worker.
+      // Never exposed to a client bundle.
+      masterKey: process.env.MEILI_MASTER_KEY || 'local_dev_master_key_change_me',
+      // Search-only key. This is the one that may eventually be handed to a
+      // client for direct autocomplete calls (0019).
+      searchKey: process.env.MEILI_SEARCH_KEY || '',
+      productsIndex: process.env.MEILI_PRODUCTS_INDEX || 'products',
+    },
+  },
 });
