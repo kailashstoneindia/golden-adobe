@@ -1,6 +1,16 @@
-import { Table, Column, Model, DataType, ForeignKey, BelongsTo, HasOne, Index } from 'sequelize-typescript';
+import {
+  Table,
+  Column,
+  Model,
+  DataType,
+  ForeignKey,
+  BelongsTo,
+  HasOne,
+  Index,
+} from 'sequelize-typescript';
 import { User } from '../../users/models/user.model';
 import { VendorAccountDetails } from './vendor-account-details.model';
+import { City } from '../../catalog/models/city.model';
 
 @Table({
   tableName: 'vendors',
@@ -70,8 +80,23 @@ export class Vendor extends Model<Vendor> {
   })
   declare gstin: string | null;
 
+  // Decision 0018 — "one vendor, one city, for now." NULLable: existing
+  // vendor rows predate this column (see
+  // 20260828090002-add-city-id-to-vendors.js) and have no city assigned
+  // until backfilled.
+  @ForeignKey(() => City)
+  @Column({
+    type: DataType.UUID,
+    allowNull: true,
+    field: 'city_id',
+  })
+  declare cityId: string | null;
+
   @BelongsTo(() => User)
   declare user: User;
+
+  @BelongsTo(() => City)
+  declare city?: City;
 
   @HasOne(() => VendorAccountDetails)
   declare accountDetails?: VendorAccountDetails;

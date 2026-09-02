@@ -6,6 +6,8 @@ import { CoreModule } from './core/core.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { VendorsModule } from './modules/vendors/vendors.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { CatalogModule } from './modules/catalog/catalog.module';
+import { SearchModule } from './modules/search/search.module';
 
 @Module({
   imports: [
@@ -18,6 +20,8 @@ import { AdminModule } from './modules/admin/admin.module';
     AuthModule,
     VendorsModule,
     AdminModule,
+    CatalogModule,
+    SearchModule,
   ],
 })
 export class AppModule {}
