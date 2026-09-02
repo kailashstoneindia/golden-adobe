@@ -239,7 +239,7 @@ WHERE EXISTS (
 );
 ```
 
-Every pair **absent** from that result is deleted from Meilisearch (`{product_id}:{city_id}`
+Every pair **absent** from that result is deleted from Meilisearch (`{product_id}__{city_id}`
 is the document ID, so this needs no filtered delete — just the ID). One query covers four
 cases with no special handling:
 
@@ -298,7 +298,7 @@ EXISTS-check every pair against live vendor_listing + city.is_active
       │                        │
    present                  absent
       ▼                        ▼
-addDocuments(batch)     deleteDocuments(ids)   ← id = `{product}:{city}`, no query needed
+addDocuments(batch)     deleteDocuments(ids)   ← id = `{product}__{city}`, no query needed
       │                        │
       └────────────┬───────────┘
                    ▼
@@ -354,14 +354,14 @@ asking for different facet fields once the category is known. Splitting the inde
 category (or per city) would buy nothing and would break cross-category search, which is
 the main search box.
 
-### Document identity: `{product_id}:{city_id}`
+### Document identity: `{product_id}__{city_id}`
 
 Decided in [0018](decisions/0018-city-scoped-search.md). One document per
 `(master_product, city)` pair — never one product document with per-city nested data.
 
 ```ts
 interface SearchDocument {
-  id: string;              // `${masterProductId}:${cityId}` — deterministic, never generated
+  id: string;              // `${masterProductId}__${cityId}` — deterministic, never generated
   master_product_id: string;
   city_id: string;
   name: string;
@@ -405,7 +405,7 @@ globally. The Meilisearch document **is** the cache; there is no separate Postgr
 a second cache would just be one more place for staleness to hide.
 
 **PDP reads the same number, by ID, not by re-querying.** Given a resolved `city_id` and a
-`product_id`, the product page fetches `products/{product_id}:{city_id}` directly from
+`product_id`, the product page fetches `products/{product_id}__{city_id}` directly from
 Meilisearch — no search query, no ranking, just a document `GET`. That reuses the exact
 figure shown in search results instead of computing it twice, and it is what replaces the
 old *"search results and initial PDP load read `cached_best_price` directly"* behaviour

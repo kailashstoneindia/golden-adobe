@@ -1,0 +1,17 @@
+brand,category_path,product_name,mfr_part_number,rated_current_a,number_of_poles,tripping_curve,breaking_capacity_ka,mounting,price_inr,source_url
+Havells,electrical/switchgear/mcb,X7 MCB SP 6A,DHMYBSPM006,6,SP,,,DIN Rail,138.00,https://havells.com/home-electricals/switchgears/circuit-breaker.html
+Havells,electrical/switchgear/mcb,X7 MCB SP 10A,DHMYBSPM010,10,SP,,,DIN Rail,138.00,https://havells.com/home-electricals/switchgears/circuit-breaker.html
+Havells,electrical/switchgear/mcb,X7 MCB SP 16A,DHMYBSPM016,16,SP,,,DIN Rail,138.00,https://havells.com/home-electricals/switchgears/circuit-breaker.html
+Havells,electrical/switchgear/mcb,X7 MCB SP 20A,DHMYBSPM020,20,SP,,,DIN Rail,138.00,https://havells.com/home-electricals/switchgears/circuit-breaker.html
+Havells,electrical/switchgear/mcb,X7 MCB SP 25A,DHMYBSPM025,25,SP,,,DIN Rail,138.00,https://havells.com/home-electricals/switchgears/circuit-breaker.html
+Havells,electrical/switchgear/mcb,X7 MCB SP 32A,DHMYBSPM032,32,SP,,,DIN Rail,138.00,https://havells.com/home-electricals/switchgears/circuit-breaker.html
+Havells,electrical/switchgear/mcb,X7 MCB SP 63A,DHMYCSPM063,63,SP,,,DIN Rail,138.00,https://havells.com/home-electricals/switchgears/circuit-breaker.html
+Havells,electrical/switchgear/mcb,X7 MCB DP 63A,DHMYCDPM063,63,DP,,,DIN Rail,607.00,https://havells.com/home-electricals/switchgears/circuit-breaker.html
+Havells,electrical/switchgear/mcb,X7 MCB TP 63A,DHMYCTPM063,63,TP,,,DIN Rail,1002.00,https://havells.com/home-electricals/switchgears/circuit-breaker.html
+Havells,electrical/switchgear/mcb,MCB SP B Curve 40A,DHMGBSPF040,40,SP,B,,DIN Rail,168.00,https://havells.com/home-electricals/switchgears/circuit-breaker.html
+Havells,electrical/switchgear/mcb,MCB SP C Curve 32A,DHMGCSPF032,32,SP,C,,DIN Rail,183.00,https://havells.com/home-electricals/switchgears/circuit-breaker.html
+Havells,electrical/switchgear/mcb,MCB DP C Curve 63A,DHMGCDPF063,63,DP,C,,DIN Rail,670.00,https://havells.com/home-electricals/switchgears/circuit-breaker.html
+Havells,electrical/switchgear/mcb,MCB SPN C Curve 63A,DHMGCSNF063,63,SPN,C,,DIN Rail,648.00,https://havells.com/home-electricals/switchgears/circuit-breaker.html
+Havells,electrical/switchgear/mcb,MCB TP C Curve 63A,DHMGCTPF063,63,TP,C,,DIN Rail,1127.00,https://havells.com/home-electricals/switchgears/circuit-breaker.html
+Havells,electrical/switchgear/mcb,MCB TPN C Curve 63A,DHMGCTNF063,63,TPN,C,,DIN Rail,1478.00,https://havells.com/home-electricals/switchgears/circuit-breaker.html
+Havells,electrical/switchgear/mcb,MCB FP C Curve 63A,DHMGCFPF063,63,FP,C,,DIN Rail,1518.00,https://havells.com/home-electricals/switchgears/circuit-breaker.html

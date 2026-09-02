@@ -3,8 +3,16 @@
 What to build, in what order, and what blocks what. Derived from decisions 0001–0013 and
 [catalog-integrity-approach.md](catalog-integrity-approach.md).
 
-Nothing here is built yet. Existing in the codebase: `users`, `refresh_tokens`, `vendors`,
-`vendor_account_details`, an admin panel shell, and the co-developer's mobile app.
+> [!NOTE]
+> **This is the plan, written before code.** For what has actually shipped and been
+> verified live, see
+> [catalog-implementation-status.md](catalog-implementation-status.md) — as of 2026-09-01,
+> Phases 1–7 are done except Phase 7 risk 4 (blocked on the ordering domain). Phase 6 is
+> complete per [0021](decisions/0021-search-runtime-build-plan.md).
+
+Existing in the codebase before this catalog effort started: `users`, `refresh_tokens`,
+`vendors`, `vendor_account_details`, an admin panel shell, and the co-developer's mobile
+app.
 
 ---
 
@@ -32,7 +40,7 @@ Two things that cost nothing now and a lot later.
 |---|---|---|
 | **Catalog seeding owner** | 4,000–6,000 SKUs is domain work, not data entry | **Assigned: the Golden Abode team**, sourcing directly from each brand's own published catalog/website |
 | **Verify MPN availability** | Confirm each product carries a code — determines how much of the catalog the primary dedup constraint actually covers | Folds into seeding itself now — the same pass through Havells' and Jaquar's sites that pulls specs also confirms MPN presence, no separate task |
-| **Name a `pincode_city_map` owner** | Scope is known — Delhi, Gurugram, Faridabad, Noida, Ghaziabad ([0020](decisions/0020-ncr-launch-cities.md)) — but nobody has sourced the India Post data or seeded the table yet | Open |
+| **Name a `pincode_city_map` owner** | Scope is known — Delhi, Gurugram, Faridabad, Noida, Ghaziabad ([0020](decisions/0020-ncr-launch-cities.md)) | **Seeded 2026-09-01** — 163 pincodes for the five cities. Sources and confidence in `apps/backend/database/seed-data/ncr-pincodes.js`; reconcile against India Post’s official directory before launch |
 
 **Two sourcing paths, not one, split by data-availability rating in
 [catalog-vendor-export-analysis.md](catalog-vendor-export-analysis.md):**
@@ -172,6 +180,14 @@ chose a narrow launch, this phase is where Paint and Stone join.
 
 ## Phase 6 — Search
 
+> [!NOTE]
+> **Status (2026-09-01): Phase 6 COMPLETE — 6a, 6b, 6c, 6e, 6f, 6g and 6h all done and verified live.**
+> 6c–6h were briefly skipped on 2026-08-26 to pull Phase 7 forward, and resumed on
+> 2026-09-01 per [0021](decisions/0021-search-runtime-build-plan.md), which records the
+> build order and the three design-doc corrections found by actually running Meilisearch
+> (document ID separator, `disableOnNumbers` version requirement, one-directional synonyms).
+> See [catalog-implementation-status.md](catalog-implementation-status.md).
+
 Only useful once products *and* listings exist, so it genuinely follows Phase 4.
 
 Engine decided in [0017](decisions/0017-search-engine-choice.md): **Meilisearch**,
@@ -193,7 +209,7 @@ and the Geography section of [catalog-schema.sql](catalog-schema.sql).
                          coordinates win on disagreement (0019)
                          BLOCKS 6c, 6e, 6f
 
-6b  document shape       DECIDED (0018) — (product, city), id `{product}:{city}`
+6b  document shape       DECIDED (0018) — (product, city), id `{product}__{city}`
                          SearchDocument lands in packages/types
 
 6c  postgres path        pg_trgm on name + GIN on attributes_flat,
@@ -241,32 +257,37 @@ Three sequencing notes:
 
 ## Phase 7 — Integrity hardening
 
-Deferred deliberately; see
-[catalog-integrity-residual-risks.md](catalog-integrity-residual-risks.md).
+> [!NOTE]
+> **Done as of 2026-08-26, except risk 4 (still blocked on the ordering domain).** Pulled
+> forward ahead of Phase 6's search runtime at explicit request. See
+> [catalog-implementation-status.md](catalog-implementation-status.md#phase-7-integrity-hardening--done-except-risk-4)
+> and the updated [catalog-integrity-residual-risks.md](catalog-integrity-residual-risks.md)
+> for what shipped, real bugs found, and test counts.
 
 ```
-price-outlier flag              cheap, catches most wrong matches
-catalog-edit re-validation      reuses catalog_reindex_queue
-brand dedup / alias table       risk 1
-candidate-choice confirm UI     risk 2 — the one that compounds
-required variant attrs          risk 3
-customer report path            risk 4 — needs the ordering domain
+price-outlier flag              ✅ done — cheap, catches most wrong matches
+catalog-edit re-validation      ✅ done — reuses catalog_reindex_queue
+brand dedup / alias table       ✅ done — risk 1
+candidate-choice confirm UI     ✅ done — risk 2 — the one that compounds
+required variant attrs          ✅ done — risk 3
+customer report path            ⛔ blocked — risk 4 — needs the ordering domain
 ```
 
 ---
 
 ## Dependency summary
 
-| Phase | Blocked by | Blocks |
-|---|---|---|
-| 0 | — | everything |
-| 1 | 0 | seeding, all catalog work |
-| 2 | 1 | manual entry, import |
-| 3 | 2 | bulk seeding |
-| 4 | 2 + a real catalog | vendor onboarding, search |
-| 5 | 1, partly parallel with 4 | Paint and Stone launch |
-| 6 | 4 | customer-facing browse |
-| 7 | 4 | nothing — hardening |
+| Phase | Blocked by | Blocks | Status (2026-08-26) |
+|---|---|---|---|
+| 0 | — | everything | Owner assigned, sourcing decided |
+| 1 | 0 | seeding, all catalog work | ✅ Done |
+| 2 | 1 | manual entry, import | ✅ Done |
+| 3 | 2 | bulk seeding | ✅ Done |
+| 4 | 2 + a real catalog | vendor onboarding, search | ✅ Done |
+| 5 | 1, partly parallel with 4 | Paint and Stone launch | ✅ Done |
+| 6a/6b | 4 | 6c–6h | ✅ Done |
+| 6c/6e–6h | 6a/6b | customer-facing browse | ⏸️ Skipped for now, not blocked |
+| 7 | 4 | nothing — hardening | ✅ Done except risk 4 (⛔ needs ordering domain) |
 
 **The two things that gate everything else:** Phase 1 shipping, and seeding having an owner.
 Both can start immediately.

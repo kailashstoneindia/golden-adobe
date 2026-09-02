@@ -1,17 +1,24 @@
 # Catalog Integrity — Residual Risks
 
 Four known gaps in the approach described in
-[catalog-integrity-approach.md](catalog-integrity-approach.md). **Documented, not yet
-decided.** Each has a sketched fix; none is implemented.
+[catalog-integrity-approach.md](catalog-integrity-approach.md).
+
+> [!NOTE]
+> **Status as of 2026-08-26: risks 1–3 are implemented and verified against live Postgres.**
+> Risk 4 remains open, blocked on the ordering domain. See
+> [catalog-implementation-status.md](catalog-implementation-status.md) for what was built,
+> real bugs found while building it, and test counts. The risk analysis below is kept as
+> written — it is still the reasoning behind why each fix looks the way it does — with a
+> **Status** line added under each sketched-fix section noting what actually shipped.
 
 Ranked by damage, not by effort.
 
-| # | Risk | Damage | Detectable? | Cheap to fix? |
-|---|---|---|---|---|
-| 1 | Duplicate brand rows | Multiplies across an entire brand | ❌ silent | ✅ yes |
-| 2 | Vendor confirms a wrong match | Permanent, self-reinforcing | ❌ evades price check | 🟡 UI work |
-| 3 | Blank variant attributes at publish | Only guard for Stone and Hardware | 🟡 partly | ✅ yes |
-| 4 | No customer report path | Errors never surface | — | 🟡 needs order flow |
+| # | Risk | Damage | Detectable? | Cheap to fix? | Status |
+|---|---|---|---|---|---|
+| 1 | Duplicate brand rows | Multiplies across an entire brand | ❌ silent | ✅ yes | ✅ Implemented |
+| 2 | Vendor confirms a wrong match | Permanent, self-reinforcing | ❌ evades price check | 🟡 UI work | ✅ Implemented |
+| 3 | Blank variant attributes at publish | Only guard for Stone and Hardware | 🟡 partly | ✅ yes | ✅ Implemented |
+| 4 | No customer report path | Errors never surface | — | 🟡 needs order flow | ⛔ Blocked — no ordering domain yet |
 
 ---
 
@@ -54,6 +61,14 @@ protection that covers most of the catalog.
   propose a brand; only a human creates one
 - Fuzzy similarity warning at brand creation, showing near-matches before saving
 
+> [!NOTE]
+> **✅ Implemented.** `normalize_brand_name()` (strips whitespace/case/corporate suffixes)
+> backs a unique functional index; a `brand_alias` table resolves known variants to the
+> canonical brand; `BrandResolverService` is the single resolution path used by both the
+> match ladder and structured matching, and never auto-creates a brand. 6/6 live-Postgres
+> checks passing (near-duplicate rejection, alias resolution, unrelated brands unaffected,
+> duplicate-alias rejection). See [catalog-implementation-status.md](catalog-implementation-status.md).
+
 ---
 
 ## 2. A vendor can confirm a wrong match, permanently
@@ -91,6 +106,17 @@ catches it either — it reaches a customer.
   alternatives, so the distinguishing detail is visible
 - Let vendors unmap a `vendor_product_map` entry from their own portal
 - Age out or re-prompt mappings that were confirmed once and never revisited
+
+> [!NOTE]
+> **✅ Implemented** (first two fixes). The match ladder now returns ranked
+> `matchCandidates` alongside the primary match; `listPendingConfirmations` computes and
+> surfaces the differing attributes against the closest alternative; a new
+> `choosePendingListingCandidate` endpoint lets an admin/vendor pick a different candidate,
+> which re-points `vendor_product_map` at the **chosen** product — not the original guess —
+> which is the actual fix for the compounding risk described above. Verified 12/12 via a
+> live E2E script, critically including that an un-offered candidate id is rejected.
+> Vendor-side unmap and mapping age-out were **not** built — smaller follow-ups, not blocked
+> on anything. See [catalog-implementation-status.md](catalog-implementation-status.md).
 
 ---
 
@@ -131,6 +157,15 @@ admin filling a field and another not, for the same product.
 - Or: enforce the requirement **only in the categories that depend on the hash** — Stone and
   Hardware — leaving branded categories unaffected
 
+> [!NOTE]
+> **✅ Implemented** — the third option. `trg_mp_require_variant_attrs_on_publish` fires
+> only on transition into `live`, only for `is_generic OR stone_variety_id IS NOT NULL`
+> products (i.e. exactly the ones the identity hash protects), walks category ancestry to
+> find every variant-defining attribute, and raises an exception **naming the specific
+> missing attribute(s)** rather than a generic rejection. Branded products are entirely
+> unaffected. 4/4 live-Postgres checks passing. See
+> [catalog-implementation-status.md](catalog-implementation-status.md).
+
 ---
 
 ## 4. No customer report path
@@ -166,6 +201,12 @@ That mapping is what cemented the error in risk 2. Fixing only the order leaves 
 intact, so it silently re-applies on the vendor's next upload and the same wrong listing
 reappears. The report must reach back to the mapping, not just the listing.
 
+> [!NOTE]
+> **⛔ Still blocked, not started.** `orders` / `order_items` do not exist in this codebase
+> yet, so there is no order line to attach a report to. When the ordering domain lands,
+> build this with the `vendor_product_map` invalidation from the start — see
+> [catalog-implementation-status.md](catalog-implementation-status.md#risk-4-customer-report-path--out-of-scope).
+
 ---
 
 ## Recommended sequencing when this is picked up
@@ -180,3 +221,8 @@ value.
 4 depends on the ordering domain, which does not exist yet, so it is naturally last — but it
 should be designed with the `vendor_product_map` invalidation built in from the start, not
 bolted on.
+
+**This sequencing was followed as written.** 1, 2, and 3 landed together in one pass
+(2026-08-26); 4 remains exactly where this section predicted it would sit — waiting on the
+ordering domain. See [catalog-implementation-status.md](catalog-implementation-status.md)
+for the as-built record.

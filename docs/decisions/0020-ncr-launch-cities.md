@@ -89,8 +89,15 @@ NCR, with coordinates as the tie-break 0019 already specifies, not the reverse.
 1. **Simultaneous launch across all five, or staggered** (e.g., Delhi + Gurugram first,
    Noida/Ghaziabad/Faridabad following)? Not decided — an operations/go-to-market call, not
    a schema one. `city.is_active` supports either without changes.
-2. **Exact pincode boundaries for each of the five**, sourced from the India Post dataset —
-   still needs an owner, per [0018](0018-city-scoped-search.md) open question 3.
+2. ~~**Exact pincode boundaries for each of the five**, sourced from the India Post dataset —
+   still needs an owner.~~ **Seeded 2026-09-01** — 163 pincodes across the five cities
+   (`20260901100001-seed-ncr-pincodes.js`), scoped to the cities rather than their
+   administrative districts exactly as the Consequences section above directs. Sources and
+   per-city confidence are recorded in `apps/backend/database/seed-data/ncr-pincodes.js`.
+   **Still open:** reconciliation against India Post's official All-India Pincode Directory,
+   which was not available as a direct download — the current data is cross-checked against
+   the Gurugram and Ghaziabad district government pages, with Delhi seeded as its contiguous
+   110001–110096 block.
 3. **Final centroid coordinates** — the values above are illustrative city-centre points,
    not verified for this decision.
 

@@ -32,6 +32,7 @@ valid when circumstances change.
 | [0018](0018-city-scoped-search.md) | City-scoped search: one document per (product, city) | 2026-08-17 | Accepted |
 | [0019](0019-search-followups.md) | Search follow-ups: combined location resolution, admin search, autocomplete, synonyms | 2026-08-17 | Accepted |
 | [0020](0020-ncr-launch-cities.md) | Launch scope: Delhi NCR as five separate cities | 2026-08-17 | Accepted |
+| [0021](0021-search-runtime-build-plan.md) | Search runtime: local-first build, and the 6c–6h sequence | 2026-09-01 | Accepted |
 
 ## Adding a record
 
@@ -52,12 +53,20 @@ and update the old record's status. The trail of reversals is the useful part.
 - [../catalog-excel-flows.md](../catalog-excel-flows.md) — the three spreadsheet workflows:
   admin catalog upload, vendor inventory upload, and new-product requests.
 - [../catalog-build-order.md](../catalog-build-order.md) — **what to build, in what order,
-  and what blocks what.**
+  and what blocks what.** The plan; see the implementation status doc below for the as-built
+  record.
+- [../catalog-implementation-status.md](../catalog-implementation-status.md) — **what has
+  actually been built and verified against live Postgres, phase by phase**, kept current as
+  work lands. Start here for "what's done."
+- [../search-runtime-build-log.md](../search-runtime-build-log.md) — defects found while
+  building the search runtime (6c–6h) and why anything still open is open. Companion to
+  [0021](0021-search-runtime-build-plan.md), which records the plan.
 - [../catalog-integrity-approach.md](../catalog-integrity-approach.md) — the consolidated
   approach: how the catalog stays duplicate-free and how vendor inventory attaches
   correctly.
 - [../catalog-integrity-residual-risks.md](../catalog-integrity-residual-risks.md) — the four
-  known gaps in that approach. Documented, **not yet decided**.
+  known gaps in that approach. Risks 1–3 are now implemented; risk 4 remains blocked on the
+  ordering domain — see the status note at the top of that file.
 - [../catalog-consistency.md](../catalog-consistency.md) — how other platforms prevent
   vendor listings attaching to the wrong catalog product, and the gaps here.
 - [../catalog-vendor-export-analysis.md](../catalog-vendor-export-analysis.md) — feasibility,

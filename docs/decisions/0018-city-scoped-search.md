@@ -1,11 +1,22 @@
 # 0018 — City-scoped search: one document per (product, city)
 
 - **Date:** 2026-08-17
-- **Status:** Accepted
+- **Status:** Accepted — **ID separator amended by [0021](0021-search-runtime-build-plan.md)**
 - **Supersedes / Superseded by:** Settles **S1**, the open question left at the end of
   [0017](0017-search-engine-choice.md) and in [search-system-design.md](../search-system-design.md).
   The zone/price-map option floated while S1 was still open (a price map per city inside a
   single per-product document) is **not** what this record adopts — see Options considered.
+
+> [!IMPORTANT]
+> **The `{product_id}:{city_id}` ID format written throughout this record is wrong, and was
+> corrected while implementing it (2026-09-01).** Meilisearch rejects a document ID
+> containing a colon outright (`invalid_document_id` — IDs may contain only `a-z A-Z 0-9`,
+> `-` and `_`), so every indexing task would have failed. The separator is now `__`:
+> **`{product_id}__{city_id}`**. Not `-`, because UUIDs already contain hyphens and
+> splitting would be ambiguous. See [0021](0021-search-runtime-build-plan.md) §Corrections.
+>
+> **Everything else in this record stands** — the document grain, the reasoning for it, and
+> the determinism requirement are all unaffected. Only the separator character changed.
 
 ## Context
 
