@@ -3,3 +3,7 @@ export { DashboardPage } from './DashboardPage';
 export { LoginPage } from './LoginPage';
 export { RegisterPage } from './RegisterPage';
 export { UsersPage } from './UsersPage';
+export { CatalogCategoriesPage } from './CatalogCategoriesPage';
+export { CatalogProductsPage } from './CatalogProductsPage';
+export { CatalogImportPage } from './CatalogImportPage';
+export { CatalogReviewQueuePage } from './CatalogReviewQueuePage';

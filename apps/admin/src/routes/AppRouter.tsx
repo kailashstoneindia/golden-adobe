@@ -10,6 +10,10 @@ import { DashboardPage } from '@/pages/DashboardPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { RegisterPage } from '@/pages/RegisterPage';
 import { UsersPage } from '@/pages/UsersPage';
+import { CatalogCategoriesPage } from '@/pages/CatalogCategoriesPage';
+import { CatalogProductsPage } from '@/pages/CatalogProductsPage';
+import { CatalogImportPage } from '@/pages/CatalogImportPage';
+import { CatalogReviewQueuePage } from '@/pages/CatalogReviewQueuePage';
 import styles from '@/styles/shared.module.css';
 
 function ProtectedRoute() {
@@ -39,6 +43,10 @@ export function AppRouter() {
           <Route path={ROUTES.approvalsVendors} element={<ApprovalsPage />} />
           <Route path={ROUTES.approvalsArtisans} element={<ApprovalsPage />} />
           <Route path={ROUTES.users} element={<UsersPage />} />
+          <Route path={ROUTES.catalogCategories} element={<CatalogCategoriesPage />} />
+          <Route path={ROUTES.catalogProducts} element={<CatalogProductsPage />} />
+          <Route path={ROUTES.catalogImport} element={<CatalogImportPage />} />
+          <Route path={ROUTES.catalogReview} element={<CatalogReviewQueuePage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to={ROUTES.dashboard} replace />} />
