@@ -86,13 +86,64 @@ fetchable codes even where the pipes themselves don't.
 
 ---
 
+## Attempted and dropped — Valves, Water Tanks, Pipe Fittings
+
+Unlike RCCB (Electrical), these were not skipped for lack of data — real
+product pages were fetched and read. They were dropped because the required
+fields specifically could not be confirmed, which is the same "cannot seed
+without inferring" outcome, arrived at by actually trying each leaf.
+
+### Water Tanks — dropped
+
+Astral names 5 tank product lines (Cleo, Delta, Elo, Pio, Sarita) with real
+capacity tables — Cleo's page even gives a per-capacity part-code table
+(500L = A831402XXSB, 1000L = A831404XXSB, etc.) and confirmed diameter/height.
+Capacity range (500-10000L) needs enum widening (currently
+500/750/1000/1500/2000/5000 — missing 3000 and 10000, real Astral sizes).
+
+But **`tank_material` and `tank_shape` are both required and both
+unconfirmed on the product page itself**:
+- Material stated only as "100% food-grade material" / "Polyethylene (PE)" —
+  neither matches the enum (`HDPE, LLDPE, Concrete, Stainless Steel`)
+  precisely, and Astral's brand-level marketing says "virgin HDPE" but that
+  is a claim about the BRAND, not confirmed per this specific product line.
+- Shape: the page gives diameter+height dimensions, which READS as vertical
+  cylindrical — but this is not stated in words anywhere on the page. A
+  fetch was asked directly "does it say vertical/horizontal/loft" and
+  confirmed: no, it does not.
+
+Filling either field from the dimension pattern would be exactly the
+inference the sourcing rules forbid (the same shape of mistake as the
+SDR-to-application guess caught in this same session, on a required field
+this time rather than an optional one).
+
+### Valves — dropped
+
+Astral's Single Union Ball Valve page confirms `valve_type` = Ball (in the
+existing enum) and `valve_size` = 15-50mm (exactly matching the existing
+15/20/25/32/40/50 enum, no widening needed). But `valve_body_material` is
+stated only as "available in both uPVC and CPVC" for the PRODUCT LINE as a
+whole — asked directly whether a table breaks down which SIZE ships in which
+material, and confirmed: no such table exists on the page. Building rows
+with `valve_body_material=CPVC` across all 6 sizes would assert something
+not actually confirmed (that every size ships in CPVC specifically, not only
+uPVC). Also: the taxonomy's `valve_body_material` enum has no "UPVC" option
+at all (only "PVC"), which would need resolving before uPVC valves could be
+seeded regardless.
+
+### Pipe Fittings — not reached
+
+Astral publishes real fitting codes (`M342000343` = Reducing Tee 110x90mm
+RINGFIT, seen incidentally while sourcing Pipes) and a dedicated PDF
+catalogue (`cpvc-pro.pdf`), but the PDF is binary/compressed and did not
+extract as readable text via the fetch tool used this pass. A different
+extraction method (OCR, or a text-layer-aware PDF reader) would be needed —
+not attempted, not a data gap.
+
 ## Not sourced this pass
 
 - **Non-CPVC pipe materials** (UPVC, PVC, SWR, PPR, GI, HDPE) — `pipe_material`
   enum supports all of them; only CPVC/CTS was fetched.
-- **Pipe Fittings, Valves, Water Tanks** — zero fetches. Water Tanks in
-  particular is promising: Astral's catalogue names 8 tank products, likely a
-  quick Profile B/C leaf given the pattern seen elsewhere.
 - **Prince Pipes** — third named brand in the project's own doc, not reached.
 
 ## Cannot be verified from here
