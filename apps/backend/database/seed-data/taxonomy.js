@@ -161,7 +161,12 @@ const TREE = [
           ['door_type', 'Door Type', 'enum', null, false, false, ['Metal', 'Acrylic', 'None']],
         ]},
         { name: 'Isolator', slug: 'isolator', uom: 'NOS', attrs: [
-          ['isolator_rated_current', 'Rated Current', 'number', 'A', true, true, ['32', '40', '63', '100']],
+          // 125 added 2026-09-13: Havells' own switchgear listing (page 5,
+          // items 65-80 of the reachable 80) lists "Isolator FP 125A" as a
+          // real current SKU. Same class of gap as sweep_size/current_rating
+          // -- not DB-rejected (this is 'number', not 'enum'), but a missing
+          // dropdown/search-facet entry until corrected.
+          ['isolator_rated_current', 'Rated Current', 'number', 'A', true, true, ['32', '40', '63', '100', '125']],
         ]},
       ]},
     ],

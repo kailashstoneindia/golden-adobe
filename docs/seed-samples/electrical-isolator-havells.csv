@@ -1,0 +1,6 @@
+name,brand,mfr_part_number,gtin,hsn_code,gst_rate,country_of_origin,pack_qty,number_of_poles,breaking_capacity,mounting,isolator_rated_current,certification_mark,warranty_period,source_url,image_url,confidence
+Isolator DP 100A,Havells,DHMGIDPX100-C,,8536,18,India,1,DP,,,100,,,https://havells.com/reo/isolator-dp-dhmgidpx100-c.html,,confirmed
+Isolator FP 125A,Havells,,,8536,18,India,1,FP,,,125,,,https://havells.com/home-electricals/switchgears.html?p=5,,partial
+Isolator TP 63A,Havells,,,8536,18,India,1,TP,,,63,,,https://havells.com/home-electricals/switchgears.html?p=5,,partial
+X7 Isolator DP 63A,Havells,,,8536,18,India,1,DP,,,63,,,https://havells.com/home-electricals/switchgears.html?p=5,,partial
+X7 Isolator FP 63A,Havells,,,8536,18,India,1,FP,,,63,,,https://havells.com/home-electricals/switchgears.html?p=5,,partial

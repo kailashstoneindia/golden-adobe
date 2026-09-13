@@ -1,0 +1,11 @@
+name,brand,mfr_part_number,gtin,hsn_code,gst_rate,country_of_origin,pack_qty,number_of_poles,breaking_capacity,mounting,number_of_ways,phase,ip_rating_db,door_type,certification_mark,warranty_period,source_url,image_url,confidence
+X7 DD DB-SPN 4 Way White,Havells,DHDESHODOW04,,8537,18,India,1,SPN,,,4,Single,,,,,https://havells.com/home-electricals/switchgears.html?p=3,,partial
+X7 DD DB-SPN 6 Way White,Havells,DHDESHODOW06,,8537,18,India,1,SPN,,,6,Single,,,,,https://havells.com/home-electricals/switchgears.html?p=3,,partial
+X7 DD DB-SPN 8 Way White,Havells,DHDESHODOW08,,8537,18,India,1,SPN,,,8,Single,,,,,https://havells.com/home-electricals/switchgears.html?p=3,,partial
+X7 DD DB-SPN 12 Way White,Havells,DHDESHODOW12,,8537,18,India,1,SPN,,,12,Single,,,,,https://havells.com/home-electricals/switchgears.html?p=3,,partial
+X7 DD DB-SPN 16 Way White,Havells,DHDESHODOW16,,8537,18,India,1,SPN,,,16,Single,,,,,https://havells.com/home-electricals/switchgears.html?p=3,,partial
+X7 DD DB-TPN 4 Way White,Havells,DHDPTHODXW04,,8537,18,India,1,TPN,,,4,Three,,,,,https://havells.com/home-electricals/switchgears.html?p=3,,partial
+X7 DD DB-TPN 6 Way White,Havells,DHDPTHODXW06,,8537,18,India,1,TPN,,,6,Three,,,,,https://havells.com/home-electricals/switchgears.html?p=3,,partial
+X7 DD DB-TPN 8 Way White,Havells,DHDPTHODXW08,,8537,18,India,1,TPN,,,8,Three,,,,,https://havells.com/home-electricals/switchgears.html?p=3,,partial
+X7 DD DB with 8W IC 4 Way White,Havells,DHDPTHODXW48,,8537,18,India,1,TPN,,,4,Three,,,,,https://havells.com/home-electricals/switchgears.html?p=3,,partial
+SPN 4 Way DD DB,Havells,DRDPSHODOW04,,8537,18,India,1,SPN,,,4,Single,IP42,,,,https://havells.com/reo/home-electricals/switchgears/spn-4-way-dd-db-drdpshodow04.html,,confirmed
