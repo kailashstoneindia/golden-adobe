@@ -52,6 +52,36 @@ module.exports = {
         let attributeId;
         if (existing.length > 0) {
           attributeId = existing[0].id;
+          // Re-sync the flags from taxonomy.js rather than skipping the row.
+          // Taking the existing id and moving on made this seeder silently
+          // incapable of ever CHANGING an attribute: flipping
+          // is_variant_defining (e.g. current_rating -> false) would report
+          // success and alter nothing. Same silent-skip defect as the
+          // display_order one fixed below.
+          //
+          // category_id and code are deliberately NOT updated — code is the
+          // lookup key, and attribute codes are globally unique, so rewriting
+          // a category_id here would silently move an attribute between
+          // categories.
+          await q(
+            `UPDATE attribute
+                SET name = :name,
+                    data_type = CAST(:dataType AS attribute_data_type),
+                    unit = :unit,
+                    is_variant_defining = :variantDefining,
+                    is_searchable_filter = :filterable,
+                    display_order = :displayOrder
+              WHERE id = :attributeId`,
+            {
+              attributeId,
+              name,
+              dataType,
+              unit,
+              variantDefining,
+              filterable,
+              displayOrder,
+            },
+          );
         } else {
           const [row] = await q(
             `INSERT INTO attribute

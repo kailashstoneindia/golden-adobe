@@ -68,7 +68,24 @@ const TREE = [
         // range. 32A and 45A cover heavy-appliance sockets (AC, geyser).
         ['module_size', 'Module Size', 'number', 'modules', true, true,
           ['1', '2', '3', '4', '6', '8', '9', '10', '12', '16', '18']],
-        ['current_rating', 'Current Rating', 'number', 'A', true, true,
+        // NOT variant-defining (changed 2026-09-13, was true). A current
+        // rating is meaningless for several real devices in this leaf — fan
+        // regulators, USB sockets, indicator lamps and dummy modules carry no
+        // amp rating at all — so requiring it rejected 9 legitimate Crabtree
+        // products on first import. The assumption that every switch-category
+        // device has a current rating simply does not hold.
+        //
+        // Cost of this change, accepted deliberately: current_rating no
+        // longer contributes to build_identity_hash(), so two products
+        // differing ONLY in amperage now hash identically. That matters only
+        // for identity-hash-dependent products — is_generic, or stone — and
+        // this leaf has none: every row is branded, identified by
+        // (brand_id, mfr_part_number) instead. Switches are never generic in
+        // practice, since an unbranded modular switch is not a listable SKU.
+        //
+        // Still filterable: customers browse "16A sockets", and search facets
+        // read is_filterable, not is_variant_defining.
+        ['current_rating', 'Current Rating', 'number', 'A', false, true,
           ['6', '10', '16', '20', '25', '32', '45']],
         ['series', 'Series', 'text', null, true, true, []],
         // Grey added 2026-09-13: it is a standard modular-switch colour across
