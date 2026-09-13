@@ -39,6 +39,28 @@ relying on a profile.
    > workstream 3's migration, or a rehosted image becomes indistinguishable
    > from a hotlinked one and failed downloads cannot be retried.
 
+5. **`country_of_origin` is the ONE exception to rule 3 — user-approved
+   2026-09-13.** Every other required identity/attribute field still needs a
+   per-product statement before it's filled in. `country_of_origin` alone may
+   default to the brand's registered manufacturing country (its
+   `manufacturer_address`, already sourced for the brand row) when the
+   product page doesn't state origin explicitly — which is the common case:
+   Berger, Havells, Astral, Supreme, Legrand, Polycab never print it, because
+   origin labelling is a customs/import-declaration requirement, not a
+   routine spec, and only shows up on pages for goods actually imported.
+
+   **The exception has a real edge already found**: Cera's faucets and bath
+   accessories (Vivana, Victor, Bold Soap Dish, Saber Towel Rail — all
+   fetched and CONFIRMED, not defaulted) explicitly state "Country of Origin:
+   China" despite Cera being an Indian company. Once a brand's OWN product
+   page has stated a real origin for even one SKU, do not default that
+   brand's other products to its home country — check them too, since the
+   brand is evidently importing at least part of its range.
+
+   So the practical rule: default silently only for brands that have never
+   surfaced a stated origin different from home country; verify explicitly,
+   every time, once a brand has shown it imports.
+
 ---
 
 ## What the importer requires

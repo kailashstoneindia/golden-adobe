@@ -411,7 +411,14 @@ const TREE = [
       ['light_style', 'Style / Theme', 'enum', null, false, true,
         ['Modern', 'Contemporary', 'Traditional', 'Industrial', 'Vintage', 'Minimalist', 'Bohemian']],
       ['light_finish', 'Finish', 'enum', null, true, true, ['Gold', 'Black', 'Chrome', 'Antique Brass', 'White', 'Wood', 'Copper']],
-      ['light_body_material', 'Body Material', 'enum', null, true, true, ['Metal', 'Glass', 'Crystal', 'Wood', 'Fabric', 'Acrylic', 'Rattan']],
+      // 'Plastic' added 2026-09-13: two real Havells wall-light product pages
+      // (Glaze LHFOECE1TZ1B014, Stylo LHFOECE1TZ1O014) both state
+      // "Material: Plastic" for the housing (PP, per the spec sheet's own
+      // "PP Housing" note), with Acrylic/Polycarbonate reserved for the
+      // diffuser specifically. Mass-market fixture housings being plastic is
+      // the common case, not an edge case, and the enum had no option for it.
+      ['light_body_material', 'Body Material', 'enum', null, true, true,
+        ['Metal', 'Glass', 'Crystal', 'Wood', 'Fabric', 'Acrylic', 'Rattan', 'Plastic']],
       ['number_of_lights', 'Number of Lights', 'number', null, true, true, ['1', '2', '3', '5', '6', '8', '12']],
       ['lamp_holder_type', 'Lamp Holder Type', 'enum', null, false, true, ['B22', 'E27', 'E14', 'G9', 'GU10', 'Integrated LED']],
       ['light_dimmable', 'Dimmable', 'boolean', null, false, false, []],
