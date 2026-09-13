@@ -77,15 +77,23 @@ module.exports = {
         }
 
         // Enum options, in declaration order.
+        //
+        // display_order is UPDATED on conflict, not left alone. Inserting a
+        // value into the middle of an existing list (e.g. adding 750 and 1050
+        // to sweep_size) shifts every later value's position; DO NOTHING would
+        // keep the old rows' original indices and render the dropdown out of
+        // order — 600, 900, 750, 1200. The value itself is the conflict key,
+        // so this only ever corrects position, never content.
         for (let i = 0; i < values.length; i += 1) {
           const inserted = await q(
             `INSERT INTO attribute_value_option (id, attribute_id, value, display_order)
              VALUES (gen_random_uuid(), :attributeId, :value, :displayOrder)
-             ON CONFLICT (attribute_id, value) DO NOTHING
-             RETURNING id`,
+             ON CONFLICT (attribute_id, value)
+               DO UPDATE SET display_order = EXCLUDED.display_order
+             RETURNING id, (xmax = 0) AS was_inserted`,
             { attributeId, value: values[i], displayOrder: i },
           );
-          if (inserted.length > 0) optionCount += 1;
+          if (inserted.length > 0 && inserted[0].was_inserted) optionCount += 1;
         }
       };
 

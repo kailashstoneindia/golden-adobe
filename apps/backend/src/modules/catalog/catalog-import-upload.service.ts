@@ -4,6 +4,7 @@ import ExcelJS from 'exceljs';
 import { CatalogImportRowError, CatalogImportResult } from '@golden-abode/types';
 import { Category } from './models/category.model';
 import { Brand } from './models/brand.model';
+import { HsnCode } from './models/hsn-code.model';
 import { Attribute, AttributeDataType } from './models/attribute.model';
 import { MasterProduct, MasterProductStatus } from './models/master-product.model';
 import { MasterProductAttributeValue } from './models/master-product-attribute-value.model';
@@ -42,6 +43,8 @@ export class CatalogImportUploadService {
     private readonly categoryModel: typeof Category,
     @InjectModel(Brand)
     private readonly brandModel: typeof Brand,
+    @InjectModel(HsnCode)
+    private readonly hsnCodeModel: typeof HsnCode,
     @InjectModel(MasterProduct)
     private readonly masterProductModel: typeof MasterProduct,
     @InjectModel(MasterProductAttributeValue)
@@ -273,6 +276,27 @@ export class CatalogImportUploadService {
           row: row.rowNumber,
           column: 'brand',
           message: `brand "${brandName}" does not exist — create it first (admin brand management), then re-upload`,
+        });
+      }
+    }
+
+    // Rule 4b — hsn_code resolves in `hsn_code`. master_product.hsn_code is a
+    // FOREIGN KEY, so an unknown value does not fail this row: it aborts the
+    // whole import with a raw 500 ("violates foreign key constraint
+    // master_product_hsn_code_fkey"), losing every valid row in the file and
+    // telling the admin nothing actionable. Checked here so it becomes a
+    // per-row rejection like every other rule, and appears in the error
+    // workbook alongside the rest.
+    const hsnCode = row.values['hsn_code'];
+    if (hsnCode !== undefined && String(hsnCode).trim() !== '') {
+      const hsn = await this.hsnCodeModel.findOne({
+        where: { code: String(hsnCode).trim() },
+      });
+      if (!hsn) {
+        errors.push({
+          row: row.rowNumber,
+          column: 'hsn_code',
+          message: `HSN code "${hsnCode}" does not exist — add it to the hsn_code table first, or leave the column blank`,
         });
       }
     }

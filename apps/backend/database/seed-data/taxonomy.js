@@ -62,15 +62,32 @@ const TREE = [
       { name: 'Switches & Sockets', slug: 'switches-sockets', uom: 'NOS', attrs: [
         ['device_type', 'Device Type', 'enum', null, true, true,
           ['One-way Switch', 'Two-way Switch', 'Bell Push', 'Socket 6A', 'Socket 16A', 'Combined 6/16A', 'Fan Regulator', 'Dimmer', 'USB Socket']],
-        ['module_size', 'Module Size', 'number', 'modules', true, true, ['1', '2', '3', '4', '6']],
-        ['current_rating', 'Current Rating', 'number', 'A', true, true, ['6', '10', '16', '20', '25']],
+        // Havells Crabtree's own listing (782 products, fetched 2026-09-08)
+        // shows module sizes 1,2,3,4,6,8,9,10,12,16,18 and ratings including
+        // 25A+ — the original 1-6 / 6-25 lists were well short of the real
+        // range. 32A and 45A cover heavy-appliance sockets (AC, geyser).
+        ['module_size', 'Module Size', 'number', 'modules', true, true,
+          ['1', '2', '3', '4', '6', '8', '9', '10', '12', '16', '18']],
+        ['current_rating', 'Current Rating', 'number', 'A', true, true,
+          ['6', '10', '16', '20', '25', '32', '45']],
         ['series', 'Series', 'text', null, true, true, []],
-        ['finish', 'Finish', 'enum', null, true, true, ['White', 'Ivory', 'Black', 'Silver', 'Gold', 'Wood']],
+        // Grey added 2026-09-13: it is a standard modular-switch colour across
+        // Crabtree, Legrand and Anchor, not a brand-specific name, and its
+        // absence was silently costing ~a third of every Crabtree listing
+        // (finish is variant-defining, so a blank rejects the row).
+        // Brand marketing names ("Frosted Slate", "Rose Gold Bezel") are
+        // deliberately NOT added — those need a generic scheme, not one
+        // vendor's vocabulary in a shared taxonomy.
+        ['finish', 'Finish', 'enum', null, true, true,
+          ['White', 'Ivory', 'Black', 'Grey', 'Silver', 'Gold', 'Wood']],
       ]},
       { name: 'Switch Plates & Frames', slug: 'switch-plates', uom: 'NOS', attrs: [
         ['module_capacity', 'Module Capacity', 'number', 'modules', true, true, ['1', '2', '3', '4', '6', '8', '12', '18']],
         ['plate_material', 'Material', 'enum', null, true, true, ['Polycarbonate', 'ABS', 'Metal', 'Glass', 'Wood']],
-        ['plate_finish', 'Finish', 'enum', null, true, true, ['White', 'Ivory', 'Black', 'Silver', 'Gold', 'Wood']],
+        // Same Grey addition as switches-sockets above — plates ship in the
+        // identical colour range, and plate_finish is variant-defining too.
+        ['plate_finish', 'Finish', 'enum', null, true, true,
+          ['White', 'Ivory', 'Black', 'Grey', 'Silver', 'Gold', 'Wood']],
         ['plate_series', 'Series', 'text', null, true, true, []],
       ]},
       { name: 'Conduits & Accessories', slug: 'conduits', uom: 'NOS', attrs: [
@@ -82,7 +99,13 @@ const TREE = [
       ]},
       { name: 'Fans', slug: 'fans', uom: 'NOS', attrs: [
         ['fan_type', 'Fan Type', 'enum', null, true, true, ['Ceiling', 'Exhaust', 'Wall', 'Pedestal', 'Table', 'Tower']],
-        ['sweep_size', 'Sweep Size', 'number', 'mm', true, true, ['600', '900', '1200', '1400']],
+        // Real Indian ceiling-fan sweeps are not a tidy series: 750, 1050 and
+        // 1300 are standard sizes, and 1320 exists in the market (Crompton
+        // Luxian Senze). 1219 is 48 inches, the size most commonly printed on
+        // the box in inches rather than mm. Sourcing 2026-09-08 found the
+        // original 600/900/1200/1400 list covered barely half the range.
+        ['sweep_size', 'Sweep Size', 'number', 'mm', true, true,
+          ['600', '750', '900', '1050', '1200', '1219', '1300', '1320', '1400']],
         ['motor_type', 'Motor Type', 'enum', null, true, true, ['Induction', 'BLDC']],
         ['power_consumption', 'Power Consumption', 'number', 'W', false, true, []],
         ['star_rating', 'Star Rating', 'enum', null, false, true, ['1', '2', '3', '4', '5']],
