@@ -353,11 +353,28 @@ const TREE = [
         ]},
       ]},
       { name: 'Fasteners', slug: 'fasteners', uom: 'PKT', attrs: [
-        ['fastener_material', 'Material', 'enum', null, true, true, ['Mild Steel', 'SS 304', 'SS 202', 'Brass', 'GI', 'Alloy Steel']],
+        // 'Nylon' added 2026-09-14: fischer India's Universal Plug UX
+        // (article 62757, GTIN 4006209627570 -- confirmed directly on its
+        // own product page) is "high-quality nylon" -- the base
+        // Fasteners leaf covers anchors/wall plugs as well as metal screws
+        // and bolts, and the original enum had no non-metal option at all,
+        // which would have blocked every plastic anchor/wall-plug product
+        // regardless of brand.
+        ['fastener_material', 'Material', 'enum', null, true, true,
+          ['Mild Steel', 'SS 304', 'SS 202', 'Brass', 'GI', 'Alloy Steel', 'Nylon']],
         ['fastener_coating', 'Coating', 'enum', null, true, true, ['Zinc Plated', 'Galvanized', 'Black Oxide', 'Plain']],
-        ['fastener_diameter', 'Diameter', 'number', 'mm', true, true, ['3', '4', '5', '6', '8', '10', '12', '16', '20']],
+        // 14 added 2026-09-14: fischer's UX 14x75 wall plug, confirmed
+        // directly. Wall-plug/anchor diameters commonly fall between screw
+        // gauge sizes, not just on them.
+        ['fastener_diameter', 'Diameter', 'number', 'mm', true, true,
+          ['3', '4', '5', '6', '8', '10', '12', '14', '16', '20']],
         ['fastener_length', 'Length', 'number', 'mm', true, true, ['12', '16', '20', '25', '32', '40', '50', '65', '75', '100']],
-        ['fastener_pack_quantity', 'Pack Quantity', 'number', 'pcs', true, false, ['10', '50', '100', '200', '500', '1000']],
+        // 20 added 2026-09-14: fischer's FAZ II Plus bolt anchor (article
+        // 564583, confirmed directly) packs 20 pieces per unit -- heavier
+        // structural anchors commonly pack in smaller counts than the light
+        // fasteners the original enum was clearly sized around.
+        ['fastener_pack_quantity', 'Pack Quantity', 'number', 'pcs', true, false,
+          ['10', '20', '50', '100', '200', '500', '1000']],
       ], children: [
         { name: 'Screws', slug: 'screws', uom: 'PKT', attrs: [
           ['screw_type', 'Screw Type', 'enum', null, true, true, ['Wood Screw', 'Self-Tapping', 'Drywall', 'Machine Screw', 'CSK']],
