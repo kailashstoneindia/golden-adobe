@@ -42,6 +42,11 @@ const REQUIRED_ROUTES = [
   { method: 'GET', path: '/api/vendors/me/categories' },
   { method: 'GET', path: '/api/admin/vendors/:id/categories' },
   { method: 'PUT', path: '/api/admin/vendors/:id/categories' },
+  // Phase 2 completion — inventory / stock management (workstream 4)
+  { method: 'GET', path: '/api/vendor/listings' },
+  { method: 'PATCH', path: '/api/vendor/listings/:id/stock' },
+  { method: 'PATCH', path: '/api/vendor/listings/:id/status' },
+  { method: 'POST', path: '/api/vendor/listings/stock/bulk' },
 ];
 
 async function main() {

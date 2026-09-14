@@ -40,6 +40,7 @@ import { VendorCatalogImportController } from './vendor-catalog-import.controlle
 import { CatalogReviewQueueController } from './catalog-review-queue.controller';
 import { AdminCatalogController } from './admin-catalog.controller';
 import { AdminCatalogService } from './admin-catalog.service';
+import { StockService } from './stock.service';
 
 // Phase 1 (taxonomy) + Phase 2 (master catalog, incl. the attributes_flat /
 // identity_hash trigger layer) + Phase 3 (admin catalog import) + Phase 4
@@ -128,6 +129,7 @@ import { AdminCatalogService } from './admin-catalog.service';
     BrandResolverService,
     VendorCategoriesService,
     AdminCatalogService,
+    StockService,
   ],
   exports: [
     SequelizeModule,
@@ -136,6 +138,14 @@ import { AdminCatalogService } from './admin-catalog.service';
     CityResolverService,
     BrandResolverService,
     VendorCategoriesService,
+    // Exported rather than paired with a controller here: the vendor stock
+    // controller needs VendorsService to resolve "which vendor is this
+    // caller", and VendorsModule already imports CatalogModule. Declaring
+    // that controller here would require importing VendorsModule back and
+    // closing a cycle — so the controller lives in VendorsModule and this
+    // service travels to it, matching how VendorCategoriesService is
+    // already consumed by AdminVendorsController.
+    StockService,
   ],
 })
 export class CatalogModule {}
