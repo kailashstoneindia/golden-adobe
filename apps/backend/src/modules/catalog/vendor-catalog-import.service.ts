@@ -291,6 +291,41 @@ export class VendorCatalogImportService {
       await listing.save();
     }
 
+    // qty_available and status, finally applied. Both were parsed into
+    // ParsedRow and recorded in the audit blob since Phase 4, then dropped
+    // -- a vendor typing "out_of_stock" changed nothing.
+    //
+    // An unrecognized status REJECTS the row rather than being ignored,
+    // mirroring how an invalid colour_family is handled a few lines above.
+    // Checked before the inventory write so a rejected row leaves no
+    // partial effect behind.
+    if (row.statusRaw !== undefined && row.statusRaw.trim() !== '') {
+      const normalizedStatus = this.normalizeListingStatus(row.statusRaw);
+      if (!normalizedStatus) {
+        return {
+          row: row.rowNumber,
+          productRef: row.productRef,
+          outcome: 'rejected',
+          message: `"${row.statusRaw}" is not a valid status — expected one of: ${Object.values(
+            VendorListingStatus,
+          ).join(', ')}`,
+        };
+      }
+      // Does NOT override the matcher's own status decision for an
+      // uncertain match: a step-4/5 listing is PAUSED pending the vendor's
+      // confirmation (decision 0011 section 5), and letting the sheet set
+      // it active would bypass exactly the check that pause exists for.
+      if (isDeterministic && listing.status !== normalizedStatus) {
+        listing.status = normalizedStatus;
+        await listing.save();
+      }
+    }
+
+    // Paint carries no inventory row at all (decisions 0007/0014).
+    if (!isPaint) {
+      await this.applyInventory(listing.id, row.qtyAvailable);
+    }
+
     if (isDeterministic) {
       return {
         row: row.rowNumber,
@@ -552,7 +587,15 @@ export class VendorCatalogImportService {
     const importRow = await this.importRowModel.findByPk(importRowId);
     if (!importRow) throw new NotFoundException(`import row ${importRowId} not found`);
 
-    const raw = importRow.rawRowJson as { productRef?: string; vendorSku?: string; price?: number };
+    const raw = importRow.rawRowJson as {
+      productRef?: string;
+      vendorSku?: string;
+      price?: number;
+      // Stored by rowToJson since Phase 4 and ignored here until now --
+      // the same two dropped columns as the upload path, one level down.
+      qtyAvailable?: number;
+      status?: string;
+    };
     // The vendor's own persistent code, falling back to productRef — same
     // rule as VendorInventoryRow.vendorSku in vendor-match-ladder.service.ts.
     // Reading raw.productRef alone here was a real bug: it keyed
@@ -585,6 +628,35 @@ export class VendorCatalogImportService {
       } as any,
     });
 
+    // The same two columns the upload path dropped, dropped again here.
+    // An admin rescuing a row from the review queue is acting on the
+    // vendor's original sheet, so the qty and status the vendor typed
+    // must survive the detour through the queue -- otherwise a row that
+    // needed human help silently loses its stock while an auto-matched
+    // row keeps it.
+    //
+    // Paint is skipped as everywhere else (decisions 0007/0014). This
+    // path creates listings with statedGrade: null and no colour handling,
+    // so the product must be re-read to know whether it is tinted-to-order.
+    const product = await this.masterProductModel.findByPk(masterProductId);
+    const isPaint = product?.saleUnitType === SaleUnitType.TINTED_TO_ORDER;
+
+    // Unlike the upload path there is no row-level "rejected" outcome to
+    // return here -- the admin is resolving ONE row through an API that
+    // returns the listing. An unrecognized status is therefore left alone
+    // rather than failing the admin's action: the listing keeps the ACTIVE
+    // default it was just created with, which is the safe reading of "the
+    // admin approved this row".
+    const normalizedStatus = this.normalizeListingStatus(raw.status);
+    if (normalizedStatus && listing.status !== normalizedStatus) {
+      listing.status = normalizedStatus;
+      await listing.save();
+    }
+
+    if (!isPaint) {
+      await this.applyInventory(listing.id, raw.qtyAvailable);
+    }
+
     importRow.status = ImportRowStatus.APPROVED;
     importRow.matchedMasterProductId = masterProductId;
     await importRow.save();
@@ -600,6 +672,67 @@ export class VendorCatalogImportService {
     importRow.status = ImportRowStatus.REJECTED;
     importRow.rawRowJson = { ...importRow.rawRowJson, rejectionReason: reason };
     await importRow.save();
+  }
+
+  // -------------------------------------------------------------------
+  // Stock and status from an uploaded row (workstream 4).
+  //
+  // Both columns have been parsed into ParsedRow and written to the audit
+  // blob by rowToJson since Phase 4, and then applied to NOTHING. A vendor
+  // filling in qty_available or typing "out_of_stock" had no effect
+  // whatsoever, with no error to tell them so.
+  //
+  // Called from BOTH listing-creating paths: the vendor upload, and the
+  // admin resolving a review-queue row. The second is easy to miss -- it
+  // reads the same rawRowJson and dropped the same two columns.
+  // -------------------------------------------------------------------
+
+  // The spreadsheet cell is free text a human typed. "Out Of Stock",
+  // "OUT-OF-STOCK" and "out of stock" are all plainly the same intent, so
+  // they are normalized rather than rejected; anything genuinely
+  // unrecognized IS rejected, naming the valid values, rather than being
+  // silently ignored the way it is today.
+  private normalizeListingStatus(statusRaw: string | undefined): VendorListingStatus | undefined {
+    if (statusRaw === undefined) return undefined;
+    const normalized = statusRaw
+      .trim()
+      .toLowerCase()
+      .replace(/[\s-]+/g, '_');
+    if (normalized === '') return undefined;
+    const match = Object.values(VendorListingStatus).find((value) => value === normalized);
+    return match;
+  }
+
+  // Writes the inventory row for a listing, upserting against the partial
+  // unique index from 20260914090000 so a re-upload updates rather than
+  // duplicating -- the same idempotency rule the listing and colour-price
+  // rows already follow.
+  //
+  // Two deliberate non-writes:
+  //
+  //   - PAINT. tinted_to_order products never get an inventory row
+  //     (decisions 0007/0014); availability lives on the listing status.
+  //     Callers check isPaint before calling.
+  //   - A BLANK CELL. undefined means "not telling you", NOT zero. An
+  //     existing quantity is left exactly as it was. This matters on
+  //     re-upload: a vendor sending a sheet with the qty column deleted
+  //     would otherwise zero their entire catalog in one click. Clearing
+  //     stock requires an explicit 0.
+  private async applyInventory(
+    vendorListingId: string,
+    qtyAvailable: number | undefined,
+  ): Promise<void> {
+    if (qtyAvailable === undefined || Number.isNaN(qtyAvailable)) return;
+    if (qtyAvailable < 0) return; // CHECK (quantity_available >= 0) would reject it anyway
+
+    await this.vendorListingModel.sequelize!.query(
+      `INSERT INTO inventory (id, vendor_listing_id, warehouse_id, quantity_available, quantity_reserved, created_at, updated_at)
+       VALUES (gen_random_uuid(), :vendorListingId, NULL, :qtyAvailable, 0, now(), now())
+       ON CONFLICT (vendor_listing_id) WHERE warehouse_id IS NULL
+       DO UPDATE SET quantity_available = EXCLUDED.quantity_available,
+                     updated_at = now()`,
+      { replacements: { vendorListingId, qtyAvailable } },
+    );
   }
 
   private rowToJson(row: ParsedRow): Record<string, unknown> {
