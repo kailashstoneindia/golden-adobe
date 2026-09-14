@@ -1,0 +1,17 @@
+brand,category_path,product_name,mfr_part_number,length_mm,width_mm,height_mm,material,mounting_type,price_inr,mrp_inr,source_url
+Cera,sanitaryware/wash-basins,Calibre,S2040109,580,430,200,Ceramic,Wall Hung Full Pedestal,4152.00,5190.00,https://www.cera-india.com/cera/sanitaryware-wash-basins-wall-hung-wash-basins-full-pedestal/calibre
+Cera,sanitaryware/wash-basins,Calburt,S2020137,550,400,140,Ceramic,Table Top,4920.00,6150.00,https://www.cera-india.com/cera/sanitaryware-wash-basins-table-top-wash-basins/calburt
+Cera,sanitaryware/wash-basins,Carpio,,,,,Ceramic,Wall Hung Full Pedestal,3550.00,,https://www.cera-india.com/cera/sanitaryware-wash-basins-wall-hung-wash-basins-full-pedestal/calibre
+Cera,sanitaryware/wash-basins,Calvis,,,,,Ceramic,Wall Hung Full Pedestal,3750.00,,https://www.cera-india.com/cera/sanitaryware-wash-basins-wall-hung-wash-basins-full-pedestal/calibre
+Cera,sanitaryware/wash-basins,Ceeza,,,,,Ceramic,Wall Hung Full Pedestal,3850.00,,https://www.cera-india.com/cera/sanitaryware-wash-basins-wall-hung-wash-basins-full-pedestal/calibre
+Cera,sanitaryware/wash-basins,Curvis,,,,,Ceramic,Wall Hung Full Pedestal,3900.00,,https://www.cera-india.com/cera/sanitaryware-wash-basins-wall-hung-wash-basins-full-pedestal/calibre
+Cera,sanitaryware/wash-basins,Cloister Slim,,,,,Ceramic,Table Top,2800.00,,https://www.cera-india.com/cera/sanitaryware-wash-basins-table-top-wash-basins/calburt
+Cera,sanitaryware/wash-basins,Caffie,,,,,Ceramic,Table Top,2990.00,,https://www.cera-india.com/cera/sanitaryware-wash-basins-table-top-wash-basins/calburt
+Cera,sanitaryware/wash-basins,Canal,,,,,Ceramic,Table Top,3250.00,,https://www.cera-india.com/cera/sanitaryware-wash-basins-table-top-wash-basins/calburt
+Cera,sanitaryware/wash-basins,Chiara,,,,,Ceramic,Table Top,3300.00,,https://www.cera-india.com/cera/sanitaryware-wash-basins-table-top-wash-basins/calburt
+
+# NOTE: only Calibre and Calburt were reached as full product-detail pages with dimensions + product code.
+# The other 8 rows (Carpio, Calvis, Ceeza, Curvis, Cloister Slim, Caffie, Canal, Chiara) appeared only as
+# "related products" tiles with a name and price — no product code, dimensions, or confirmed mounting type.
+# Mounting type for those 8 is INFERRED from which page they appeared on, not confirmed. Visit each
+# product's own detail page before using these 8 rows for anything beyond a rough name/price sample.

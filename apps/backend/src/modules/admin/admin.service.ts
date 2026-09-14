@@ -7,13 +7,13 @@ import {
   Role,
   UserDto,
   VENDOR_ONBOARDING_STAGES,
-  VendorAccountDetailsDto,
-  VendorProfileDto,
 } from '@golden-abode/types';
 
 import { User } from '../users/models/user.model';
 import { Vendor } from '../vendors/models/vendor.model';
 import { VendorAccountDetails } from '../vendors/models/vendor-account-details.model';
+import { City } from '../catalog/models/city.model';
+import { formatTimestamp, toVendorProfileDto } from '../vendors/vendor-profile.mapper';
 import { ListUsersQueryDto } from './dto/list-users-query.dto';
 
 @Injectable()
@@ -23,7 +23,7 @@ export class AdminService {
   private readonly userIncludes: Includeable[] = [
     {
       model: Vendor,
-      include: [VendorAccountDetails],
+      include: [VendorAccountDetails, City],
     },
   ];
 
@@ -145,64 +145,13 @@ export class AdminService {
       isActive: user.isActive,
       isApproved: user.isApproved,
       onboardingCompleted: user.onboardingCompleted ?? Boolean(user.vendorProfile),
-      onboardingCompletedAt: this.formatTimestamp(user.get('onboardingCompletedAt')) || null,
+      onboardingCompletedAt: formatTimestamp(user.get('onboardingCompletedAt')) || null,
       onboardingStage:
         (user.onboardingStage as UserDto['onboardingStage']) ??
         (user.vendorProfile ? VENDOR_ONBOARDING_STAGES.completed : null),
-      vendorProfile: this.toVendorProfileDto(user.vendorProfile),
-      createdAt: this.formatTimestamp(user.get('createdAt')),
-      updatedAt: this.formatTimestamp(user.get('updatedAt')),
+      vendorProfile: toVendorProfileDto(user.vendorProfile),
+      createdAt: formatTimestamp(user.get('createdAt')),
+      updatedAt: formatTimestamp(user.get('updatedAt')),
     };
-  }
-
-  private toVendorProfileDto(vendor?: Vendor | null): VendorProfileDto | undefined {
-    if (!vendor) {
-      return undefined;
-    }
-
-    return {
-      id: vendor.id,
-      userId: vendor.userId,
-      shopName: vendor.shopName,
-      address: vendor.address,
-      latitude: vendor.latitude,
-      longitude: vendor.longitude,
-      upiId: vendor.upiId,
-      bankDetails: vendor.bankDetails,
-      accountDetails: this.toAccountDetailsDto(vendor.accountDetails),
-      gstin: vendor.gstin,
-      createdAt: this.formatTimestamp(vendor.get('createdAt')),
-      updatedAt: this.formatTimestamp(vendor.get('updatedAt')),
-    };
-  }
-
-  private toAccountDetailsDto(
-    accountDetails?: VendorAccountDetails | null,
-  ): VendorAccountDetailsDto | null {
-    if (!accountDetails) {
-      return null;
-    }
-
-    return {
-      id: accountDetails.id,
-      vendorId: accountDetails.vendorId,
-      accountHolderName: accountDetails.accountHolderName,
-      bankName: accountDetails.bankName,
-      ifscCode: accountDetails.ifscCode,
-      branchName: accountDetails.branchName,
-      accountNumber: accountDetails.accountNumber,
-      createdAt: this.formatTimestamp(accountDetails.get('createdAt')),
-      updatedAt: this.formatTimestamp(accountDetails.get('updatedAt')),
-    };
-  }
-
-  private formatTimestamp(value: unknown): string {
-    if (value instanceof Date) {
-      return value.toISOString();
-    }
-    if (typeof value === 'string') {
-      return value;
-    }
-    return '';
   }
 }

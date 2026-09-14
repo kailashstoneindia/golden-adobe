@@ -1,0 +1,3 @@
+name,brand,mfr_part_number,gtin,hsn_code,gst_rate,country_of_origin,pack_qty,sheen,application_surface,washability,paint_coverage,drying_time,low_voc,product_grade,stain_resistant,anti_bacterial,source_url,image_url,confidence
+Berger Silk Glamor Matt,Berger,,,3209,18,India,,Matt,Interior Wall,High,,,,Luxury,true,,https://www.bergerpaints.com/products/interior-wall-coatings/silk-glamor-matt,,partial
+Berger Silk Glamor Soft Sheen,Berger,,,3209,18,India,,Soft Sheen,Interior Wall,High,,,true,Luxury,true,,https://www.bergerpaints.com/products/interior-wall-coatings/silk-glamor-soft-sheen,,partial

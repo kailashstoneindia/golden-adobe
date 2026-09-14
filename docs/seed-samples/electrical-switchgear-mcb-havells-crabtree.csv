@@ -1,0 +1,5 @@
+name,brand,mfr_part_number,gtin,hsn_code,gst_rate,country_of_origin,pack_qty,number_of_poles,rated_current,tripping_curve,breaking_capacity,mounting,certification_mark,warranty_period,source_url,image_url,confidence
+Magnus 16 A SP 'C' MINI MCB Grey,Crabtree,DCSNCSPA161MWH,,8536,18,India,1,SP,16,C,,,,,https://havells.com/crabtree/switches.html?p=4,,partial
+Magnus 25 A SP 'C' MINI MCB White,Crabtree,DCSNCSPA251MMR,,8536,18,India,1,SP,25,C,,,,,https://havells.com/crabtree/switches.html?p=3,,partial
+Magnus 25 A SP 'C' MINI MCB Grey,Crabtree,DCSNCSPA251MWH,,8536,18,India,1,SP,25,C,,,,,https://havells.com/crabtree/switches.html?p=3,,partial
+Magnus 32 A SP 'C' MINI MCB Grey,Crabtree,DCSNCSPA321MWH,,8536,18,India,1,SP,32,C,,,,,https://havells.com/crabtree/switches.html?p=3,,partial

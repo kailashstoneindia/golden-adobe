@@ -1,0 +1,19 @@
+brand,category_path,product_name,finish,pack_size_l,price_per_l_inr,total_price_inr,source_url,source_note
+Asian Paints,paint,Royale Wall Base Coat,Primer/Undercoat,,276.00,,https://www.asianpaints.com/paint-products/interior-wall-paints/royale.html,per-litre price listed; pack sizes not itemized on category page
+Asian Paints,paint,Royale Aspira,Luxury (antibacterial),,1011.00,,https://www.asianpaints.com/paint-products/interior-wall-paints/royale.html,per-litre price listed; pack sizes not itemized on category page
+Asian Paints,paint,Royale Glitz Ultra Sheen,Ultra Sheen,,892.00,,https://www.asianpaints.com/paint-products/interior-wall-paints/royale.html,per-litre price listed; pack sizes not itemized on category page
+Asian Paints,paint,Royale Glitz Reserv,Soft Sheen,,950.00,,https://www.asianpaints.com/paint-products/interior-wall-paints/royale.html,per-litre price listed; pack sizes not itemized on category page
+Asian Paints,paint,Royale Glitz Ultra Matt,Ultra Matt,,905.00,,https://www.asianpaints.com/paint-products/interior-wall-paints/royale.html,per-litre price listed; pack sizes not itemized on category page
+Asian Paints,paint,Royale Shyne Luxury Emulsion,Shyne (high gloss),,829.00,,https://www.asianpaints.com/paint-products/interior-wall-paints/royale.html,per-litre price listed; pack sizes not itemized on category page
+Asian Paints,paint,Royale Matt,Matt,,837.00,,https://www.asianpaints.com/paint-products/interior-wall-paints/royale.html,per-litre price listed; pack sizes not itemized on category page
+Asian Paints,paint,Royale Advanced,Advanced Sheen,,767.00,,https://www.asianpaints.com/paint-products/interior-wall-paints/royale.html,per-litre price listed; pack sizes not itemized on category page
+Asian Paints,paint,Royale Shyne Advanced,Advanced Sheen,,837.00,,https://www.asianpaints.com/paint-products/interior-wall-paints/royale.html,per-litre price listed; pack sizes not itemized on category page
+Asian Paints,paint,Royale Luxury Emulsion,Matt (base range),1,520.00,520.00,https://www.asianpaints.com/paint-products/interior-wall-paints/royale/royale-luxury-emulsion.html,"UNVERIFIED — pack pricing sourced from third-party reseller aggregation (nobroker.in/aapkapainter.com), NOT asianpaints.com. Re-confirm before seeding."
+Asian Paints,paint,Royale Luxury Emulsion,Matt (base range),4,444.75,1779.00,https://www.asianpaints.com/paint-products/interior-wall-paints/royale/royale-luxury-emulsion.html,"UNVERIFIED — same third-party source as above."
+Asian Paints,paint,Royale Luxury Emulsion,Matt (base range),10,439.40,4394.00,https://www.asianpaints.com/paint-products/interior-wall-paints/royale/royale-luxury-emulsion.html,"UNVERIFIED — same third-party source as above."
+Asian Paints,paint,Royale Luxury Emulsion,Matt (base range),20,433.80,8676.00,https://www.asianpaints.com/paint-products/interior-wall-paints/royale/royale-luxury-emulsion.html,"UNVERIFIED — same third-party source as above."
+Asian Paints,paint,Royale Lustre,Lustre/Soft Sheen,,718.00,,https://www.asianpaints.com/paint-products/interior-wall-paints/royale.html,per-litre price listed; pack sizes not itemized on category page
+
+# IMPORTANT per decisions 0002/0007: Paint is colour-family priced, base leaves the SKU. These rows are the BASE/white product only.
+# Per-colour-family pricing (the actual vendor_listing_colour_price rows) is NOT captured here and needs a separate pass against the colour catalogue tool.
+# The product detail page (royale-luxury-emulsion.html) 404'd on this fetch — retry before relying on this row.

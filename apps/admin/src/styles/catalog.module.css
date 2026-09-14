@@ -1,0 +1,247 @@
+/* Catalog screens. Builds on shared.module.css and the theme tokens in
+   theme/global.css — no new colours are introduced here. */
+
+.splitPane {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .splitPane {
+    grid-template-columns: 1fr;
+  }
+}
+
+.detailPane {
+  background: var(--color-white);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  padding: 18px;
+  box-shadow: var(--shadow-card);
+  position: sticky;
+  top: 16px;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+}
+
+.detailTitle {
+  margin: 16px 0 4px;
+  font-size: 15px;
+  color: var(--color-navy);
+}
+
+.detailPath {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: var(--color-ink-soft);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* ── category tree ─────────────────────────────────────────────────────── */
+
+.treeToggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-ink-soft);
+  font-size: 12px;
+  width: 18px;
+  padding: 0;
+  margin-right: 4px;
+}
+
+.treeSpacer {
+  display: inline-block;
+  width: 22px;
+}
+
+.rowSelected {
+  background: var(--color-sky-tint);
+}
+
+.badgeLeaf,
+.badgeBranch,
+.badgeVariant {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.badgeLeaf {
+  background: var(--color-sage-tint);
+  color: var(--color-sage);
+}
+
+.badgeBranch {
+  background: var(--color-subtle);
+  color: var(--color-ink-soft);
+}
+
+/* A variant-defining attribute splits products into separate SKUs — worth
+   calling out visually, since it is the difference between one product and
+   several. */
+.badgeVariant {
+  background: var(--color-sky-tint);
+  color: var(--color-navy);
+}
+
+/* ── attribute list ────────────────────────────────────────────────────── */
+
+.attrList {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.attrItem {
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  background: var(--color-white);
+}
+
+.attrHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.attrMeta {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-ink-soft);
+}
+
+.attrOptions {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--color-ink-soft);
+  background: var(--color-background);
+  border-radius: var(--radius-md);
+  padding: 6px 8px;
+}
+
+/* Where an attribute comes from: its own category, an ancestor, or global. */
+.scopeown,
+.scopeinherited,
+.scopeglobal {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.scopeown {
+  background: var(--color-sage-tint);
+  color: var(--color-sage);
+}
+
+.scopeinherited {
+  background: var(--color-sky-tint);
+  color: var(--color-navy);
+}
+
+.scopeglobal {
+  background: var(--color-subtle);
+  color: var(--color-ink-soft);
+}
+
+/* ── product status ────────────────────────────────────────────────────── */
+
+.status_draft,
+.status_live,
+.status_deprecated,
+.status_pending_review {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.status_draft {
+  background: var(--color-subtle);
+  color: var(--color-ink-soft);
+}
+
+.status_live {
+  background: var(--color-sage-tint);
+  color: var(--color-sage);
+}
+
+.status_pending_review {
+  background: var(--color-sky-tint);
+  color: var(--color-navy);
+}
+
+.status_deprecated {
+  background: var(--color-brick-tint);
+  color: var(--color-brick);
+}
+
+.pathCell {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: var(--color-ink-soft);
+}
+
+/* ── filters ───────────────────────────────────────────────────────────── */
+
+.filterBar {
+  display: flex;
+  gap: 12px;
+  margin: 16px 0;
+  flex-wrap: wrap;
+}
+
+.filterBar > input {
+  flex: 2 1 260px;
+}
+
+.filterBar > select {
+  flex: 1 1 220px;
+}
+
+/* ── import steps ──────────────────────────────────────────────────────── */
+
+.stepCard {
+  background: var(--color-white);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  padding: 18px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-card);
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+}
+
+.stepCard > input,
+.stepCard > select {
+  width: 100%;
+}
+
+.stepTitle {
+  margin: 0;
+  font-size: 15px;
+  color: var(--color-navy);
+}
+
+/* ── review queue ──────────────────────────────────────────────────────── */
+
+.reviewCard {
+  grid-column: 1 / -1;
+  background: var(--color-white);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}

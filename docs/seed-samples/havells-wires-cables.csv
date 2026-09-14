@@ -1,0 +1,5 @@
+brand,category_path,product_name,mfr_part_number,cable_type,conductor_size_sqmm,number_of_cores,conductor_material,insulation,voltage_grade_v,coil_length_m,price_inr,source_url
+Havells,electrical/wires-cables,Lifeline FR 1.0 sq mm 180m,WHFFDNRL11X07-C,House Wire (FR),1.0,1,Copper,FR PVC,1100,180,3646.00,https://havells.com/lifeline-fr-1-0-sq-mm-180-m.html
+Havells,electrical/wires-cables,Life Shield HFFR 1.5 sq mm,,House Wire (FRLS),1.5,1,Copper,HRFR,1100,,,https://havells.com/life-shield-hffr-1-5-sq-mm-cables.html
+Havells,electrical/wires-cables,Life Shield HFFR 2.5 sq mm,,House Wire (FRLS),2.5,1,Copper,HRFR,1100,,,https://havells.com/life-shield-hffr-2-5-sq-mm-cables.html
+Havells,electrical/wires-cables,Life Guard FR-LSH 4.0 sq mm,,House Wire (FRLS),4.0,1,Copper,FRLS,1100,,,https://havells.com/whfffnka14x0-c.html
