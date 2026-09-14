@@ -277,7 +277,14 @@ const TREE = [
       { name: 'Safety & Site Equipment', slug: 'safety-equipment', uom: 'NOS', attrs: [
         ['equipment_type', 'Equipment Type', 'enum', null, true, true,
           ['Helmet', 'Safety Shoes', 'Gloves', 'Goggles', 'Harness', 'Vest', 'Mask']],
-        ['safety_size', 'Size', 'enum', null, true, true, ['S', 'M', 'L', 'XL', 'XXL', '6', '7', '8', '9', '10', '11']],
+        // 'One Size' added 2026-09-14: Karam's PN574 safety helmet (confirmed
+        // on its own product page) is explicitly "One size (ratchet
+        // adjustment)" -- true of most helmets, and of harnesses/goggles too.
+        // The enum had no option for a real, common case, same class of gap
+        // as light_body_material missing 'Plastic' and current_rating being
+        // wrongly required for devices with none.
+        ['safety_size', 'Size', 'enum', null, true, true,
+          ['One Size', 'S', 'M', 'L', 'XL', 'XXL', '6', '7', '8', '9', '10', '11']],
         ['safety_standard', 'Standard', 'enum', null, false, true, ['IS 2925', 'EN 397', 'ISI', 'None']],
       ]},
       { name: 'Hand Tools', slug: 'hand-tools', uom: 'NOS', attrs: [

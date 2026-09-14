@@ -66,6 +66,7 @@ const HSN = [
   ['8205', 'Hand tools not elsewhere specified', 18],
   ['8301', 'Padlocks and locks of base metal; keys and parts thereof', 18],
   ['8302', 'Base metal mountings, fittings and similar articles for furniture, doors and windows', 18],
+  ['6506', 'Other headgear, including industrial safety helmets', 18],
 ];
 
 module.exports = {
