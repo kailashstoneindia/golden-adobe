@@ -82,9 +82,56 @@ anyone picking this back up: these are open opportunities, not dead ends.
 
 ---
 
-## Recommendation if Hardware is revisited
+## Update 2026-09-14 — Door & Window Hardware attempted, blocked
 
-Start with **Door & Window Hardware** (Locks/Hinges/Handles) next — it has
-named, findable Indian brands (Godrej is dominant in locks) and moderate
-per-leaf attribute counts, closer to the Adhesives/Safety leaves that worked
-this pass than to the highly-fragmented Fasteners group.
+The recommendation above was tried this session, across all 3 sub-leaves and
+2 brands (Godrej, Yale), and did NOT clear the bar — recorded here so the
+next pass does not repeat the same fetches expecting a different result.
+
+**Godrej is structurally unreachable.** Every `godrej.com` product URL tried
+(mortise locks, hinges, antique brass finish page) redirects to or serves a
+generic corporate landing page, not the actual product content — 5 separate
+URLs, same failure. Not a data gap; the site does not serve product detail
+to a plain fetch. `godrejlocks.com` (their older/legacy domain) was not
+tried in depth — it uses old ASP-style URLs that looked likely to have
+similar problems, but this is a genuine gap in what was tried, not a
+confirmed dead end.
+
+**Yale (`yalehome.com`) IS reachable and DOES publish real specs — but each
+leaf is missing exactly one required field:**
+
+| Leaf | Confirmed | Missing (required) |
+|---|---|---|
+| Locks (EN 85/45, EN 85/60) | `lock_type`=Mortise, `backset`=45mm/60mm (exact enum match), material components (SS/MS/brass, but no single unified `dwh_material`) | `key_type` — genuinely unstated on both product pages checked |
+| Hinges (HIN2BB433, HIN2BB533) | `hinge_type`=Butt, size 4"/5" (see schema fix below), `dwh_material`=Stainless Steel (SS304) | `dwh_finish` — pages show unexplained codes SS/AB/BM with **no legend anywhere on the page**, confirmed absent by direct check |
+| Handles (YMEL-704 Antique Brass Matt) | `dwh_material`=Zinc Alloy, `dwh_finish`="Antique Brass Matt" (clean match) | `centre_to_centre` — genuinely unstated |
+
+Each leaf was one field short of importable. A genuine, sourceable lead for
+the SS/AB/BM finish codes was found (yaleonline.in states "Satin Steel"
+explicitly) but **deliberately not used**: that site's own footer states it
+is "owned and managed by M/s CAVITAK MARKETING PRIVATE LIMITED" — a
+distributor's branded storefront, not Yale's own domain, despite the
+"yale" in the URL. Excluded under the standing "brand's own domain only"
+rule, the same rule that excluded reseller pricing for Asian Paints
+originally.
+
+### Schema fix from this attempt
+
+`hinge_size` widened: `50/75/100/125/150` → **+ `102`, `127`**. Yale's real
+India hinges sell in imperial 4"/5" sizes (101.6mm/127mm), not the round
+metric sizes the enum assumed — the common case for Indian butt hinges,
+which mix imperial and metric sizing, not an edge case. Kept the original
+round-metric values alongside the new ones rather than replacing them, since
+some brands do sell true round-metric sizes.
+
+### Revised recommendation
+
+Door & Window Hardware is now **tried and blocked**, same status as
+Tiles/Lights, not an open opportunity. If revisited: try Dorset (a real
+Indian hardware brand with no findable web presence in this pass — worth a
+direct URL guess or a different search strategy) or Häfele India (interior
+fittings, likely to have a properly structured catalogue given their
+B2B/architect-facing positioning). The remaining untried leaf groups —
+Hand Tools, Power Tools, Fasteners — are now the only genuinely open
+territory left in this category, and Fasteners in particular is the group
+the project's own docs most directly warn against.

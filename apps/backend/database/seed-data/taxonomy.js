@@ -394,7 +394,16 @@ const TREE = [
         ]},
         { name: 'Hinges', slug: 'hinges', uom: 'NOS', attrs: [
           ['hinge_type', 'Hinge Type', 'enum', null, true, true, ['Butt', 'Piano', 'Concealed / Euro', 'Spring', 'Pivot']],
-          ['hinge_size', 'Size', 'number', 'mm', true, true, ['50', '75', '100', '125', '150']],
+          // 102 and 127 added 2026-09-14: Yale's own India hinge listing
+          // (HIN2BB433, HIN2BB533) sells in imperial 4"/5" sizes, which
+          // convert to 101.6mm/127mm -- not the round metric 100/125 the
+          // original enum assumed. This is the common case for Indian
+          // butt hinges (a market that mixes imperial and metric sizing),
+          // not a one-off. Kept both the round-metric AND the imperial-
+          // converted values rather than replacing one with the other,
+          // since some brands genuinely do sell round-metric sizes.
+          ['hinge_size', 'Size', 'number', 'mm', true, true,
+            ['50', '75', '100', '102', '125', '127', '150']],
           ['bearing_type', 'Bearing Type', 'enum', null, false, false, ['Ball Bearing', 'Plain', 'Soft Close']],
         ]},
         { name: 'Handles & Knobs', slug: 'handles-knobs', uom: 'NOS', attrs: [
