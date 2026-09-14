@@ -33,6 +33,7 @@ valid when circumstances change.
 | [0019](0019-search-followups.md) | Search follow-ups: combined location resolution, admin search, autocomplete, synonyms | 2026-08-17 | Accepted |
 | [0020](0020-ncr-launch-cities.md) | Launch scope: Delhi NCR as five separate cities | 2026-08-17 | Accepted |
 | [0021](0021-search-runtime-build-plan.md) | Search runtime: local-first build, and the 6c–6h sequence | 2026-09-01 | Accepted |
+| [0022](0022-inventory-write-model.md) | Inventory write model: stock, status, and what a blank cell means | 2026-09-14 | Accepted |
 
 ## Adding a record
 
