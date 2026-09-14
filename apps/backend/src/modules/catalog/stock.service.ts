@@ -238,21 +238,32 @@ export class StockService {
       );
     }
 
+    // Sequelize's named-replacement binding does NOT turn a JS array into a
+    // Postgres array literal -- it expands it as a comma-separated list of
+    // scalars, which is exactly right for `IN (:list)` and exactly wrong
+    // inside `CAST(:x AS uuid[])`. Verified directly against the running
+    // app: that form produced `CAST('a', 'b' AS uuid[])`, a syntax error,
+    // not the `ARRAY['a','b']` the unnest() call needs.
+    //
+    // Building the ARRAY[...] literal by hand with one named placeholder
+    // per element keeps every value bound (no string concatenation of
+    // user input into SQL) while producing syntax Postgres actually
+    // accepts.
+    const idPlaceholders = ids.map((_, i) => `:id${i}`).join(', ');
+    const qtyPlaceholders = dto.items.map((_, i) => `:qty${i}`).join(', ');
+    const replacements: Record<string, unknown> = {};
+    ids.forEach((id, i) => (replacements[`id${i}`] = id));
+    dto.items.forEach((item, i) => (replacements[`qty${i}`] = item.quantityAvailable));
+
     await this.sequelize.transaction(async (transaction) => {
       await this.sequelize.query(
         `INSERT INTO inventory (id, vendor_listing_id, warehouse_id, quantity_available, quantity_reserved, created_at, updated_at)
          SELECT gen_random_uuid(), t.listing_id, NULL, t.qty, 0, now(), now()
-           FROM unnest(CAST(:ids AS uuid[]), CAST(:quantities AS numeric[])) AS t(listing_id, qty)
+           FROM unnest(ARRAY[${idPlaceholders}]::uuid[], ARRAY[${qtyPlaceholders}]::numeric[]) AS t(listing_id, qty)
          ON CONFLICT (vendor_listing_id) WHERE warehouse_id IS NULL
          DO UPDATE SET quantity_available = EXCLUDED.quantity_available,
                        updated_at = now()`,
-        {
-          replacements: {
-            ids,
-            quantities: dto.items.map((item) => item.quantityAvailable),
-          },
-          transaction,
-        },
+        { replacements, transaction },
       );
     });
 
