@@ -66,6 +66,7 @@ export class SearchDocumentBuilder {
       price: string;
       cheapest_vendor_listing_id: string;
       vendor_count: string;
+      in_stock: boolean;
       updated_at: Date;
     }>(
       `
@@ -100,7 +101,8 @@ export class SearchDocumentBuilder {
         live.updated_at,
         agg.price,
         agg.vendor_count,
-        agg.cheapest_vendor_listing_id
+        agg.cheapest_vendor_listing_id,
+        agg.in_stock
       FROM live
       -- LATERAL, not a correlated subquery per column: the cheapest listing's
       -- id and its price must come from the SAME row, or a tie could report
@@ -109,9 +111,32 @@ export class SearchDocumentBuilder {
         SELECT
           MIN(vl.price)                             AS price,
           COUNT(DISTINCT vl.vendor_id)              AS vendor_count,
-          (ARRAY_AGG(vl.id ORDER BY vl.price ASC, vl.id ASC))[1] AS cheapest_vendor_listing_id
+          (ARRAY_AGG(vl.id ORDER BY vl.price ASC, vl.id ASC))[1] AS cheapest_vendor_listing_id,
+          -- Decision 0024 rules 4 and 5. Computed INSIDE the aggregate as an
+          -- output column, never as a WHERE on the joined listings: filtering
+          -- here would drop an out-of-stock product from the index entirely
+          -- instead of indexing it as in_stock = false.
+          --
+          -- The CASE order matters. Paint (tinted_to_order) never gets an
+          -- inventory row by design (0007, 0022 rule 4), so for paint an
+          -- absent row means AVAILABLE. For anything else an absent row means
+          -- stock was never set, which is NOT available. Same NULL, opposite
+          -- meanings, and only sale_unit_type separates them.
+          BOOL_OR(
+            CASE
+              WHEN mp2.sale_unit_type = 'tinted_to_order' THEN TRUE
+              WHEN inv.vendor_listing_id IS NULL THEN FALSE
+              ELSE (inv.quantity_available - inv.quantity_reserved) > 0
+            END
+          )                                         AS in_stock
         FROM vendor_listing vl
         JOIN vendors v ON v.id = vl.vendor_id
+        JOIN master_product mp2 ON mp2.id = vl.master_product_id
+        -- warehouse_id IS NULL matches the partial unique index installed by
+        -- 20260914090000; idx_inventory_listing_all serves this lookup
+        -- unpartialed, so out-of-stock rows are reachable.
+        LEFT JOIN inventory inv
+          ON inv.vendor_listing_id = vl.id AND inv.warehouse_id IS NULL
         WHERE vl.master_product_id = live.master_product_id
           AND v.city_id = live.city_id
           AND vl.status = 'active'
@@ -142,7 +167,7 @@ export class SearchDocumentBuilder {
         price: Number(row.price),
         cheapestVendorListingId: row.cheapest_vendor_listing_id,
         vendorCount: Number(row.vendor_count),
-        inStock: true,
+        inStock: row.in_stock,
         updatedAt: row.updated_at.toISOString(),
       };
       documents.push(toSearchDocumentRecord(doc));
