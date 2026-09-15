@@ -199,10 +199,16 @@ diagnose later.
 
 ## Open questions
 
-- **Search still hardcodes `inStock: true`** in two places
+- ~~**Search still hardcodes `inStock: true`** in two places
   (`search-document.builder.ts:145`, `postgres-search.service.ts:212`). Now that quantities
   are real, both should consult inventory. Deliberately not bundled here: it changes search
-  behaviour and belongs with the search document shape, not with the write model.
+  behaviour and belongs with the search document shape, not with the write model.~~
+  **Settled by [0024](0024-cart-owner-reservation-and-real-instock.md)** (rules 4–6):
+  `inStock` becomes `(quantity_available - quantity_reserved) > 0`, with a listing that has
+  no inventory row counted as in stock **only** if it is paint. Note the paths above are
+  one directory off — the real files are
+  [`search/indexing/search-document.builder.ts:145`](../../apps/backend/src/modules/search/indexing/search-document.builder.ts)
+  and [`search/fallback/postgres-search.service.ts:212`](../../apps/backend/src/modules/search/fallback/postgres-search.service.ts).
 - **Multi-warehouse inventory.** The kept `inventory_unique_per_warehouse` constraint and
   the explicit `warehouse_id IS NULL` join condition preserve the option, but the listing
   query would need to decide whether it sums across warehouses or reports per-warehouse.
