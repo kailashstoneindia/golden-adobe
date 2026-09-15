@@ -67,3 +67,6 @@ apps/mobile/GoogleService-Info.plist
 
 # Claude Code worktrees — isolated workspaces, never part of the repo
 .claude/worktrees/
+
+# Subagent-driven development scratch (ledger, briefs, review packages)
+.superpowers/
