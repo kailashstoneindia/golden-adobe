@@ -39,6 +39,7 @@ export type SearchRequest = {
   attributes?: Record<string, string>;
   minPrice?: number;
   maxPrice?: number;
+  inStockOnly?: boolean;
   limit?: number;
   offset?: number;
 };
@@ -194,6 +195,7 @@ export class SearchService {
       attributes: req.attributes,
       minPrice: req.minPrice,
       maxPrice: req.maxPrice,
+      inStockOnly: req.inStockOnly,
       limit: req.limit,
       offset: req.offset,
     });
@@ -226,6 +228,9 @@ export class SearchService {
     if (req.brand) filters.push(`brand = "${req.brand}"`);
     if (req.minPrice !== undefined) filters.push(`price >= ${req.minPrice}`);
     if (req.maxPrice !== undefined) filters.push(`price <= ${req.maxPrice}`);
+    // in_stock is already a filterableAttribute in meili.indexes.ts, so this
+    // needs no index settings change and no migration.
+    if (req.inStockOnly) filters.push(`in_stock = true`);
 
     for (const [key, value] of Object.entries(req.attributes ?? {})) {
       filters.push(`attributes.${key} = "${value}"`);
@@ -245,6 +250,7 @@ export class SearchService {
       attrs: Object.entries(req.attributes ?? {}).sort(),
       min: req.minPrice ?? null,
       max: req.maxPrice ?? null,
+      inStockOnly: req.inStockOnly ?? false,
       limit: req.limit ?? 20,
       offset: req.offset ?? 0,
     });

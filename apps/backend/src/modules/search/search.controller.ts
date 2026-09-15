@@ -39,6 +39,7 @@ export class SearchController {
       attributes: parseAttrPairs(dto.attr),
       minPrice: dto.minPrice,
       maxPrice: dto.maxPrice,
+      inStockOnly: dto.inStockOnly,
       limit: dto.limit,
       offset: dto.offset,
     });
