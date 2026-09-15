@@ -74,6 +74,27 @@ const MAX_LIMIT = 100;
 // Paint (tinted_to_order) never gets an inventory row by design (0007, 0022
 // rule 4), so an absent row means AVAILABLE for paint and NEVER SET for
 // everything else. Same NULL, opposite meanings.
+//
+// LOAD-BEARING DEPENDENCY, and it is not local to this expression. Rule 5 says
+// paint availability is `vendor_listing.status` ALONE, yet the paint branch
+// below returns TRUE unconditionally. Those are equivalent only because
+// `vl.status = 'active'` is already in the WHERE clause (see the `where` array
+// in search()), so every row reaching this CASE is an active listing.
+//
+// That guarantee lives ~120 lines away in a conditionally-assembled string
+// array, which is weaker than it looks. If a future variant relaxes the
+// active-only filter — an admin or vendor view that also shows paused listings,
+// say — price and vendor_count would visibly change and get noticed, but this
+// would go on reporting TRUE for every paint listing including paused ones,
+// with nothing here to catch it. Relax that filter and this branch must become
+// `THEN vl.status = 'active'`.
+//
+// The indexing builder restates this same derivation inline in its JOIN LATERAL
+// (search/indexing/search-document.builder.ts). The duplication is deliberate —
+// different modules, no shared SQL layer, and the two reference different
+// aliases (`mp` here, `mp2` there) — but the two must stay in agreement, and
+// nothing automated checks that: the verification scripts were throwaway and
+// the test suite is frozen. Code review is the only net.
 const IN_STOCK_CASE = `
   CASE
     WHEN mp.sale_unit_type = 'tinted_to_order' THEN TRUE

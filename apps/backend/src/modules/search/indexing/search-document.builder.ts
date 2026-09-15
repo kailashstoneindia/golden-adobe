@@ -122,6 +122,19 @@ export class SearchDocumentBuilder {
           -- absent row means AVAILABLE. For anything else an absent row means
           -- stock was never set, which is NOT available. Same NULL, opposite
           -- meanings, and only sale_unit_type separates them.
+          --
+          -- The paint branch returns TRUE unconditionally, while rule 5 says
+          -- paint availability is vendor_listing.status ALONE. Those agree only
+          -- because vl.status = 'active' sits in this subquery's own WHERE
+          -- (11 lines below), so every row reaching this CASE is already an
+          -- active listing. Relax that filter and this branch must become
+          -- THEN vl.status = 'active' instead.
+          --
+          -- The Postgres fallback restates this derivation as its IN_STOCK_CASE
+          -- constant (search/fallback/postgres-search.service.ts). Deliberate
+          -- duplication — different modules, no shared SQL layer, different
+          -- aliases (mp2 here, mp there) — but the two must stay in agreement,
+          -- and nothing automated checks that.
           BOOL_OR(
             CASE
               WHEN mp2.sale_unit_type = 'tinted_to_order' THEN TRUE

@@ -410,10 +410,18 @@ Full search rebuild complete: 0 documents, swapped into 'products', 1 marker row
 ```
 
 Both before and after, the `products` index held **0 documents** (`fieldDistribution {}`).
-That is not a failure of the rebuild — this database currently has 160 `master_product` rows,
-all `status='draft'`, and zero rows in `vendor_listing`, `inventory` and `vendors`. A search
-document requires a *live* product with an *active* `vendor_listing` from a vendor in a city;
-none of those exist yet, and drafts are excluded by design ([0019](decisions/0019-search-followups.md)).
+That is not a failure of the rebuild — this database holds 160 `master_product` rows, all
+`status='draft'`, and zero rows in `vendor_listing` and `inventory`. A search document requires
+a *live* product with an *active* `vendor_listing` from a vendor in a city; none of those exist
+yet, and drafts are excluded by design ([0019](decisions/0019-search-followups.md)).
+
+`vendors` is also empty **at rest**, which is worth stating precisely because it would otherwise
+contradict the verification results cited below. Every one of the three verification scripts
+requires a vendor with a city and aborts without one, so each created its own `users` + `vendors`
+fixture and removed it afterwards — Task 1 by transaction rollback, Tasks 2 and 3 by committed
+rows deleted in FK-safe order (`inventory` → `vendor_listing` → `master_product` → `vendors` →
+`users`), each verifying the cleanup. So `vendors` was non-empty *during* verification and is
+empty *now*. Both statements are true of different moments.
 `search_outbox` held 1645 already-processed rows plus the one new marker the rebuild consumed,
 taking it from 1 unprocessed to 0. Both `products` and `products_rebuild` existed afterward —
 the former primary becoming the next shadow, which is the atomic swap working as intended, not
