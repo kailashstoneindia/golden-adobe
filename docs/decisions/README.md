@@ -37,6 +37,7 @@ valid when circumstances change.
 | [0023](0023-single-product-create-edit.md) | Single-product create/edit: the last Product Management gap | 2026-09-15 | Accepted |
 | [0024](0024-cart-owner-reservation-and-real-instock.md) | Cart ownership, when stock is reserved, and making `inStock` mean something | 2026-09-15 | Accepted |
 | [0025](0025-cart-and-order-structure.md) | Cart and order structure: what an item points at, and how one payment becomes many vendors' work | 2026-09-15 | Accepted |
+| [0026](0026-customer-cart-order-schema.md) | Customer, cart and order schema: the tables, not the checkout | 2026-09-15 | Accepted |
 
 ## Adding a record
 
