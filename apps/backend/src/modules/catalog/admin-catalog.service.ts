@@ -2,8 +2,16 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectModel } from '@nestjs/sequelize';
 import { QueryTypes } from 'sequelize';
 
+import { Category } from './models/category.model';
+import { Brand } from './models/brand.model';
+import { Attribute, AttributeDataType } from './models/attribute.model';
 import { MasterProduct, MasterProductStatus } from './models/master-product.model';
+import { MasterProductAttributeValue } from './models/master-product-attribute-value.model';
+import { CatalogAttributeResolverService } from './catalog-attribute-resolver.service';
 import { ListProductsQueryDto } from './dto/list-products-query.dto';
+import { CreateProductDto } from './dto/create-product.dto';
+import { UpdateProductDto } from './dto/update-product.dto';
+import { AttributeValueInputDto } from './dto/attribute-value-input.dto';
 
 // Backing service for the admin panel's catalog screens (browse, inspect,
 // publish). Reads Postgres directly rather than the search index, because
@@ -29,6 +37,13 @@ export class AdminCatalogService {
   constructor(
     @InjectModel(MasterProduct)
     private readonly masterProductModel: typeof MasterProduct,
+    @InjectModel(Category)
+    private readonly categoryModel: typeof Category,
+    @InjectModel(Brand)
+    private readonly brandModel: typeof Brand,
+    @InjectModel(MasterProductAttributeValue)
+    private readonly attributeValueModel: typeof MasterProductAttributeValue,
+    private readonly attributeResolver: CatalogAttributeResolverService,
   ) {}
 
   private get sequelize() {
@@ -341,5 +356,237 @@ export class AdminCatalogService {
     }
 
     return this.getProduct(productId);
+  }
+
+  // Single-product create (decision 0023) — the correction/addition path
+  // alongside bulk import. Reuses CatalogAttributeResolverService for the
+  // effective attribute set (same resolution the template generator and
+  // the category screen already use), and validates attribute values
+  // against it with the same two per-cell rules the importer enforces
+  // (enum membership, numeric parse) — rule 1 (required-if-variant-defining)
+  // is deliberately NOT enforced here; a draft may be created with
+  // variant-defining attributes blank, same as every import path, and
+  // trg_mp_require_variant_attrs_on_publish is the single place that's
+  // actually enforced, at publish time.
+  async createProduct(dto: CreateProductDto) {
+    const category = await this.categoryModel.findByPk(dto.categoryId);
+    if (!category) throw new NotFoundException(`category ${dto.categoryId} does not exist`);
+    if (!category.isLeaf) {
+      throw new BadRequestException(
+        `category ${dto.categoryId} (${category.path}) is not a leaf — products can only attach to leaves`,
+      );
+    }
+
+    const brand = dto.brand
+      ? await this.brandModel.findOne({ where: { name: dto.brand } })
+      : null;
+    if (dto.brand && !brand) {
+      throw new BadRequestException(
+        `brand "${dto.brand}" does not exist — create it first (admin brand management)`,
+      );
+    }
+
+    const attributesByCode = await this.loadAttributesByCode(dto.categoryId);
+    const attributeErrors = this.validateAttributeValues(dto.attributeValues ?? [], attributesByCode);
+    if (attributeErrors.length > 0) {
+      throw new BadRequestException(attributeErrors.join('; '));
+    }
+
+    const sequelize = this.sequelize;
+    try {
+      return await sequelize.transaction(async (transaction) => {
+        const product = await this.masterProductModel.create(
+          {
+            categoryId: dto.categoryId,
+            brandId: brand?.id ?? null,
+            name: dto.name,
+            slug: this.slugify(dto.name),
+            mfrPartNumber: dto.mfrPartNumber ?? null,
+            gtin: dto.gtin ?? null,
+            hsnCode: dto.hsnCode ?? null,
+            gstRate: dto.gstRate ?? 18.0,
+            countryOfOrigin: dto.countryOfOrigin ?? 'India',
+            status: MasterProductStatus.DRAFT,
+          } as any,
+          { transaction },
+        );
+
+        for (const input of dto.attributeValues ?? []) {
+          const attribute = attributesByCode.get(input.code)!;
+          await this.attributeValueModel.create(
+            { masterProductId: product.id, attributeId: attribute.id, value: input.value } as any,
+            { transaction },
+          );
+        }
+
+        return product.id;
+      }).then((productId) => this.getProduct(productId));
+    } catch (err) {
+      throw this.translateWriteError(err);
+    }
+  }
+
+  // Correction, not re-classification: category is not accepted here (see
+  // decision 0023 — a category change alters the entire effective
+  // attribute set and belongs to a delete+recreate, not an edit). When
+  // attributeValues is present it fully replaces the existing set, matching
+  // the PUT-style "whole set" convention SetVendorCategoriesDto already
+  // established for this codebase.
+  async updateProduct(productId: string, dto: UpdateProductDto) {
+    const product = await this.masterProductModel.findByPk(productId);
+    if (!product) throw new NotFoundException('Product not found');
+
+    let attributeErrors: string[] = [];
+    let attributesByCode: Map<string, Attribute> | null = null;
+    if (dto.attributeValues !== undefined) {
+      attributesByCode = await this.loadAttributesByCode(product.categoryId);
+      attributeErrors = this.validateAttributeValues(dto.attributeValues, attributesByCode);
+    }
+    if (attributeErrors.length > 0) {
+      throw new BadRequestException(attributeErrors.join('; '));
+    }
+
+    try {
+      await this.sequelize.transaction(async (transaction) => {
+        if (dto.name !== undefined) {
+          await product.update({ name: dto.name }, { transaction });
+        }
+
+        if (dto.attributeValues !== undefined) {
+          await this.attributeValueModel.destroy({ where: { masterProductId: productId }, transaction });
+          for (const input of dto.attributeValues) {
+            const attribute = attributesByCode!.get(input.code)!;
+            await this.attributeValueModel.create(
+              { masterProductId: productId, attributeId: attribute.id, value: input.value } as any,
+              { transaction },
+            );
+          }
+        }
+      });
+    } catch (err) {
+      throw this.translateWriteError(err);
+    }
+
+    return this.getProduct(productId);
+  }
+
+  private async loadAttributesByCode(categoryId: string): Promise<Map<string, Attribute>> {
+    const blocks = await this.attributeResolver.resolveEffectiveAttributes(categoryId);
+    const byCode = new Map<string, Attribute>();
+    for (const block of blocks) {
+      for (const attribute of block.attributes) {
+        byCode.set(attribute.code, attribute);
+      }
+    }
+    return byCode;
+  }
+
+  // Rules 2/3 from CatalogImportUploadService.validateRow, applied to a JSON
+  // body instead of a spreadsheet row. Deliberately NOT rule 1 (required):
+  // creating/editing a draft may leave variant-defining attributes blank —
+  // trg_mp_require_variant_attrs_on_publish is the single enforcement point
+  // for that, at publish time (see createProduct's comment).
+  private validateAttributeValues(
+    inputs: AttributeValueInputDto[],
+    attributesByCode: Map<string, Attribute>,
+  ): string[] {
+    const errors: string[] = [];
+    const seen = new Set<string>();
+
+    for (const input of inputs) {
+      if (seen.has(input.code)) {
+        errors.push(`attribute "${input.code}" appears more than once`);
+        continue;
+      }
+      seen.add(input.code);
+
+      const attribute = attributesByCode.get(input.code);
+      if (!attribute) {
+        errors.push(`"${input.code}" is not a valid attribute for this product's category`);
+        continue;
+      }
+
+      if (attribute.dataType === AttributeDataType.ENUM) {
+        const options = (attribute.valueOptions ?? []).filter((o) => o.isActive);
+        const allowed = options.map((o) => o.value);
+        if (!allowed.includes(input.value)) {
+          errors.push(
+            `"${input.value}" is not a valid option for "${input.code}" — expected one of: ${allowed.join(', ')}`,
+          );
+        }
+      } else if (attribute.dataType === AttributeDataType.NUMBER) {
+        if (!/^-?\d+(\.\d+)?$/.test(input.value.trim())) {
+          errors.push(`"${input.value}" is not a valid number for "${input.code}"`);
+        }
+      }
+    }
+
+    return errors;
+  }
+
+  private slugify(name: string): string {
+    const base = name
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    // Unlike the bulk importer's row-number suffix (which only needs to
+    // dedupe within one spreadsheet), a single create has no row number to
+    // fall back on and the slug column is UNIQUE — a random suffix avoids a
+    // collision on a repeated name without a pre-query, and any real
+    // collision still hits the DB constraint, caught by translateWriteError.
+    const suffix = Math.random().toString(36).slice(2, 8);
+    return `${base}-${suffix}`;
+  }
+
+  // Mirrors the string-matching translation setProductStatus already does
+  // for the publish trigger's error — a duplicate brand+MPN, duplicate
+  // gtin, duplicate slug, or unknown hsn_code FK all currently surface as
+  // this codebase's raw Postgres error text; there is no typed-exception
+  // convention here yet to intercept them earlier (see catalog-import-
+  // upload.service.ts's own comment on the hsn_code FK for why that
+  // importer pre-queries instead — this endpoint has no sibling rows to
+  // protect, so letting the constraint fire and translating it is enough).
+  //
+  // Sequelize does NOT put the constraint name in .message for a
+  // SequelizeUniqueConstraintError — that's a generic "Validation error";
+  // the real Postgres constraint name lives on .parent.constraint /
+  // .original.constraint. A plain trigger-raised exception (the publish
+  // guard) has no such typed wrapper and puts its text straight in
+  // .message. Check both shapes rather than assuming either — this was
+  // caught live: the duplicate-brand+MPN case fell through to a raw 500
+  // until this function looked at .parent.constraint.
+  private translateWriteError(err: unknown): Error {
+    const constraint =
+      (err as { parent?: { constraint?: string }; original?: { constraint?: string } })?.parent
+        ?.constraint ??
+      (err as { original?: { constraint?: string } })?.original?.constraint ??
+      null;
+    const message = err instanceof Error ? err.message : String(err);
+
+    if (constraint === 'master_product_brand_mpn') {
+      return new BadRequestException('a product with this brand and MPN already exists');
+    }
+    if (constraint === 'master_product_generic_identity') {
+      return new BadRequestException(
+        'a product with the same category and attribute combination already exists',
+      );
+    }
+    if (constraint === 'master_product_gtin_key') {
+      return new BadRequestException('a product with this GTIN already exists');
+    }
+    if (constraint === 'master_product_slug_key') {
+      // Practically unreachable — slugify() suffixes a random 6 chars — but
+      // cheap to translate cleanly rather than let a 1-in-56-billion
+      // collision surface as a raw 500.
+      return new BadRequestException('a product with this exact name already exists — try again');
+    }
+    if (constraint === 'master_product_hsn_code_fkey') {
+      return new BadRequestException('hsn_code does not exist — add it first, or leave it blank');
+    }
+    if (message.includes('variant-defining') || message.includes('variant_defining')) {
+      return new BadRequestException(message.replace(/^.*?ERROR:\s*/i, ''));
+    }
+    return err instanceof Error ? err : new Error(message);
   }
 }

@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Patch, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Role } from '@golden-abode/types';
 
@@ -7,14 +7,14 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { AdminCatalogService } from './admin-catalog.service';
 import { ListProductsQueryDto } from './dto/list-products-query.dto';
+import { CreateProductDto } from './dto/create-product.dto';
+import { UpdateProductDto } from './dto/update-product.dto';
 
-// Read + publish surface for the admin panel's catalog screens.
-//
-// Deliberately NOT product create/edit: bulk seeding goes through Phase 3's
-// generated Excel templates (admin/catalog-import), and vendor-requested
-// products come through the review queue. A single-product form is a useful
-// later addition for corrections, not a prerequisite for operating the
-// catalog.
+// Read + publish + create/edit surface for the admin panel's catalog
+// screens. Bulk seeding still goes through Phase 3's generated Excel
+// templates (admin/catalog-import) and vendor-requested products still come
+// through the review queue — create/edit here (decision 0023) is for
+// one-off corrections and additions, not a replacement for either.
 @ApiTags('Admin Catalog')
 @Controller('admin/catalog')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -64,6 +64,31 @@ export class AdminCatalogController {
   })
   async product(@Param('productId') productId: string) {
     return this.adminCatalog.getProduct(productId);
+  }
+
+  @Post('products')
+  @ApiOperation({
+    summary: 'Create a single product',
+    description:
+      'For one-off corrections and additions outside a bulk import — the same effective ' +
+      'attribute set as GET categories/:id/attributes, validated the same way (enum ' +
+      'membership, numeric parse). Created as draft; variant-defining attributes may be left ' +
+      'blank until publish, where the DB trigger enforces them by name (decision 0023).',
+  })
+  async createProduct(@Body() dto: CreateProductDto) {
+    return this.adminCatalog.createProduct(dto);
+  }
+
+  @Patch('products/:productId')
+  @ApiOperation({
+    summary: "Edit a product's name and/or attribute values",
+    description:
+      'Category is not editable here — a category change alters the entire effective ' +
+      'attribute set and is a re-classification, not a correction (decision 0023). ' +
+      'attributeValues, when present, fully replaces the existing set.',
+  })
+  async updateProduct(@Param('productId') productId: string, @Body() dto: UpdateProductDto) {
+    return this.adminCatalog.updateProduct(productId, dto);
   }
 
   @Patch('products/:productId/publish')
