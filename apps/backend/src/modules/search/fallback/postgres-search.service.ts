@@ -68,6 +68,19 @@ const TRIGRAM_THRESHOLD = 0.5;
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
 
+// Decision 0024 rules 4 and 5, shared between the SELECT list and the
+// optional HAVING filter so the two can never disagree.
+//
+// Paint (tinted_to_order) never gets an inventory row by design (0007, 0022
+// rule 4), so an absent row means AVAILABLE for paint and NEVER SET for
+// everything else. Same NULL, opposite meanings.
+const IN_STOCK_CASE = `
+  CASE
+    WHEN mp.sale_unit_type = 'tinted_to_order' THEN TRUE
+    WHEN inv.vendor_listing_id IS NULL THEN FALSE
+    ELSE (inv.quantity_available - inv.quantity_reserved) > 0
+  END`;
+
 @Injectable()
 export class PostgresSearchService {
   private readonly logger = new Logger(PostgresSearchService.name);
@@ -148,6 +161,14 @@ export class PostgresSearchService {
       replacements.maxPrice = input.maxPrice;
     }
 
+    // Decision 0024 rule 4. This filters an AGGREGATE over the grouped
+    // listings, so it must be HAVING, not WHERE — a WHERE would drop
+    // individual out-of-stock listings and still return the product via its
+    // remaining ones, which is a different question than the caller asked.
+    if (input.inStockOnly) {
+      having.push(`BOOL_OR(${IN_STOCK_CASE}) = TRUE`);
+    }
+
     const orderBy = input.query
       ? 'ORDER BY word_similarity(:query, mp.name) DESC, min_price ASC'
       : 'ORDER BY min_price ASC';
@@ -161,6 +182,7 @@ export class PostgresSearchService {
         mp.attributes_flat           AS attributes,
         MIN(vl.price)                AS min_price,
         COUNT(DISTINCT vl.vendor_id) AS vendor_count,
+        BOOL_OR(${IN_STOCK_CASE})    AS in_stock,
         mp.updated_at                AS updated_at,
         (
           SELECT vl2.id FROM vendor_listing vl2
@@ -177,6 +199,8 @@ export class PostgresSearchService {
       JOIN city c            ON c.id = v.city_id
       JOIN category cat      ON cat.id = mp.category_id
       LEFT JOIN brand b      ON b.id = mp.brand_id
+      LEFT JOIN inventory inv
+        ON inv.vendor_listing_id = vl.id AND inv.warehouse_id IS NULL
       WHERE ${where.join(' AND ')}
       GROUP BY mp.id, mp.name, cat.path, b.name, mp.attributes_flat, mp.updated_at
       ${having.length > 0 ? `HAVING ${having.join(' AND ')}` : ''}
@@ -192,6 +216,7 @@ export class PostgresSearchService {
       attributes: Record<string, string | number | boolean>;
       min_price: string;
       vendor_count: string;
+      in_stock: boolean;
       updated_at: Date;
       cheapest_vendor_listing_id: string;
     }>(sql, { type: QueryTypes.SELECT, replacements });
@@ -207,9 +232,7 @@ export class PostgresSearchService {
       price: Number(row.min_price),
       cheapestVendorListingId: row.cheapest_vendor_listing_id,
       vendorCount: Number(row.vendor_count),
-      // A row only reaches here by joining an ACTIVE listing, so anything
-      // returned is in stock by construction.
-      inStock: true,
+      inStock: row.in_stock,
       updatedAt: row.updated_at.toISOString(),
     }));
   }
