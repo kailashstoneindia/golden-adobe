@@ -196,6 +196,34 @@ truthful will be tempted to use it as the cart's stock gate.
 - No payment provider is chosen or integrated here. Rule 3 constrains *what* confirms a
   payment, not which gateway or how its signature is verified.
 
+> [!NOTE]
+> **Rules 4–6 implemented 2026-09-15.** `inStock` is derived in both the
+> indexing builder and the Postgres fallback; `inStockOnly` is plumbed from the
+> query string through to both engines and joins the Redis cache key. Verified
+> against live Postgres with throwaway scripts (now deleted), covering: stock
+> present, zero stock, fully reserved, partially reserved, no inventory row
+> (non-paint → out of stock), no inventory row (paint → in stock), mixed
+> vendors, and the cache-collision regression (a filtered and an unfiltered
+> request no longer share a cached response).
+>
+> The full rebuild-and-swap (0021, phase 6h) was also run this session and
+> completed cleanly — shadow build, atomic swap, and outbox marker consumption
+> all worked as designed. It is **not**, however, evidence for the derivation
+> itself: this database currently has 160 `master_product` rows, all
+> `status='draft'`, zero `vendor_listing` rows and zero `inventory` rows, so it
+> cannot produce a single search document (a document requires a *live*
+> product with an *active* listing from a vendor in a city — draft products
+> emit none, by design, per [0019](0019-search-followups.md)). The reindex
+> therefore confirmed the *mechanism* — 0 documents before and after, both
+> `products` and `products_rebuild` indexes present afterward as the swap
+> intends — and confirmed nothing about whether `inStock` is computed
+> correctly. That evidence is the live-Postgres verification above (7/7, 9/9
+> and 5/5 assertions across the three implementation tasks), not the reindex.
+>
+> Rules 1–3 (the `customers` table, reservation at checkout, webhook
+> confirmation) are **not** implemented — they await the cart and checkout
+> work in [0025](0025-cart-and-order-structure.md).
+
 ## Open questions
 
 - **Whether a vendor paused mid-checkout should release reservations.** `is_active` and

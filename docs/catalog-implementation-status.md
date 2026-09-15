@@ -382,3 +382,62 @@ interceptor or it will assert against the wrong shape.
 untouched by this work (`store/useAuthStore.ts`, `utils/phone.ts`, `utils/index.ts`) — Prettier
 formatting only. The new files lint clean; those were left alone rather than folding unrelated
 churn into this change.
+
+---
+
+## Phase 3: cart, orders, payments — started 2026-09-15
+
+| Item | Status |
+|---|---|
+| Decisions 0024 (cart owner, reservation point, `inStock`) and 0025 (cart/order structure) | ✅ Written |
+| Real `inStock` end to end (builder, fallback, `inStockOnly`, Meili filter, cache key) | ✅ Done — 7/7, 9/9, 5/5 live-Postgres assertions |
+| Full reindex (shadow build + atomic swap + marker consumption) | ✅ Mechanism verified — **not** evidence for the derivation; see below |
+| `customers` table + `resolveCustomerByUserId` | ⬜ Not started |
+| `cart` / `cart_item` | ⬜ Not started |
+| `orders` / `order_vendor_group` / `order_items` | ⬜ Not started |
+| Checkout + reservation write path | ⬜ Not started |
+| Razorpay integration | ⛔ Blocked — credentials have external lead time |
+| Notifications (FCM) | ⛔ Blocked — Firebase credentials |
+
+**The reindex proved the mechanism, not the derivation.** The rebuild ran end to end and
+logged cleanly:
+
+```
+Full search rebuild requested: admin requested
+Full search rebuild starting — building shadow index
+Meilisearch index 'products_rebuild' settings applied (0 synonym terms, disableOnNumbers=true)
+Full search rebuild complete: 0 documents, swapped into 'products', 1 marker row(s) consumed
+```
+
+Both before and after, the `products` index held **0 documents** (`fieldDistribution {}`).
+That is not a failure of the rebuild — this database currently has 160 `master_product` rows,
+all `status='draft'`, and zero rows in `vendor_listing`, `inventory` and `vendors`. A search
+document requires a *live* product with an *active* `vendor_listing` from a vendor in a city;
+none of those exist yet, and drafts are excluded by design ([0019](decisions/0019-search-followups.md)).
+`search_outbox` held 1645 already-processed rows plus the one new marker the rebuild consumed,
+taking it from 1 unprocessed to 0. Both `products` and `products_rebuild` existed afterward —
+the former primary becoming the next shadow, which is the atomic swap working as intended, not
+a leak. The evidence that `inStock` is derived correctly is Tasks 1–3's live-Postgres
+verification (7/7, 9/9, 5/5), not this reindex — this database cannot currently produce a
+single search document to check.
+
+**A second harness bug worth recording, same class as `ResponseInterceptor` above:** an
+HTTP-level test harness for this API must also register the global `ValidationPipe` exactly as
+`main.ts` does — `new ValidationPipe({ whitelist: true, transform: true,
+forbidNonWhitelisted: true })`. Omit it and class-transformer's `@Type(() => Number)` never
+runs, so numeric query params arrive at the controller as strings. This session that produced
+`Invalid value type at '.limit': expected a positive integer, but found a string: "100"` from
+the Meilisearch client — and every search request silently degraded to the Postgres fallback,
+which looked exactly like a broken primary search engine but was purely a harness defect.
+Proven by booting the compiled app twice: with the pipe registered, `engine=meilisearch` and
+`degraded=false`; without it, `engine=postgres` and `degraded=true`. A harness that is not a
+faithful copy of `main.ts` manufactures defects that do not exist.
+
+**`quantity_reserved` still has no writer.** `inStock` nets it
+(`quantity_available - quantity_reserved`), so the read side is ready, but nothing increments
+it until checkout exists (0024 rule 2).
+
+**Known prerequisite, not yet done:** `main.ts` needs `rawBody: true` before any Razorpay
+webhook signature can be verified — Nest's default body parser destroys the byte fidelity
+HMAC-SHA256 requires. Deliberately deferred to the payments slice; it needs no credentials and
+is easy to forget until a signature check fails mysteriously.
