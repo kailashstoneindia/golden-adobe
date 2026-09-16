@@ -114,10 +114,15 @@ backfilled. This is stated explicitly rather than left as a surprise.
 written to**. Search-sync triggers are already installed on it, so writes re-index the
 product automatically.
 
-**Storage abstraction:** a `StorageService` interface with an S3 implementation, configured
-from env (`S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`,
-`S3_PUBLIC_BASE_URL`). Add `@aws-sdk/client-s3`. The interface matters more than the
-implementation — it keeps the swap to Spaces/MinIO a config change.
+**Storage abstraction:** a `StorageService` interface, backed by **Google Cloud Storage**
+(decision [0024](decisions/0024-product-images-gcs.md), superseding this section's original
+S3-compatible sketch) — configured from env (`GCS_PROJECT_ID`, `GCS_BUCKET`,
+`GCS_CREDENTIALS_JSON`, `GCS_PUBLIC_BASE_URL`). Add `@google-cloud/storage`, not
+`@aws-sdk/client-s3`. The interface matters more than the implementation — it keeps a future
+swap to another provider a config change, not a rewrite. See 0024 for auth model (service
+account JSON in an env var, not a mounted key file), public-vs-signed access (public — these
+are catalog photos, not private documents), and the bucket provisioning steps an operator
+must run before this workstream can be verified live.
 
 **Endpoints** (admin-only, matching the existing `@Roles(Role.ADMIN)` pattern):
 - `POST /admin/catalog/products/:id/media` — multipart upload, returns the created row.

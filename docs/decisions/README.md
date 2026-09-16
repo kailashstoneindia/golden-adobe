@@ -34,6 +34,8 @@ valid when circumstances change.
 | [0020](0020-ncr-launch-cities.md) | Launch scope: Delhi NCR as five separate cities | 2026-08-17 | Accepted |
 | [0021](0021-search-runtime-build-plan.md) | Search runtime: local-first build, and the 6c–6h sequence | 2026-09-01 | Accepted |
 | [0022](0022-inventory-write-model.md) | Inventory write model: stock, status, and what a blank cell means | 2026-09-14 | Accepted |
+| [0023](0023-single-product-create-edit.md) | Single-product create/edit: the last Product Management gap | 2026-09-15 | Accepted |
+| [0024](0024-product-images-gcs.md) | Product images: Google Cloud Storage as the backing store | 2026-09-16 | Accepted |
 
 ## Adding a record
 
