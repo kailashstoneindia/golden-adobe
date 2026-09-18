@@ -8,24 +8,16 @@ import type {
   VendorCategoryDto,
   VendorListingStockDto,
 } from '@golden-abode/types';
-import { isNil, omitBy } from 'lodash';
 
 import { apiClient } from '../api/client';
 import { API_ENDPOINTS } from '../constants';
 
-function buildListingsParams(
-  query: ListVendorListingsQuery,
-): Record<string, string | number> {
-  const cleaned = omitBy(
-    {
-      status: query.status,
-      page: query.page,
-      limit: query.limit,
-    },
-    isNil,
-  );
-
-  return cleaned as Record<string, string | number>;
+function buildListingsParams(query: ListVendorListingsQuery): Record<string, string | number> {
+  const params: Record<string, string | number> = {};
+  if (query.status) params.status = query.status;
+  if (query.page !== undefined) params.page = query.page;
+  if (query.limit !== undefined) params.limit = query.limit;
+  return params;
 }
 
 export const vendorListingsService = {

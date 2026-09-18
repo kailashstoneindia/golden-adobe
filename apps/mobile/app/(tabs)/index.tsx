@@ -8,9 +8,14 @@ import { HorizontalCardList } from '../../src/components/customer/HorizontalCard
 import { ProjectPill } from '../../src/components/customer/ProjectPill';
 import { SearchBar } from '../../src/components/customer/SearchBar';
 import { Badge, Card, Text } from '../../src/components/ui';
-import { ROUTES } from '../../src/constants';
+import { ROUTES, type LaunchCategory } from '../../src/constants';
 import { useAuth } from '../../src/hooks/auth';
+import {
+  selectHasSearchLocation,
+  useLocationPreferenceStore,
+} from '../../src/stores/location-preference.store';
 import { Colors, Radius, Spacing } from '../../src/theme';
+import { navigateToCatalogSearch, navigateToLocationGate } from '../../src/utils';
 
 const USTAADS = [
   { id: '1', title: 'Ramesh Kumar', subtitle: 'Plumbing · 6 yrs' },
@@ -45,9 +50,15 @@ export default function HomeTabScreen() {
 }
 
 function CustomerHome({ firstName }: { firstName: string }) {
+  const preference = useLocationPreferenceStore((store) => store.preference);
+  const hasSearchLocation = useLocationPreferenceStore(selectHasSearchLocation);
+  const locationLabel = buildHomeLocationLabel(preference.pincode, hasSearchLocation);
+
+  const handleSearchPress = () => navigateToCatalogSearch();
+  const handleLocationPress = () => navigateToLocationGate();
+  const handleCategoryPress = (category: LaunchCategory) =>
+    navigateToCatalogSearch({ category: category.path });
   const handleBrowsePress = () => router.push(ROUTES.tabs.browse);
-  const handleProjectPress = () => router.push(ROUTES.screens.myProjects);
-  const handleProductPress = () => router.push(ROUTES.screens.productDetail);
 
   return (
     <View style={styles.root}>
@@ -56,9 +67,9 @@ function CustomerHome({ firstName }: { firstName: string }) {
           <Text variant="caption" color="rgba(255,255,255,0.65)" style={styles.greeting}>
             {getGreeting()}, {firstName}
           </Text>
-          <ProjectPill label="Sharma Residence, Vaishali Nagar" onPress={handleProjectPress} />
+          <ProjectPill label={locationLabel} onPress={handleLocationPress} />
           <View style={styles.searchWrap}>
-            <SearchBar onPress={handleBrowsePress} />
+            <SearchBar onPress={handleSearchPress} />
           </View>
         </SafeAreaView>
       </View>
@@ -71,16 +82,26 @@ function CustomerHome({ firstName }: { firstName: string }) {
         <Text variant="h3" style={styles.sectionTitle}>
           Categories
         </Text>
-        <CategoryGrid onCategoryPress={handleBrowsePress} />
+        <CategoryGrid onCategoryPress={handleCategoryPress} />
 
         <SectionHeader title="Verified Ustaads nearby" actionLabel="See all" onActionPress={handleBrowsePress} />
-        <HorizontalCardList items={USTAADS} onItemPress={() => handleProductPress()} />
+        <HorizontalCardList items={USTAADS} onItemPress={handleBrowsePress} />
 
-        <SectionHeader title="Top vendors, Jaipur East" onActionPress={handleBrowsePress} />
-        <HorizontalCardList items={VENDORS} onItemPress={() => handleProductPress()} />
+        <SectionHeader title="Top vendors nearby" onActionPress={handleBrowsePress} />
+        <HorizontalCardList items={VENDORS} onItemPress={handleBrowsePress} />
       </ScrollView>
     </View>
   );
+}
+
+function buildHomeLocationLabel(pincode: string | null, hasSearchLocation: boolean): string {
+  if (pincode) {
+    return `Deliver to ${pincode}`;
+  }
+  if (hasSearchLocation) {
+    return 'Deliver near you';
+  }
+  return 'Set your area';
 }
 
 function VendorHome() {

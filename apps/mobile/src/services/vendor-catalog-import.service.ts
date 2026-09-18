@@ -5,7 +5,6 @@ import type {
   VendorCatalogExportScope,
   VendorImportResult,
 } from '@golden-abode/types';
-import { isEmpty, isNil, omitBy } from 'lodash';
 
 import { apiClient } from '../api/client';
 import { API_ENDPOINTS } from '../constants';
@@ -18,33 +17,29 @@ type ExportQueryParams = {
 };
 
 function buildExportQueryParams(scope: VendorCatalogExportScope): ExportQueryParams {
-  const cleaned = omitBy(
-    {
-      leafCategoryIds: scope.leafCategoryIds,
-      brandIds: isEmpty(scope.brandIds) ? undefined : scope.brandIds,
-      sinceDate: scope.sinceDate,
-    },
-    isNil,
-  );
-
-  return cleaned as ExportQueryParams;
+  const params: ExportQueryParams = {
+    leafCategoryIds: scope.leafCategoryIds,
+  };
+  if (scope.brandIds && scope.brandIds.length > 0) {
+    params.brandIds = scope.brandIds;
+  }
+  if (scope.sinceDate) {
+    params.sinceDate = scope.sinceDate;
+  }
+  return params;
 }
 
 function serializeExportParams(params: ExportQueryParams): string {
   const searchParams = new URLSearchParams();
-
   params.leafCategoryIds.forEach((categoryId) => {
     searchParams.append('leafCategoryIds', categoryId);
   });
-
   params.brandIds?.forEach((brandId) => {
     searchParams.append('brandIds', brandId);
   });
-
   if (params.sinceDate) {
     searchParams.append('sinceDate', params.sinceDate);
   }
-
   return searchParams.toString();
 }
 
