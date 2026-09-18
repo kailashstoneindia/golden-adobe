@@ -27,5 +27,10 @@ export const ROUTES = {
     orderDetail: '/(screens)/order-detail',
     productDetail: '/(screens)/product-detail',
     addProduct: '/(screens)/add-product',
+    searchResults: '/(screens)/search-results',
+    locationGate: '/(screens)/location-gate',
+    catalogSync: '/(screens)/catalog-sync',
+    pendingConfirmations: '/(screens)/pending-confirmations',
+    listingDetail: '/(screens)/listing-detail',
   },
 } as const;

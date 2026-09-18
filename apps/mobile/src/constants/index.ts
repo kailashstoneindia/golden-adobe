@@ -1,5 +1,7 @@
 export { API_ENDPOINTS, AUTH_PUBLIC_ENDPOINTS } from './api-endpoints';
 export { APP_CONSTANTS } from './app-constants';
+export { LAUNCH_CATEGORIES } from './catalog.constants';
+export type { LaunchCategory } from './catalog.constants';
 export { ERROR_MESSAGES } from './error.constants';
 export { VENDOR_CONSTANTS } from './vendor.constants';
 export { Env } from './env';
