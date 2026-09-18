@@ -6,3 +6,4 @@ export * from './pincode';
 export * from './currency';
 export * from './category-path';
 export * from './catalog-navigation';
+export * from './vendor-listing';

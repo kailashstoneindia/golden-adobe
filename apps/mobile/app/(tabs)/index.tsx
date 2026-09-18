@@ -11,6 +11,10 @@ import { Badge, Card, Text } from '../../src/components/ui';
 import { ROUTES, type LaunchCategory } from '../../src/constants';
 import { useAuth } from '../../src/hooks/auth';
 import {
+  usePendingConfirmationsQuery,
+  useVendorListingsQuery,
+} from '../../src/hooks/vendor';
+import {
   selectHasSearchLocation,
   useLocationPreferenceStore,
 } from '../../src/stores/location-preference.store';
@@ -105,22 +109,30 @@ function buildHomeLocationLabel(pincode: string | null, hasSearchLocation: boole
 }
 
 function VendorHome() {
+  const listingsQuery = useVendorListingsQuery({ status: 'active' });
+  const pendingQuery = usePendingConfirmationsQuery();
+  const activeCount = listingsQuery.data?.total ?? 0;
+  const pendingCount = pendingQuery.data?.length ?? 0;
+
   const handleOrdersPress = () => router.push(ROUTES.tabs.orders);
   const handleOrderPress = (orderId: string) =>
     router.push({ pathname: ROUTES.screens.orderDetail, params: { id: orderId } });
+  const handleProductsPress = () => router.push(ROUTES.tabs.products);
+  const handlePendingPress = () => router.push(ROUTES.screens.pendingConfirmations);
+  const handleSyncPress = () => router.push(ROUTES.screens.catalogSync);
 
   return (
     <View style={styles.root}>
       <View style={styles.header}>
         <SafeAreaView edges={['top']}>
           <Text variant="caption" color="rgba(255,255,255,0.65)" style={styles.greeting}>
-            Kailash Stones
+            Vendor shop
           </Text>
           <Text variant="h2" color={Colors.white}>
             Shop dashboard
           </Text>
           <Text variant="caption" color="rgba(255,255,255,0.65)" style={styles.vendorMeta}>
-            Jaipur East · Stones & Tiles
+            Manage listings, stock, and catalog sync
           </Text>
         </SafeAreaView>
       </View>
@@ -131,19 +143,28 @@ function VendorHome() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.statsRow}>
-          <Pressable style={styles.statPressable} onPress={() => router.push(ROUTES.tabs.products)}>
+          <Pressable style={styles.statPressable} onPress={handleProductsPress}>
             <Card style={styles.statCard}>
-              <Text variant="numericSm">12</Text>
-              <Text variant="caption">Active products</Text>
+              <Text variant="numericSm">{activeCount}</Text>
+              <Text variant="caption">Active listings</Text>
             </Card>
           </Pressable>
-          <Pressable style={styles.statPressable} onPress={handleOrdersPress}>
+          <Pressable style={styles.statPressable} onPress={handlePendingPress}>
             <Card style={styles.statCard}>
-              <Text variant="numericSm">2</Text>
-              <Text variant="caption">Pending orders</Text>
+              <Text variant="numericSm">{pendingCount}</Text>
+              <Text variant="caption">Pending matches</Text>
             </Card>
           </Pressable>
         </View>
+
+        <Pressable onPress={handleSyncPress}>
+          <Card>
+            <Text variant="bodyMedium">Sync catalog</Text>
+            <Text variant="caption" color={Colors.inkSoft}>
+              Download the master sheet, fill prices, and upload matches
+            </Text>
+          </Card>
+        </Pressable>
 
         <SectionHeader title="Pending orders" actionLabel="See all" onActionPress={handleOrdersPress} />
         <View style={styles.orderList}>
