@@ -1,1 +1,4 @@
-export { useSearchProductsQuery } from './useSearchProducts';
+export {
+  useSearchProductsInfiniteQuery,
+  useSearchProductsQuery,
+} from './useSearchProducts';

@@ -45,6 +45,14 @@ export default function CatalogSyncScreen() {
     setSelectedCategoryIds((current) => toggleCategoryId(current, categoryId));
   };
 
+  const handleSelectAllCategories = () => {
+    setSelectedCategoryIds(categories.map((category) => category.categoryId));
+  };
+
+  const handleClearCategories = () => {
+    setSelectedCategoryIds([]);
+  };
+
   const handleDownload = async () => {
     if (selectedCategoryIds.length === 0) {
       setActionError('Select at least one category to export.');
@@ -75,6 +83,9 @@ export default function CatalogSyncScreen() {
       const result = await uploadMutation.mutateAsync(file);
       setLastUploadResult(result);
       setActionMessage(buildUploadSummary(result));
+      if (result.pendingConfirmationCount > 0) {
+        router.push(ROUTES.screens.pendingConfirmations);
+      }
     } catch (error: unknown) {
       setActionError(resolveFileActionError(error, ERROR_MESSAGES.vendorCatalogUploadFailed));
     }
@@ -96,7 +107,23 @@ export default function CatalogSyncScreen() {
 
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <Card>
-            <Text variant="bodyMedium">1. Choose categories</Text>
+            <View style={styles.categoryHeader}>
+              <Text variant="bodyMedium">1. Choose categories</Text>
+              {categories.length > 0 ? (
+                <View style={styles.categoryActions}>
+                  <Pressable onPress={handleSelectAllCategories}>
+                    <Text variant="caption" color={Colors.tangerine}>
+                      Select all
+                    </Text>
+                  </Pressable>
+                  <Pressable onPress={handleClearCategories}>
+                    <Text variant="caption" color={Colors.inkSoft}>
+                      Clear
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : null}
+            </View>
             <CategoryPickerBody
               isLoading={categoriesQuery.isLoading}
               isError={categoriesQuery.isError}
@@ -108,7 +135,7 @@ export default function CatalogSyncScreen() {
               <Text variant="caption" color={Colors.inkSoft} style={styles.countLine}>
                 {exportCountQuery.isLoading
                   ? 'Counting rows…'
-                  : `${exportCountQuery.data?.rowCount ?? 0} products in export`}
+                  : `${exportCountQuery.data?.rowCount ?? 0} products in export · ${selectedCategoryIds.length} categories`}
               </Text>
             ) : null}
             <Button
@@ -136,11 +163,20 @@ export default function CatalogSyncScreen() {
               }}
             />
             {lastUploadResult ? (
-              <Text variant="caption" color={Colors.inkSoft} style={styles.meta}>
-                Linked {lastUploadResult.linkedCount} · Pending{' '}
-                {lastUploadResult.pendingConfirmationCount} · Review{' '}
-                {lastUploadResult.needsReviewCount} · Rejected {lastUploadResult.rejectedCount}
-              </Text>
+              <View style={styles.resultBox}>
+                <Text variant="caption" color={Colors.inkSoft}>
+                  Linked {lastUploadResult.linkedCount} · Pending{' '}
+                  {lastUploadResult.pendingConfirmationCount} · Review{' '}
+                  {lastUploadResult.needsReviewCount} · Rejected {lastUploadResult.rejectedCount}
+                </Text>
+                {lastUploadResult.pendingConfirmationCount > 0 ? (
+                  <Pressable onPress={() => router.push(ROUTES.screens.pendingConfirmations)}>
+                    <Text variant="label" color={Colors.tangerine}>
+                      Review pending matches
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </View>
             ) : null}
           </Card>
 
@@ -257,9 +293,23 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
     paddingBottom: Spacing.xxl,
   },
+  categoryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  categoryActions: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+  },
   meta: {
     marginTop: Spacing.sm,
     marginBottom: Spacing.md,
+  },
+  resultBox: {
+    marginTop: Spacing.md,
+    gap: Spacing.sm,
   },
   countLine: {
     marginVertical: Spacing.sm,

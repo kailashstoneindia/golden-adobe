@@ -15,3 +15,12 @@ export const LAUNCH_CATEGORIES = [
 ] as const;
 
 export type LaunchCategory = (typeof LAUNCH_CATEGORIES)[number];
+
+export const SEARCH_PRICE_FILTERS = [
+  { id: 'all', label: 'Any price', minPrice: undefined, maxPrice: undefined },
+  { id: 'under_500', label: 'Under ₹500', minPrice: undefined, maxPrice: 500 },
+  { id: 'under_1000', label: 'Under ₹1,000', minPrice: undefined, maxPrice: 1000 },
+  { id: 'over_1000', label: '₹1,000+', minPrice: 1000, maxPrice: undefined },
+] as const;
+
+export type SearchPriceFilterId = (typeof SEARCH_PRICE_FILTERS)[number]['id'];

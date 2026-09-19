@@ -4,23 +4,33 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Screen } from '../../src/components/layout/Screen';
 import { Button, Card, Text } from '../../src/components/ui';
+import {
+  selectHasSearchLocation,
+  useLocationPreferenceStore,
+} from '../../src/stores/location-preference.store';
 import { useSelectedSearchProductStore } from '../../src/stores/selected-search-product.store';
 import { Colors, Radius, Spacing } from '../../src/theme';
-import { formatCategoryPath, formatInr } from '../../src/utils';
+import { formatCategoryPath, formatInr, navigateToLocationGate } from '../../src/utils';
 
 export default function ProductDetailScreen() {
   const selectedProduct = useSelectedSearchProductStore((store) => store.selectedProduct);
+  const preference = useLocationPreferenceStore((store) => store.preference);
+  const hasSearchLocation = useLocationPreferenceStore(selectHasSearchLocation);
   const attributeRows = useMemo(
     () => buildAttributeRows(selectedProduct?.attributes ?? {}),
     [selectedProduct?.attributes],
   );
+  const locationLabel = preference.pincode ?? (preference.latitude ? 'Near you' : 'Set area');
 
   if (!selectedProduct) {
     return (
       <Screen>
         <View style={styles.empty}>
-          <Text variant="body">Product details are unavailable.</Text>
-          <Button title="Go back" variant="secondary" onPress={() => router.back()} />
+          <Text variant="h3">Product unavailable</Text>
+          <Text variant="body" color={Colors.inkSoft} style={styles.emptyCopy}>
+            Open a product from search results to review local price and specs.
+          </Text>
+          <Button title="Back to search" variant="secondary" onPress={() => router.back()} />
         </View>
       </Screen>
     );
@@ -29,11 +39,21 @@ export default function ProductDetailScreen() {
   return (
     <Screen edges={['top']}>
       <View style={styles.root}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
-          <Text variant="bodyMedium" color={Colors.sky}>
-            ‹ Back
-          </Text>
-        </Pressable>
+        <View style={styles.topBar}>
+          <Pressable onPress={() => router.back()} hitSlop={8}>
+            <Text variant="bodyMedium" color={Colors.sky}>
+              ‹ Back
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => navigateToLocationGate()}
+            style={styles.locationChip}
+          >
+            <Text variant="caption" color={Colors.navy}>
+              {hasSearchLocation ? locationLabel : 'Set area'}
+            </Text>
+          </Pressable>
+        </View>
 
         <ScrollView
           style={styles.scroll}
@@ -57,6 +77,10 @@ export default function ProductDetailScreen() {
             <Text variant="caption" color={Colors.inkSoft} style={styles.priceMeta}>
               Best local price · {formatVendorCount(selectedProduct.vendorCount)}
             </Text>
+            <Text variant="caption" color={Colors.inkSoft} style={styles.priceMeta}>
+              Listed in your city
+              {selectedProduct.inStock ? '' : ' · stock accuracy coming soon'}
+            </Text>
           </Card>
 
           {attributeRows.length > 0 ? (
@@ -64,14 +88,23 @@ export default function ProductDetailScreen() {
               <Text variant="bodyMedium">Specifications</Text>
               {attributeRows.map((row) => (
                 <View key={row.key} style={styles.specRow}>
-                  <Text variant="caption" color={Colors.inkSoft}>
+                  <Text variant="caption" color={Colors.inkSoft} style={styles.specLabel}>
                     {row.label}
                   </Text>
-                  <Text variant="caption">{row.value}</Text>
+                  <Text variant="caption" style={styles.specValue}>
+                    {row.value}
+                  </Text>
                 </View>
               ))}
             </Card>
-          ) : null}
+          ) : (
+            <Card>
+              <Text variant="bodyMedium">Specifications</Text>
+              <Text variant="caption" color={Colors.inkSoft} style={styles.priceMeta}>
+                No extra attributes on this product yet.
+              </Text>
+            </Card>
+          )}
         </ScrollView>
 
         <View style={styles.footer}>
@@ -95,11 +128,13 @@ type AttributeRow = {
 };
 
 function buildAttributeRows(attributes: Record<string, string | number | boolean>): AttributeRow[] {
-  return Object.entries(attributes).map(([key, value]) => ({
-    key,
-    label: formatAttributeLabel(key),
-    value: String(value),
-  }));
+  return Object.entries(attributes)
+    .map(([key, value]) => ({
+      key,
+      label: formatAttributeLabel(key),
+      value: String(value),
+    }))
+    .sort((left, right) => left.label.localeCompare(right.label));
 }
 
 function formatAttributeLabel(key: string): string {
@@ -122,10 +157,19 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.cream,
   },
-  backBtn: {
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: Spacing.lg + 2,
     paddingTop: Spacing.sm,
     paddingBottom: Spacing.xs,
+  },
+  locationChip: {
+    backgroundColor: Colors.skyTint,
+    borderRadius: 999,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
   },
   scroll: {
     flex: 1,
@@ -150,6 +194,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.line,
+    paddingBottom: Spacing.sm,
+  },
+  specLabel: {
+    flex: 1,
+  },
+  specValue: {
+    flex: 1,
+    textAlign: 'right',
   },
   footer: {
     paddingHorizontal: Spacing.lg + 2,
@@ -165,5 +219,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: Spacing.md,
     paddingHorizontal: Spacing.lg,
+  },
+  emptyCopy: {
+    textAlign: 'center',
   },
 });

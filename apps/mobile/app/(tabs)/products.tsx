@@ -17,24 +17,38 @@ import { useVendorListingsQuery, usePendingConfirmationsQuery } from '../../src/
 import { useSelectedVendorListingStore } from '../../src/stores/selected-vendor-listing.store';
 import { Colors, Radius, Spacing } from '../../src/theme';
 
-const STATUS_FILTERS: Array<{ id: ListingStatusFilter; label: string }> = [
+type ProductsFilterId = ListingStatusFilter | 'needs_stock';
+
+const STATUS_FILTERS: Array<{ id: ProductsFilterId; label: string }> = [
   { id: 'all', label: 'All' },
   { id: 'active', label: 'Active' },
+  { id: 'needs_stock', label: 'Needs stock' },
   { id: 'out_of_stock', label: 'Out of stock' },
   { id: 'paused', label: 'Paused' },
 ];
 
 export default function ProductsTabScreen() {
-  const [statusFilter, setStatusFilter] = useState<ListingStatusFilter>('all');
+  const [statusFilter, setStatusFilter] = useState<ProductsFilterId>('all');
   const setSelectedListing = useSelectedVendorListingStore((store) => store.setSelectedListing);
   const pendingQuery = usePendingConfirmationsQuery();
 
+  const apiStatus =
+    statusFilter === 'all' || statusFilter === 'needs_stock' ? undefined : statusFilter;
+
   const listingsQuery = useVendorListingsQuery({
-    status: statusFilter === 'all' ? undefined : statusFilter,
+    status: apiStatus,
+    limit: statusFilter === 'needs_stock' ? 100 : undefined,
   });
 
   const pendingCount = pendingQuery.data?.length ?? 0;
-  const listings = listingsQuery.data?.items ?? [];
+  const listings = useMemo(
+    () => filterListingsForView(listingsQuery.data?.items ?? [], statusFilter),
+    [listingsQuery.data?.items, statusFilter],
+  );
+  const needsStockCount = useMemo(
+    () => countNeedsStock(listingsQuery.data?.items ?? []),
+    [listingsQuery.data?.items],
+  );
 
   const handleListingPress = useCallback(
     (listing: VendorListingStockDto) => {
@@ -76,6 +90,20 @@ export default function ProductsTabScreen() {
             </Text>
             <Text variant="caption" color={Colors.ember}>
               Review
+            </Text>
+          </Pressable>
+        ) : null}
+
+        {needsStockCount > 0 && statusFilter !== 'needs_stock' ? (
+          <Pressable
+            style={styles.stockBanner}
+            onPress={() => setStatusFilter('needs_stock')}
+          >
+            <Text variant="bodyMedium" color={Colors.navy}>
+              {needsStockCount} listing{needsStockCount === 1 ? '' : 's'} need stock
+            </Text>
+            <Text variant="caption" color={Colors.navy}>
+              Fix now
             </Text>
           </Pressable>
         ) : null}
@@ -181,12 +209,36 @@ function ListSeparator() {
   return <View style={styles.separator} />;
 }
 
-function buildEmptyMessage(statusFilter: ListingStatusFilter, isError: boolean): string {
+function listingNeedsStock(listing: VendorListingStockDto): boolean {
+  if (listing.isPaint) {
+    return false;
+  }
+  return listing.quantityAvailable === null || listing.quantityAvailable === 0;
+}
+
+function filterListingsForView(
+  listings: VendorListingStockDto[],
+  statusFilter: ProductsFilterId,
+): VendorListingStockDto[] {
+  if (statusFilter !== 'needs_stock') {
+    return listings;
+  }
+  return listings.filter(listingNeedsStock);
+}
+
+function countNeedsStock(listings: VendorListingStockDto[]): number {
+  return listings.filter(listingNeedsStock).length;
+}
+
+function buildEmptyMessage(statusFilter: ProductsFilterId, isError: boolean): string {
   if (isError) {
     return ERROR_MESSAGES.vendorListingsFailed;
   }
   if (statusFilter === 'all') {
     return 'No listings yet — sync catalog from the master list.';
+  }
+  if (statusFilter === 'needs_stock') {
+    return 'All countable listings have stock set.';
   }
   return 'No listings in this status.';
 }
@@ -209,6 +261,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: Colors.tangerineTint,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md,
+  },
+  stockBanner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: Colors.skyTint,
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.md,

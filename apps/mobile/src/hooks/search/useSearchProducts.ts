@@ -1,5 +1,5 @@
 import type { SearchQueryParams, SearchResponse } from '@golden-abode/types';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 
 import { APP_CONSTANTS, QUERY_KEYS } from '../../constants';
 import { searchService } from '../../services';
@@ -10,6 +10,19 @@ import {
 
 function buildSearchParamsKey(params: SearchQueryParams): string {
   return JSON.stringify(params);
+}
+
+function buildLocatedParams(
+  options: Omit<SearchQueryParams, 'pincode' | 'lat' | 'lng'>,
+): SearchQueryParams {
+  const preference = useLocationPreferenceStore.getState().preference;
+  return {
+    ...options,
+    pincode: preference.pincode ?? undefined,
+    lat: preference.latitude ?? undefined,
+    lng: preference.longitude ?? undefined,
+    limit: options.limit ?? APP_CONSTANTS.searchDefaultPageSize,
+  };
 }
 
 export function useSearchProductsQuery(
@@ -32,4 +45,45 @@ export function useSearchProductsQuery(
     enabled: hasSearchLocation,
     staleTime: 60_000,
   });
+}
+
+export function useSearchProductsInfiniteQuery(
+  options: Omit<SearchQueryParams, 'pincode' | 'lat' | 'lng' | 'offset'>,
+) {
+  const hasSearchLocation = useLocationPreferenceStore(selectHasSearchLocation);
+  const preference = useLocationPreferenceStore((store) => store.preference);
+  const baseParams = buildLocatedParams(options);
+  const paramsKey = buildSearchParamsKey({
+    ...baseParams,
+    pincode: preference.pincode ?? undefined,
+    lat: preference.latitude ?? undefined,
+    lng: preference.longitude ?? undefined,
+  });
+
+  return useInfiniteQuery({
+    queryKey: QUERY_KEYS.search.products(`infinite:${paramsKey}`),
+    queryFn: ({ pageParam }) =>
+      searchService.searchProducts({
+        ...baseParams,
+        pincode: preference.pincode ?? undefined,
+        lat: preference.latitude ?? undefined,
+        lng: preference.longitude ?? undefined,
+        offset: pageParam,
+      }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) => getNextSearchOffset(lastPage, allPages),
+    enabled: hasSearchLocation,
+    staleTime: 60_000,
+  });
+}
+
+function getNextSearchOffset(
+  lastPage: SearchResponse,
+  allPages: SearchResponse[],
+): number | undefined {
+  const loadedCount = allPages.reduce((sum, page) => sum + page.hits.length, 0);
+  if (loadedCount >= lastPage.total) {
+    return undefined;
+  }
+  return loadedCount;
 }
