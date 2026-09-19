@@ -64,3 +64,9 @@ apps/mobile/GoogleService-Info.plist
 
 # TypeScript incremental build artifacts
 *.tsbuildinfo
+
+# Claude Code worktrees — isolated workspaces, never part of the repo
+.claude/worktrees/
+
+# Subagent-driven development scratch (ledger, briefs, review packages)
+.superpowers/

@@ -1,6 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import {
+  IsBoolean,
   IsInt,
   IsLatitude,
   IsLongitude,
@@ -65,6 +66,16 @@ export class SearchQueryDto {
   @IsNumber()
   @Min(0)
   maxPrice?: number;
+
+  @ApiPropertyOptional({
+    description:
+      'Return only products with stock available from at least one vendor in the city. ' +
+      'Paint is always considered available — it is made to order and carries no inventory row (0007, 0022).',
+  })
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === 'true' || value === '1')
+  @IsBoolean()
+  inStockOnly?: boolean;
 
   @ApiPropertyOptional({
     description:

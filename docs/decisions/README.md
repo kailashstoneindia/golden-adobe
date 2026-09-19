@@ -34,6 +34,10 @@ valid when circumstances change.
 | [0020](0020-ncr-launch-cities.md) | Launch scope: Delhi NCR as five separate cities | 2026-08-17 | Accepted |
 | [0021](0021-search-runtime-build-plan.md) | Search runtime: local-first build, and the 6c–6h sequence | 2026-09-01 | Accepted |
 | [0022](0022-inventory-write-model.md) | Inventory write model: stock, status, and what a blank cell means | 2026-09-14 | Accepted |
+| [0023](0023-single-product-create-edit.md) | Single-product create/edit: the last Product Management gap | 2026-09-15 | Accepted |
+| [0024](0024-cart-owner-reservation-and-real-instock.md) | Cart ownership, when stock is reserved, and making `inStock` mean something | 2026-09-15 | Accepted |
+| [0025](0025-cart-and-order-structure.md) | Cart and order structure: what an item points at, and how one payment becomes many vendors' work | 2026-09-15 | Accepted |
+| [0026](0026-customer-cart-order-schema.md) | Customer, cart and order schema: the tables, not the checkout | 2026-09-15 | Accepted |
 
 ## Adding a record
 
