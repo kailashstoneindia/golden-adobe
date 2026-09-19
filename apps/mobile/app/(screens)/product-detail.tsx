@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Screen } from '../../src/components/layout/Screen';
 import { Button, Card, Text } from '../../src/components/ui';
@@ -13,9 +14,11 @@ import { Colors, Radius, Spacing } from '../../src/theme';
 import { formatCategoryPath, formatInr, navigateToLocationGate } from '../../src/utils';
 
 export default function ProductDetailScreen() {
+  const insets = useSafeAreaInsets();
   const selectedProduct = useSelectedSearchProductStore((store) => store.selectedProduct);
   const preference = useLocationPreferenceStore((store) => store.preference);
   const hasSearchLocation = useLocationPreferenceStore(selectHasSearchLocation);
+  const footerPaddingBottom = Math.max(insets.bottom, Spacing.md);
   const attributeRows = useMemo(
     () => buildAttributeRows(selectedProduct?.attributes ?? {}),
     [selectedProduct?.attributes],
@@ -107,7 +110,7 @@ export default function ProductDetailScreen() {
           )}
         </ScrollView>
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, { paddingBottom: footerPaddingBottom }]}>
           <Button title="Add to cart — coming soon" fullWidth disabled onPress={() => undefined} />
           <Button
             title="Back to results"
@@ -207,7 +210,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     paddingHorizontal: Spacing.lg + 2,
-    paddingVertical: Spacing.lg,
+    paddingTop: Spacing.md,
     backgroundColor: Colors.white,
     borderTopWidth: 1,
     borderTopColor: Colors.line,
