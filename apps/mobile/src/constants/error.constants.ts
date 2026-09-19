@@ -16,4 +16,19 @@ export const ERROR_MESSAGES = {
   branchNameRequired: 'Enter the branch name.',
   accountNumberInvalid: 'Enter a valid account number.',
   vendorOnboardFailed: 'Could not save your shop profile. Try again.',
+  searchFailed: 'Could not search products. Try again.',
+  searchLocationRequired: 'Enter your area pincode or use current location to see local prices.',
+  invalidPincode: 'Enter a valid 6-digit Indian pincode.',
+  vendorListingsFailed: 'Could not load your product listings. Try again.',
+  vendorStockUpdateFailed: 'Could not update stock. Try again.',
+  vendorStatusUpdateFailed: 'Could not update listing status. Try again.',
+  vendorCategoriesFailed: 'Could not load your shop categories. Try again.',
+  vendorCatalogExportFailed: 'Could not download the catalog sheet. Try again.',
+  vendorCatalogUploadFailed: 'Could not upload the catalog sheet. Try again.',
+  vendorCatalogFileToolsMissing:
+    'File download/upload needs a rebuild with expo-document-picker, expo-file-system, and expo-sharing installed.',
+  vendorPendingConfirmationsFailed: 'Could not load pending matches. Try again.',
+  vendorConfirmMatchFailed: 'Could not confirm that match. Try again.',
+  vendorCategoriesEmpty:
+    'No shop categories assigned yet. Ask an admin to register your categories before syncing.',
 } as const;

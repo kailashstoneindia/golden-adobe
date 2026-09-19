@@ -3,70 +3,245 @@
 
 .splitPane {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
-  gap: 20px;
-  align-items: start;
+  grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+  gap: 16px;
+  align-items: stretch;
+  min-height: calc(100vh - 180px);
 }
 
 @media (max-width: 1100px) {
   .splitPane {
     grid-template-columns: 1fr;
+    min-height: 0;
   }
 }
 
-.detailPane {
+.categoriesPage {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.categoriesHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.categoriesHeader .pageTitle,
+.categoriesHeader h2 {
+  margin-bottom: 4px;
+}
+
+.categoriesToolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap;
+  margin-left: auto;
+}
+
+.categoriesSearch {
+  width: 220px;
+  flex: 0 0 220px;
+  min-width: 0;
+}
+
+.categoriesActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.categoriesAction {
+  padding: 8px 10px;
+  white-space: nowrap;
+}
+
+.treePanel {
   background: var(--color-white);
   border: 1px solid var(--color-line);
   border-radius: var(--radius-md);
-  padding: 18px;
   box-shadow: var(--shadow-card);
-  position: sticky;
-  top: 16px;
-  max-height: calc(100vh - 120px);
+  overflow: hidden;
+  max-height: calc(100vh - 180px);
+  display: flex;
+  flex-direction: column;
+}
+
+.treeList,
+.treeChildren {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.treeList {
   overflow-y: auto;
+  padding: 6px;
 }
 
-.detailTitle {
-  margin: 16px 0 4px;
-  font-size: 15px;
-  color: var(--color-navy);
+.treeChildren {
+  border-left: 1px solid var(--color-line);
+  margin-left: 18px;
 }
 
-.detailPath {
-  margin: 0 0 12px;
-  font-size: 12px;
-  color: var(--color-ink-soft);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+.treeItem {
+  margin: 0;
 }
 
-/* ── category tree ─────────────────────────────────────────────────────── */
+.treeRow {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 34px;
+  border-radius: 8px;
+}
+
+.treeLevel1 {
+  padding-left: 8px;
+}
+
+.treeLevel2 {
+  padding-left: 8px;
+}
+
+.treeLevel3 {
+  padding-left: 8px;
+}
+
+.treeLevel4 {
+  padding-left: 8px;
+}
+
+.treeRowRoot {
+  background: var(--color-cream);
+  margin-bottom: 2px;
+}
+
+.treeRowSelected {
+  background: var(--color-sky-tint);
+}
+
+.treeRowRoot.treeRowSelected {
+  background: var(--color-sky-tint);
+}
 
 .treeToggle {
   background: none;
   border: none;
   cursor: pointer;
   color: var(--color-ink-soft);
-  font-size: 12px;
-  width: 18px;
+  font-size: 11px;
+  width: 20px;
+  height: 28px;
   padding: 0;
-  margin-right: 4px;
+  flex-shrink: 0;
+  border-radius: 6px;
+}
+
+.treeToggle:hover {
+  background: rgba(15, 43, 82, 0.06);
+  color: var(--color-navy);
 }
 
 .treeSpacer {
   display: inline-block;
-  width: 22px;
+  width: 20px;
+  flex-shrink: 0;
 }
 
-.rowSelected {
-  background: var(--color-sky-tint);
+.treeSelect {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 0;
+  background: transparent;
+  padding: 6px 8px 6px 2px;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 8px;
 }
+
+.treeSelect:hover {
+  background: rgba(15, 43, 82, 0.04);
+}
+
+.treeName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-navy);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.treeRowRoot .treeName {
+  font-size: 14px;
+}
+
+.treeMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--color-ink-soft);
+}
+
+.detailPane {
+  background: var(--color-white);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  box-shadow: var(--shadow-card);
+  position: sticky;
+  top: 16px;
+  max-height: calc(100vh - 180px);
+  overflow-y: auto;
+}
+
+.detailHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.detailTitle {
+  margin: 0;
+  font-size: 16px;
+  color: var(--color-navy);
+}
+
+.detailPath {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: var(--color-ink-soft);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  word-break: break-all;
+}
+
+.detailStats {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--color-ink-soft);
+}
+
+/* ── category badges ───────────────────────────────────────────────────── */
 
 .badgeLeaf,
 .badgeBranch,
 .badgeVariant {
   display: inline-block;
-  font-size: 11px;
-  padding: 2px 8px;
+  font-size: 10px;
+  padding: 1px 7px;
   border-radius: 999px;
   font-weight: 600;
 }
@@ -81,9 +256,6 @@
   color: var(--color-ink-soft);
 }
 
-/* A variant-defining attribute splits products into separate SKUs — worth
-   calling out visually, since it is the difference between one product and
-   several. */
 .badgeVariant {
   background: var(--color-sky-tint);
   color: var(--color-navy);
@@ -96,44 +268,45 @@
   margin: 8px 0 0;
   padding: 0;
   display: grid;
-  gap: 10px;
+  gap: 6px;
 }
 
 .attrItem {
   border: 1px solid var(--color-line);
-  border-radius: var(--radius-md);
-  padding: 10px 12px;
+  border-radius: 8px;
+  padding: 8px 10px;
   background: var(--color-white);
 }
 
 .attrHead {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
+  font-size: 13px;
 }
 
 .attrMeta {
-  margin-top: 4px;
-  font-size: 12px;
+  margin-top: 2px;
+  font-size: 11px;
   color: var(--color-ink-soft);
 }
 
 .attrOptions {
-  margin-top: 6px;
-  font-size: 12px;
+  margin-top: 4px;
+  font-size: 11px;
   color: var(--color-ink-soft);
   background: var(--color-background);
-  border-radius: var(--radius-md);
-  padding: 6px 8px;
+  border-radius: 6px;
+  padding: 4px 6px;
+  line-height: 1.35;
 }
 
-/* Where an attribute comes from: its own category, an ancestor, or global. */
 .scopeown,
 .scopeinherited,
 .scopeglobal {
-  font-size: 11px;
-  padding: 2px 8px;
+  font-size: 10px;
+  padding: 1px 6px;
   border-radius: 999px;
   font-weight: 600;
 }
@@ -227,12 +400,112 @@
 .stepCard > input,
 .stepCard > select {
   width: 100%;
+  max-width: 520px;
+  box-sizing: border-box;
 }
 
 .stepTitle {
   margin: 0;
   font-size: 15px;
   color: var(--color-navy);
+}
+
+.categoryPicker {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+}
+
+.categoryTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+  border: 1.5px solid var(--color-line);
+  border-radius: 10px;
+  background: var(--color-white);
+  padding: 12px 14px;
+  color: var(--color-ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.categoryTrigger:focus {
+  outline: 2px solid rgba(45, 108, 180, 0.25);
+  border-color: var(--color-sky);
+}
+
+.categoryTriggerLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+}
+
+.categoryTriggerChevron {
+  flex-shrink: 0;
+  color: var(--color-ink-soft);
+  font-size: 12px;
+}
+
+.categoryMenu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  max-height: 280px;
+  overflow-y: auto;
+  background: var(--color-white);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+}
+
+.categoryOption {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  box-sizing: border-box;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  padding: 10px 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.categoryOption:hover {
+  background: var(--color-cream, #f7f4ef);
+}
+
+.categoryOptionActive {
+  background: rgba(45, 108, 180, 0.1);
+}
+
+.categoryOptionName {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-navy);
+}
+
+.categoryOptionPath {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--color-ink-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 /* ── review queue ──────────────────────────────────────────────────────── */

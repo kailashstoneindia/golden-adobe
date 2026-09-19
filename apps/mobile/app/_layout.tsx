@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useAuthHydration } from '../src/hooks/auth';
+import { useLocationPreferenceHydration } from '../src/hooks/location';
 import { RidgeSplash } from '../src/components/auth/RidgeSplash';
 import { useFonts } from '../src/hooks/useFonts';
 import { QueryProvider } from '../src/providers/QueryProvider';
@@ -14,9 +15,10 @@ SplashScreen.setOptions({ duration: 300, fade: true });
 
 function RootNavigator() {
   const { fontsLoaded, fontError } = useFonts();
-  const { isHydrated } = useAuthHydration();
+  const { isHydrated: isAuthHydrated } = useAuthHydration();
+  const { isHydrated: isLocationHydrated } = useLocationPreferenceHydration();
 
-  const isAppReady = (fontsLoaded || !!fontError) && isHydrated;
+  const isAppReady = (fontsLoaded || !!fontError) && isAuthHydrated && isLocationHydrated;
 
   useEffect(() => {
     if (isAppReady) {

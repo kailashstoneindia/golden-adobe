@@ -1,0 +1,1 @@
+export { SearchProductCard } from './SearchProductCard';
