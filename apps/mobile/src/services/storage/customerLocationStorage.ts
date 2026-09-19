@@ -1,7 +1,7 @@
 import * as SecureStore from 'expo-secure-store';
 
-import { STORAGE_KEYS } from '../constants';
-import type { CustomerLocationPreference } from '../types';
+import { STORAGE_KEYS } from '../../constants';
+import type { CustomerLocationPreference } from '../../types';
 
 const EMPTY_PREFERENCE: CustomerLocationPreference = {
   pincode: null,
@@ -17,10 +17,10 @@ function isLocationPreference(value: unknown): value is CustomerLocationPreferen
 
   const candidate = value as Record<string, unknown>;
   return (
-    ('pincode' in candidate) &&
-    ('latitude' in candidate) &&
-    ('longitude' in candidate) &&
-    ('source' in candidate)
+    'pincode' in candidate &&
+    'latitude' in candidate &&
+    'longitude' in candidate &&
+    'source' in candidate
   );
 }
 
