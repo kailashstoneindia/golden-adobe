@@ -204,12 +204,35 @@ batch: build Excel from real extracted data → upload via the real
   hand-derived from source code)
 - **Running total:** 7 products
 
+### Batch 2: PGVT (Polished Porcelain) — complete
+
+- **Source:** PGVT PDF pg 81 (Polished Collection index) + pg 82 (Highgloss Collection index)
+- **Rows:** 6 — Calacatta, Pulpis (Grey, cross-validated against the website's own Pulpis
+  design page fetched earlier), Royal Onyx, Verona (Polished finish); Andora, Negro
+  (Highgloss finish)
+- **Result:** 6/6 accepted, 0 rejected
+- **Running total:** 13 products
+
+### Batch 3: Wooden + Outdoor 2CM — complete
+
+- **Source:** Wooden PDF pg 108 (Glenwood design spread) + website; Outdoor PDF pg 69 (20mm
+  spec header) + website
+- **Real gap found mid-batch:** Wooden's 20×120cm (200×1200mm) size wasn't in `tile_size`'s
+  enum at all — the existing `300×450` "wood plank" entry is a genuinely different dimension,
+  not a stand-in. Added `200×1200`, reseeded, verified via upload before committing (separate
+  commit from the main taxonomy fix, found only once real data was being entered)
+- **Rows:** 5 Wooden (Glenwood's real colourways: White, Mist, Grey, Verde, Aqua — all 5, not
+  a further subsample, since the full colourway list was already fully known) + 5 Outdoor 2CM
+  (Bstone/Burge/Magna/Arena/Orion "2.0", 20mm thick, anti_skid TRUE)
+- **Result:** 10/10 accepted (5/5 + 5/5), 0 rejected
+- **Running total:** 23 products
+
 ## Status
 
 Discovery pass complete for 18 of 23 PDFs (plus site data for every major product line);
-taxonomy gap-fill designed, approved, applied, reseeded, and verified against the live API;
-brand row created with real (not placeholder) compliance data; Batch 1 (GVT) complete. Not
-yet started: remaining batches (PGVT, Wooden, Outdoor, Architectural, Moroccan, Terrazzo,
-Grit-Tech, Fullbody, Double Charge, Soluble Salt, Endless, Subway), image sourcing/
-verification, and the 5 unread PDFs (Decor, Large Format Evocative, Curve 3D Slab, Polished
-Slab, Glossy Matt Wall).
+taxonomy gap-fill designed, approved, applied, reseeded, and verified against the live API
+(including one further fix found mid-batch: `tile_size` 200×1200); brand row created with
+real compliance data; Batches 1-3 complete (23 products). Not yet started: remaining batches
+(Architectural, Moroccan, Terrazzo, Grit-Tech, Fullbody, Double Charge, Soluble Salt, Endless,
+Subway), image sourcing/verification, and the 5 unread PDFs (Decor, Large Format Evocative,
+Curve 3D Slab, Polished Slab, Glossy Matt Wall).
