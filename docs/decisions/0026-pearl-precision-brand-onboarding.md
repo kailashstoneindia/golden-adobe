@@ -112,8 +112,8 @@ pass.**
 5. plumbing/valves               — CP PDF, "Allied" section    ✅ DONE (4 products, small —
                                                                     most of "Allied" routed
                                                                     elsewhere, see note)
-6. plumbing/pipes,
-   plumbing/pipe-fittings       — Flowshield PDF
+6. plumbing/pipes,              🟡 PARTIAL (CPVC only, 58 products —
+   plumbing/pipe-fittings       — Flowshield PDF   UPVC/AGRI/SWR still open)
 ```
 
 Cisterns remains the first leaf seeded (same reasoning as before — smallest, cleanest,
@@ -636,6 +636,47 @@ inferred rather than confirmed; flagged as an open item like other placeholder f
 earlier batches.
 
 **178 total Sparsh Pearl products now in the database.**
+
+## Batch 6 complete: Pipes, Pipe Fittings (CPVC only — UPVC/AGRI/SWR sections deferred)
+
+**Scope, stated up front:** Flowshield PDF pages 3-4 (CPVC SDR 11 / SDR 13.5 pipes + CPVC
+fittings per ASTM D2846:2007) only. The same PDF also covers UPVC, AGRI, and SWR pipe/fitting
+lines on later pages — not read for this batch, tracked as open follow-up, not silently
+folded into "Pipes done."
+
+**Real HSN code caused a genuine first-time failure, fixed correctly.** This PDF prints an
+actual HSN code (`39172390`) on every page — the first batch with real HSN data rather than
+a blank placeholder. Both sheets (58 rows total) were rejected 100% on first upload:
+`master_product.hsn_code` is a foreign key to a reference table, and `39172390` didn't exist
+there. Fixed at the source — added it to
+`apps/backend/database/seeders/20260908090001-seed-hsn-codes.js` (kept as its own 8-digit row
+alongside the existing 4-digit `3917`, not truncated to match, since the printed code is real
+data) — then re-ran only that seeder (1 row inserted) before retrying the upload.
+
+**`fitting_size` caught a second real error**, on the reducer fittings specifically:
+`fitting_size` is a plain number field, and reducers genuinely have two diameters
+("20x15") that don't fit one number. Fixed by using the larger diameter as the structured
+`fitting_size` value and keeping the full "AxB" in the product name — the reduction is
+preserved in the name but not independently queryable as an attribute; flagged as a real
+modelling gap, not hidden.
+
+**Final upload state: Pipes 24/24, Pipe Fittings 34/34 (26 first attempt + 8 reducers on
+retry — the 26 already-accepted rows correctly rejected as duplicates on the second
+attempt, confirming the dedup constraint from 0012 works exactly as designed).**
+
+**Images: 9 of 11 product families obtained, covering 46 of 58 rows.** The website
+consolidates each size-range into one product page (e.g. "CPVC Pipes – SDR 11, Size: 15mm to
+50mm" is a single page, single image, single SKU on the live site — matching the pattern
+found at the very start of this conversation with `UMP4003015`). Every row within a size
+family shares that one family image once linked by base SKU — same accepted-limitation
+pattern as the Batch 1 colour variants. Not assumed uniformly: checked one fitting (End Cap)
+where the website's own displayed SKU was the 25mm variant, not the smallest size, disproving
+an assumption from the first few checks that "smallest size = website SKU" holds generally.
+**Genuinely unobtainable, confirmed via the site's own category listing having only 2 pipe
+products total:** the 5-metre-length SDR 11 and SDR 13.5 pipe variants (12 rows) — the
+website only carries 3-metre lengths.
+
+**236 total Sparsh Pearl products now in the database.**
 
 ## Sources
 

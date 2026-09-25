@@ -42,6 +42,12 @@ const HSN = [
 
   // --- Plumbing (Chapter 39 plastics, 73/74 metal) ---
   ['3917', 'Tubes, pipes and hoses and their fittings, of plastics', 18],
+  // 8-digit variant added onboarding Pearl Precision (decision 0026): their
+  // Flowshield CPVC pipe/fitting catalog prints this specific code on every
+  // page ("HSN Code: 39172390"), not the 4-digit 3917 above. Kept as its
+  // own row rather than truncated to 3917 — the printed code is the real
+  // data; truncating it would be a guess dressed up as precision.
+  ['39172390', 'Tubes, pipes and hoses, rigid, of other plastics (CPVC pipes & fittings)', 18],
   ['3922', 'Baths, wash basins, lavatory seats and covers, of plastics', 18],
   ['7307', 'Tube or pipe fittings of iron or steel', 18],
   ['8481', 'Taps, cocks, valves and similar appliances for pipes and tanks', 18],
