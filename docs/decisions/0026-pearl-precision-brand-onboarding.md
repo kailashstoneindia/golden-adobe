@@ -129,12 +129,8 @@ numbered sequence rather than leaving them as a separate, easy-to-forget list:
 7. sanitaryware/seat-covers,    ✅ DONE (22 products: 16 + 6)
    sanitaryware/jet-sprays      — PTMT PDF, pages 04–05 ("Seat Covers", "Jet Sprays"
                                    per its own table of contents)
-8. plumbing/hoses-couplings     — PTMT PDF, pages 49–50 ("Ball Cocks", "Waste
-                                   Couplings", "Connection Pipes", "Washing Machine
-                                   Inlet/Outlet Hose", "Bottle Trap" — note "Ball
-                                   Cocks" itself needs no new row here, it already
-                                   fits plumbing/valves' existing Ball enum value;
-                                   only the hose/coupling items are genuinely new)
+8. plumbing/hoses-couplings     🟡 PARTIAL (9 products from PTMT p.66;
+                                   CP's Waste Coupling ALL-1052/1053 still open)
 9. kitchen/sinks, cabinets,
    floor-gratings,
    pest-odour-control           — PTMT PDF, pages 51–55 ("Kitchen Sinks", "Shell
@@ -702,6 +698,29 @@ pattern as Batch 6's pipes).** Confirmed via each category's live listing page b
 downloading, not assumed.
 
 **258 total Sparsh Pearl products now in the database.**
+
+## Batch 8 complete: Hoses & Couplings (partial — CP's Waste Coupling not yet added)
+
+Source: PTMT PDF page 66 (printed 63), "Accessories" section — hose/pipe/coupling items only.
+Most of that page (inlet valves, syphon flush assemblies, foot valves) are internal cistern
+mechanism parts that don't belong to this leaf, same scoping discipline as Batch 5's Valves.
+CP catalog's "Waste Coupling Full/Half Thread Brass" (`ALL-1052`/`ALL-1053`, page 74, seen
+during Batch 5) also belongs here — **not yet added, a real known gap**, not silently folded
+into "done."
+
+Two of this leaf's enum values had no exact match on the source page — `hose_coupling_type`
+has no "Shower Tube" or generic "Waste Pipe" option, so PVC Shower Tube was mapped to
+`Connection Hose` and Waste Pipe to `Waste Coupling` (closest fits, not exact category
+matches — flagged rather than presented as precise).
+
+**Uploaded: 9/9 accepted, 0 rejected**, first attempt.
+
+**Images: 3 of 9 (one variant of each of the 3 product types)** — `AP-578`, `WMP-187`,
+`WP-183` all confirmed live; the other 6 (longer-length variants of the same three products)
+not separately listed on the site, same "shortest/first variant only" pattern seen in
+Batches 6 and 7.
+
+**267 total Sparsh Pearl products now in the database.**
 
 ## Sources
 
