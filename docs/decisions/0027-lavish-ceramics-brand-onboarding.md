@@ -254,13 +254,32 @@ batch: build Excel from real extracted data → upload via the real
 - **Result:** 15/15 accepted (3/3 × 5), 0 rejected
 - **Running total:** 47 products (DB-verified)
 
+### Batch 6: Subway (Wall Tiles) — complete
+
+- **Source:** `subway-plain.pdf` (13pp — per-colourway spreads + pg 12 spec table: 75×300mm,
+  8mm thick, 44 pcs/box, 10.66 sqft/box, 13.5kg/box) + website's full 20-colour list
+- **Third mid-batch size gap found:** Subway is a "brick" form factor (75×300mm) — genuinely
+  different shape class from every floor-tile size in the enum, not a value that was ever
+  going to be covered by the floor-tile sizes already present. Added `75×300`, reseeded,
+  verified via upload, then committed — same discipline as the two prior size gaps
+- **Rows:** 8 of the 20 real named colours, deliberately chosen to cover every new
+  `tile_colour_family` value from the original taxonomy fix in one pass: Black, Mango Yellow
+  (→Yellow), Blood Red (→Red), Aqua Green (→Green), Orange, Pink, Pacific Blue (→Aqua), White.
+  Each row's `tile_colour_name` carries the literal marketing name (e.g. "Mango Yellow"),
+  `tile_colour_family` carries the coarse bucket — confirms the two-field design works exactly
+  as reasoned when it was proposed
+- **Result:** 8/8 accepted, 0 rejected — exercises 6 of the 6 new colour-family enum values
+  plus the new `tile_colour_name` field in one batch, all confirmed working end to end
+- **Running total:** 55 products (DB-verified)
+
 ## Status
 
 Discovery pass complete for 18 of 23 PDFs (plus site data for every major product line);
 taxonomy gap-fill designed, approved, applied, reseeded, and verified against the live API
-(3 mid-batch fixes: `tile_size` 200×1200 and 300×1200, both real Lavish sizes missed in the
-first pass); brand row created with real compliance data; Batches 1-5 complete (47 products,
-DB-verified) — every Floor Tiles line from the discovery pass now has at least a
-representative sample except Curve 3D Slab, Polished Slab, and Decor (unread PDFs). Not yet
-started: Wall Tiles (Subway, Glossy Matt Wall), image sourcing/verification, and the 3
-remaining unread PDFs.
+(4 mid-batch fixes total: `tile_size` 200×1200, 300×1200, and 75×300 — three real Lavish
+sizes missed in the first taxonomy pass, each found only once real data was being entered,
+not guessed in advance); brand row created with real compliance data; Batches 1-6 complete
+(55 products, DB-verified) — every enum value added in this decision has now been exercised
+by at least one real accepted product. Not yet started: Glossy Matt Wall (last remaining
+line with site/PDF data available), image sourcing/verification, and 4 still-unread PDFs
+(Decor, Large Format Evocative, Curve 3D Slab, Polished Slab).
