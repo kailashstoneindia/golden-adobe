@@ -240,13 +240,27 @@ batch: build Excel from real extracted data → upload via the real
 - **Result:** 9/9 accepted (3/3 + 3/3 + 3/3), 0 rejected
 - **Running total:** 32 products (verified against the DB directly, not just API responses)
 
+### Batch 5: Grit-Tech, Fullbody, Double Charge, Soluble Salt, Endless — complete
+
+- **Source:** website (Grit-Tech via site finish-filter, confirmed 7 designs earlier — using
+  3; Fullbody/Double Charge/Soluble Salt/Endless per-line pages, all previously fetched)
+- **Significance:** this batch is the first real exercise of the `tile_material` enum
+  additions (Fullbody, Double Charge, Soluble Salt) and the `Grit-Tech` finish value from the
+  original taxonomy fix — all four confirmed working end to end via real upload, not just
+  present in a downloaded template
+- **Rows:** 3 Grit-Tech (Ambient, Mek, Timber Ambient — 600×1200mm), 3 Fullbody (Apricot,
+  Butter, Smoke — 15mm thickness, the confirmed real gap from earlier), 3 Double Charge
+  (Onyx, Albaster, Delta), 3 Soluble Salt (ART 03/14/26), 3 Endless (Castro, Edison, Epic)
+- **Result:** 15/15 accepted (3/3 × 5), 0 rejected
+- **Running total:** 47 products (DB-verified)
+
 ## Status
 
 Discovery pass complete for 18 of 23 PDFs (plus site data for every major product line);
 taxonomy gap-fill designed, approved, applied, reseeded, and verified against the live API
-(3 further fixes found mid-batch: `tile_size` 200×1200, `tile_size` 300×1200, both real
-Lavish sizes missed in the first pass); brand row created with real compliance data;
-Batches 1-4 complete (32 products, DB-verified). Not yet started: remaining batches
-(Grit-Tech, Fullbody, Double Charge, Soluble Salt, Endless, Subway), image sourcing/
-verification, and the 5 unread PDFs (Decor, Large Format Evocative, Curve 3D Slab, Polished
-Slab, Glossy Matt Wall).
+(3 mid-batch fixes: `tile_size` 200×1200 and 300×1200, both real Lavish sizes missed in the
+first pass); brand row created with real compliance data; Batches 1-5 complete (47 products,
+DB-verified) — every Floor Tiles line from the discovery pass now has at least a
+representative sample except Curve 3D Slab, Polished Slab, and Decor (unread PDFs). Not yet
+started: Wall Tiles (Subway, Glossy Matt Wall), image sourcing/verification, and the 3
+remaining unread PDFs.
