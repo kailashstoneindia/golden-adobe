@@ -203,13 +203,34 @@ const TREE = [
         ['tank_shape', 'Shape', 'enum', null, true, true, ['Vertical', 'Horizontal', 'Loft']],
         ['tank_colour', 'Colour', 'text', null, false, false, []],
       ]},
+      // Added onboarding Pearl Precision (decision 0026): Connection Hoses,
+      // Washing Machine Inlet/Outlet Hoses, and Waste Couplings are all
+      // flexible-connector products sold by size/length rather than by the
+      // rigid material+diameter+pressure-class model that fits Pipes/Pipe
+      // Fittings/Valves — didn't force them into those leaves' existing
+      // attribute shape.
+      { name: 'Hoses & Couplings', slug: 'hoses-couplings', uom: 'NOS', attrs: [
+        ['hose_coupling_type', 'Type', 'enum', null, true, true,
+          ['Connection Hose', 'Washing Machine Inlet Hose', 'Washing Machine Outlet Hose', 'Waste Coupling']],
+        ['hose_coupling_size', 'Size / Length', 'text', null, true, true, []],
+        ['hose_coupling_material', 'Material', 'enum', null, false, true, ['PVC', 'Braided SS', 'Rubber', 'PP']],
+      ]},
     ],
   },
 
   {
     name: 'Sanitaryware & Bath', slug: 'sanitaryware', uom: 'NOS', attrs: [
+      // 'Clear' added onboarding Pearl Precision (decision 0026): their
+      // C-001/CLR, C-007/CLR cisterns have a transparent tank window —
+      // no existing finish value fit, and this attribute is required
+      // (is_variant_defining) on every Sanitaryware leaf including
+      // Cisterns, so a plastic-line product with no metal finish at all
+      // still needs a value here. Whether 'Clear' belongs semantically on
+      // a metal-finish attribute at all is a real, deferred question — see
+      // decision 0026's pipeline-test section; kept here as the minimal
+      // fix that unblocks the test import rather than a considered answer.
       ['sanitary_finish', 'Finish', 'enum', null, true, true,
-        ['Chrome', 'Matte Black', 'Rose Gold', 'Brushed Nickel', 'Gold', 'White', 'Ivory']],
+        ['Chrome', 'Matte Black', 'Rose Gold', 'Brushed Nickel', 'Gold', 'White', 'Ivory', 'Clear']],
     ],
     children: [
       { name: 'Water Closets', slug: 'water-closets', uom: 'NOS', attrs: [
@@ -232,6 +253,17 @@ const TREE = [
         ['cistern_type', 'Cistern Type', 'enum', null, true, true, ['Concealed', 'Exposed', 'Wall Mounted']],
         ['flush_mechanism', 'Flush Mechanism', 'enum', null, true, true, ['Single', 'Dual']],
         ['cistern_capacity', 'Capacity', 'number', 'litres', true, false, ['3', '6', '9']],
+        // Added onboarding Pearl Precision (decision 0026): PTMT plastic
+        // cisterns issue a distinct Cat No. per body colour (C-001/WH,
+        // C-001/IV, C-001/CLR, ...), a genuinely separate stockable item per
+        // colour, not tint-on-demand like paint (0016) — variant-defining,
+        // same treatment as sanitary_finish above. Distinct from that
+        // attribute: sanitary_finish is metal fitting finish (Chrome, Rose
+        // Gold, ...), this is plastic cistern BODY colour. Values are Pearl's
+        // own printed colour legend; expect to extend if a future brand needs
+        // colours not in this list.
+        ['cistern_colour', 'Colour', 'enum', null, true, true,
+          ['White', 'Ivory', 'Pink', 'Blue', 'Alpine Blue', 'Green', 'Maroon', 'Magenta', 'Clear']],
       ]},
       { name: 'Urinals', slug: 'urinals', uom: 'NOS', attrs: [
         ['urinal_type', 'Urinal Type', 'enum', null, true, true, ['Wall Hung', 'Floor', 'Waterless']],
@@ -254,11 +286,41 @@ const TREE = [
         ['arm_included', 'Arm Included', 'boolean', null, false, false, []],
       ]},
       { name: 'Bath Accessories', slug: 'bath-accessories', uom: 'NOS', attrs: [
+        // 'Soap Dispenser' added onboarding Pearl Precision (decision 0026):
+        // Pearl sells wall-mounted soap dispensers (SD-257/258/260) as a
+        // distinct accessory type — fits this leaf's existing shape, no new
+        // leaf needed.
         ['accessory_type', 'Accessory Type', 'enum', null, true, true,
-          ['Towel Rail', 'Towel Ring', 'Soap Dish', 'Robe Hook', 'Toilet Paper Holder', 'Grab Bar', 'Shelf']],
+          ['Towel Rail', 'Towel Ring', 'Soap Dish', 'Robe Hook', 'Toilet Paper Holder', 'Grab Bar', 'Shelf', 'Soap Dispenser']],
         ['accessory_material', 'Material', 'enum', null, true, true,
           ['Stainless Steel', 'Brass', 'Aluminium', 'Glass', 'Plastic']],
         ['accessory_mounting', 'Mounting', 'enum', null, false, false, ['Wall', 'Freestanding']],
+      ]},
+      // Added onboarding Pearl Precision (decision 0026): WC seat covers are
+      // a distinct, separately-purchased product (Eco, Passion, Anglo Indian,
+      // Hydraulic/Heavy Regular series in their PTMT catalog) — not an
+      // attribute of Water Closets, since a cover is bought and replaced
+      // independently of the WC itself.
+      { name: 'Seat Covers', slug: 'seat-covers', uom: 'NOS', attrs: [
+        ['seat_cover_type', 'Seat Cover Type', 'enum', null, true, true,
+          ['Standard', 'Soft Close', 'Hydraulic', 'Duo (Kids + Adults)']],
+        ['seat_cover_material', 'Material', 'enum', null, true, true,
+          ['Plastic', 'Duroplast', 'Wood']],
+        ['seat_cover_colour', 'Colour', 'enum', null, true, true,
+          ['White', 'Ivory', 'Pink', 'Blue', 'Alpine Blue', 'Green', 'Maroon', 'Magenta']],
+        ['jet_provision', 'Jet Provision', 'boolean', null, false, true, []],
+      ]},
+      // Added onboarding Pearl Precision (decision 0026): a jet spray /
+      // health faucet ASSEMBLY sold as its own SKU (hose + trigger + wall
+      // hook), distinct from 'Health Faucet' under Taps & Faucets which
+      // covers the tap-style variant. Pearl's catalog sells both as
+      // separate product lines with separate Cat No. series (HF-xxx here
+      // vs. the taps-faucets leaf's health-faucet TAPS).
+      { name: 'Jet Sprays', slug: 'jet-sprays', uom: 'NOS', attrs: [
+        ['jet_spray_finish', 'Finish', 'enum', null, true, true,
+          ['Chrome', 'White', 'Ivory']],
+        ['hose_length', 'Hose Length', 'number', 'mtr', true, true, ['1', '1.5']],
+        ['hook_included', 'Hook Included', 'boolean', null, false, true, []],
       ]},
     ],
   },
@@ -601,6 +663,40 @@ const TREE = [
       { name: 'Engineered Stone', slug: 'engineered-stone', uom: 'SQFT', attrs: [
         ['engineered_type', 'Engineered Type', 'enum', null, true, true, ['Quartz', 'Engineered Marble', 'Sintered Stone']],
         ['consistency_guarantee', 'Consistency Guarantee', 'boolean', null, false, true, []],
+      ]},
+    ],
+  },
+
+  // Added onboarding Pearl Precision (decision 0026): sinks, cabinets, floor
+  // gratings and pest-control products from Pearl's "Kitchen" catalog
+  // section had no home in the existing 8 top-level categories. Considered
+  // folding into Sanitaryware & Bath or Hardware, but neither name fits —
+  // a kitchen sink is not bath fixtures, and it is not a tool/consumable.
+  // New top-level, matching how Pearl's own site treats Kitchen as a peer
+  // of Sanitaryware and Pipes & Fittings, not a subcategory of either.
+  {
+    name: 'Kitchen', slug: 'kitchen', uom: 'NOS', attrs: [],
+    children: [
+      { name: 'Stainless Steel Sinks', slug: 'sinks', uom: 'NOS', attrs: [
+        ['sink_type', 'Sink Type', 'enum', null, true, true,
+          ['Single Bowl', 'Single Bowl with Drainboard', 'Double Bowl']],
+        ['sink_material', 'Material', 'enum', null, true, true, ['SS 304', 'SS 202']],
+        ['sink_dimensions', 'Dimensions', 'text', 'mm', true, false, []],
+        ['sink_thickness', 'Thickness', 'number', 'mm', false, false, []],
+      ]},
+      { name: 'Cabinets', slug: 'cabinets', uom: 'NOS', attrs: [
+        ['cabinet_type', 'Cabinet Type', 'enum', null, true, true, ['Corner Cabinet', 'Mirror Cabinet']],
+        ['cabinet_dimensions', 'Dimensions', 'text', 'mm', true, false, []],
+      ]},
+      { name: 'Floor Gratings', slug: 'floor-gratings', uom: 'NOS', attrs: [
+        ['grating_material', 'Material', 'enum', null, true, true, ['Stainless Steel', 'Plastic']],
+        ['grating_size', 'Size', 'number', 'mm', true, true, []],
+      ]},
+      // Covers Pearl's "Shell Cockroach Repeller" line — a device product,
+      // not a chemical, so modelled here rather than under Hardware's
+      // Adhesives & Sealants or any consumable leaf.
+      { name: 'Pest & Odour Control', slug: 'pest-odour-control', uom: 'NOS', attrs: [
+        ['pest_control_type', 'Type', 'enum', null, true, true, ['Cockroach Repeller']],
       ]},
     ],
   },
