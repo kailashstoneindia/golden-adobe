@@ -166,11 +166,30 @@ Reseeded against the running local dev Postgres (`db:seed --seed 20260901100000-
 seeded**: downloaded the real Floor Tiles import template from the running API afterward and
 confirmed every new value appears in the template's actual data-validation lists.
 
+## Stage 1: brand row created
+
+Unlike Pearl (placeholder email/phone, still pending vendor confirmation), Lavish's own
+Outdoor 2CM PDF back cover gave real consumer-care contact channels directly, so this brand
+row uses **real, not placeholder** data end to end:
+
+```
+id: fd4eeee6-f737-4bd7-a0ee-e15716e2ec46
+name: Lavish Ceramics · slug: lavish-ceramics
+manufacturer_name: Lavish Granito Pvt. Ltd.
+manufacturer_address: Halvad Road, At. Unchi Mandal, Dist. Morbi - 363642, Gujarat, India
+consumer_care_email: inquiry@lavishceramics.com
+consumer_care_phone: +91 99099 80082
+```
+
+Same caveat as Pearl still applies: this is scraped public material, not a vendor-confirmed
+onboarding form — the "seed draft, not confirmed data" framing from 0026 holds here too, it's
+just a materially stronger starting position than Pearl had (no fields fabricated).
+
 ## Status
 
 Discovery pass complete for 18 of 23 PDFs (plus site data for every major product line);
-taxonomy gap-fill designed, approved, applied, reseeded, and verified against the live API.
-Next: per-line product batches following 0026's batch → template → upload → verify → commit
-pattern. Not yet started: brand row creation (manufacturer identity found, not yet vendor-
-confirmed), image sourcing/verification, and the 5 unread PDFs (Decor, Large Format Evocative,
-Curve 3D Slab, Polished Slab, Glossy Matt Wall).
+taxonomy gap-fill designed, approved, applied, reseeded, and verified against the live API;
+brand row created with real (not placeholder) compliance data. Next: per-line product batches
+following 0026's batch → template → upload → verify → commit pattern. Not yet started: image
+sourcing/verification, and the 5 unread PDFs (Decor, Large Format Evocative, Curve 3D Slab,
+Polished Slab, Glossy Matt Wall).
