@@ -101,8 +101,10 @@ pass.**
                                    already settled)
 2. sanitaryware/water-closets,  — Sanitary Ware PDF only              ✅ DONE (62 products:
    wash-basins, urinals                                                  22 + 35 + 5)
-3. sanitaryware/taps-faucets    — CP PDF + PTMT PDF, together (same reasoning
-                                   as Cisterns: two material lines feed one leaf)
+3. sanitaryware/taps-faucets    — CP PDF + PTMT PDF, together (same reasoning  🟡 PARTIAL (44
+                                   as Cisterns: two material lines feed one leaf)  products, 3
+                                                                                    of many series —
+                                                                                    see Batch 3 note)
 4. sanitaryware/showers,
    bath-accessories             — CP PDF
 5. plumbing/valves               — CP PDF, "Allied" section
@@ -512,6 +514,34 @@ The only path to real images here is Pearl supplying photography directly — al
 question 9 — not a different search strategy on our side. Rule adopted going forward:
 **pull images as part of every batch, before considering it done, not as a separate
 afterthought step** — this gap is what happens when that discipline lapses.
+
+## Batch 3 complete: Taps & Faucets (partial — 3 of many series, scope flagged)
+
+**Scope, stated explicitly rather than implied as complete:** CP catalog alone has dozens of
+named tap series (Pisces, Taurus, Beaut, Oyster, Marina, Nova, Virgo, Leo, Aquarius, Earth,
+Doris, Libra, Brenta, Neptune, Pluto...) across many pages, plus PTMT's ~20 more series.
+Reading every one before this batch would block progress on the rest of the rollout. This
+batch covers **3 series read in full**: Beaut (CP, from the original website scan), Pisces
+(CP PDF page 71), Taurus (CP PDF pages 72-74) — 44 products, a real first pass, **not** full
+CP+PTMT tap coverage. Remaining series are open follow-up work, tracked here rather than
+silently treated as done.
+
+**Uploaded: 44/44 accepted, 0 rejected**, first attempt (after a JWT refresh — the dev token
+from Batch 1 had expired; minted a new 4-hour one to reduce how often this interrupts the
+run). `sanitary_finish = 'Chrome'` used throughout — unlike Batches 1-2's placeholder use of
+this attribute, CP taps are genuinely chrome-plated brass, so this is a real mapping, not a
+workaround.
+
+**Images: 16 of 44 (Beaut only) — the other 28 (Pisces, Taurus) confirmed genuinely
+unobtainable, not just unfound.** Checked properly this time, per the rule adopted after
+Batch 2: Beaut's 16 products are live on the website, confirmed via its category listing
+page, and all 16 images downloaded successfully (direct URL construction from the known
+`{SKU}.jpg` pattern, verified against one image visually). Pisces and Taurus are **not** on
+the live site — confirmed by site search returning zero results for both series names, and
+by a direct check that `PIS-100.jpg` 404s (caught a false positive first: the failed request
+saved a 201KB HTML error page with a `.jpg` extension, which would have looked like a
+successful download by file size alone — verified content type before trusting it). Same
+structural gap as Batch 2: these series exist only in the PDF, no web presence to pull from.
 
 ## Catalog coverage gap found and closed: not everything in Pearl's PDFs fit our existing tree
 
