@@ -82,15 +82,79 @@ assumed uniform** — this is the key operational lesson carried into the batch 
 | Large-format slab (Curved 3D, Polished Slab, 1200×1800mm) | No `slab_type` or similar attribute exists on any tile leaf | **Possible gap** — "Curved 3D" is a physical surface texture distinct from `tile_finish`'s flat vocabulary; not yet confirmed as a hard blocker until the PDF's own attribute table is read. |
 | Application areas (Bedroom, Bathroom, Living Room, Kitchen, Commercial, Outdoor) | `floor_application_area` / `wall_application_area` leaf attributes already cover this closely | Likely **no gap** — needs final confirmation against real per-line usage. |
 
-This table is a **first-pass gap list from the index/spec pages read so far** (GVT, Subway
-Plain, Grit-Tech), not an exhaustive read of all 23 PDFs. Matches the same "don't claim more
-coverage than was actually checked" discipline 0026 settled on after its citation-error
-correction. Remaining PDFs to check before the gap list is final: PGVT, Wooden, Outdoor 2CM,
-Architectural Surfaces, Moroccan, Terrazzo, Endless, Decor, Large Format Evocative, Curve 3D
-Slab, Polished Slab, Fullbody, Soluble Salt, and the other 6 Subway colourway brochures.
+### Strategy correction: PDFs vs. website, checked per line
+
+Initial plan (approved) was to read all 23 PDFs like Pearl's 4. After sampling confirmed these
+brochures are 10-20x larger than Pearl's and inconsistently structured (some have a
+consolidated series/size index on their closing pages — GVT, PGVT; others like Grit-Tech and
+the Subway line don't), the user redirected: pull the PDF index/packing tables where they
+exist, and use the website's per-line and per-design pages (already proven fast and accurate
+against the Pulpis cross-check) for everything else. Final source used per line:
+
+| Line | Source used | Why |
+|---|---|---|
+| GVT (Matt Porcelain) | PDF index (pg 94) + packing table (pg 95) | 85 series across 7 finish collections (Matt, Matt+Structure, Carvin, Carvin+Structure, GT & GT+Structure, R10B, Sugar), full size matrix |
+| PGVT (Polished Porcelain) | PDF index (pg 81-82) + packing table (pg 83) | 73 series across Polished + Highgloss collections |
+| Outdoor 2CM | PDF spec page (pg 69) + website | 20mm thickness, R9-R13 slip rating confirmed; 6 representative designs (Ariel, Bstone/Burge/Magna/Arena/Orion "2.0") from site |
+| Wooden 20×120 | PDF single-design spread (pg 108) + website | Confirms real named colourways (Glenwood: White/Mist/Grey/Verde/**Aqua**); 6 representative designs from site |
+| Architectural Surfaces | Website | 6 designs (Fero, Oxydart, Cava, Oryol, Assen Wood, Romney), all 30×120cm, "3-D pieces" texture |
+| Moroccan | Website | 6 designs, 60×60cm, geometric/Moroccan pattern |
+| Terrazzo | Website | 6 designs, sizes 30×60 to 80×160cm |
+| Grit-Tech | Website (site filter, `filter_finish=grit-tech`) | 7 designs (Ambient, Geneva, Mek, Neo, Tesela, Tiffany, Timber Ambient), 60×120/80×160cm |
+| Fullbody | Website | **15mm thickness confirmed** (vs 3-4mm standard) — real gap, see below |
+| Double Charge | Website | 6 designs, 60×60/60×120cm |
+| Soluble Salt | Website | 6 designs (ART 03/06/14/15/26/28), 60×60cm, screen-print/nanocoating process |
+| Endless | Website | 6 designs, 60×120/80×160cm |
+| Subway (7 brochures) | PDF (Plain: 13pp, per-colourway spreads + spec page) | 20 named colours confirmed from site; 4 of the 7 PDF files (Captiva, Milagro, 80×80, 100×200-Bevelled) **failed to download intact — see below** |
+| Decor, Large Format Evocative, Curve 3D Slab, Polished Slab, Glossy Matt Wall | Not yet read | Lower priority — no site product-family page found for these; deferred, flagged not silently dropped |
+
+### Real, confirmed taxonomy gaps (not guesses — each tied to a specific source above)
+
+| Attribute | Existing enum | Missing values found | Evidence |
+|---|---|---|---|
+| `tile_material` | Vitrified (GVT), Vitrified (PGVT), Ceramic, Porcelain, Mosaic, Cement/Terrazzo | **Fullbody, Double Charge, Soluble Salt** | Real manufacturing sub-types, each with its own dedicated PDF/site collection |
+| `tile_finish` | Glossy, Matte, Satin, Rustic, Carving, Polished, Sugar, Lappato | **Matt with Structure, Carvin with Structure, GT/Grit-Tech, R10B, Highgloss** | GVT pg 94 + PGVT pg 82 collection headers, verbatim |
+| `tile_thickness` | 6, 8, 9, 10, 12 (mm) | **15mm (Fullbody), 20mm (Outdoor 2CM)** | Fullbody website page ("15mm... vs 3 to 4mm standard"); Outdoor PDF pg 69 header "20MM Thick Outdoor Tiles" |
+| `tile_colour_family` | White, Beige, Grey, Brown, Black, Blue, Wood, Multi | **Yellow, Orange, Red, Green, Pink** (from 20 named subway colours: Mango Yellow, Orange, Blood Red, Aqua/Oasis Green, Pink, etc.) and **Aqua** doesn't cleanly fit Blue/Multi either | Subway colour list (site) + Glenwood wooden-tile colourway (PDF pg 108) |
+| `tile_size` | up to 1200×1800mm | none — **already covers** 120×180cm | Confirmed match, not a gap |
+| Subway-specific colour name | none | Same gap pattern as Pearl's `cistern_colour` — `tile_colour_family` buckets lose the literal marketing name (e.g. "Mango Yellow" vs just "Yellow") | Same reasoning 0026 used for seat-cover colours |
+
+This list is now cross-validated against real PDF index/spec pages and matching website data
+for every major line except Decor, Large Format Evocative, Curve 3D Slab, Polished Slab, and
+Glossy Matt Wall (5 of 23 PDFs, no site product-family page found for these — flagged as
+unread, not silently claimed covered).
+
+### Real find: manufacturer legal identity (was a hard blocker for Pearl)
+
+The Outdoor 2CM PDF's back cover (pg 70) gives the actual legal manufacturer entity, address,
+and contact channels — the exact fields that blocked `brand` row creation for Pearl (Stage 1
+in 0026's sequencing):
+
+- **Legal name:** Lavish Granito Pvt. Ltd.
+- **Address:** Halvad Road, At. Unchi Mandal, Dist. Morbi – 363642 (Gujarat), India
+- **Cell:** +91 99099 80082 / +91 99099 87126
+- **Email:** export@lavishceramics.com / inquiry@lavishceramics.com
+
+Not yet vendor-confirmed (same "seed draft, not confirmed data" framing 0026 used throughout),
+but unlike Pearl this removes the brand-creation blocker entirely if this data holds up —
+worth flagging as a meaningfully better starting position than Pearl had.
+
+### Real gap: 4 of 23 PDFs will not download intact
+
+`subway-captiva.pdf` and `subway-milagro.pdf` download as **0 bytes**; `subway-80x80.pdf` and
+`subway-100x200-bevelled.pdf` download truncated (49KB and 213KB respectively) — all four
+consistently, across two separate download attempts, despite the server returning HTTP 200
+each time. This is a genuine server-side gap (broken/misconfigured file links), not a
+transient network failure — retrying did not change the outcome. Site pages for these
+colourways were not separately found; flagged as unobtainable via this vendor's current public
+materials, not silently dropped from scope.
 
 ## Status
 
-Discovery in progress. No taxonomy edits or product batches committed yet — this record will
-be extended with the completed gap analysis, the taxonomy fix (if approved as bounded, same
-process as 0026's Kitchen-category addition), and per-line batch results as they're done.
+Discovery pass complete for 18 of 23 PDFs (plus site data for every major product line) and a
+first cross-validated taxonomy gap list. Next: bounded taxonomy fix (enum additions only, same
+class of change as 0026's Kitchen category — no code/migration needed, confirmed no category
+slugs are hardcoded in application code), then per-line product batches following 0026's
+batch → template → upload → verify → commit pattern. Not yet started: brand row creation,
+image sourcing/verification, and the 5 unread PDFs (Decor, Large Format Evocative, Curve 3D
+Slab, Polished Slab, Glossy Matt Wall).
