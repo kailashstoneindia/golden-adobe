@@ -499,6 +499,20 @@ Cisterns + 22 Water Closets + 35 Wash Basins + 5 Urinals).
   in filters.
 - `hsn_code` blank throughout — Sanitary Ware PDF never printed one, same gap as Batch 1.
 
+**No images obtainable for this batch — verified, not merely unattempted.** Batch 1's images
+came from the website; this batch's rows were created without repeating that step, caught
+only when the user asked directly. Checking then found the underlying cause is structural,
+not an oversight to fix by trying harder: `pearl-precision.com`'s live navigation has no
+Water Closets / Wash Basins / Urinals category at all — only PolyCeramic, CP Bath Fittings,
+Cisterns, Kitchen, and Pipes & Fittings (matching the site nav the user showed earlier in
+this conversation). Confirmed with three separate site searches (`SL-9090`, `Loris`, "one
+piece closet") — all returned zero results, not a slug-guessing failure. **The Sanitary Ware
+product line (all of Batch 2, 62 products) has no web presence to pull images from at all.**
+The only path to real images here is Pearl supplying photography directly — already open
+question 9 — not a different search strategy on our side. Rule adopted going forward:
+**pull images as part of every batch, before considering it done, not as a separate
+afterthought step** — this gap is what happens when that discipline lapses.
+
 ## Catalog coverage gap found and closed: not everything in Pearl's PDFs fit our existing tree
 
 Checked directly against Pearl's own website nav and the PTMT catalog's full table of
