@@ -37,6 +37,7 @@ valid when circumstances change.
 | [0023](0023-single-product-create-edit.md) | Single-product create/edit: the last Product Management gap | 2026-09-15 | Accepted |
 | [0024](0024-product-images-gcs.md) | Product images: Google Cloud Storage as the backing store | 2026-09-16 | Accepted (see 0025) |
 | [0025](0025-full-aws-migration.md) | Full AWS migration: target architecture and cost | 2026-09-18 | Proposed — awaiting client go-ahead |
+| [0026](0026-pearl-precision-brand-onboarding.md) | Onboarding Pearl Precision (Sparsh Pearl): brand + catalog seeding strategy | 2026-09-24 | Accepted |
 
 ## Adding a record
 
