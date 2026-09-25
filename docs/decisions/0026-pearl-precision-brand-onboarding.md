@@ -109,7 +109,9 @@ pass.**
    bath-accessories                                                 products; bath-accessories
                                                                       still open, no source
                                                                       data found yet)
-5. plumbing/valves               — CP PDF, "Allied" section
+5. plumbing/valves               — CP PDF, "Allied" section    ✅ DONE (4 products, small —
+                                                                    most of "Allied" routed
+                                                                    elsewhere, see note)
 6. plumbing/pipes,
    plumbing/pipe-fittings       — Flowshield PDF
 ```
@@ -614,6 +616,26 @@ time (not file size alone) — the Batch 3 false-positive (a 404 error page save
 extension) made that check non-negotiable going forward.
 
 **174 total Sparsh Pearl products now in the database.**
+
+## Batch 5 complete: Valves
+
+Source: CP catalog PDF page 74 (printed 67), "Allied" section. Small batch by design, not by
+mistake: most of that section's items belong elsewhere — Waste Coupling Full/Half Thread
+Brass routes to the new `hoses-couplings` leaf (Batch 8), not Valves; Surgical/Pressmatic
+taps and Sink Mixer route to `taps-faucets`. Only the genuine valve-type items were taken
+here: 3 angle cocks (Zen, Eco, Turbo) and 1 foot-operated tap.
+
+**Uploaded: 4/4 accepted, 0 rejected. Images: 4/4**, full coverage — all four confirmed live
+on the website (Zen Angle Cock found via site search first, SKU and image confirmed on its
+product page), downloaded via direct URL construction. Filename case varies from the printed
+Cat No. (`All-1103.jpg` for `ALL-1103`, lowercase "ll") — worth noting as a pattern to expect
+in future batches, tried both cases rather than assuming one.
+
+`valve_size` defaulted to 15mm (standard angle-cock bore) — not printed on the source page,
+inferred rather than confirmed; flagged as an open item like other placeholder fields in
+earlier batches.
+
+**178 total Sparsh Pearl products now in the database.**
 
 ## Sources
 
