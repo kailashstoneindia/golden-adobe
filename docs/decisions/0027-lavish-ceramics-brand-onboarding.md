@@ -149,12 +149,28 @@ transient network failure — retrying did not change the outcome. Site pages fo
 colourways were not separately found; flagged as unobtainable via this vendor's current public
 materials, not silently dropped from scope.
 
+## Taxonomy fix (applied)
+
+Bounded design (brainstorming skill, same classification as 0026's Kitchen-category addition)
+presented and approved. Applied to `apps/backend/database/seed-data/taxonomy.js`:
+
+- `tile_material` +Fullbody, +Double Charge, +Soluble Salt
+- `tile_finish` +Matt with Structure, +Carvin with Structure, +Grit-Tech, +R10B, +Highgloss
+- `tile_colour_family` +Yellow, +Orange, +Red, +Green, +Pink, +Aqua
+- `tile_thickness` +15, +20 (mm)
+- new `tile_colour_name` (text, non-variant-defining) — literal marketing colour name,
+  same reasoning as Pearl's `cistern_colour`/`seat_cover_colour`
+
+Reseeded against the running local dev Postgres (`db:seed --seed 20260901100000-seed-taxonomy.js`
+— 1 attribute, 16 enum options inserted, no errors) and **verified end-to-end, not just
+seeded**: downloaded the real Floor Tiles import template from the running API afterward and
+confirmed every new value appears in the template's actual data-validation lists.
+
 ## Status
 
-Discovery pass complete for 18 of 23 PDFs (plus site data for every major product line) and a
-first cross-validated taxonomy gap list. Next: bounded taxonomy fix (enum additions only, same
-class of change as 0026's Kitchen category — no code/migration needed, confirmed no category
-slugs are hardcoded in application code), then per-line product batches following 0026's
-batch → template → upload → verify → commit pattern. Not yet started: brand row creation,
-image sourcing/verification, and the 5 unread PDFs (Decor, Large Format Evocative, Curve 3D
-Slab, Polished Slab, Glossy Matt Wall).
+Discovery pass complete for 18 of 23 PDFs (plus site data for every major product line);
+taxonomy gap-fill designed, approved, applied, reseeded, and verified against the live API.
+Next: per-line product batches following 0026's batch → template → upload → verify → commit
+pattern. Not yet started: brand row creation (manufacturer identity found, not yet vendor-
+confirmed), image sourcing/verification, and the 5 unread PDFs (Decor, Large Format Evocative,
+Curve 3D Slab, Polished Slab, Glossy Matt Wall).
