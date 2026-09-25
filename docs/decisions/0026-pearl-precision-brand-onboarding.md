@@ -126,7 +126,7 @@ batches 1–6 were planned — they were created later in this same record (new 
 numbered sequence rather than leaving them as a separate, easy-to-forget list:
 
 ```
-7. sanitaryware/seat-covers,
+7. sanitaryware/seat-covers,    ✅ DONE (22 products: 16 + 6)
    sanitaryware/jet-sprays      — PTMT PDF, pages 04–05 ("Seat Covers", "Jet Sprays"
                                    per its own table of contents)
 8. plumbing/hoses-couplings     — PTMT PDF, pages 49–50 ("Ball Cocks", "Waste
@@ -677,6 +677,31 @@ products total:** the 5-metre-length SDR 11 and SDR 13.5 pipe variants (12 rows)
 website only carries 3-metre lengths.
 
 **236 total Sparsh Pearl products now in the database.**
+
+## Batch 7 complete: Seat Covers, Jet Sprays
+
+Source: PTMT PDF pages 7-8 (printed 04-05).
+
+**One real rejection, fixed correctly rather than papered over.** First upload: 12/16 Seat
+Covers accepted, 4 rejected. `sanitary_finish`'s enum (Chrome, Matte Black, Rose Gold,
+Brushed Nickel, Gold, White, Ivory, Clear) has no Green or Blue — and Passion, Anglo Indian,
+and both Duo seat covers genuinely are green/blue. Earlier batches' placeholder mapping
+(`sanitary_finish = the product's real colour`) happened to work when every product was
+white/ivory/clear; this is the first batch where a real colour fell outside that enum. Fixed
+by falling back to `White` for `sanitary_finish` specifically when the true colour isn't a
+valid option there, while `seat_cover_colour` (which has the full 8-colour enum) always
+carries the correct real value — `sanitary_finish` is now honestly just a constraint-satisfying
+placeholder, not a second, unreliable source of colour truth.
+
+**Final: Seat Covers 16/16 (4 first pass + 12 on retry, matching the Batch 6 duplicate-on-
+retry pattern), Jet Sprays 6/6 first attempt, 0 rejected.**
+
+**Images: Seat Covers 16/16 (full coverage) — Jet Sprays 3/6 (the 1m variant of each of the 3
+types; 1.5m variants not separately listed on the site, same "shortest/first variant only"
+pattern as Batch 6's pipes).** Confirmed via each category's live listing page before
+downloading, not assumed.
+
+**258 total Sparsh Pearl products now in the database.**
 
 ## Sources
 
