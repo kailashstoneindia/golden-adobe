@@ -227,12 +227,26 @@ batch: build Excel from real extracted data → upload via the real
 - **Result:** 10/10 accepted (5/5 + 5/5), 0 rejected
 - **Running total:** 23 products
 
+### Batch 4: Architectural Surfaces, Moroccan, Terrazzo — complete
+
+- **Source:** website design pages (these 3 PDFs not read in full — site is the source of
+  record for this batch, per the earlier per-line source table)
+- **Second mid-batch size gap found:** Architectural Surfaces is 30×120cm (300×1200mm), also
+  missing from `tile_size` — same pattern as Wooden's 200×1200 gap in Batch 3, fixed the same
+  way (add enum value, reseed, verify via real upload, then commit)
+- **Rows:** 3 Architectural (Oxydart, Oryol, Assen Wood — Rustic finish, 3-D textured slabs),
+  3 Moroccan (Arica, Antica, Bishkek — Geometric pattern), 3 Terrazzo (Stein, Colori, Devine —
+  Cement/Terrazzo material, Polished finish)
+- **Result:** 9/9 accepted (3/3 + 3/3 + 3/3), 0 rejected
+- **Running total:** 32 products (verified against the DB directly, not just API responses)
+
 ## Status
 
 Discovery pass complete for 18 of 23 PDFs (plus site data for every major product line);
 taxonomy gap-fill designed, approved, applied, reseeded, and verified against the live API
-(including one further fix found mid-batch: `tile_size` 200×1200); brand row created with
-real compliance data; Batches 1-3 complete (23 products). Not yet started: remaining batches
-(Architectural, Moroccan, Terrazzo, Grit-Tech, Fullbody, Double Charge, Soluble Salt, Endless,
-Subway), image sourcing/verification, and the 5 unread PDFs (Decor, Large Format Evocative,
-Curve 3D Slab, Polished Slab, Glossy Matt Wall).
+(3 further fixes found mid-batch: `tile_size` 200×1200, `tile_size` 300×1200, both real
+Lavish sizes missed in the first pass); brand row created with real compliance data;
+Batches 1-4 complete (32 products, DB-verified). Not yet started: remaining batches
+(Grit-Tech, Fullbody, Double Charge, Soluble Salt, Endless, Subway), image sourcing/
+verification, and the 5 unread PDFs (Decor, Large Format Evocative, Curve 3D Slab, Polished
+Slab, Glossy Matt Wall).
