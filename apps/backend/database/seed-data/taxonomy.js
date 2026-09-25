@@ -550,15 +550,38 @@ const TREE = [
 
   {
     name: 'Tiles', slug: 'tiles', uom: 'BOX', attrs: [
+      // Fullbody, Double Charge, Soluble Salt added per decision 0027 (Lavish
+      // Ceramics onboarding) — real vitrified-tile manufacturing sub-types,
+      // each with its own dedicated product line/PDF, not variants of GVT/PGVT.
       ['tile_material', 'Tile Material', 'enum', null, true, true,
-        ['Vitrified (GVT)', 'Vitrified (PGVT)', 'Ceramic', 'Porcelain', 'Mosaic', 'Cement / Terrazzo']],
+        ['Vitrified (GVT)', 'Vitrified (PGVT)', 'Ceramic', 'Porcelain', 'Mosaic', 'Cement / Terrazzo',
+         'Fullbody', 'Double Charge', 'Soluble Salt']],
       ['tile_size', 'Size', 'enum', 'mm', true, true,
         ['300×300', '300×450', '250×375', '600×600', '600×1200', '800×800', '1200×1800']],
+      // Matt with Structure, Carvin with Structure, Grit-Tech, R10B, Highgloss
+      // added per decision 0027 — verbatim collection names from Lavish's own
+      // GVT (pg 94) and PGVT (pg 82) catalog index pages, not paraphrased.
       ['tile_finish', 'Finish', 'enum', null, true, true,
-        ['Glossy', 'Matte', 'Satin', 'Rustic', 'Carving', 'Polished', 'Sugar', 'Lappato']],
+        ['Glossy', 'Matte', 'Satin', 'Rustic', 'Carving', 'Polished', 'Sugar', 'Lappato',
+         'Matt with Structure', 'Carvin with Structure', 'Grit-Tech', 'R10B', 'Highgloss']],
+      // Yellow/Orange/Red/Green/Pink/Aqua added per decision 0027 — Lavish's
+      // subway wall-tile line (20 named colours: Mango Yellow, Blood Red,
+      // Aqua Green, Pink, etc.) and wooden-tile "Aqua" colourway don't fit
+      // any existing family bucket. tile_colour_name (below) carries the
+      // literal marketing name; this stays a coarse filter bucket.
       ['tile_colour_family', 'Colour Family', 'enum', null, true, true,
-        ['White', 'Beige', 'Grey', 'Brown', 'Black', 'Blue', 'Wood', 'Multi']],
-      ['tile_thickness', 'Thickness', 'number', 'mm', true, false, ['6', '8', '9', '10', '12']],
+        ['White', 'Beige', 'Grey', 'Brown', 'Black', 'Blue', 'Wood', 'Multi',
+         'Yellow', 'Orange', 'Red', 'Green', 'Pink', 'Aqua']],
+      // tile_colour_name added per decision 0027, same reasoning as Pearl's
+      // cistern_colour/seat_cover_colour (0026): tile_colour_family buckets
+      // lose the literal printed name (e.g. "Mango Yellow" -> just "Yellow").
+      // Not variant-defining/not a searchable filter — free-text passthrough
+      // only, tile_colour_family remains the one that drives search/filter.
+      ['tile_colour_name', 'Colour Name', 'text', null, false, false, []],
+      // 15mm (Fullbody) and 20mm (Outdoor 2CM) added per decision 0027 —
+      // confirmed from Lavish's own website ("15mm... vs 3 to 4mm standard")
+      // and Outdoor PDF pg 69 header ("20MM Thick Outdoor Tiles").
+      ['tile_thickness', 'Thickness', 'number', 'mm', true, false, ['6', '8', '9', '10', '12', '15', '20']],
       ['tile_pattern', 'Pattern', 'enum', null, false, true, ['Plain', 'Marble', 'Wood', 'Stone', 'Geometric', 'Digital Print']],
       ['pei_rating', 'PEI / Abrasion Rating', 'enum', null, false, true, ['PEI I', 'PEI II', 'PEI III', 'PEI IV', 'PEI V']],
       ['anti_skid', 'Anti-Skid', 'boolean', null, false, true, []],
