@@ -556,12 +556,12 @@ const TREE = [
       ['tile_material', 'Tile Material', 'enum', null, true, true,
         ['Vitrified (GVT)', 'Vitrified (PGVT)', 'Ceramic', 'Porcelain', 'Mosaic', 'Cement / Terrazzo',
          'Fullbody', 'Double Charge', 'Soluble Salt']],
-      // 200×1200 added per decision 0027 — Lavish's Wooden-plank line
-      // (20x120cm) confirmed on both the Wooden PDF (pg 109 packing table)
-      // and the website; not covered by the existing 300x450 wood-plank
-      // size, a genuinely different real dimension, not a typo/duplicate.
+      // 200×1200 and 300×1200 added per decision 0027 — Lavish's Wooden-
+      // plank line (20x120cm) and Architectural Surfaces large-format line
+      // (30x120cm) are both confirmed real sizes (PDF packing tables +
+      // website) distinct from the existing entries, not typos/duplicates.
       ['tile_size', 'Size', 'enum', 'mm', true, true,
-        ['300×300', '300×450', '250×375', '600×600', '600×1200', '800×800', '1200×1800', '200×1200']],
+        ['300×300', '300×450', '250×375', '600×600', '600×1200', '800×800', '1200×1800', '200×1200', '300×1200']],
       // Matt with Structure, Carvin with Structure, Grit-Tech, R10B, Highgloss
       // added per decision 0027 — verbatim collection names from Lavish's own
       // GVT (pg 94) and PGVT (pg 82) catalog index pages, not paraphrased.
