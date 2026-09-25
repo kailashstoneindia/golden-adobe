@@ -105,8 +105,10 @@ pass.**
                                    as Cisterns: two material lines feed one leaf)  products, 3
                                                                                     of many series —
                                                                                     see Batch 3 note)
-4. sanitaryware/showers,
-   bath-accessories             — CP PDF
+4. sanitaryware/showers,        — PTMT PDF (showers)            🟡 PARTIAL (showers ✅ 27
+   bath-accessories                                                 products; bath-accessories
+                                                                      still open, no source
+                                                                      data found yet)
 5. plumbing/valves               — CP PDF, "Allied" section
 6. plumbing/pipes,
    plumbing/pipe-fittings       — Flowshield PDF
@@ -586,6 +588,32 @@ category paths exist with correct `is_leaf` flags, and `accessory_type`'s enum n
 **Not yet done:** these new leaves have no products seeded into them yet — this only created
 the taxonomy (categories + attributes), the same first step Cisterns went through before its
 own Excel-import batch. Populating them is future rollout-order work, not covered here.
+
+## Batch 4 complete (Showers only — Bath Accessories deferred, not guessed)
+
+**Scope, stated up front:** Batch 4 was originally "Showers + Bath Accessories" together.
+Showers had solid, fully-read source data (PTMT PDF pages 62-63, printed 59-60, 27 SKUs
+across two pages). Bath Accessories did not — the CP pages checked in this pass turned out
+to be concealed-mixer/diverter parts, not the towel-rail/soap-dish/robe-hook products this
+leaf's `accessory_type` enum actually expects. Rather than force a guess, Bath Accessories is
+left undone and explicitly flagged as still open, not silently skipped.
+
+**Uploaded: 27/27 accepted, 0 rejected**, first attempt. One real correction made before
+upload: `shower_size` was initially assumed to be a fixed 5-value enum (100/150/200/250/300)
+from memory; checking the actual downloaded template found it has **no data validation at
+all** — it's a plain number field. The script briefly rounded every real mm size (76, 50,
+125, 165...) to the nearest of those five guessed values before this was caught and fixed to
+use the real printed sizes directly. Caught by checking the template rather than trusting
+recollection — the same discipline the Batch 1 failures established.
+
+**Images: 27/27 — full coverage, unlike Batches 2-3.** These PTMT shower SKUs (`SHP-xxx`) ARE
+published on the live site, confirmed via the site's own Showers category listing (16 CP-line
+products) plus a direct SKU check on 3 of them (`SHP-526`, `SHP-521`, `SHP-539` all matched
+exactly). Downloaded all 27 via direct URL construction, checking real HTTP 200 status this
+time (not file size alone) — the Batch 3 false-positive (a 404 error page saved with a `.jpg`
+extension) made that check non-negotiable going forward.
+
+**174 total Sparsh Pearl products now in the database.**
 
 ## Sources
 
