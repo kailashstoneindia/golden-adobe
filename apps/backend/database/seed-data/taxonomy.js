@@ -560,8 +560,13 @@ const TREE = [
       // plank line (20x120cm) and Architectural Surfaces large-format line
       // (30x120cm) are both confirmed real sizes (PDF packing tables +
       // website) distinct from the existing entries, not typos/duplicates.
+      // 75×300 added same record — Lavish's Subway wall-tile line is a
+      // "brick" form factor (confirmed from subway-plain.pdf's own spec
+      // page: 75x300mm, 8mm, 44pcs/box, 10.66sqft/box), structurally
+      // different from every square/rectangular floor-tile size above.
       ['tile_size', 'Size', 'enum', 'mm', true, true,
-        ['300×300', '300×450', '250×375', '600×600', '600×1200', '800×800', '1200×1800', '200×1200', '300×1200']],
+        ['300×300', '300×450', '250×375', '600×600', '600×1200', '800×800', '1200×1800',
+         '200×1200', '300×1200', '75×300']],
       // Matt with Structure, Carvin with Structure, Grit-Tech, R10B, Highgloss
       // added per decision 0027 — verbatim collection names from Lavish's own
       // GVT (pg 94) and PGVT (pg 82) catalog index pages, not paraphrased.
