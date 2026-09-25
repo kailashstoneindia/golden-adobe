@@ -185,11 +185,31 @@ Same caveat as Pearl still applies: this is scraped public material, not a vendo
 onboarding form — the "seed draft, not confirmed data" framing from 0026 holds here too, it's
 just a materially stronger starting position than Pearl had (no fields fabricated).
 
+## Stage 2: product batches
+
+One batch per product line, representative sample (not exhaustive — e.g. 7 of 85 real GVT
+series, one per finish collection), same scoping discipline as Pearl's partial lines. Each
+batch: build Excel from real extracted data → upload via the real
+`POST /admin/catalog-import/:categoryId` → verify in DB → commit.
+
+### Batch 1: GVT (Matt Porcelain) — complete
+
+- **Source:** GVT PDF pg 94 (series/size index) + pg 95 (packing details)
+- **Rows:** 7 — one representative series per finish collection (Matt: Ambre, Matt with
+  Structure: Brixstone, Carvin: Blaze, Carvin with Structure: Croto, Grit-Tech: Ambient,
+  R10B: Glamstone, Sugar: Bangkok), all at 600×600mm (the size every series shares)
+- **HSN:** 6907 (Ceramic flags/paving/wall tiles) — already seeded, no gap this time
+- **Result:** 7/7 accepted, 0 rejected, first attempt — no template mismatch, unlike Pearl's
+  Batch 1 (this time the real template was downloaded and used from the start, not
+  hand-derived from source code)
+- **Running total:** 7 products
+
 ## Status
 
 Discovery pass complete for 18 of 23 PDFs (plus site data for every major product line);
 taxonomy gap-fill designed, approved, applied, reseeded, and verified against the live API;
-brand row created with real (not placeholder) compliance data. Next: per-line product batches
-following 0026's batch → template → upload → verify → commit pattern. Not yet started: image
-sourcing/verification, and the 5 unread PDFs (Decor, Large Format Evocative, Curve 3D Slab,
-Polished Slab, Glossy Matt Wall).
+brand row created with real (not placeholder) compliance data; Batch 1 (GVT) complete. Not
+yet started: remaining batches (PGVT, Wooden, Outdoor, Architectural, Moroccan, Terrazzo,
+Grit-Tech, Fullbody, Double Charge, Soluble Salt, Endless, Subway), image sourcing/
+verification, and the 5 unread PDFs (Decor, Large Format Evocative, Curve 3D Slab, Polished
+Slab, Glossy Matt Wall).
