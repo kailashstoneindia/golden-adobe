@@ -94,13 +94,13 @@ each unaware of the other's data, is how that kind of gap gets missed rather tha
 pass.**
 
 ```
-1. sanitaryware/cisterns        — Sanitary Ware PDF + PTMT PDF cistern pages,
+1. sanitaryware/cisterns        — Sanitary Ware PDF + PTMT PDF cistern pages, ✅ DONE (41 products)
                                    together (first: smallest full scope, and
                                    forces the Colour attribute decision early,
                                    which every later leaf benefits from having
                                    already settled)
-2. sanitaryware/water-closets,
-   wash-basins, urinals         — Sanitary Ware PDF only
+2. sanitaryware/water-closets,  — Sanitary Ware PDF only              ✅ DONE (62 products:
+   wash-basins, urinals                                                  22 + 35 + 5)
 3. sanitaryware/taps-faucets    — CP PDF + PTMT PDF, together (same reasoning
                                    as Cisterns: two material lines feed one leaf)
 4. sanitaryware/showers,
@@ -464,6 +464,40 @@ row's `cistern_colour` attribute value matches its SKU suffix exactly (`C-001/CL
 `C-001/IV` → `Ivory`, `C-001/WH` → `White`). **This is the first real, end-to-end proof that
 the whole pipeline — taxonomy seed → brand row → Excel import → draft product creation —
 works correctly for this brand's data.**
+
+## Batch 2 complete: Water Closets, Wash Basins, Urinals
+
+Source: Sanitary Ware PDF only (per the rollout order — this batch needed no cross-PDF
+merge, unlike Cisterns or the upcoming Taps & Faucets batch). Read the PDF's own index page
+(PDF page 12) rather than guess page numbers again — the exact lesson from Batch 1's wrong
+citation — then pulled each named section directly: One Piece Closet, Wall Hung Closet,
+Water Closet (two-piece/Anglo-Indian style), Pan, Table Top Basin, Small Basin, One Piece
+Wash Basin, Basin with Full/Half Pedestal, Urinal.
+
+Downloaded the real templates for all 3 leaf categories before writing any rows (not
+hand-derived) — confirmed `sanitary_finish*` required on all three, same as Cisterns.
+
+**Recounted every section against the source pages before uploading** (the Batch 1 lesson
+applied proactively this time, not only after being asked): One Piece (8) + Wall Hung (5) +
+two-piece (5) + Pan (4) = 22 Water Closets; Table Top (13) + Small (8) + One Piece (4) + Full
+Pedestal (6) + Half Pedestal (4) = 35 Wash Basins; 5 Urinals. All three sheets accepted on
+the **first upload attempt, 0 rejections** — the real template + recount discipline from
+Batch 1's failures paid off immediately here.
+
+**Verified directly in the database:** 103 total Sparsh Pearl products now exist (41
+Cisterns + 22 Water Closets + 35 Wash Basins + 5 Urinals).
+
+**Known simplifications, flagged rather than silently asserted:**
+- `sanitary_finish = 'White'` used for every row — same unresolved semantic mismatch as
+  Batch 1 (vitreous china has no metal fitting finish; White is the closest real enum value
+  and matches every product photo, but this is a placeholder, not a considered mapping).
+- `trap_distance` inferred from the PDF's inch-based "Size Available: 9', 12' & P Trap" text
+  by rough inch→mm conversion (9″≈225mm, 12″≈300mm) — not confirmed against Pearl's actual
+  measurements, flagged as an open item rather than presented as precise.
+- Pan-style WCs mapped to the existing `Indian / Orissa` enum value — `wc_type` has no
+  dedicated "Pan" option; may need one later if pans need distinguishing from Anglo-Indian
+  in filters.
+- `hsn_code` blank throughout — Sanitary Ware PDF never printed one, same gap as Batch 1.
 
 ## Catalog coverage gap found and closed: not everything in Pearl's PDFs fit our existing tree
 
