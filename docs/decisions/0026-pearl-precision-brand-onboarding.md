@@ -131,10 +131,9 @@ numbered sequence rather than leaving them as a separate, easy-to-forget list:
                                    per its own table of contents)
 8. plumbing/hoses-couplings     🟡 PARTIAL (9 products from PTMT p.66;
                                    CP's Waste Coupling ALL-1052/1053 still open)
-9. kitchen/sinks, cabinets,
-   floor-gratings,
-   pest-odour-control           — PTMT PDF, pages 51–55 ("Kitchen Sinks", "Shell
-                                   Cockroach Repeller", "Floor Gratings", "Cabinets")
+9. kitchen/sinks, cabinets,     🟡 PARTIAL (26 products; Floor Gratings
+   floor-gratings,                  is a representative subset, not the
+   pest-odour-control               full ~25-SKU range on that page)
 ```
 
 Same rule as batches 1–6: pull from whichever PDF(s) actually feed each leaf, don't go
@@ -721,6 +720,34 @@ not separately listed on the site, same "shortest/first variant only" pattern se
 Batches 6 and 7.
 
 **267 total Sparsh Pearl products now in the database.**
+
+## Batch 9 complete: Kitchen (partial — Floor Gratings is a representative subset)
+
+Source: PTMT PDF pages 55-59 (printed 52-56): Kitchen Sinks, Shell Cockroach Repeller, Floor
+Gratings, Cabinets.
+
+**Kitchen Sinks page (54) is marketing-only — no SKUs at all**; the real 7-SKU spec table
+turned out to be on page 55, discovered by checking the neighbouring page rather than
+assuming the TOC's page range was exhaustive.
+
+**Floor Gratings taken as a representative subset (8 of ~25 SKUs on the source page)** — the
+full page spans Pisto/Sani Square/Sani Troking/Gold-lock sub-lines; only the first several
+were transcribed, same scoping discipline as Batch 3's tap series. Flagged, not silently
+presented as the complete Floor Gratings range.
+
+**`sink_material` enum gap:** the PDF prints "SS 204" (0.8mm thickness); the enum only has
+SS 304/SS 202. Mapped to SS 304 as the closer, common food-grade stainless — a guess, not a
+confirmed grade equivalence, flagged inline in the build script.
+
+**Uploaded: all 4 leaves clean on first attempt — Sinks 7/7, Cabinets 3/3, Gratings 8/8, Pest
+& Odour Control 8/8. 0 rejections across all 26 rows.**
+
+**Images: 20 of 26 (77%)** — Sinks 2/7, Cabinets 3/3, Gratings 6/8, Pest & Odour Control 8/8
+(full). Confirmed via each category's live listing plus direct SKU checks before bulk
+downloading (one category slug guess, `/product-category/cabinets/`, 404'd — found the right
+products via site search instead rather than giving up on that leaf's images).
+
+**293 total Sparsh Pearl products now in the database.**
 
 ## Sources
 
