@@ -749,6 +749,30 @@ products via site search instead rather than giving up on that leaf's images).
 
 **293 total Sparsh Pearl products now in the database.**
 
+## Platform gap found: no API exists to create categories, leaves, or attributes
+
+Surfaced by a direct question during this work, not by anything failing. Checked
+exhaustively against the actual code (every `@Post`/`@Patch`/`@Put`/`@Delete` route across
+every controller in `apps/backend/src/modules/catalog/`): every write route that exists is
+for **products, catalog-import batches, or vendor listings**. None creates or modifies a
+`category` or `attribute` row. Also confirmed no application code anywhere calls
+`Category.create` outside test files.
+
+**The only mechanism that exists today is what this record's own work depended on three
+times** (`cistern_colour`, the `Kitchen` top-level category, `hsn_code` 39172390): edit
+`apps/backend/database/seed-data/taxonomy.js` directly, then run
+`npx sequelize-cli db:seed --seed 20260901100000-seed-taxonomy.js`. That requires a
+developer, a code change, and direct database access — not something an admin user can do
+through the running application.
+
+This is a genuine platform capability gap, not specific to Pearl, but it directly bounds how
+this onboarding work (and any future brand's) can proceed without engineering involvement
+for every new category or attribute a vendor's catalog turns out to need — which this record
+already hit twice (the `Colour` attribute, the `Kitchen` category). Recorded here because it
+was found in the course of this work; whether and how to build
+`POST/PATCH /admin/catalog/categories` and `.../attributes` is its own decision, not resolved
+in this record.
+
 ## Sources
 
 - `pearl-precision.com` — website scan, this session
