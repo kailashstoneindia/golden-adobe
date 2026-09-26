@@ -1,0 +1,4428 @@
+'use strict';
+const { v4: uuidv4 } = require('uuid');
+
+// All 293 Sparsh Pearl (Pearl Precision) products, exported directly from
+// the live dev database on 2026-09-26 after decision 0026's batches 1-9
+// were completed and verified there. This is a faithful re-seed of exactly
+// what ended up in master_product + master_product_attribute_value, not a
+// re-derivation from the original Excel batch files (which could drift
+// from what actually passed validation) -- see
+// docs/vendor-assets/pearl-precision/README.md for the full context and
+// docs/decisions/0026-pearl-precision-brand-onboarding.md for the sourcing
+// narrative (which PDF page each product's data came from, what was
+// rejected/fixed along the way, etc).
+//
+// Depends on: taxonomy already seeded (20260901100000-seed-taxonomy.js),
+// HSN codes already seeded (20260908090001-seed-hsn-codes.js) -- same
+// ordering constraint as the real catalog-import upload path.
+
+const BRAND = {
+  name: 'Sparsh Pearl',
+  slug: 'sparsh-pearl',
+  manufacturer_name: 'Pearl Precision Products Pvt. Ltd.',
+  manufacturer_address: 'B-46 & 47, Sector 81, Noida, Uttar Pradesh, India-201305',
+  // PLACEHOLDER: Pearl's own PDFs never printed a consumer-care email/phone
+  // anywhere in the scanned material (see decision 0026) -- these two
+  // fields are NOT real and must be replaced once Pearl confirms them.
+  consumer_care_email: 'PLACEHOLDER-pending-pearl-confirmation@example.com',
+  consumer_care_phone: 'PLACEHOLDER-0000000000',
+};
+
+const PRODUCTS = [
+  {
+    category_slug: "cabinets",
+    name: "Corner Cabinet",
+    mfr_part_number: "CC-252",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cabinet_type: "Corner Cabinet",
+      cabinet_dimensions: "585x290x215 mm"
+    }
+  },
+  {
+    category_slug: "cabinets",
+    name: "Mirror Cabinet (450mm)",
+    mfr_part_number: "MCB-253",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cabinet_type: "Mirror Cabinet",
+      cabinet_dimensions: "450x350x120 mm"
+    }
+  },
+  {
+    category_slug: "cabinets",
+    name: "Mirror Cabinet (555mm)",
+    mfr_part_number: "MCB-251",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cabinet_type: "Mirror Cabinet",
+      cabinet_dimensions: "555x350x120 mm"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Aqua Single Flushing Cistern 8 Ltrs.",
+    mfr_part_number: "C-010/WH",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Exposed",
+      cistern_colour: "White",
+      flush_mechanism: "Single",
+      sanitary_finish: "White",
+      cistern_capacity: "8"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Aqua Single Flushing Cistern 8 Ltrs.",
+    mfr_part_number: "C-010/IV",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Exposed",
+      cistern_colour: "Ivory",
+      flush_mechanism: "Single",
+      sanitary_finish: "Ivory",
+      cistern_capacity: "8"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Classic Single Flushing Cistern with Air Freshener 10 Ltrs.",
+    mfr_part_number: "C-012/WH",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Exposed",
+      cistern_colour: "White",
+      flush_mechanism: "Single",
+      sanitary_finish: "White",
+      cistern_capacity: "10"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Classic Single Flushing Cistern with Air Freshener 10 Ltrs.",
+    mfr_part_number: "C-012/IV",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Exposed",
+      cistern_colour: "Ivory",
+      flush_mechanism: "Single",
+      sanitary_finish: "Ivory",
+      cistern_capacity: "10"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Concealed Flushing Cistern",
+    mfr_part_number: "C-027",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Concealed",
+      cistern_colour: "White",
+      flush_mechanism: "Single",
+      sanitary_finish: "White",
+      cistern_capacity: "0"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Concealed Flushing Cistern Actuator Plate - 1",
+    mfr_part_number: "C-029",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Concealed",
+      cistern_colour: "White",
+      flush_mechanism: "Single",
+      sanitary_finish: "White",
+      cistern_capacity: "0"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Concealed Flushing Cistern Actuator Plate - 2",
+    mfr_part_number: "C-030",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Concealed",
+      cistern_colour: "White",
+      flush_mechanism: "Single",
+      sanitary_finish: "White",
+      cistern_capacity: "0"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Concealed Flushing Cistern Actuator Plate - 3",
+    mfr_part_number: "C-031",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Concealed",
+      cistern_colour: "White",
+      flush_mechanism: "Single",
+      sanitary_finish: "White",
+      cistern_capacity: "0"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Concealed Flushing Cistern with Frame & Extra Fittings",
+    mfr_part_number: "C-028",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Concealed",
+      cistern_colour: "White",
+      flush_mechanism: "Single",
+      sanitary_finish: "White",
+      cistern_capacity: "0"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Concealed Quick Flushing Cistern",
+    mfr_part_number: "CCQF-100",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Concealed",
+      cistern_colour: "White",
+      flush_mechanism: "Single",
+      sanitary_finish: "White",
+      cistern_capacity: "0"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Concealed Quick Flushing Cistern Cubo Plate",
+    mfr_part_number: "C-033",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Concealed",
+      cistern_colour: "White",
+      flush_mechanism: "Single",
+      sanitary_finish: "White",
+      cistern_capacity: "0"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Concealed Quick Flushing Cistern Cubo Plate - Black",
+    mfr_part_number: "C-035",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Concealed",
+      cistern_colour: "White",
+      flush_mechanism: "Single",
+      sanitary_finish: "White",
+      cistern_capacity: "0"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Concealed Quick Flushing Cistern Recto Plate",
+    mfr_part_number: "C-034",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Concealed",
+      cistern_colour: "White",
+      flush_mechanism: "Single",
+      sanitary_finish: "White",
+      cistern_capacity: "0"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Concealed Quick Flushing Cistern Recto Plate - Black",
+    mfr_part_number: "C-036",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Concealed",
+      cistern_colour: "White",
+      flush_mechanism: "Single",
+      sanitary_finish: "White",
+      cistern_capacity: "0"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Concealed Quick Flushing Cistern with Frame & Extra Fittings",
+    mfr_part_number: "CCQF-101",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Concealed",
+      cistern_colour: "White",
+      flush_mechanism: "Single",
+      sanitary_finish: "White",
+      cistern_capacity: "0"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Dual Flushing Cistern 10 Ltrs.",
+    mfr_part_number: "C-002/IV",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Exposed",
+      cistern_colour: "Ivory",
+      flush_mechanism: "Dual",
+      sanitary_finish: "Ivory",
+      cistern_capacity: "10"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Dual Flushing Cistern 10 Ltrs.",
+    mfr_part_number: "C-002/WH",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Exposed",
+      cistern_colour: "White",
+      flush_mechanism: "Dual",
+      sanitary_finish: "White",
+      cistern_capacity: "10"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Dual Flushing Cistern 8 Ltrs.",
+    mfr_part_number: "C-003/IV",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Exposed",
+      cistern_colour: "Ivory",
+      flush_mechanism: "Dual",
+      sanitary_finish: "Ivory",
+      cistern_capacity: "8"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Dual Flushing Cistern 8 Ltrs.",
+    mfr_part_number: "C-003/WH",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Exposed",
+      cistern_colour: "White",
+      flush_mechanism: "Dual",
+      sanitary_finish: "White",
+      cistern_capacity: "8"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Edge Dual Flushing Cistern 8 Ltrs.",
+    mfr_part_number: "C-006/WH",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Exposed",
+      cistern_colour: "White",
+      flush_mechanism: "Dual",
+      sanitary_finish: "White",
+      cistern_capacity: "8"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Edge Dual Flushing Cistern 8 Ltrs.",
+    mfr_part_number: "C-006/IV",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Exposed",
+      cistern_colour: "Ivory",
+      flush_mechanism: "Dual",
+      sanitary_finish: "Ivory",
+      cistern_capacity: "8"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Edge Prime Dual Flushing Cistern 8 Ltrs. (Egret)",
+    mfr_part_number: "C-008/EG/IV",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Exposed",
+      cistern_colour: "Ivory",
+      flush_mechanism: "Dual",
+      sanitary_finish: "Ivory",
+      cistern_capacity: "8"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Edge Prime Dual Flushing Cistern 8 Ltrs. (Egret)",
+    mfr_part_number: "C-008/EG/WH",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Exposed",
+      cistern_colour: "White",
+      flush_mechanism: "Dual",
+      sanitary_finish: "White",
+      cistern_capacity: "8"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Edge Prime Dual Flushing Cistern 8 Ltrs. (Fish)",
+    mfr_part_number: "C-008/FH/IV",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Exposed",
+      cistern_colour: "Ivory",
+      flush_mechanism: "Dual",
+      sanitary_finish: "Ivory",
+      cistern_capacity: "8"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Edge Prime Dual Flushing Cistern 8 Ltrs. (Fish)",
+    mfr_part_number: "C-008/FH/WH",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Exposed",
+      cistern_colour: "White",
+      flush_mechanism: "Dual",
+      sanitary_finish: "White",
+      cistern_capacity: "8"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Edge+ Dual Flushing Cistern 8 Ltrs.",
+    mfr_part_number: "C-009/WH",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Exposed",
+      cistern_colour: "White",
+      flush_mechanism: "Dual",
+      sanitary_finish: "White",
+      cistern_capacity: "8"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Edge+ Dual Flushing Cistern 8 Ltrs.",
+    mfr_part_number: "C-009/IV",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Exposed",
+      cistern_colour: "Ivory",
+      flush_mechanism: "Dual",
+      sanitary_finish: "Ivory",
+      cistern_capacity: "8"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Flo Single Flushing Cistern with Air Freshener 8 Ltrs.",
+    mfr_part_number: "C-011/IV",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Exposed",
+      cistern_colour: "Ivory",
+      flush_mechanism: "Single",
+      sanitary_finish: "Ivory",
+      cistern_capacity: "8"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Flo Single Flushing Cistern with Air Freshener 8 Ltrs.",
+    mfr_part_number: "C-011/WH",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Exposed",
+      cistern_colour: "White",
+      flush_mechanism: "Single",
+      sanitary_finish: "White",
+      cistern_capacity: "8"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Lotus Single Flushing Cistern with Air Freshener 10 Ltrs.",
+    mfr_part_number: "C-007/WH",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Exposed",
+      cistern_colour: "White",
+      flush_mechanism: "Single",
+      sanitary_finish: "White",
+      cistern_capacity: "10"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Lotus Single Flushing Cistern with Air Freshener 10 Ltrs.",
+    mfr_part_number: "C-007/CLR",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Exposed",
+      cistern_colour: "Clear",
+      flush_mechanism: "Single",
+      sanitary_finish: "Clear",
+      cistern_capacity: "10"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Lotus Single Flushing Cistern with Air Freshener 10 Ltrs.",
+    mfr_part_number: "C-007/IV",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Exposed",
+      cistern_colour: "Ivory",
+      flush_mechanism: "Single",
+      sanitary_finish: "Ivory",
+      cistern_capacity: "10"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Lotus Single Flushing Cistern with Air Freshener 10 Ltrs. (Floral)",
+    mfr_part_number: "C-007/FLR/IV",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Exposed",
+      cistern_colour: "Ivory",
+      flush_mechanism: "Single",
+      sanitary_finish: "Ivory",
+      cistern_capacity: "10"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Lotus Single Flushing Cistern with Air Freshener 10 Ltrs. (Floral)",
+    mfr_part_number: "C-007/FLR/WH",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Exposed",
+      cistern_colour: "White",
+      flush_mechanism: "Single",
+      sanitary_finish: "White",
+      cistern_capacity: "10"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Neon Center Push Cistern 10 Ltrs.",
+    mfr_part_number: "C-005/IV",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Exposed",
+      cistern_colour: "Ivory",
+      flush_mechanism: "Single",
+      sanitary_finish: "Ivory",
+      cistern_capacity: "10"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Neon Center Push Cistern 10 Ltrs.",
+    mfr_part_number: "C-005/WH",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Exposed",
+      cistern_colour: "White",
+      flush_mechanism: "Single",
+      sanitary_finish: "White",
+      cistern_capacity: "10"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Neon Flushing Cistern 10 Ltrs.",
+    mfr_part_number: "C-004/IV",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Exposed",
+      cistern_colour: "Ivory",
+      flush_mechanism: "Single",
+      sanitary_finish: "Ivory",
+      cistern_capacity: "10"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Neon Flushing Cistern 10 Ltrs.",
+    mfr_part_number: "C-004/WH",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Exposed",
+      cistern_colour: "White",
+      flush_mechanism: "Single",
+      sanitary_finish: "White",
+      cistern_capacity: "10"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Single Flushing Cistern 10 Ltrs.",
+    mfr_part_number: "C-001/IV",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Exposed",
+      cistern_colour: "Ivory",
+      flush_mechanism: "Single",
+      sanitary_finish: "Ivory",
+      cistern_capacity: "10"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Single Flushing Cistern 10 Ltrs.",
+    mfr_part_number: "C-001/WH",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Exposed",
+      cistern_colour: "White",
+      flush_mechanism: "Single",
+      sanitary_finish: "White",
+      cistern_capacity: "10"
+    }
+  },
+  {
+    category_slug: "cisterns",
+    name: "Single Flushing Cistern 10 Ltrs.",
+    mfr_part_number: "C-001/CLR",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      cistern_type: "Exposed",
+      cistern_colour: "Clear",
+      flush_mechanism: "Single",
+      sanitary_finish: "Clear",
+      cistern_capacity: "10"
+    }
+  },
+  {
+    category_slug: "floor-gratings",
+    name: "Pisto Floor Grating, DIA 114mm",
+    mfr_part_number: "FG-51",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      grating_size: "114",
+      grating_material: "Stainless Steel"
+    }
+  },
+  {
+    category_slug: "floor-gratings",
+    name: "Pisto Floor Grating, DIA 127mm",
+    mfr_part_number: "FG-97",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      grating_size: "127",
+      grating_material: "Stainless Steel"
+    }
+  },
+  {
+    category_slug: "floor-gratings",
+    name: "Pisto Gypsy Floor Grating, DIA 114mm",
+    mfr_part_number: "FG-52",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      grating_size: "114",
+      grating_material: "Stainless Steel"
+    }
+  },
+  {
+    category_slug: "floor-gratings",
+    name: "Pisto Gypsy Floor Grating, DIA 127mm",
+    mfr_part_number: "FG-98",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      grating_size: "127",
+      grating_material: "Stainless Steel"
+    }
+  },
+  {
+    category_slug: "floor-gratings",
+    name: "Sani Square Floor Grating, 150x150mm",
+    mfr_part_number: "FG-61",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      grating_size: "150",
+      grating_material: "Stainless Steel"
+    }
+  },
+  {
+    category_slug: "floor-gratings",
+    name: "Sani Square Gypsy Floor Grating, 150x150mm",
+    mfr_part_number: "FG-62",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      grating_size: "150",
+      grating_material: "Stainless Steel"
+    }
+  },
+  {
+    category_slug: "floor-gratings",
+    name: "Sani Troking Floor Grating, 150x150mm",
+    mfr_part_number: "FG-71",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      grating_size: "150",
+      grating_material: "Stainless Steel"
+    }
+  },
+  {
+    category_slug: "floor-gratings",
+    name: "Sani Troking Gypsy Floor Grating, 150x150mm",
+    mfr_part_number: "FG-72",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      grating_size: "150",
+      grating_material: "Stainless Steel"
+    }
+  },
+  {
+    category_slug: "hoses-couplings",
+    name: "Fully Automatic Washing Machine Pipe 1.5 Mtr.",
+    mfr_part_number: "WMP-187",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      hose_coupling_size: "1.5 Mtr",
+      hose_coupling_type: "Washing Machine Inlet Hose",
+      hose_coupling_material: "PVC"
+    }
+  },
+  {
+    category_slug: "hoses-couplings",
+    name: "Fully Automatic Washing Machine Pipe 2.0 Mtr.",
+    mfr_part_number: "WMP-188",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      hose_coupling_size: "2.0 Mtr",
+      hose_coupling_type: "Washing Machine Inlet Hose",
+      hose_coupling_material: "PVC"
+    }
+  },
+  {
+    category_slug: "hoses-couplings",
+    name: "Fully Automatic Washing Machine Pipe 3.0 Mtr.",
+    mfr_part_number: "WMP-189",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      hose_coupling_size: "3.0 Mtr",
+      hose_coupling_type: "Washing Machine Inlet Hose",
+      hose_coupling_material: "PVC"
+    }
+  },
+  {
+    category_slug: "hoses-couplings",
+    name: "Fully Automatic Washing Machine Pipe 4.0 Mtr.",
+    mfr_part_number: "WMP-190",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      hose_coupling_size: "4.0 Mtr",
+      hose_coupling_type: "Washing Machine Inlet Hose",
+      hose_coupling_material: "PVC"
+    }
+  },
+  {
+    category_slug: "hoses-couplings",
+    name: "PVC Shower Tube 1 Mtr.",
+    mfr_part_number: "AP-578",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      hose_coupling_size: "1 Mtr",
+      hose_coupling_type: "Connection Hose",
+      hose_coupling_material: "PVC"
+    }
+  },
+  {
+    category_slug: "hoses-couplings",
+    name: "PVC Shower Tube 1.5 Mtr.",
+    mfr_part_number: "AP-579",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      hose_coupling_size: "1.5 Mtr",
+      hose_coupling_type: "Connection Hose",
+      hose_coupling_material: "PVC"
+    }
+  },
+  {
+    category_slug: "hoses-couplings",
+    name: "Waste Pipe 1200mm",
+    mfr_part_number: "WP-185",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      hose_coupling_size: "1200mm",
+      hose_coupling_type: "Waste Coupling",
+      hose_coupling_material: "PVC"
+    }
+  },
+  {
+    category_slug: "hoses-couplings",
+    name: "Waste Pipe 750mm",
+    mfr_part_number: "WP-183",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      hose_coupling_size: "750mm",
+      hose_coupling_type: "Waste Coupling",
+      hose_coupling_material: "PVC"
+    }
+  },
+  {
+    category_slug: "hoses-couplings",
+    name: "Waste Pipe 900mm",
+    mfr_part_number: "WP-184",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      hose_coupling_size: "900mm",
+      hose_coupling_type: "Waste Coupling",
+      hose_coupling_material: "PVC"
+    }
+  },
+  {
+    category_slug: "jet-sprays",
+    name: "Multi Jet Spray (Brass) with CP Tube 1 Mtr.",
+    mfr_part_number: "JS-051",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      hose_length: "1",
+      hook_included: "TRUE",
+      sanitary_finish: "Chrome",
+      jet_spray_finish: "Chrome"
+    }
+  },
+  {
+    category_slug: "jet-sprays",
+    name: "Multi Jet Spray (Brass) with CP Tube 1.5 Mtr.",
+    mfr_part_number: "JS-052",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      hose_length: "1.5",
+      hook_included: "TRUE",
+      sanitary_finish: "Chrome",
+      jet_spray_finish: "Chrome"
+    }
+  },
+  {
+    category_slug: "jet-sprays",
+    name: "Straight Jet Spray (Brass/SS 304) with CP Tube 1 Mtr.",
+    mfr_part_number: "JS-053",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      hose_length: "1",
+      hook_included: "TRUE",
+      sanitary_finish: "Chrome",
+      jet_spray_finish: "Chrome"
+    }
+  },
+  {
+    category_slug: "jet-sprays",
+    name: "Straight Jet Spray (Brass/SS 304) with CP Tube 1.5 Mtr.",
+    mfr_part_number: "JS-054",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      hose_length: "1.5",
+      hook_included: "TRUE",
+      sanitary_finish: "Chrome",
+      jet_spray_finish: "Chrome"
+    }
+  },
+  {
+    category_slug: "jet-sprays",
+    name: "Uni Jet Spray (Brass/Copper) with CP Tube 1 Mtr.",
+    mfr_part_number: "JS-055",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      hose_length: "1",
+      hook_included: "TRUE",
+      sanitary_finish: "Chrome",
+      jet_spray_finish: "Chrome"
+    }
+  },
+  {
+    category_slug: "jet-sprays",
+    name: "Uni Jet Spray (Brass/Copper) with CP Tube 1.5 Mtr.",
+    mfr_part_number: "JS-056",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      hose_length: "1.5",
+      hook_included: "TRUE",
+      sanitary_finish: "Chrome",
+      jet_spray_finish: "Chrome"
+    }
+  },
+  {
+    category_slug: "pest-odour-control",
+    name: "Shell Cockroach Repeller Round Classic, 127mm",
+    mfr_part_number: "CRR-041",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      pest_control_type: "Cockroach Repeller"
+    }
+  },
+  {
+    category_slug: "pest-odour-control",
+    name: "Shell Cockroach Repeller Round Flat Cut, 127mm",
+    mfr_part_number: "CRR-043",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      pest_control_type: "Cockroach Repeller"
+    }
+  },
+  {
+    category_slug: "pest-odour-control",
+    name: "Shell Cockroach Repeller Round Gypsy, 127mm",
+    mfr_part_number: "CRR-042",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      pest_control_type: "Cockroach Repeller"
+    }
+  },
+  {
+    category_slug: "pest-odour-control",
+    name: "Shell Cockroach Repeller Round Torris, 127mm",
+    mfr_part_number: "CRR-044",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      pest_control_type: "Cockroach Repeller"
+    }
+  },
+  {
+    category_slug: "pest-odour-control",
+    name: "Shell Cockroach Repeller Square Classic, 127mm",
+    mfr_part_number: "CRS-031",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      pest_control_type: "Cockroach Repeller"
+    }
+  },
+  {
+    category_slug: "pest-odour-control",
+    name: "Shell Cockroach Repeller Square Flat Cut, 127mm",
+    mfr_part_number: "CRS-033",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      pest_control_type: "Cockroach Repeller"
+    }
+  },
+  {
+    category_slug: "pest-odour-control",
+    name: "Shell Cockroach Repeller Square Gypsy, 127mm",
+    mfr_part_number: "CRS-032",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      pest_control_type: "Cockroach Repeller"
+    }
+  },
+  {
+    category_slug: "pest-odour-control",
+    name: "Shell Cockroach Repeller Square Torris, 127mm",
+    mfr_part_number: "CRS-034",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      pest_control_type: "Cockroach Repeller"
+    }
+  },
+  {
+    category_slug: "pipe-fittings",
+    name: "CPVC Bend 45 Degree Plain, 20mm",
+    mfr_part_number: "CMF03000020",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      fitting_size: "20",
+      fitting_type: "Elbow 45°",
+      connection_type: "Solvent Weld",
+      fitting_material: "CPVC"
+    }
+  },
+  {
+    category_slug: "pipe-fittings",
+    name: "CPVC Bend 45 Degree Plain, 25mm",
+    mfr_part_number: "CMF03000025",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      fitting_size: "25",
+      fitting_type: "Elbow 45°",
+      connection_type: "Solvent Weld",
+      fitting_material: "CPVC"
+    }
+  },
+  {
+    category_slug: "pipe-fittings",
+    name: "CPVC Bend 45 Degree Plain, 32mm",
+    mfr_part_number: "CMF03000032",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      fitting_size: "32",
+      fitting_type: "Elbow 45°",
+      connection_type: "Solvent Weld",
+      fitting_material: "CPVC"
+    }
+  },
+  {
+    category_slug: "pipe-fittings",
+    name: "CPVC Bend 45 Degree Plain, 40mm",
+    mfr_part_number: "CMF03000040",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      fitting_size: "40",
+      fitting_type: "Elbow 45°",
+      connection_type: "Solvent Weld",
+      fitting_material: "CPVC"
+    }
+  },
+  {
+    category_slug: "pipe-fittings",
+    name: "CPVC Coupler Plain, 15mm",
+    mfr_part_number: "CMF01000015",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      fitting_size: "15",
+      fitting_type: "Coupler",
+      connection_type: "Solvent Weld",
+      fitting_material: "CPVC"
+    }
+  },
+  {
+    category_slug: "pipe-fittings",
+    name: "CPVC Coupler Plain, 20mm",
+    mfr_part_number: "CMF01000020",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      fitting_size: "20",
+      fitting_type: "Coupler",
+      connection_type: "Solvent Weld",
+      fitting_material: "CPVC"
+    }
+  },
+  {
+    category_slug: "pipe-fittings",
+    name: "CPVC Coupler Plain, 25mm",
+    mfr_part_number: "CMF01000025",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      fitting_size: "25",
+      fitting_type: "Coupler",
+      connection_type: "Solvent Weld",
+      fitting_material: "CPVC"
+    }
+  },
+  {
+    category_slug: "pipe-fittings",
+    name: "CPVC Coupler Plain, 32mm",
+    mfr_part_number: "CMF01000032",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      fitting_size: "32",
+      fitting_type: "Coupler",
+      connection_type: "Solvent Weld",
+      fitting_material: "CPVC"
+    }
+  },
+  {
+    category_slug: "pipe-fittings",
+    name: "CPVC Coupler Plain, 40mm",
+    mfr_part_number: "CMF01000040",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      fitting_size: "40",
+      fitting_type: "Coupler",
+      connection_type: "Solvent Weld",
+      fitting_material: "CPVC"
+    }
+  },
+  {
+    category_slug: "pipe-fittings",
+    name: "CPVC Coupler Plain, 50mm",
+    mfr_part_number: "CMF01000050",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      fitting_size: "50",
+      fitting_type: "Coupler",
+      connection_type: "Solvent Weld",
+      fitting_material: "CPVC"
+    }
+  },
+  {
+    category_slug: "pipe-fittings",
+    name: "CPVC Elbow 90 Degree Plain, 15mm",
+    mfr_part_number: "CMF02000015",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      fitting_size: "15",
+      fitting_type: "Elbow 90°",
+      connection_type: "Solvent Weld",
+      fitting_material: "CPVC"
+    }
+  },
+  {
+    category_slug: "pipe-fittings",
+    name: "CPVC Elbow 90 Degree Plain, 20mm",
+    mfr_part_number: "CMF02000020",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      fitting_size: "20",
+      fitting_type: "Elbow 90°",
+      connection_type: "Solvent Weld",
+      fitting_material: "CPVC"
+    }
+  },
+  {
+    category_slug: "pipe-fittings",
+    name: "CPVC Elbow 90 Degree Plain, 25mm",
+    mfr_part_number: "CMF02000025",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      fitting_size: "25",
+      fitting_type: "Elbow 90°",
+      connection_type: "Solvent Weld",
+      fitting_material: "CPVC"
+    }
+  },
+  {
+    category_slug: "pipe-fittings",
+    name: "CPVC Elbow 90 Degree Plain, 32mm",
+    mfr_part_number: "CMF02000032",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      fitting_size: "32",
+      fitting_type: "Elbow 90°",
+      connection_type: "Solvent Weld",
+      fitting_material: "CPVC"
+    }
+  },
+  {
+    category_slug: "pipe-fittings",
+    name: "CPVC Elbow 90 Degree Plain, 40mm",
+    mfr_part_number: "CMF02000040",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      fitting_size: "40",
+      fitting_type: "Elbow 90°",
+      connection_type: "Solvent Weld",
+      fitting_material: "CPVC"
+    }
+  },
+  {
+    category_slug: "pipe-fittings",
+    name: "CPVC Elbow 90 Degree Plain, 50mm",
+    mfr_part_number: "CMF02000050",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      fitting_size: "50",
+      fitting_type: "Elbow 90°",
+      connection_type: "Solvent Weld",
+      fitting_material: "CPVC"
+    }
+  },
+  {
+    category_slug: "pipe-fittings",
+    name: "CPVC End Cap Plain, 15mm",
+    mfr_part_number: "CMF08000015",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      fitting_size: "15",
+      fitting_type: "End Cap",
+      connection_type: "Solvent Weld",
+      fitting_material: "CPVC"
+    }
+  },
+  {
+    category_slug: "pipe-fittings",
+    name: "CPVC End Cap Plain, 20mm",
+    mfr_part_number: "CMF08000020",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      fitting_size: "20",
+      fitting_type: "End Cap",
+      connection_type: "Solvent Weld",
+      fitting_material: "CPVC"
+    }
+  },
+  {
+    category_slug: "pipe-fittings",
+    name: "CPVC End Cap Plain, 25mm",
+    mfr_part_number: "CMF08000025",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      fitting_size: "25",
+      fitting_type: "End Cap",
+      connection_type: "Solvent Weld",
+      fitting_material: "CPVC"
+    }
+  },
+  {
+    category_slug: "pipe-fittings",
+    name: "CPVC End Cap Plain, 32mm",
+    mfr_part_number: "CMF08000032",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      fitting_size: "32",
+      fitting_type: "End Cap",
+      connection_type: "Solvent Weld",
+      fitting_material: "CPVC"
+    }
+  },
+  {
+    category_slug: "pipe-fittings",
+    name: "CPVC Reducer Elbow 90 Degree, 20x15mm",
+    mfr_part_number: "CMF04020015",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      fitting_size: "20",
+      fitting_type: "Elbow 90°",
+      connection_type: "Solvent Weld",
+      fitting_material: "CPVC"
+    }
+  },
+  {
+    category_slug: "pipe-fittings",
+    name: "CPVC Reducer Elbow 90 Degree, 25x20mm",
+    mfr_part_number: "CMF04025020",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      fitting_size: "25",
+      fitting_type: "Elbow 90°",
+      connection_type: "Solvent Weld",
+      fitting_material: "CPVC"
+    }
+  },
+  {
+    category_slug: "pipe-fittings",
+    name: "CPVC Reducer Tee 90 Degree Plain, 20x15mm",
+    mfr_part_number: "CMF06020015",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      fitting_size: "20",
+      fitting_type: "Tee",
+      connection_type: "Solvent Weld",
+      fitting_material: "CPVC"
+    }
+  },
+  {
+    category_slug: "pipe-fittings",
+    name: "CPVC Reducer Tee 90 Degree Plain, 25x20mm",
+    mfr_part_number: "CMF06025020",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      fitting_size: "25",
+      fitting_type: "Tee",
+      connection_type: "Solvent Weld",
+      fitting_material: "CPVC"
+    }
+  },
+  {
+    category_slug: "pipe-fittings",
+    name: "CPVC Reducer Tee 90 Degree Plain, 32x20mm",
+    mfr_part_number: "CMF06032020",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      fitting_size: "32",
+      fitting_type: "Tee",
+      connection_type: "Solvent Weld",
+      fitting_material: "CPVC"
+    }
+  },
+  {
+    category_slug: "pipe-fittings",
+    name: "CPVC Reducer Tee 90 Degree Plain, 32x25mm",
+    mfr_part_number: "CMF06032025",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      fitting_size: "32",
+      fitting_type: "Tee",
+      connection_type: "Solvent Weld",
+      fitting_material: "CPVC"
+    }
+  },
+  {
+    category_slug: "pipe-fittings",
+    name: "CPVC Reducer Tee 90 Degree Plain, 40x20mm",
+    mfr_part_number: "CMF06040020",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      fitting_size: "40",
+      fitting_type: "Tee",
+      connection_type: "Solvent Weld",
+      fitting_material: "CPVC"
+    }
+  },
+  {
+    category_slug: "pipe-fittings",
+    name: "CPVC Reducer Tee 90 Degree Plain, 40x25mm",
+    mfr_part_number: "CMF06040025",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      fitting_size: "40",
+      fitting_type: "Tee",
+      connection_type: "Solvent Weld",
+      fitting_material: "CPVC"
+    }
+  },
+  {
+    category_slug: "pipe-fittings",
+    name: "CPVC Tee 90 Degree Plain, 15mm",
+    mfr_part_number: "CMF05000015",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      fitting_size: "15",
+      fitting_type: "Tee",
+      connection_type: "Solvent Weld",
+      fitting_material: "CPVC"
+    }
+  },
+  {
+    category_slug: "pipe-fittings",
+    name: "CPVC Tee 90 Degree Plain, 20mm",
+    mfr_part_number: "CMF05000020",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      fitting_size: "20",
+      fitting_type: "Tee",
+      connection_type: "Solvent Weld",
+      fitting_material: "CPVC"
+    }
+  },
+  {
+    category_slug: "pipe-fittings",
+    name: "CPVC Tee 90 Degree Plain, 25mm",
+    mfr_part_number: "CMF05000025",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      fitting_size: "25",
+      fitting_type: "Tee",
+      connection_type: "Solvent Weld",
+      fitting_material: "CPVC"
+    }
+  },
+  {
+    category_slug: "pipe-fittings",
+    name: "CPVC Tee 90 Degree Plain, 32mm",
+    mfr_part_number: "CMF05000032",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      fitting_size: "32",
+      fitting_type: "Tee",
+      connection_type: "Solvent Weld",
+      fitting_material: "CPVC"
+    }
+  },
+  {
+    category_slug: "pipe-fittings",
+    name: "CPVC Tee 90 Degree Plain, 40mm",
+    mfr_part_number: "CMF05000040",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      fitting_size: "40",
+      fitting_type: "Tee",
+      connection_type: "Solvent Weld",
+      fitting_material: "CPVC"
+    }
+  },
+  {
+    category_slug: "pipe-fittings",
+    name: "CPVC Tee 90 Degree Plain, 50mm",
+    mfr_part_number: "CMF05000050",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      fitting_size: "50",
+      fitting_type: "Tee",
+      connection_type: "Solvent Weld",
+      fitting_material: "CPVC"
+    }
+  },
+  {
+    category_slug: "pipes",
+    name: "CPVC Pipe SDR 11, 15mm, 3 Mtr Length",
+    mfr_part_number: "CMP1103015",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      pipe_material: "CPVC",
+      pressure_class: "SDR 11",
+      nominal_diameter: "15",
+      pipe_application: "Hot Water"
+    }
+  },
+  {
+    category_slug: "pipes",
+    name: "CPVC Pipe SDR 11, 15mm, 5 Mtr Length",
+    mfr_part_number: "CMP1105015",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      pipe_material: "CPVC",
+      pressure_class: "SDR 11",
+      nominal_diameter: "15",
+      pipe_application: "Hot Water"
+    }
+  },
+  {
+    category_slug: "pipes",
+    name: "CPVC Pipe SDR 11, 20mm, 3 Mtr Length",
+    mfr_part_number: "CMP1103020",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      pipe_material: "CPVC",
+      pressure_class: "SDR 11",
+      nominal_diameter: "20",
+      pipe_application: "Hot Water"
+    }
+  },
+  {
+    category_slug: "pipes",
+    name: "CPVC Pipe SDR 11, 20mm, 5 Mtr Length",
+    mfr_part_number: "CMP1105020",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      pipe_material: "CPVC",
+      pressure_class: "SDR 11",
+      nominal_diameter: "20",
+      pipe_application: "Hot Water"
+    }
+  },
+  {
+    category_slug: "pipes",
+    name: "CPVC Pipe SDR 11, 25mm, 3 Mtr Length",
+    mfr_part_number: "CMP1103025",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      pipe_material: "CPVC",
+      pressure_class: "SDR 11",
+      nominal_diameter: "25",
+      pipe_application: "Hot Water"
+    }
+  },
+  {
+    category_slug: "pipes",
+    name: "CPVC Pipe SDR 11, 25mm, 5 Mtr Length",
+    mfr_part_number: "CMP1105025",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      pipe_material: "CPVC",
+      pressure_class: "SDR 11",
+      nominal_diameter: "25",
+      pipe_application: "Hot Water"
+    }
+  },
+  {
+    category_slug: "pipes",
+    name: "CPVC Pipe SDR 11, 32mm, 3 Mtr Length",
+    mfr_part_number: "CMP1103032",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      pipe_material: "CPVC",
+      pressure_class: "SDR 11",
+      nominal_diameter: "32",
+      pipe_application: "Hot Water"
+    }
+  },
+  {
+    category_slug: "pipes",
+    name: "CPVC Pipe SDR 11, 32mm, 5 Mtr Length",
+    mfr_part_number: "CMP1105032",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      pipe_material: "CPVC",
+      pressure_class: "SDR 11",
+      nominal_diameter: "32",
+      pipe_application: "Hot Water"
+    }
+  },
+  {
+    category_slug: "pipes",
+    name: "CPVC Pipe SDR 11, 40mm, 3 Mtr Length",
+    mfr_part_number: "CMP1103040",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      pipe_material: "CPVC",
+      pressure_class: "SDR 11",
+      nominal_diameter: "40",
+      pipe_application: "Hot Water"
+    }
+  },
+  {
+    category_slug: "pipes",
+    name: "CPVC Pipe SDR 11, 40mm, 5 Mtr Length",
+    mfr_part_number: "CMP1105040",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      pipe_material: "CPVC",
+      pressure_class: "SDR 11",
+      nominal_diameter: "40",
+      pipe_application: "Hot Water"
+    }
+  },
+  {
+    category_slug: "pipes",
+    name: "CPVC Pipe SDR 11, 50mm, 3 Mtr Length",
+    mfr_part_number: "CMP1103050",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      pipe_material: "CPVC",
+      pressure_class: "SDR 11",
+      nominal_diameter: "50",
+      pipe_application: "Hot Water"
+    }
+  },
+  {
+    category_slug: "pipes",
+    name: "CPVC Pipe SDR 11, 50mm, 5 Mtr Length",
+    mfr_part_number: "CMP1105050",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      pipe_material: "CPVC",
+      pressure_class: "SDR 11",
+      nominal_diameter: "50",
+      pipe_application: "Hot Water"
+    }
+  },
+  {
+    category_slug: "pipes",
+    name: "CPVC Pipe SDR 13.5, 15mm, 3 Mtr Length",
+    mfr_part_number: "CMP13503015",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      pipe_material: "CPVC",
+      pressure_class: "SDR 13.5",
+      nominal_diameter: "15",
+      pipe_application: "Hot Water"
+    }
+  },
+  {
+    category_slug: "pipes",
+    name: "CPVC Pipe SDR 13.5, 15mm, 5 Mtr Length",
+    mfr_part_number: "CMP13505015",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      pipe_material: "CPVC",
+      pressure_class: "SDR 13.5",
+      nominal_diameter: "15",
+      pipe_application: "Hot Water"
+    }
+  },
+  {
+    category_slug: "pipes",
+    name: "CPVC Pipe SDR 13.5, 20mm, 3 Mtr Length",
+    mfr_part_number: "CMP13503020",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      pipe_material: "CPVC",
+      pressure_class: "SDR 13.5",
+      nominal_diameter: "20",
+      pipe_application: "Hot Water"
+    }
+  },
+  {
+    category_slug: "pipes",
+    name: "CPVC Pipe SDR 13.5, 20mm, 5 Mtr Length",
+    mfr_part_number: "CMP13505020",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      pipe_material: "CPVC",
+      pressure_class: "SDR 13.5",
+      nominal_diameter: "20",
+      pipe_application: "Hot Water"
+    }
+  },
+  {
+    category_slug: "pipes",
+    name: "CPVC Pipe SDR 13.5, 25mm, 3 Mtr Length",
+    mfr_part_number: "CMP13503025",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      pipe_material: "CPVC",
+      pressure_class: "SDR 13.5",
+      nominal_diameter: "25",
+      pipe_application: "Hot Water"
+    }
+  },
+  {
+    category_slug: "pipes",
+    name: "CPVC Pipe SDR 13.5, 25mm, 5 Mtr Length",
+    mfr_part_number: "CMP13505025",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      pipe_material: "CPVC",
+      pressure_class: "SDR 13.5",
+      nominal_diameter: "25",
+      pipe_application: "Hot Water"
+    }
+  },
+  {
+    category_slug: "pipes",
+    name: "CPVC Pipe SDR 13.5, 32mm, 3 Mtr Length",
+    mfr_part_number: "CMP13503032",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      pipe_material: "CPVC",
+      pressure_class: "SDR 13.5",
+      nominal_diameter: "32",
+      pipe_application: "Hot Water"
+    }
+  },
+  {
+    category_slug: "pipes",
+    name: "CPVC Pipe SDR 13.5, 32mm, 5 Mtr Length",
+    mfr_part_number: "CMP13505032",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      pipe_material: "CPVC",
+      pressure_class: "SDR 13.5",
+      nominal_diameter: "32",
+      pipe_application: "Hot Water"
+    }
+  },
+  {
+    category_slug: "pipes",
+    name: "CPVC Pipe SDR 13.5, 40mm, 3 Mtr Length",
+    mfr_part_number: "CMP13503040",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      pipe_material: "CPVC",
+      pressure_class: "SDR 13.5",
+      nominal_diameter: "40",
+      pipe_application: "Hot Water"
+    }
+  },
+  {
+    category_slug: "pipes",
+    name: "CPVC Pipe SDR 13.5, 40mm, 5 Mtr Length",
+    mfr_part_number: "CMP13505040",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      pipe_material: "CPVC",
+      pressure_class: "SDR 13.5",
+      nominal_diameter: "40",
+      pipe_application: "Hot Water"
+    }
+  },
+  {
+    category_slug: "pipes",
+    name: "CPVC Pipe SDR 13.5, 50mm, 3 Mtr Length",
+    mfr_part_number: "CMP13503050",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      pipe_material: "CPVC",
+      pressure_class: "SDR 13.5",
+      nominal_diameter: "50",
+      pipe_application: "Hot Water"
+    }
+  },
+  {
+    category_slug: "pipes",
+    name: "CPVC Pipe SDR 13.5, 50mm, 5 Mtr Length",
+    mfr_part_number: "CMP13505050",
+    hsn_code: "39172390",
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      pipe_material: "CPVC",
+      pressure_class: "SDR 13.5",
+      nominal_diameter: "50",
+      pipe_application: "Hot Water"
+    }
+  },
+  {
+    category_slug: "seat-covers",
+    name: "Anglo Indian Seat Cover",
+    mfr_part_number: "SC-013",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      jet_provision: "FALSE",
+      sanitary_finish: "White",
+      seat_cover_type: "Standard",
+      seat_cover_colour: "Blue",
+      seat_cover_material: "Plastic"
+    }
+  },
+  {
+    category_slug: "seat-covers",
+    name: "Anglo Indian with Jet Seat Cover",
+    mfr_part_number: "SC-019",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      jet_provision: "TRUE",
+      sanitary_finish: "White",
+      seat_cover_type: "Standard",
+      seat_cover_colour: "White",
+      seat_cover_material: "Plastic"
+    }
+  },
+  {
+    category_slug: "seat-covers",
+    name: "Delta Seat Cover",
+    mfr_part_number: "SC-020",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      jet_provision: "FALSE",
+      sanitary_finish: "White",
+      seat_cover_type: "Standard",
+      seat_cover_colour: "White",
+      seat_cover_material: "Duroplast"
+    }
+  },
+  {
+    category_slug: "seat-covers",
+    name: "Duo Heavy Seat Cover (Kids+Adults)",
+    mfr_part_number: "SC-022",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      jet_provision: "FALSE",
+      sanitary_finish: "White",
+      seat_cover_type: "Duo (Kids + Adults)",
+      seat_cover_colour: "Blue",
+      seat_cover_material: "Plastic"
+    }
+  },
+  {
+    category_slug: "seat-covers",
+    name: "Duo Hydraulic Seat Cover (Kids+Adults)",
+    mfr_part_number: "SC-023",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      jet_provision: "FALSE",
+      sanitary_finish: "White",
+      seat_cover_type: "Duo (Kids + Adults)",
+      seat_cover_colour: "Blue",
+      seat_cover_material: "Duroplast"
+    }
+  },
+  {
+    category_slug: "seat-covers",
+    name: "Eco Seat Cover",
+    mfr_part_number: "SC-010",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      jet_provision: "FALSE",
+      sanitary_finish: "Ivory",
+      seat_cover_type: "Standard",
+      seat_cover_colour: "Ivory",
+      seat_cover_material: "Plastic"
+    }
+  },
+  {
+    category_slug: "seat-covers",
+    name: "Heavy Cascade Seat Cover",
+    mfr_part_number: "SC-015",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      jet_provision: "FALSE",
+      sanitary_finish: "White",
+      seat_cover_type: "Standard",
+      seat_cover_colour: "White",
+      seat_cover_material: "Duroplast"
+    }
+  },
+  {
+    category_slug: "seat-covers",
+    name: "Heavy Regular (EWC) Seat Cover",
+    mfr_part_number: "SC-014",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      jet_provision: "FALSE",
+      sanitary_finish: "Ivory",
+      seat_cover_type: "Standard",
+      seat_cover_colour: "Ivory",
+      seat_cover_material: "Duroplast"
+    }
+  },
+  {
+    category_slug: "seat-covers",
+    name: "Hydraulic Cascade with Jet Seat Cover",
+    mfr_part_number: "SC-017",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      jet_provision: "TRUE",
+      sanitary_finish: "White",
+      seat_cover_type: "Hydraulic",
+      seat_cover_colour: "White",
+      seat_cover_material: "Duroplast"
+    }
+  },
+  {
+    category_slug: "seat-covers",
+    name: "Hydraulic Cascade without Jet Seat Cover",
+    mfr_part_number: "SC-024",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      jet_provision: "FALSE",
+      sanitary_finish: "White",
+      seat_cover_type: "Hydraulic",
+      seat_cover_colour: "White",
+      seat_cover_material: "Duroplast"
+    }
+  },
+  {
+    category_slug: "seat-covers",
+    name: "Hydraulic Elite with Jet Seat Cover",
+    mfr_part_number: "SC-018",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      jet_provision: "TRUE",
+      sanitary_finish: "Ivory",
+      seat_cover_type: "Hydraulic",
+      seat_cover_colour: "Ivory",
+      seat_cover_material: "Duroplast"
+    }
+  },
+  {
+    category_slug: "seat-covers",
+    name: "Hydraulic Elite without Jet Seat Cover",
+    mfr_part_number: "SC-026",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      jet_provision: "FALSE",
+      sanitary_finish: "Ivory",
+      seat_cover_type: "Hydraulic",
+      seat_cover_colour: "Ivory",
+      seat_cover_material: "Duroplast"
+    }
+  },
+  {
+    category_slug: "seat-covers",
+    name: "Hydraulic Regular (EWC) with Jet Seat Cover",
+    mfr_part_number: "SC-016",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      jet_provision: "TRUE",
+      sanitary_finish: "Ivory",
+      seat_cover_type: "Hydraulic",
+      seat_cover_colour: "Ivory",
+      seat_cover_material: "Duroplast"
+    }
+  },
+  {
+    category_slug: "seat-covers",
+    name: "Hydraulic Regular (EWC) without Jet Seat Cover",
+    mfr_part_number: "SC-025",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      jet_provision: "FALSE",
+      sanitary_finish: "Ivory",
+      seat_cover_type: "Hydraulic",
+      seat_cover_colour: "Ivory",
+      seat_cover_material: "Duroplast"
+    }
+  },
+  {
+    category_slug: "seat-covers",
+    name: "Passion Seat Cover",
+    mfr_part_number: "SC-011",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      jet_provision: "FALSE",
+      sanitary_finish: "White",
+      seat_cover_type: "Standard",
+      seat_cover_colour: "Green",
+      seat_cover_material: "Plastic"
+    }
+  },
+  {
+    category_slug: "seat-covers",
+    name: "Passion with Jet Seat Cover",
+    mfr_part_number: "SC-012",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      jet_provision: "TRUE",
+      sanitary_finish: "Ivory",
+      seat_cover_type: "Standard",
+      seat_cover_colour: "Ivory",
+      seat_cover_material: "Plastic"
+    }
+  },
+  {
+    category_slug: "showers",
+    name: "(ABS with Chrome) Round 100mm",
+    mfr_part_number: "SHP-525",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      shower_size: "100",
+      shower_type: "Overhead",
+      arm_included: "TRUE",
+      shower_shape: "Round",
+      sanitary_finish: "Chrome"
+    }
+  },
+  {
+    category_slug: "showers",
+    name: "(ABS with Chrome) Round 125mm",
+    mfr_part_number: "SHP-524",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      shower_size: "125",
+      shower_type: "Overhead",
+      arm_included: "TRUE",
+      shower_shape: "Round",
+      sanitary_finish: "Chrome"
+    }
+  },
+  {
+    category_slug: "showers",
+    name: "(ABS with Chrome) Square 100x100mm",
+    mfr_part_number: "SHP-523",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      shower_size: "100",
+      shower_type: "Overhead",
+      arm_included: "TRUE",
+      shower_shape: "Square",
+      sanitary_finish: "Chrome"
+    }
+  },
+  {
+    category_slug: "showers",
+    name: "(ABS with Chrome) Square 150x150mm",
+    mfr_part_number: "SHP-522",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      shower_size: "150",
+      shower_type: "Overhead",
+      arm_included: "TRUE",
+      shower_shape: "Square",
+      sanitary_finish: "Chrome"
+    }
+  },
+  {
+    category_slug: "showers",
+    name: "Alpha Overhead Square Shower 4\"x4\"",
+    mfr_part_number: "SHP-1301",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      shower_size: "100",
+      shower_type: "Overhead",
+      arm_included: "TRUE",
+      shower_shape: "Square",
+      sanitary_finish: "Chrome"
+    }
+  },
+  {
+    category_slug: "showers",
+    name: "Alpha Pine Overhead Square Shower 4\"x4\"",
+    mfr_part_number: "SHP-1451",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      shower_size: "100",
+      shower_type: "Overhead",
+      arm_included: "TRUE",
+      shower_shape: "Square",
+      sanitary_finish: "Chrome"
+    }
+  },
+  {
+    category_slug: "showers",
+    name: "Alpha Pine Square Shower 4\"x4\" with 9\" SS Arm",
+    mfr_part_number: "SHP-1454",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      shower_size: "100",
+      shower_type: "Overhead",
+      arm_included: "TRUE",
+      shower_shape: "Square",
+      sanitary_finish: "Chrome"
+    }
+  },
+  {
+    category_slug: "showers",
+    name: "Alpha Square Shower 4\"x4\" with 9\" SS Arm",
+    mfr_part_number: "SHP-1453",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      shower_size: "100",
+      shower_type: "Overhead",
+      arm_included: "TRUE",
+      shower_shape: "Square",
+      sanitary_finish: "Chrome"
+    }
+  },
+  {
+    category_slug: "showers",
+    name: "Beta Overhead Round Shower 4\"",
+    mfr_part_number: "SHP-1302",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      shower_size: "100",
+      shower_type: "Overhead",
+      arm_included: "TRUE",
+      shower_shape: "Round",
+      sanitary_finish: "Chrome"
+    }
+  },
+  {
+    category_slug: "showers",
+    name: "Dura Flow Adjustable Overhead 75mm with Arm",
+    mfr_part_number: "SHP-526",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      shower_size: "75",
+      shower_type: "Overhead",
+      arm_included: "TRUE",
+      shower_shape: "Round",
+      sanitary_finish: "Chrome"
+    }
+  },
+  {
+    category_slug: "showers",
+    name: "Dura Flow Adjustable Overhead 75mm with Arm (Chrome)",
+    mfr_part_number: "SHP-527",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      shower_size: "75",
+      shower_type: "Overhead",
+      arm_included: "TRUE",
+      shower_shape: "Round",
+      sanitary_finish: "Chrome"
+    }
+  },
+  {
+    category_slug: "showers",
+    name: "Edge (SS-304/ABS Frame) 165x165mm",
+    mfr_part_number: "SHP-549",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      shower_size: "165",
+      shower_type: "Overhead",
+      arm_included: "TRUE",
+      shower_shape: "Square",
+      sanitary_finish: "Chrome"
+    }
+  },
+  {
+    category_slug: "showers",
+    name: "Gamma Overhead Round Shower 5\"",
+    mfr_part_number: "SHP-1303",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      shower_size: "125",
+      shower_type: "Overhead",
+      arm_included: "TRUE",
+      shower_shape: "Round",
+      sanitary_finish: "Chrome"
+    }
+  },
+  {
+    category_slug: "showers",
+    name: "Magic Shower Square",
+    mfr_part_number: "SHP-543",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      shower_size: "100",
+      shower_type: "Overhead",
+      arm_included: "TRUE",
+      shower_shape: "Square",
+      sanitary_finish: "Chrome"
+    }
+  },
+  {
+    category_slug: "showers",
+    name: "Overhead Pine Shower 3\" with Arm",
+    mfr_part_number: "SHP-1450",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      shower_size: "76",
+      shower_type: "Overhead",
+      arm_included: "TRUE",
+      shower_shape: "Round",
+      sanitary_finish: "Chrome"
+    }
+  },
+  {
+    category_slug: "showers",
+    name: "Overhead Shower 2\" with Arm",
+    mfr_part_number: "SHP-548",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      shower_size: "50",
+      shower_type: "Overhead",
+      arm_included: "TRUE",
+      shower_shape: "Round",
+      sanitary_finish: "Chrome"
+    }
+  },
+  {
+    category_slug: "showers",
+    name: "Overhead Shower 3\" with Arm",
+    mfr_part_number: "SHP-539",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      shower_size: "76",
+      shower_type: "Overhead",
+      arm_included: "TRUE",
+      shower_shape: "Round",
+      sanitary_finish: "Chrome"
+    }
+  },
+  {
+    category_slug: "showers",
+    name: "Overhead Square Shower 4\"x4\"",
+    mfr_part_number: "SHP-580",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      shower_size: "100",
+      shower_type: "Overhead",
+      arm_included: "TRUE",
+      shower_shape: "Square",
+      sanitary_finish: "Chrome"
+    }
+  },
+  {
+    category_slug: "showers",
+    name: "Overhead Square Shower 6\"x6\"",
+    mfr_part_number: "SHP-581",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      shower_size: "150",
+      shower_type: "Overhead",
+      arm_included: "TRUE",
+      shower_shape: "Square",
+      sanitary_finish: "Chrome"
+    }
+  },
+  {
+    category_slug: "showers",
+    name: "Round Shower with Arm (SS) 100mm, 6\" Arm",
+    mfr_part_number: "SHP-WR-552",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      shower_size: "100",
+      shower_type: "Overhead",
+      arm_included: "TRUE",
+      shower_shape: "Round",
+      sanitary_finish: "Chrome"
+    }
+  },
+  {
+    category_slug: "showers",
+    name: "Round Shower with Arm (SS) 125mm, 6\" Arm",
+    mfr_part_number: "SHP-WR-551",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      shower_size: "125",
+      shower_type: "Overhead",
+      arm_included: "TRUE",
+      shower_shape: "Round",
+      sanitary_finish: "Chrome"
+    }
+  },
+  {
+    category_slug: "showers",
+    name: "Sandwich (SS-304) 100x100mm",
+    mfr_part_number: "SHP-537",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      shower_size: "100",
+      shower_type: "Overhead",
+      arm_included: "TRUE",
+      shower_shape: "Square",
+      sanitary_finish: "Chrome"
+    }
+  },
+  {
+    category_slug: "showers",
+    name: "Sandwich (SS-304) 150x150mm",
+    mfr_part_number: "SHP-521",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      shower_size: "150",
+      shower_type: "Overhead",
+      arm_included: "TRUE",
+      shower_shape: "Square",
+      sanitary_finish: "Chrome"
+    }
+  },
+  {
+    category_slug: "showers",
+    name: "Sandwich (SS-304) 200x200mm",
+    mfr_part_number: "SHP-538",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      shower_size: "200",
+      shower_type: "Overhead",
+      arm_included: "TRUE",
+      shower_shape: "Square",
+      sanitary_finish: "Chrome"
+    }
+  },
+  {
+    category_slug: "showers",
+    name: "Square Shower with Arm (SS) 100x100mm, 6\" Arm",
+    mfr_part_number: "SHP-WR-550",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      shower_size: "100",
+      shower_type: "Overhead",
+      arm_included: "TRUE",
+      shower_shape: "Square",
+      sanitary_finish: "Chrome"
+    }
+  },
+  {
+    category_slug: "showers",
+    name: "Ultra Slim (SS-304) 100x100mm",
+    mfr_part_number: "SHP-528",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      shower_size: "100",
+      shower_type: "Overhead",
+      arm_included: "TRUE",
+      shower_shape: "Square",
+      sanitary_finish: "Chrome"
+    }
+  },
+  {
+    category_slug: "showers",
+    name: "Ultra Slim (SS-304) 200x200mm",
+    mfr_part_number: "SHP-529",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      shower_size: "200",
+      shower_type: "Overhead",
+      arm_included: "TRUE",
+      shower_shape: "Square",
+      sanitary_finish: "Chrome"
+    }
+  },
+  {
+    category_slug: "sinks",
+    name: "PPKS 18x16x8 Oval Kitchen Sink",
+    mfr_part_number: "PPKS-902",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      sink_type: "Single Bowl",
+      sink_material: "SS 304",
+      sink_thickness: "0.8",
+      sink_dimensions: "18x16x8 in"
+    }
+  },
+  {
+    category_slug: "sinks",
+    name: "PPKS 20x17x8 Oval Kitchen Sink",
+    mfr_part_number: "PPKS-903",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      sink_type: "Single Bowl",
+      sink_material: "SS 304",
+      sink_thickness: "0.8",
+      sink_dimensions: "20x17x8 in"
+    }
+  },
+  {
+    category_slug: "sinks",
+    name: "PPKS 22x18x8 Oval Kitchen Sink",
+    mfr_part_number: "PPKS-904",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      sink_type: "Single Bowl",
+      sink_material: "SS 304",
+      sink_thickness: "0.8",
+      sink_dimensions: "22x18x8 in"
+    }
+  },
+  {
+    category_slug: "sinks",
+    name: "PPKS 24x18x9 Oval Kitchen Sink",
+    mfr_part_number: "PPKS-901",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      sink_type: "Single Bowl",
+      sink_material: "SS 304",
+      sink_thickness: "0.8",
+      sink_dimensions: "24x18x9 in"
+    }
+  },
+  {
+    category_slug: "sinks",
+    name: "PPKS 37x18x8 DB Oval TB Kitchen Sink",
+    mfr_part_number: "PPKS-906",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      sink_type: "Double Bowl",
+      sink_material: "SS 304",
+      sink_thickness: "0.8",
+      sink_dimensions: "37x18x8 in"
+    }
+  },
+  {
+    category_slug: "sinks",
+    name: "PPKS 37x18x8 SB Oval TB Kitchen Sink",
+    mfr_part_number: "PPKS-907",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      sink_type: "Single Bowl with Drainboard",
+      sink_material: "SS 304",
+      sink_thickness: "0.8",
+      sink_dimensions: "37x18x8 in"
+    }
+  },
+  {
+    category_slug: "sinks",
+    name: "PPKS 45x20x9 DB Oval TB Kitchen Sink",
+    mfr_part_number: "PPKS-905",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      sink_type: "Double Bowl",
+      sink_material: "SS 304",
+      sink_thickness: "0.8",
+      sink_dimensions: "45x20x9 in"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "2 In 1 Wall Mixer Telephonic With Cruth",
+    mfr_part_number: "BEA-2515",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Wall Mixer",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Wall",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "2 In 1 Wall Mixer With L-Bend",
+    mfr_part_number: "BEA-2514",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Wall Mixer",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Wall",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "2 Way Angle Cock",
+    mfr_part_number: "TAU-029",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Angle Valve",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Wall",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "2 Way Angle Cock",
+    mfr_part_number: "BEA-2505",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Angle Valve",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Wall",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "2 Way Angle Cock",
+    mfr_part_number: "PIS-104",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Angle Valve",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Wall",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "2 Way Angle Cock (15mm Spindle)",
+    mfr_part_number: "PIS-118",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Angle Valve",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Wall",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "2 Way Bib Cock",
+    mfr_part_number: "PIS-105",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Bib Cock",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Wall",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "2 Way Bib Cock",
+    mfr_part_number: "TAU-030",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Bib Cock",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Wall",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "2 Way Bib Cock",
+    mfr_part_number: "BEA-2504",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Bib Cock",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Wall",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "2 Way Bib Cock (15mm Spindle)",
+    mfr_part_number: "PIS-119",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Bib Cock",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Wall",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "2 in 1 Wall Mixer Telephonic",
+    mfr_part_number: "PIS-113",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Wall Mixer",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Wall",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "2 in 1 Wall Mixer Telephonic",
+    mfr_part_number: "TAU-038",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Wall Mixer",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Wall",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "2 in 1 Wall Mixer with 'L' Bend",
+    mfr_part_number: "TAU-039",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Wall Mixer",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Wall",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "2 in 1 Wall Mixer with 'L' Bend",
+    mfr_part_number: "PIS-114",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Wall Mixer",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Wall",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "Angle Cock",
+    mfr_part_number: "PIS-103",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Angle Valve",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Wall",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "Angle Cock",
+    mfr_part_number: "BEA-2503",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Angle Valve",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Wall",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "Angle Cock",
+    mfr_part_number: "TAU-028",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Angle Valve",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Wall",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "Bib Cock",
+    mfr_part_number: "BEA-2500",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Pillar Cock",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Wall",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "Bib Cock",
+    mfr_part_number: "TAU-025",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Bib Cock",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Wall",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "Bib Cock",
+    mfr_part_number: "PIS-100",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Bib Cock",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Wall",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "Center Hole Basin Mixer",
+    mfr_part_number: "TAU-037",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Basin Mixer",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Deck",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "Center Hole Basin Mixer",
+    mfr_part_number: "BEA-2517",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Basin Mixer",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Deck",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "Concealed 2 Inlet High Flow Diverter",
+    mfr_part_number: "BEA-2518",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Wall Mixer",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Wall",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "Concealed Stop Cock",
+    mfr_part_number: "BEA-2510",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Angle Valve",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Wall",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "Long Body Bib Cock",
+    mfr_part_number: "PIS-102",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Bib Cock",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Wall",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "Long Body Bib Cock",
+    mfr_part_number: "TAU-027",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Bib Cock",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Wall",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "Long Body Bib Cock",
+    mfr_part_number: "BEA-2501",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Pillar Cock",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Wall",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "Nozzle Bib Cock",
+    mfr_part_number: "PIS-116",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Bib Cock",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Wall",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "Pillar Cock",
+    mfr_part_number: "TAU-026",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Pillar Cock",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Deck",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "Pillar Cock",
+    mfr_part_number: "PIS-101",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Pillar Cock",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Deck",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "Pillar Cock",
+    mfr_part_number: "BEA-2502",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Pillar Cock",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Deck",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "Sink Cock",
+    mfr_part_number: "TAU-031",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Sink Mixer",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Deck",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "Sink Cock",
+    mfr_part_number: "BEA-2507",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Sink Mixer",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Deck",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "Sink Mixer",
+    mfr_part_number: "PIS-110",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Sink Mixer",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Deck",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "Sink Mixer",
+    mfr_part_number: "BEA-2512",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Sink Mixer",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Deck",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "Sink Mixer",
+    mfr_part_number: "TAU-035",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Sink Mixer",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Deck",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "Swan Neck Pillar Cock",
+    mfr_part_number: "BEA-2506",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Pillar Cock",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Deck",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "Swan Neck Pillar Cock",
+    mfr_part_number: "PIS-107",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Pillar Cock",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Deck",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "Swan Neck Pillar Cock",
+    mfr_part_number: "TAU-032",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Pillar Cock",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Deck",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "Wall Mixer 3 In 1",
+    mfr_part_number: "BEA-2516",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Wall Mixer",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Wall",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "Wall Mixer 3 in 1",
+    mfr_part_number: "PIS-115",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Wall Mixer",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Wall",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "Wall Mixer 3 in 1",
+    mfr_part_number: "TAU-040",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Wall Mixer",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Wall",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "Wall Mixer Non Telephonic",
+    mfr_part_number: "TAU-036",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Wall Mixer",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Wall",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "taps-faucets",
+    name: "Wall Mixer Non Telephonic",
+    mfr_part_number: "BEA-2513",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_type: "Wall Mixer",
+      handle_type: "Quarter Turn",
+      tap_mounting: "Wall",
+      sanitary_finish: "Chrome",
+      tap_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "urinals",
+    name: "Ignite Urinal",
+    mfr_part_number: "SL-9223",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      urinal_type: "Wall Hung",
+      sanitary_finish: "White",
+      sensor_operated: "FALSE"
+    }
+  },
+  {
+    category_slug: "urinals",
+    name: "Maxima Urinal",
+    mfr_part_number: "SL-9220",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      urinal_type: "Wall Hung",
+      sanitary_finish: "White",
+      sensor_operated: "FALSE"
+    }
+  },
+  {
+    category_slug: "urinals",
+    name: "Prism Urinal",
+    mfr_part_number: "SL-9224",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      urinal_type: "Wall Hung",
+      sanitary_finish: "White",
+      sensor_operated: "FALSE"
+    }
+  },
+  {
+    category_slug: "urinals",
+    name: "Vortex Urinal",
+    mfr_part_number: "SL-9222",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      urinal_type: "Wall Hung",
+      sanitary_finish: "White",
+      sensor_operated: "FALSE"
+    }
+  },
+  {
+    category_slug: "urinals",
+    name: "Zion Urinal",
+    mfr_part_number: "SL-9221",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      urinal_type: "Wall Hung",
+      sanitary_finish: "White",
+      sensor_operated: "FALSE"
+    }
+  },
+  {
+    category_slug: "valves",
+    name: "Eco Angle Cock",
+    mfr_part_number: "ALL-319",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      valve_size: "15",
+      valve_type: "Angle",
+      valve_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "valves",
+    name: "Foot Operated Tap",
+    mfr_part_number: "ALL-1059",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      valve_size: "15",
+      valve_type: "Foot",
+      valve_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "valves",
+    name: "Turbo Angle Cock",
+    mfr_part_number: "ALL-320",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      valve_size: "15",
+      valve_type: "Angle",
+      valve_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "valves",
+    name: "Zen Angle Cock",
+    mfr_part_number: "ALL-1103",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      valve_size: "15",
+      valve_type: "Angle",
+      valve_body_material: "Brass"
+    }
+  },
+  {
+    category_slug: "wash-basins",
+    name: "Aero Small Basin",
+    mfr_part_number: "SL-9150",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_hole: "Single",
+      basin_type: "Wall Mounted",
+      basin_shape: "Rectangular",
+      sanitary_finish: "White",
+      basin_dimensions: "475 x 370 x 180 mm"
+    }
+  },
+  {
+    category_slug: "wash-basins",
+    name: "Aries One Piece Wash Basin",
+    mfr_part_number: "SL-9173",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_hole: "Single",
+      basin_type: "Pedestal",
+      basin_shape: "Rectangular",
+      sanitary_finish: "White",
+      basin_dimensions: "475 x 410 x 330 mm"
+    }
+  },
+  {
+    category_slug: "wash-basins",
+    name: "Astra Basin with Half Pedestal",
+    mfr_part_number: "SL-9201",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_hole: "Single",
+      basin_type: "Pedestal",
+      basin_shape: "Rectangular",
+      sanitary_finish: "White",
+      basin_dimensions: "460 x 335 x 418 mm"
+    }
+  },
+  {
+    category_slug: "wash-basins",
+    name: "Blaze Table Top Basin",
+    mfr_part_number: "SL-9135",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_hole: "Single",
+      basin_type: "Counter Top",
+      basin_shape: "Round",
+      sanitary_finish: "White",
+      basin_dimensions: "430 x 430 x 130 mm"
+    }
+  },
+  {
+    category_slug: "wash-basins",
+    name: "Cady Table Top Basin",
+    mfr_part_number: "SL-9136",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_hole: "Single",
+      basin_type: "Counter Top",
+      basin_shape: "Round",
+      sanitary_finish: "White",
+      basin_dimensions: "420 x 420 x 125 mm"
+    }
+  },
+  {
+    category_slug: "wash-basins",
+    name: "Coral Table Top Basin",
+    mfr_part_number: "SL-9140",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_hole: "Single",
+      basin_type: "Counter Top",
+      basin_shape: "Square",
+      sanitary_finish: "White",
+      basin_dimensions: "405 x 405 x 125 mm"
+    }
+  },
+  {
+    category_slug: "wash-basins",
+    name: "Cresta Basin with Full Pedestal",
+    mfr_part_number: "SL-9191",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_hole: "Single",
+      basin_type: "Pedestal",
+      basin_shape: "Rectangular",
+      sanitary_finish: "White",
+      basin_dimensions: "510 x 395 x 855 mm"
+    }
+  },
+  {
+    category_slug: "wash-basins",
+    name: "Dana Table Top Basin",
+    mfr_part_number: "SL-9138",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_hole: "Single",
+      basin_type: "Counter Top",
+      basin_shape: "Oval",
+      sanitary_finish: "White",
+      basin_dimensions: "535 x 360 x 112 mm"
+    }
+  },
+  {
+    category_slug: "wash-basins",
+    name: "Elite Small Basin",
+    mfr_part_number: "SL-9155",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_hole: "Single",
+      basin_type: "Wall Mounted",
+      basin_shape: "Square",
+      sanitary_finish: "White",
+      basin_dimensions: "351 x 347 x 145 mm"
+    }
+  },
+  {
+    category_slug: "wash-basins",
+    name: "Enigma Basin with Half Pedestal",
+    mfr_part_number: "SL-9200",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_hole: "Single",
+      basin_type: "Pedestal",
+      basin_shape: "Rectangular",
+      sanitary_finish: "White",
+      basin_dimensions: "450 x 350 x 445 mm"
+    }
+  },
+  {
+    category_slug: "wash-basins",
+    name: "Falcon Basin with Full Pedestal",
+    mfr_part_number: "SL-9193",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_hole: "Single",
+      basin_type: "Pedestal",
+      basin_shape: "Rectangular",
+      sanitary_finish: "White",
+      basin_dimensions: "560 x 450 x 825 mm"
+    }
+  },
+  {
+    category_slug: "wash-basins",
+    name: "Flora Table Top Basin",
+    mfr_part_number: "SL-9131",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_hole: "Single",
+      basin_type: "Counter Top",
+      basin_shape: "Round",
+      sanitary_finish: "White",
+      basin_dimensions: "400 x 345 x 170 mm"
+    }
+  },
+  {
+    category_slug: "wash-basins",
+    name: "Giga Basin with Full Pedestal",
+    mfr_part_number: "SL-9194",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_hole: "Single",
+      basin_type: "Pedestal",
+      basin_shape: "Rectangular",
+      sanitary_finish: "White",
+      basin_dimensions: "585 x 455 x 850 mm"
+    }
+  },
+  {
+    category_slug: "wash-basins",
+    name: "Glory One Piece Wash Basin",
+    mfr_part_number: "SL-9170",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_hole: "Single",
+      basin_type: "Pedestal",
+      basin_shape: "Rectangular",
+      sanitary_finish: "White",
+      basin_dimensions: "350 x 355 x 285 mm"
+    }
+  },
+  {
+    category_slug: "wash-basins",
+    name: "Jade Small Basin",
+    mfr_part_number: "SL-9154",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_hole: "Single",
+      basin_type: "Wall Mounted",
+      basin_shape: "Rectangular",
+      sanitary_finish: "White",
+      basin_dimensions: "460 x 345 x 155 mm"
+    }
+  },
+  {
+    category_slug: "wash-basins",
+    name: "Jazz Basin with Full Pedestal",
+    mfr_part_number: "SL-9192",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_hole: "Single",
+      basin_type: "Pedestal",
+      basin_shape: "Rectangular",
+      sanitary_finish: "White",
+      basin_dimensions: "575 x 485 x 870 mm"
+    }
+  },
+  {
+    category_slug: "wash-basins",
+    name: "Leo Table Top Basin",
+    mfr_part_number: "SL-9141",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_hole: "Single",
+      basin_type: "Counter Top",
+      basin_shape: "Rectangular",
+      sanitary_finish: "White",
+      basin_dimensions: "455 x 335 x 130 mm"
+    }
+  },
+  {
+    category_slug: "wash-basins",
+    name: "Luna Small Basin",
+    mfr_part_number: "SL-9151",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_hole: "Single",
+      basin_type: "Wall Mounted",
+      basin_shape: "Round",
+      sanitary_finish: "White",
+      basin_dimensions: "425 x 345 x 140 mm"
+    }
+  },
+  {
+    category_slug: "wash-basins",
+    name: "Lyra Basin with Half Pedestal",
+    mfr_part_number: "SL-9203",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_hole: "Single",
+      basin_type: "Pedestal",
+      basin_shape: "Rectangular",
+      sanitary_finish: "White",
+      basin_dimensions: "560 x 450 x 460 mm"
+    }
+  },
+  {
+    category_slug: "wash-basins",
+    name: "Mallow One Piece Wash Basin",
+    mfr_part_number: "SL-9172",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_hole: "Single",
+      basin_type: "Pedestal",
+      basin_shape: "Rectangular",
+      sanitary_finish: "White",
+      basin_dimensions: "470 x 435 x 365 mm"
+    }
+  },
+  {
+    category_slug: "wash-basins",
+    name: "Nora Table Top Basin",
+    mfr_part_number: "SL-9139",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_hole: "Single",
+      basin_type: "Counter Top",
+      basin_shape: "Rectangular",
+      sanitary_finish: "White",
+      basin_dimensions: "555 x 405 x 120 mm"
+    }
+  },
+  {
+    category_slug: "wash-basins",
+    name: "Nova Small Basin",
+    mfr_part_number: "SL-9152",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_hole: "Single",
+      basin_type: "Wall Mounted",
+      basin_shape: "Rectangular",
+      sanitary_finish: "White",
+      basin_dimensions: "425 x 310 x 135 mm"
+    }
+  },
+  {
+    category_slug: "wash-basins",
+    name: "Paris Table Top Basin",
+    mfr_part_number: "SL-9137",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_hole: "Single",
+      basin_type: "Counter Top",
+      basin_shape: "Rectangular",
+      sanitary_finish: "White",
+      basin_dimensions: "540 x 410 x 135 mm"
+    }
+  },
+  {
+    category_slug: "wash-basins",
+    name: "Rosa Table Top Basin",
+    mfr_part_number: "SL-9132",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_hole: "Single",
+      basin_type: "Counter Top",
+      basin_shape: "Rectangular",
+      sanitary_finish: "White",
+      basin_dimensions: "485 x 370 x 130 mm"
+    }
+  },
+  {
+    category_slug: "wash-basins",
+    name: "Sage Table Top Basin",
+    mfr_part_number: "SL-9133",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_hole: "Single",
+      basin_type: "Counter Top",
+      basin_shape: "Rectangular",
+      sanitary_finish: "White",
+      basin_dimensions: "512 x 405 x 148 mm"
+    }
+  },
+  {
+    category_slug: "wash-basins",
+    name: "Sarah Table Top Basin",
+    mfr_part_number: "SL-9142",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_hole: "Single",
+      basin_type: "Counter Top",
+      basin_shape: "Rectangular",
+      sanitary_finish: "White",
+      basin_dimensions: "620 x 350 x 105 mm"
+    }
+  },
+  {
+    category_slug: "wash-basins",
+    name: "Simon Table Top Basin",
+    mfr_part_number: "SL-9130",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_hole: "Single",
+      basin_type: "Counter Top",
+      basin_shape: "Rectangular",
+      sanitary_finish: "White",
+      basin_dimensions: "422 x 335 x 125 mm"
+    }
+  },
+  {
+    category_slug: "wash-basins",
+    name: "Swan Table Top Basin",
+    mfr_part_number: "SL-9134",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_hole: "Single",
+      basin_type: "Counter Top",
+      basin_shape: "Oval",
+      sanitary_finish: "White",
+      basin_dimensions: "505 x 365 x 130 mm"
+    }
+  },
+  {
+    category_slug: "wash-basins",
+    name: "Vega Basin with Half Pedestal",
+    mfr_part_number: "SL-9202",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_hole: "Single",
+      basin_type: "Pedestal",
+      basin_shape: "Rectangular",
+      sanitary_finish: "White",
+      basin_dimensions: "510 x 395 x 475 mm"
+    }
+  },
+  {
+    category_slug: "wash-basins",
+    name: "Verve Basin with Full Pedestal",
+    mfr_part_number: "SL-9190",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_hole: "Single",
+      basin_type: "Pedestal",
+      basin_shape: "Rectangular",
+      sanitary_finish: "White",
+      basin_dimensions: "515 x 415 x 870 mm"
+    }
+  },
+  {
+    category_slug: "wash-basins",
+    name: "Verve Small Basin",
+    mfr_part_number: "SL-9156",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_hole: "Single",
+      basin_type: "Wall Mounted",
+      basin_shape: "Round",
+      sanitary_finish: "White",
+      basin_dimensions: "362 x 336 x 145 mm"
+    }
+  },
+  {
+    category_slug: "wash-basins",
+    name: "Violet One Piece Wash Basin",
+    mfr_part_number: "SL-9171",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_hole: "Single",
+      basin_type: "Pedestal",
+      basin_shape: "Rectangular",
+      sanitary_finish: "White",
+      basin_dimensions: "375 x 370 x 260 mm"
+    }
+  },
+  {
+    category_slug: "wash-basins",
+    name: "Vita Small Basin",
+    mfr_part_number: "SL-9157",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_hole: "Single",
+      basin_type: "Wall Mounted",
+      basin_shape: "Round",
+      sanitary_finish: "White",
+      basin_dimensions: "580 x 500 x 175 mm"
+    }
+  },
+  {
+    category_slug: "wash-basins",
+    name: "Viva Small Basin",
+    mfr_part_number: "SL-9153",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_hole: "Single",
+      basin_type: "Wall Mounted",
+      basin_shape: "Rectangular",
+      sanitary_finish: "White",
+      basin_dimensions: "450 x 350 x 135 mm"
+    }
+  },
+  {
+    category_slug: "wash-basins",
+    name: "Wave Basin with Full Pedestal",
+    mfr_part_number: "SL-9195",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      tap_hole: "Single",
+      basin_type: "Pedestal",
+      basin_shape: "Rectangular",
+      sanitary_finish: "White",
+      basin_dimensions: "575 x 430 x 850 mm"
+    }
+  },
+  {
+    category_slug: "water-closets",
+    name: "Americo One Piece Closet (Washdown)",
+    mfr_part_number: "SL-9094",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      rimless: "FALSE",
+      wc_type: "One Piece",
+      trap_type: "S-Trap",
+      flush_type: "Dual",
+      wc_material: "Vitreous China",
+      trap_distance: "250",
+      sanitary_finish: "White"
+    }
+  },
+  {
+    category_slug: "water-closets",
+    name: "Anglo Indian Water Closet",
+    mfr_part_number: "SL-9213",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      rimless: "FALSE",
+      wc_type: "Anglo-Indian",
+      trap_type: "P-Trap",
+      flush_type: "Single",
+      wc_material: "Vitreous China",
+      trap_distance: "225",
+      sanitary_finish: "White"
+    }
+  },
+  {
+    category_slug: "water-closets",
+    name: "Antonio One Piece Closet (Washdown)",
+    mfr_part_number: "SL-9093",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      rimless: "FALSE",
+      wc_type: "One Piece",
+      trap_type: "S-Trap",
+      flush_type: "Dual",
+      wc_material: "Vitreous China",
+      trap_distance: "225",
+      sanitary_finish: "White"
+    }
+  },
+  {
+    category_slug: "water-closets",
+    name: "City Pan 20\"",
+    mfr_part_number: "SL-9231",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      rimless: "FALSE",
+      wc_type: "Indian / Orissa",
+      trap_type: "P-Trap",
+      wc_material: "Vitreous China",
+      trap_distance: "225",
+      sanitary_finish: "White"
+    }
+  },
+  {
+    category_slug: "water-closets",
+    name: "Clara Wall Hung Closet",
+    mfr_part_number: "SL-9117",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      rimless: "FALSE",
+      wc_type: "Wall Hung",
+      trap_type: "Wall-hung",
+      flush_type: "Dual",
+      wc_material: "Vitreous China",
+      trap_distance: "225",
+      sanitary_finish: "White"
+    }
+  },
+  {
+    category_slug: "water-closets",
+    name: "Dave Wall Hung Closet (Rimless)",
+    mfr_part_number: "SL-9115",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      rimless: "TRUE",
+      wc_type: "Wall Hung",
+      trap_type: "Wall-hung",
+      flush_type: "Dual",
+      wc_material: "Vitreous China",
+      trap_distance: "225",
+      sanitary_finish: "White"
+    }
+  },
+  {
+    category_slug: "water-closets",
+    name: "Delta Water Closet",
+    mfr_part_number: "SL-9211",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      rimless: "FALSE",
+      wc_type: "Two Piece",
+      trap_type: "S-Trap",
+      flush_type: "Single",
+      wc_material: "Vitreous China",
+      trap_distance: "225",
+      sanitary_finish: "White"
+    }
+  },
+  {
+    category_slug: "water-closets",
+    name: "Elena One Piece Closet (Rimless Siphonic)",
+    mfr_part_number: "SL-9095",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      rimless: "TRUE",
+      wc_type: "One Piece",
+      trap_type: "S-Trap",
+      flush_type: "Dual",
+      wc_material: "Vitreous China",
+      trap_distance: "250",
+      sanitary_finish: "White"
+    }
+  },
+  {
+    category_slug: "water-closets",
+    name: "Enrico One Piece Closet (Rimless Siphonic)",
+    mfr_part_number: "SL-9097",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      rimless: "TRUE",
+      wc_type: "One Piece",
+      trap_type: "S-Trap",
+      flush_type: "Dual",
+      wc_material: "Vitreous China",
+      trap_distance: "250",
+      sanitary_finish: "White"
+    }
+  },
+  {
+    category_slug: "water-closets",
+    name: "Eric Wall Hung Closet",
+    mfr_part_number: "SL-9114",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      rimless: "FALSE",
+      wc_type: "Wall Hung",
+      trap_type: "Wall-hung",
+      flush_type: "Dual",
+      wc_material: "Vitreous China",
+      trap_distance: "225",
+      sanitary_finish: "White"
+    }
+  },
+  {
+    category_slug: "water-closets",
+    name: "Flat Orrisa Pan 20\"",
+    mfr_part_number: "SL-9232",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      rimless: "FALSE",
+      wc_type: "Indian / Orissa",
+      trap_type: "P-Trap",
+      wc_material: "Vitreous China",
+      trap_distance: "225",
+      sanitary_finish: "White"
+    }
+  },
+  {
+    category_slug: "water-closets",
+    name: "Levi Wall Hung Closet (Rimless)",
+    mfr_part_number: "SL-9116",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      rimless: "TRUE",
+      wc_type: "Wall Hung",
+      trap_type: "Wall-hung",
+      flush_type: "Dual",
+      wc_material: "Vitreous China",
+      trap_distance: "225",
+      sanitary_finish: "White"
+    }
+  },
+  {
+    category_slug: "water-closets",
+    name: "Loris One Piece Closet (Washdown)",
+    mfr_part_number: "SL-9090",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      rimless: "FALSE",
+      wc_type: "One Piece",
+      trap_type: "S-Trap",
+      flush_type: "Dual",
+      wc_material: "Vitreous China",
+      trap_distance: "225",
+      sanitary_finish: "White"
+    }
+  },
+  {
+    category_slug: "water-closets",
+    name: "Lumos Water Closet",
+    mfr_part_number: "SL-9210",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      rimless: "FALSE",
+      wc_type: "Two Piece",
+      trap_type: "S-Trap",
+      flush_type: "Single",
+      wc_material: "Vitreous China",
+      trap_distance: "225",
+      sanitary_finish: "White"
+    }
+  },
+  {
+    category_slug: "water-closets",
+    name: "Marco One Piece Closet (Washdown)",
+    mfr_part_number: "SL-9092",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      rimless: "FALSE",
+      wc_type: "One Piece",
+      trap_type: "S-Trap",
+      flush_type: "Dual",
+      wc_material: "Vitreous China",
+      trap_distance: "225",
+      sanitary_finish: "White"
+    }
+  },
+  {
+    category_slug: "water-closets",
+    name: "Mike Wall Hung Closet",
+    mfr_part_number: "SL-9113",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      rimless: "FALSE",
+      wc_type: "Wall Hung",
+      trap_type: "Wall-hung",
+      flush_type: "Dual",
+      wc_material: "Vitreous China",
+      trap_distance: "225",
+      sanitary_finish: "White"
+    }
+  },
+  {
+    category_slug: "water-closets",
+    name: "Orrisa Pan 20\"",
+    mfr_part_number: "SL-9230",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      rimless: "FALSE",
+      wc_type: "Indian / Orissa",
+      trap_type: "P-Trap",
+      wc_material: "Vitreous China",
+      trap_distance: "225",
+      sanitary_finish: "White"
+    }
+  },
+  {
+    category_slug: "water-closets",
+    name: "Orrisa Pan 23\"",
+    mfr_part_number: "SL-9233",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      rimless: "FALSE",
+      wc_type: "Indian / Orissa",
+      trap_type: "P-Trap",
+      wc_material: "Vitreous China",
+      trap_distance: "225",
+      sanitary_finish: "White"
+    }
+  },
+  {
+    category_slug: "water-closets",
+    name: "Romano One Piece Closet (Washdown)",
+    mfr_part_number: "SL-9091",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      rimless: "FALSE",
+      wc_type: "One Piece",
+      trap_type: "S-Trap",
+      flush_type: "Dual",
+      wc_material: "Vitreous China",
+      trap_distance: "225",
+      sanitary_finish: "White"
+    }
+  },
+  {
+    category_slug: "water-closets",
+    name: "Solara One Piece Closet (Siphonic)",
+    mfr_part_number: "SL-9096",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      rimless: "FALSE",
+      wc_type: "One Piece",
+      trap_type: "S-Trap",
+      flush_type: "Dual",
+      wc_material: "Vitreous China",
+      trap_distance: "250",
+      sanitary_finish: "White"
+    }
+  },
+  {
+    category_slug: "water-closets",
+    name: "Solis Water Closet",
+    mfr_part_number: "SL-9214",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      rimless: "FALSE",
+      wc_type: "Two Piece",
+      trap_type: "S-Trap",
+      flush_type: "Single",
+      wc_material: "Vitreous China",
+      trap_distance: "225",
+      sanitary_finish: "White"
+    }
+  },
+  {
+    category_slug: "water-closets",
+    name: "Spectra Water Closet",
+    mfr_part_number: "SL-9212",
+    hsn_code: null,
+    gst_rate: 18,
+    country_of_origin: "India",
+    attributes: {
+      rimless: "FALSE",
+      wc_type: "Two Piece",
+      trap_type: "S-Trap",
+      flush_type: "Single",
+      wc_material: "Vitreous China",
+      trap_distance: "225",
+      sanitary_finish: "White"
+    }
+  }
+];
+
+module.exports = {
+  up: async (queryInterface) => {
+    const now = new Date();
+
+    // 1. Brand (idempotent by normalized name, same pattern as the other
+    // brand seeders in this project).
+    const [[{ norm }]] = await queryInterface.sequelize.query(
+      `SELECT normalize_brand_name(:name) AS norm`,
+      { replacements: { name: BRAND.name } },
+    );
+    const [existingBrand] = await queryInterface.sequelize.query(
+      `SELECT id FROM brand WHERE normalize_brand_name(name) = :norm`,
+      { replacements: { norm } },
+    );
+    let brandId = existingBrand[0]?.id;
+    if (!brandId) {
+      brandId = uuidv4();
+      await queryInterface.bulkInsert('brand', [{
+        id: brandId,
+        name: BRAND.name,
+        slug: BRAND.slug,
+        manufacturer_name: BRAND.manufacturer_name,
+        manufacturer_address: BRAND.manufacturer_address,
+        consumer_care_email: BRAND.consumer_care_email,
+        consumer_care_phone: BRAND.consumer_care_phone,
+        is_active: true,
+        created_at: now,
+        updated_at: now,
+      }]);
+    }
+
+    // 2. Resolve every category slug used below to an id, once.
+    const categorySlugs = [...new Set(PRODUCTS.map((p) => p.category_slug))];
+    const [categoryRows] = await queryInterface.sequelize.query(
+      `SELECT id, slug FROM category WHERE slug IN (:slugs)`,
+      { replacements: { slugs: categorySlugs } },
+    );
+    const categoryIdBySlug = new Map(categoryRows.map((c) => [c.slug, c.id]));
+    for (const slug of categorySlugs) {
+      if (!categoryIdBySlug.has(slug)) {
+        throw new Error(
+          `[seed-pearl-precision-products] category slug "${slug}" not found -- run the taxonomy seeder first`,
+        );
+      }
+    }
+
+    // 3. Resolve every attribute code used below to {id, category_id},
+    // scoped per category since the same code can exist at different
+    // levels (global vs leaf) -- look up per (category, code) actually
+    // used rather than assuming a single global attribute table.
+    const attributeCodes = [...new Set(PRODUCTS.flatMap((p) => Object.keys(p.attributes)))];
+    const [attributeRows] = await queryInterface.sequelize.query(
+      `SELECT id, code, category_id FROM attribute WHERE code IN (:codes)`,
+      { replacements: { codes: attributeCodes } },
+    );
+    // A code may resolve to more than one row (global + leaf-specific
+    // reuse is not expected here, but guard anyway) -- key by code only
+    // since decision 0026's attributes were added as leaf- or
+    // category-scoped, not duplicated across categories with different ids.
+    const attributeIdByCode = new Map(attributeRows.map((a) => [a.code, a.id]));
+
+    // 4. Skip products that already exist (idempotent re-run), matched by
+    // (brand_id, mfr_part_number) -- the same dedup key decision 0012
+    // defines for real imports.
+    const [existingProducts] = await queryInterface.sequelize.query(
+      `SELECT mfr_part_number FROM master_product WHERE brand_id = :brandId`,
+      { replacements: { brandId } },
+    );
+    const existingMpns = new Set(existingProducts.map((p) => p.mfr_part_number));
+
+    let productsInserted = 0;
+    let attributeValuesInserted = 0;
+
+    for (const product of PRODUCTS) {
+      if (product.mfr_part_number && existingMpns.has(product.mfr_part_number)) continue;
+
+      const categoryId = categoryIdBySlug.get(product.category_slug);
+      const productId = uuidv4();
+
+      await queryInterface.bulkInsert('master_product', [{
+        id: productId,
+        category_id: categoryId,
+        brand_id: brandId,
+        name: product.name,
+        slug: `${product.name}-${productId.slice(0, 8)}`
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, ''),
+        mfr_part_number: product.mfr_part_number,
+        hsn_code: product.hsn_code,
+        gst_rate: product.gst_rate,
+        country_of_origin: product.country_of_origin,
+        sale_unit_type: 'discrete',
+        status: 'draft',
+        attributes_flat: '{}',
+        created_at: now,
+        updated_at: now,
+      }]);
+      productsInserted += 1;
+
+      // Insert normalized attribute-value rows -- a DB trigger
+      // (trg_mpav_refresh_flat) regenerates attributes_flat from these
+      // automatically, same as the real catalog-import upload path, so
+      // this is not a shortcut/approximation of that path.
+      for (const [code, value] of Object.entries(product.attributes)) {
+        const attributeId = attributeIdByCode.get(code);
+        if (!attributeId || value === null || value === undefined || value === '') continue;
+        await queryInterface.sequelize.query(
+          `INSERT INTO master_product_attribute_value
+             (master_product_id, attribute_id, value, created_at, updated_at)
+           VALUES (:productId, :attributeId, :value, :now, :now)
+           ON CONFLICT (master_product_id, attribute_id) DO NOTHING`,
+          { replacements: { productId, attributeId, value: String(value), now } },
+        );
+        attributeValuesInserted += 1;
+      }
+    }
+
+    // eslint-disable-next-line no-console
+    console.log(
+      `[seed-pearl-precision-products] inserted this run: ${productsInserted} products, ${attributeValuesInserted} attribute values`,
+    );
+  },
+
+  down: async (queryInterface) => {
+    await queryInterface.sequelize.query(
+      `DELETE FROM master_product WHERE brand_id = (SELECT id FROM brand WHERE slug = :slug)`,
+      { replacements: { slug: BRAND.slug } },
+    );
+    await queryInterface.bulkDelete('brand', { slug: BRAND.slug });
+  },
+};
