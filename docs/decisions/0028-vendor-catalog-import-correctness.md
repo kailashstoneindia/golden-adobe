@@ -1,8 +1,8 @@
 # 0028 — Vendor Catalog Import: Match-Ladder Correctness & Transaction Safety
 
 - **Date:** 2026-09-28
-- **Status:** Accepted
-- **Supersedes / Superseded by:** Amends 0011-product-code-and-vendor-export.md (match ladder description)
+- **Status:** Superseded
+- **Supersedes / Superseded by:** Superseded by 0029-prefilled-vendor-export.md; amends 0011-product-code-and-vendor-export.md (match ladder description)
 
 ## Context
 
