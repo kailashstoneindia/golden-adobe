@@ -7,7 +7,11 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-import logoMark from '../../../assets/logo-mark.png';
+// No *.png module declarations exist in this project; `require` is the working
+// pattern Metro/Expo expects for static image assets here, `import` fails
+// type-check without one.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const logoMark = require('../../../assets/logo-mark.png');
 
 export interface BrandLogoProps {
   /** Logo width in density-independent pixels. Height scales with aspect ratio. */
