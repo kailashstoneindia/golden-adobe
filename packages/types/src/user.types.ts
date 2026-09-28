@@ -9,7 +9,7 @@ export const VENDOR_ONBOARDING_STAGES = {
 } as const;
 
 export type VendorOnboardingStage =
-  typeof VENDOR_ONBOARDING_STAGES[keyof typeof VENDOR_ONBOARDING_STAGES];
+  (typeof VENDOR_ONBOARDING_STAGES)[keyof typeof VENDOR_ONBOARDING_STAGES];
 
 /**
  * Full user DTO returned by the API.

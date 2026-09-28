@@ -377,9 +377,7 @@ export class AdminCatalogService {
       );
     }
 
-    const brand = dto.brand
-      ? await this.brandModel.findOne({ where: { name: dto.brand } })
-      : null;
+    const brand = dto.brand ? await this.brandModel.findOne({ where: { name: dto.brand } }) : null;
     if (dto.brand && !brand) {
       throw new BadRequestException(
         `brand "${dto.brand}" does not exist — create it first (admin brand management)`,
@@ -387,40 +385,45 @@ export class AdminCatalogService {
     }
 
     const attributesByCode = await this.loadAttributesByCode(dto.categoryId);
-    const attributeErrors = this.validateAttributeValues(dto.attributeValues ?? [], attributesByCode);
+    const attributeErrors = this.validateAttributeValues(
+      dto.attributeValues ?? [],
+      attributesByCode,
+    );
     if (attributeErrors.length > 0) {
       throw new BadRequestException(attributeErrors.join('; '));
     }
 
     const sequelize = this.sequelize;
     try {
-      return await sequelize.transaction(async (transaction) => {
-        const product = await this.masterProductModel.create(
-          {
-            categoryId: dto.categoryId,
-            brandId: brand?.id ?? null,
-            name: dto.name,
-            slug: this.slugify(dto.name),
-            mfrPartNumber: dto.mfrPartNumber ?? null,
-            gtin: dto.gtin ?? null,
-            hsnCode: dto.hsnCode ?? null,
-            gstRate: dto.gstRate ?? 18.0,
-            countryOfOrigin: dto.countryOfOrigin ?? 'India',
-            status: MasterProductStatus.DRAFT,
-          } as any,
-          { transaction },
-        );
-
-        for (const input of dto.attributeValues ?? []) {
-          const attribute = attributesByCode.get(input.code)!;
-          await this.attributeValueModel.create(
-            { masterProductId: product.id, attributeId: attribute.id, value: input.value } as any,
+      return await sequelize
+        .transaction(async (transaction) => {
+          const product = await this.masterProductModel.create(
+            {
+              categoryId: dto.categoryId,
+              brandId: brand?.id ?? null,
+              name: dto.name,
+              slug: this.slugify(dto.name),
+              mfrPartNumber: dto.mfrPartNumber ?? null,
+              gtin: dto.gtin ?? null,
+              hsnCode: dto.hsnCode ?? null,
+              gstRate: dto.gstRate ?? 18.0,
+              countryOfOrigin: dto.countryOfOrigin ?? 'India',
+              status: MasterProductStatus.DRAFT,
+            } as any,
             { transaction },
           );
-        }
 
-        return product.id;
-      }).then((productId) => this.getProduct(productId));
+          for (const input of dto.attributeValues ?? []) {
+            const attribute = attributesByCode.get(input.code)!;
+            await this.attributeValueModel.create(
+              { masterProductId: product.id, attributeId: attribute.id, value: input.value } as any,
+              { transaction },
+            );
+          }
+
+          return product.id;
+        })
+        .then((productId) => this.getProduct(productId));
     } catch (err) {
       throw this.translateWriteError(err);
     }
@@ -453,7 +456,10 @@ export class AdminCatalogService {
         }
 
         if (dto.attributeValues !== undefined) {
-          await this.attributeValueModel.destroy({ where: { masterProductId: productId }, transaction });
+          await this.attributeValueModel.destroy({
+            where: { masterProductId: productId },
+            transaction,
+          });
           for (const input of dto.attributeValues) {
             const attribute = attributesByCode!.get(input.code)!;
             await this.attributeValueModel.create(

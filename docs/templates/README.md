@@ -13,12 +13,12 @@ Column sets differ per leaf category, because attributes differ. These four are
 representative; the real system **generates** a template per category from the attribute
 model, so nobody hand-maintains 58 files.
 
-| File | Category | Shows |
-|---|---|---|
-| `admin-mcb.csv` | Electrical > Switchgear > MCB | Depth-3 inheritance — `poles` comes from Switchgear, `rated_current` from MCB |
-| `admin-floor-tiles.csv` | Tiles > Floor Tiles | Heavy inheritance — 12 attributes from Tiles, 1 from the leaf |
-| `admin-interior-emulsion.csv` | Paint > Interior Emulsion | `tinted_to_order`; **no base column, no shade column** |
-| `admin-natural-stone.csv` | Stone > Natural Stone | `variety` instead of brand; `is_generic` and `has_natural_variation` set |
+| File                          | Category                      | Shows                                                                         |
+| ----------------------------- | ----------------------------- | ----------------------------------------------------------------------------- |
+| `admin-mcb.csv`               | Electrical > Switchgear > MCB | Depth-3 inheritance — `poles` comes from Switchgear, `rated_current` from MCB |
+| `admin-floor-tiles.csv`       | Tiles > Floor Tiles           | Heavy inheritance — 12 attributes from Tiles, 1 from the leaf                 |
+| `admin-interior-emulsion.csv` | Paint > Interior Emulsion     | `tinted_to_order`; **no base column, no shade column**                        |
+| `admin-natural-stone.csv`     | Stone > Natural Stone         | `variety` instead of brand; `is_generic` and `has_natural_variation` set      |
 
 Column order is always: **identity → inherited attributes → leaf attributes → global**.
 
@@ -37,11 +37,11 @@ portal, and downloads a sheet with `product_code` and `product_name` already fil
 add price and quantity, delete rows they don't stock, and upload
 ([0011](../decisions/0011-product-code-and-vendor-export.md)).
 
-| File | Use for | One row = |
-|---|---|---|
-| `vendor-inventory-general.csv` | Everything except paint and stone | one product |
-| `vendor-inventory-stone.csv` | Stone | one **grade** — same product repeats per grade |
-| `vendor-inventory-paint.csv` | Paint | one **colour family** — same product repeats per colour. No qty column |
+| File                           | Use for                           | One row =                                                              |
+| ------------------------------ | --------------------------------- | ---------------------------------------------------------------------- |
+| `vendor-inventory-general.csv` | Everything except paint and stone | one product                                                            |
+| `vendor-inventory-stone.csv`   | Stone                             | one **grade** — same product repeats per grade                         |
+| `vendor-inventory-paint.csv`   | Paint                             | one **colour family** — same product repeats per colour. No qty column |
 
 **Paint prices are absolute, one per product per colour**
 ([0016](../decisions/0016-colour-price-per-listing.md)). No deltas, no arithmetic — the

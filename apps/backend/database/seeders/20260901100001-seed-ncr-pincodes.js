@@ -45,9 +45,7 @@ module.exports = {
 
       // Batched insert — ~140 explicit + 96 Delhi rows is small, but one
       // statement per row would still be needless round trips.
-      const values = rows
-        .map((_, i) => `(:pincode${i}, :cityId${i})`)
-        .join(', ');
+      const values = rows.map((_, i) => `(:pincode${i}, :cityId${i})`).join(', ');
       const replacements = {};
       rows.forEach((r, i) => {
         replacements[`pincode${i}`] = r.pincode;

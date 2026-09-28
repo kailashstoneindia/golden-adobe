@@ -32,13 +32,13 @@ status updates, and inventory decrement-on-order.
 
 ## Decisions taken
 
-| Question | Decision |
-|---|---|
-| Image storage | S3-compatible (DigitalOcean Spaces / AWS S3 / MinIO). Endpoint + credentials are config, so the same code runs anywhere. |
-| Who uploads images | **Admin only.** Decision 0009 explicitly forbids vendor-supplied imagery; vendor upload would need a new ADR, not a feature. |
-| Export scoping | Wire `vendor_category` **and enforce it** on export. |
-| Vendor city | Auto-suggest from lat/lng at onboarding via `resolveNearestCity()`, with an admin override. Plus a backfill for existing rows. |
-| Inventory uniqueness | Partial unique index for the `warehouse_id IS NULL` case. Keeps multi-warehouse possible later. |
+| Question             | Decision                                                                                                                       |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Image storage        | S3-compatible (DigitalOcean Spaces / AWS S3 / MinIO). Endpoint + credentials are config, so the same code runs anywhere.       |
+| Who uploads images   | **Admin only.** Decision 0009 explicitly forbids vendor-supplied imagery; vendor upload would need a new ADR, not a feature.   |
+| Export scoping       | Wire `vendor_category` **and enforce it** on export.                                                                           |
+| Vendor city          | Auto-suggest from lat/lng at onboarding via `resolveNearestCity()`, with an admin override. Plus a backfill for existing rows. |
+| Inventory uniqueness | Partial unique index for the `warehouse_id IS NULL` case. Keeps multi-warehouse possible later.                                |
 
 ---
 
@@ -68,6 +68,7 @@ imports the `Vendor` model — import `CatalogModule` into `VendorsModule`, not 
 to avoid a circular import.
 
 **Two fixes to fold in while here:**
+
 - `createProfile()` creates the vendor row and the account-details row with **no transaction**
   (`vendors.service.ts:19-57`). A failure on the second leaves an orphan vendor.
 - `packages/types` `VendorProfileDto` has no `cityId` — add it.
@@ -125,6 +126,7 @@ are catalog photos, not private documents), and the bucket provisioning steps an
 must run before this workstream can be verified live.
 
 **Endpoints** (admin-only, matching the existing `@Roles(Role.ADMIN)` pattern):
+
 - `POST /admin/catalog/products/:id/media` — multipart upload, returns the created row.
 - `DELETE /admin/catalog/products/:id/media/:mediaId`
 - `PATCH /admin/catalog/products/:id/media/:mediaId` — set `display_order` / `is_primary`.
@@ -139,6 +141,7 @@ mime checking. Instead: sniff magic bytes, allow jpeg/png/webp only, and **set a
 uploads are bounded only by RAM.
 
 **Migration needed:**
+
 - Plain index on `master_product_id` (the existing unique index is partial on `is_primary`,
   so "all media for product X" has no index).
 - Fix `id` default: `Sequelize.UUIDV4` → `literal('gen_random_uuid()')`. Same client-side-only
@@ -161,7 +164,7 @@ column at all — by design (decision 0014 explicitly rejected adding one).
 
 **Migration first — the uniqueness bug.** `UNIQUE (vendor_listing_id, warehouse_id)` does not
 dedupe when `warehouse_id IS NULL`, because Postgres treats NULLs as distinct. Since no
-warehouse is ever created, *every* row would be NULL-warehouse and duplicates could
+warehouse is ever created, _every_ row would be NULL-warehouse and duplicates could
 accumulate silently. Add:
 
 ```sql
@@ -173,6 +176,7 @@ This matches the existing `vendor_listing_unique` precedent and makes upsert saf
 
 **Endpoints** (vendor-scoped, `resolveVendor` + service-layer ownership check — never trust a
 `vendorListingId` from the path):
+
 - `GET /vendor/listings` — the vendor's listings with current stock.
 - `PATCH /vendor/listings/:id/stock` — set `quantity_available` (absolute, not delta).
 - `PATCH /vendor/listings/:id/status` — active / paused / out_of_stock.
@@ -218,12 +222,12 @@ Each workstream verified through real HTTP with a real admin/vendor login, using
 `ResponseInterceptor` (a harness that omits it asserts against the wrong shape — this cost a
 false 14-failure run previously).
 
-| Workstream | Must prove |
-|---|---|
-| 1 | Profile round-trips; `city_id` is set from lat/lng at onboarding and the vendor becomes findable in search where they were not before; a vendor cannot read another vendor's profile |
-| 2 | Categories replace cleanly; export **rejects** an unregistered category; a vendor with no categories is still unrestricted |
-| 3 | Upload returns a fetchable URL; the partial unique index actually refuses a second primary; a non-image file is rejected; oversized upload is rejected |
-| 4 | Stock upserts rather than duplicating on repeat calls; the NULL-warehouse index holds; an upload with `qty_available` creates an inventory row; paint creates none; a vendor cannot touch another vendor's listing |
+| Workstream | Must prove                                                                                                                                                                                                         |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1          | Profile round-trips; `city_id` is set from lat/lng at onboarding and the vendor becomes findable in search where they were not before; a vendor cannot read another vendor's profile                               |
+| 2          | Categories replace cleanly; export **rejects** an unregistered category; a vendor with no categories is still unrestricted                                                                                         |
+| 3          | Upload returns a fetchable URL; the partial unique index actually refuses a second primary; a non-image file is rejected; oversized upload is rejected                                                             |
+| 4          | Stock upserts rather than duplicating on repeat calls; the NULL-warehouse index holds; an upload with `qty_available` creates an inventory row; paint creates none; a vendor cannot touch another vendor's listing |
 
 Plus, after each: `pnpm build`, the frozen 25-test suite, and `pnpm smoke` (which asserts the
 app boots and routes are mapped — added after the app was found unable to start at all).

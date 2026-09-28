@@ -7,7 +7,11 @@ import { Colors, Spacing } from '../../src/theme';
 
 export default function HelpSupportScreen() {
   return (
-    <DemoScreen title="Help & support" subtitle="Quick answers while we wire up live support" showBack>
+    <DemoScreen
+      title="Help & support"
+      subtitle="Quick answers while we wire up live support"
+      showBack
+    >
       <View style={styles.list}>
         {DEMO_FAQ.map((item) => (
           <Card key={item.q}>

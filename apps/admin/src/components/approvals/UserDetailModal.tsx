@@ -51,7 +51,11 @@ export function UserDetailModal({
         </div>
 
         <div className={styles.actions}>
-          <button type="button" className={`${styles.button} ${styles.buttonGhost}`} onClick={onClose}>
+          <button
+            type="button"
+            className={`${styles.button} ${styles.buttonGhost}`}
+            onClick={onClose}
+          >
             Close
           </button>
           {showApprovalActions ? (
@@ -90,10 +94,7 @@ function VendorProfileSections({ profile }: VendorProfileSectionsProps) {
       <CollapsibleSection title="Business details" defaultOpen>
         <DetailRow label="Shop name" value={profile.shopName} />
         <DetailRow label="Shop address" value={profile.address} />
-        <DetailRow
-          label="Location"
-          value={formatLocation(profile.latitude, profile.longitude)}
-        />
+        <DetailRow label="Location" value={formatLocation(profile.latitude, profile.longitude)} />
         <DetailRow label="GSTIN" value={profile.gstin || '-'} />
       </CollapsibleSection>
 

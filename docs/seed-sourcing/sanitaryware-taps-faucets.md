@@ -5,11 +5,11 @@ Fetched 2026-09-13. Sourcing rules per
 
 ## Result
 
-| Brand | Catalogue URL | Profile | Verified |
-|---|---|---|---|
-| **Cera** | [cera-india.com Victor range](https://www.cera-india.com/cera/faucets-showers/faucets/single-lever-range/victor/victor) | **C** | 2026-09-13 |
-| Jaquar | jaquar.com | **E** — 403 Forbidden on every product page fetched | 2026-09-13 |
-| Hindware | not attempted | — | — |
+| Brand    | Catalogue URL                                                                                                           | Profile                                             | Verified   |
+| -------- | ----------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- | ---------- |
+| **Cera** | [cera-india.com Victor range](https://www.cera-india.com/cera/faucets-showers/faucets/single-lever-range/victor/victor) | **C**                                               | 2026-09-13 |
+| Jaquar   | jaquar.com                                                                                                              | **E** — 403 Forbidden on every product page fetched | 2026-09-13 |
+| Hindware | not attempted                                                                                                           | —                                                   | —          |
 
 ## Findings
 

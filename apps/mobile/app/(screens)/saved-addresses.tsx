@@ -7,7 +7,11 @@ import { Colors, Spacing } from '../../src/theme';
 
 export default function SavedAddressesScreen() {
   return (
-    <DemoScreen title="Saved addresses" subtitle="Delivery locations tied to your projects" showBack>
+    <DemoScreen
+      title="Saved addresses"
+      subtitle="Delivery locations tied to your projects"
+      showBack
+    >
       <View style={styles.list}>
         {DEMO_ADDRESSES.map((address) => (
           <Card key={address.label}>

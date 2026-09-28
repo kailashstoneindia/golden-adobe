@@ -94,10 +94,9 @@ module.exports = {
   down: async (queryInterface) => {
     await queryInterface.sequelize.transaction(async (t) => {
       await queryInterface.dropTable('search_outbox', { transaction: t });
-      await queryInterface.sequelize.query(
-        'DROP FUNCTION IF EXISTS search_outbox_suppressed();',
-        { transaction: t },
-      );
+      await queryInterface.sequelize.query('DROP FUNCTION IF EXISTS search_outbox_suppressed();', {
+        transaction: t,
+      });
     });
   },
 };

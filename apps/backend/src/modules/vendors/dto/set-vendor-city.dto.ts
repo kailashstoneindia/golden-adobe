@@ -10,7 +10,8 @@ export class SetVendorCityDto {
   @ApiProperty({
     type: String,
     nullable: true,
-    description: 'City to pin this vendor to. Null clears the override and re-enables GPS auto-resolution.',
+    description:
+      'City to pin this vendor to. Null clears the override and re-enables GPS auto-resolution.',
   })
   @ValidateIf((_, value) => value !== null)
   @IsUUID()

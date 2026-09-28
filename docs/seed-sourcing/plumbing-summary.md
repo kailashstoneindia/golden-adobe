@@ -7,23 +7,23 @@
 
 ## Result at a glance
 
-| Leaf | Best source | Profile | Seeded this pass? |
-|---|---|---|---|
-| **Pipes (CPVC/CTS)** | Astral + Supreme | **B** — product-line specs confirmed, no per-SKU part codes | ✅ 24 products |
-| Pipes (UPVC/PVC/SWR/PPR/GI/HDPE) | not sourced | — | ❌ |
-| Pipe Fittings | not sourced (Astral fitting codes glimpsed, e.g. M342000343) | — | ❌ |
-| Valves | not sourced | — | ❌ |
-| Water Tanks | not sourced (Astral catalogue lists 8 tank products by name only) | — | ❌ |
+| Leaf                             | Best source                                                       | Profile                                                     | Seeded this pass? |
+| -------------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------- | ----------------- |
+| **Pipes (CPVC/CTS)**             | Astral + Supreme                                                  | **B** — product-line specs confirmed, no per-SKU part codes | ✅ 24 products    |
+| Pipes (UPVC/PVC/SWR/PPR/GI/HDPE) | not sourced                                                       | —                                                           | ❌                |
+| Pipe Fittings                    | not sourced (Astral fitting codes glimpsed, e.g. M342000343)      | —                                                           | ❌                |
+| Valves                           | not sourced                                                       | —                                                           | ❌                |
+| Water Tanks                      | not sourced (Astral catalogue lists 8 tank products by name only) | —                                                           | ❌                |
 
 ---
 
 ## Brands
 
-| Brand | Catalogue URL | Profile | Compliance | Verified |
-|---|---|---|---|---|
-| **Astral** | [astralpipes.com/plumbing-pipes-fittings/cpvc-pro-pipes/](https://www.astralpipes.com/plumbing-pipes-fittings/cpvc-pro-pipes/) | B | ✅ complete | 2026-09-13 |
-| **Supreme** | [supreme.co.in/pipe/products?pipe_categories=plumbing](https://www.supreme.co.in/pipe/products?pipe_categories=plumbing) | C | ✅ complete | 2026-09-13 |
-| Prince Pipes | princepipes.com — no fetchable contact/product data found | E | ❌ | pending |
+| Brand        | Catalogue URL                                                                                                                  | Profile | Compliance  | Verified   |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------ | ------- | ----------- | ---------- |
+| **Astral**   | [astralpipes.com/plumbing-pipes-fittings/cpvc-pro-pipes/](https://www.astralpipes.com/plumbing-pipes-fittings/cpvc-pro-pipes/) | B       | ✅ complete | 2026-09-13 |
+| **Supreme**  | [supreme.co.in/pipe/products?pipe_categories=plumbing](https://www.supreme.co.in/pipe/products?pipe_categories=plumbing)       | C       | ✅ complete | 2026-09-13 |
+| Prince Pipes | princepipes.com — no fetchable contact/product data found                                                                      | E       | ❌          | pending    |
 
 **Astral compliance:** Astral House, 207/1, Behind Rajpath Club, Ahmedabad
 380059 · info@astralpipes.com · 1800 233 7957.
@@ -103,6 +103,7 @@ Capacity range (500-10000L) needs enum widening (currently
 
 But **`tank_material` and `tank_shape` are both required and both
 unconfirmed on the product page itself**:
+
 - Material stated only as "100% food-grade material" / "Polyethylene (PE)" —
   neither matches the enum (`HDPE, LLDPE, Concrete, Stainless Steel`)
   precisely, and Astral's brand-level marketing says "virgin HDPE" but that

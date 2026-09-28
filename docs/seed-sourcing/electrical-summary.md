@@ -10,18 +10,18 @@ Per-leaf detail: [MCB](electrical-switchgear-mcb.md) ·
 
 ## Result at a glance
 
-| Leaf | Best source | Profile | Seedable from listing? |
-|---|---|---|---|
-| **Switches & Sockets** | Havells Crabtree | **A** ⭐ | ✅ all 5 required attrs + part no. + images |
-| **LED Bulbs & Tubes** | Havells Lighting | **A−** | ✅ 3 of 4; part code in URL |
-| **Wires & Cables** | Havells Flexible Cables | **B+** | ⚠️ 3 of 4; part code on detail page |
-| **Switchgear / MCB** | Havells | **B** | ⚠️ curve only where in product name |
-| **Switchgear / RCCB** | Havells | **B−** | ❌ `sensitivity` (mA) missing |
-| Switch Plates | (Havells Crabtree — same catalogue) | likely **A** | not separately verified |
-| Conduits | not swept | ? | — |
-| Switchgear / Distribution Board | Havells | ? | listing shows category only |
-| Switchgear / Isolator | Havells | ? | not listed on switchgear page |
-| ~~Fans~~ | — | **C+** | ⛔ **dropped** — see below |
+| Leaf                            | Best source                         | Profile      | Seedable from listing?                      |
+| ------------------------------- | ----------------------------------- | ------------ | ------------------------------------------- |
+| **Switches & Sockets**          | Havells Crabtree                    | **A** ⭐     | ✅ all 5 required attrs + part no. + images |
+| **LED Bulbs & Tubes**           | Havells Lighting                    | **A−**       | ✅ 3 of 4; part code in URL                 |
+| **Wires & Cables**              | Havells Flexible Cables             | **B+**       | ⚠️ 3 of 4; part code on detail page         |
+| **Switchgear / MCB**            | Havells                             | **B**        | ⚠️ curve only where in product name         |
+| **Switchgear / RCCB**           | Havells                             | **B−**       | ❌ `sensitivity` (mA) missing               |
+| Switch Plates                   | (Havells Crabtree — same catalogue) | likely **A** | not separately verified                     |
+| Conduits                        | not swept                           | ?            | —                                           |
+| Switchgear / Distribution Board | Havells                             | ?            | listing shows category only                 |
+| Switchgear / Isolator           | Havells                             | ?            | not listed on switchgear page               |
+| ~~Fans~~                        | —                                   | **C+**       | ⛔ **dropped** — see below                  |
 
 **Havells is the single best source for Electrical.** It is the only brand
 covering every leaf with a fetchable India catalogue that exposes part numbers.
@@ -70,7 +70,7 @@ product URLs, which may avoid per-product fetches.
 Supersedes the 2026-08-24 sample, which captured only 1 of 4 part numbers.
 
 Polycab was checked and is **worse**: its `/products/wires` page showed full
-part codes for two *featured* products only; the general listing has no codes,
+part codes for two _featured_ products only; the general listing has no codes,
 cores, material, insulation or voltage grade. My earlier note calling Polycab
 "Profile A" was wrong — corrected here.
 
@@ -102,7 +102,7 @@ No fetches attempted. Likely brands: Astral, Precision, AKG, Polycab.
 ## Fans — dropped
 
 Removed from scope at the user's direction (2026-09-08). Neither Crompton nor
-Orient exposes `sweep_size` or `motor_type` on listing *or* detail pages, and
+Orient exposes `sweep_size` or `motor_type` on listing _or_ detail pages, and
 the only available values sit in marketing copy describing ranges across a
 product line — inference, which rule 3 forbids.
 
@@ -116,11 +116,11 @@ Sourcing evidence showed three numeric option lists were far short of the real
 market range. Fixed in `database/seed-data/taxonomy.js` and re-seeded (13 new
 options, 930 → 943):
 
-| Attribute | Was | Now | Evidence |
-|---|---|---|---|
-| `sweep_size` | 600, 900, 1200, 1400 | + 750, 1050, 1219, 1300, 1320 | Crompton Luxian = 1320mm |
-| `module_size` | 1–6 | + 8, 9, 10, 12, 16, 18 | Havells Crabtree listing |
-| `current_rating` | 6–25 | + 32, 45 | heavy-appliance sockets |
+| Attribute        | Was                  | Now                           | Evidence                 |
+| ---------------- | -------------------- | ----------------------------- | ------------------------ |
+| `sweep_size`     | 600, 900, 1200, 1400 | + 750, 1050, 1219, 1300, 1320 | Crompton Luxian = 1320mm |
+| `module_size`    | 1–6                  | + 8, 9, 10, 12, 16, 18        | Havells Crabtree listing |
+| `current_rating` | 6–25                 | + 32, 45                      | heavy-appliance sockets  |
 
 **These were never DB-rejected.** `enforce_attribute_value_option()` fires only
 for `data_type = 'enum'`; all three are `number`. The real damage was quieter —
@@ -139,12 +139,12 @@ rows on their original indices, rendering the dropdown as
 `20260908090000-seed-electrical-brands.js` — **4 brands, 15 aliases**, both dev
 and test DBs. Idempotent on the normalized name; re-running inserts 0.
 
-| Brand | Compliance source |
-|---|---|
-| Havells | havells.com/contact-us |
+| Brand    | Compliance source                                        |
+| -------- | -------------------------------------------------------- |
+| Havells  | havells.com/contact-us                                   |
 | Crabtree | Havells' details (Havells India Ltd is the manufacturer) |
-| Legrand | legrand.co.in/contact-us |
-| Polycab | polycab.com/contact-us/support |
+| Legrand  | legrand.co.in/contact-us                                 |
+| Polycab  | polycab.com/contact-us/support                           |
 
 **Not seeded** — Schneider (address resolved only to "Gurgaon 122002", and
 `manufacturer_address` is NOT NULL, so it was not guessed), Lauritz Knudsen,
@@ -160,12 +160,12 @@ Verified against the live DB: the importer's Rule 4 is
 `Brand.findOne({ where: { name } })` — an **exact match that never calls
 `BrandResolverService`**. The aliases are therefore invisible to Excel import:
 
-| Typed in CSV | Resolver would give | Importer Rule 4 |
-|---|---|---|
-| `Havells` | Havells | ✅ OK |
-| `HAVELLS` | Havells (normalized) | ❌ **REJECTED** |
-| `Havells India Ltd` | Havells (alias) | ❌ **REJECTED** |
-| `Havells Crabtree` | Crabtree (alias) | ❌ **REJECTED** |
+| Typed in CSV        | Resolver would give  | Importer Rule 4 |
+| ------------------- | -------------------- | --------------- |
+| `Havells`           | Havells              | ✅ OK           |
+| `HAVELLS`           | Havells (normalized) | ❌ **REJECTED** |
+| `Havells India Ltd` | Havells (alias)      | ❌ **REJECTED** |
+| `Havells Crabtree`  | Crabtree (alias)     | ❌ **REJECTED** |
 
 So aliases earn their keep on the **vendor** upload path (match ladder), not on
 admin catalog import. Product CSVs must spell the brand exactly:
@@ -213,17 +213,17 @@ per-product fetches.
 
 **It is not reliable.** Both listings were fetched for their raw hrefs:
 
-| Listing | URLs with a part code | URLs that are plain name slugs |
-|---|---|---|
-| LED lamps | **2 of 16** | 14 |
-| Flexible cables | **8 of 16** | 8 |
+| Listing         | URLs with a part code | URLs that are plain name slugs |
+| --------------- | --------------------- | ------------------------------ |
+| LED lamps       | **2 of 16**           | 14                             |
+| Flexible cables | **8 of 16**           | 8                              |
 
 ```
 whffdnka12x5-c.html                 ← code ✅
 lifeline-fr-2-5-sq-mm-180-m.html    ← slug ❌  (same page, same product line)
 ```
 
-The pattern is inconsistent *within a single listing*, so it cannot be applied
+The pattern is inconsistent _within a single listing_, so it cannot be applied
 as a rule. Where I previously saw codes, they came from **search-result URLs**
 pointing at different variants of the same product — not from the listing page.
 
@@ -234,4 +234,4 @@ the listing). Profile B stays Profile B.
 Worth noting the partial win: for the ~50% of wire URLs that do carry a code,
 harvesting is free. A hybrid — take codes from URLs where present, fetch detail
 pages only for the remainder — roughly halves the fetch count for wires. But it
-must be driven by *what the URL actually contains*, never assumed.
+must be driven by _what the URL actually contains_, never assumed.

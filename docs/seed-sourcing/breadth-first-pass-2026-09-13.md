@@ -9,13 +9,13 @@ least once.
 
 ## Result
 
-| Category | Leaf tried | Outcome |
-|---|---|---|
-| Sanitaryware | Water Closets | ✅ 1 product (Cera Cona) |
-| Sanitaryware | Bath Accessories | ✅ 2 products (Cera soap dish, towel rail) |
-| Tiles | (attempted: Kajaria, Somany, Nitco) | ❌ blocked — see below |
-| Lights | (attempted: Philips ceiling/lamp/wall, Wipro, Havells wall) | ❌ blocked — see below |
-| Paint | Interior Emulsion | ✅ 2 products (Berger Silk Glamor Matt, Soft Sheen) |
+| Category     | Leaf tried                                                  | Outcome                                             |
+| ------------ | ----------------------------------------------------------- | --------------------------------------------------- |
+| Sanitaryware | Water Closets                                               | ✅ 1 product (Cera Cona)                            |
+| Sanitaryware | Bath Accessories                                            | ✅ 2 products (Cera soap dish, towel rail)          |
+| Tiles        | (attempted: Kajaria, Somany, Nitco)                         | ❌ blocked — see below                              |
+| Lights       | (attempted: Philips ceiling/lamp/wall, Wipro, Havells wall) | ❌ blocked — see below                              |
+| Paint        | Interior Emulsion                                           | ✅ 2 products (Berger Silk Glamor Matt, Soft Sheen) |
 
 Total this pass: **5 new products** (152 → 157), 1 taxonomy fix, 1 process
 correction (see below), 2 new brands (Cera done in the prior commit; Berger
@@ -71,11 +71,11 @@ or via a brand's PDF price list if one is reachable (Kajaria's PDFs are also
 Tried 3 different leaves across 2 brands specifically to distinguish "wrong
 brand" from "wrong schema expectation":
 
-| Leaf | Brand | Blocked on |
-|---|---|---|
+| Leaf           | Brand                | Blocked on                                                    |
+| -------------- | -------------------- | ------------------------------------------------------------- |
 | Ceiling Lights | Philips (3 products) | `diameter_width` + `drop_length` (both required) never stated |
-| Lamps | Philips (1 product) | `lamp_height` (required) never stated |
-| Wall Lights | Havells (2 products) | `light_direction` (required) never stated |
+| Lamps          | Philips (1 product)  | `lamp_height` (required) never stated                         |
+| Wall Lights    | Havells (2 products) | `light_direction` (required) never stated                     |
 
 Three different leaves, three different required fields, two different
 brands, same outcome: **consumer lighting sites publish finish, material and

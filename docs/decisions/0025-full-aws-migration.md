@@ -24,6 +24,7 @@ is a materially larger question — infrastructure vendor for the whole applicat
 where product photos live.
 
 **Current state (confirmed by inspecting the repo, not assumed):**
+
 - Backend: NestJS, Dockerized, deployed to Railway (root `railway.toml`)
 - Admin frontend: React (not Next.js), Dockerized, deployed to Railway (`apps/admin/railway.toml`)
 - Mobile: Expo/React Native — **not affected by any backend hosting decision**; distributed
@@ -134,7 +135,7 @@ decision as a side effect of a hosting migration — scope creep this record exp
 declines. The container runs on ECS Fargate exactly as it runs in Docker Compose today.
 
 **Object storage moves to S3, not GCS.** This is the one piece where AWS was always the
-plan's *original* design — [phase-2-completion-plan.md](../phase-2-completion-plan.md)
+plan's _original_ design — [phase-2-completion-plan.md](../phase-2-completion-plan.md)
 workstream 3 specified `@aws-sdk/client-s3` before [0024](0024-product-images-gcs.md) adapted
 it to GCS. A full-AWS decision reverts that adaptation; 0024 will be marked superseded if
 this record is accepted.
@@ -176,20 +177,20 @@ effect of an unrelated move.
 Rough, US-region, on-demand pricing — **not a quote**, and stated as a floor before any real
 traffic exists. All figures monthly.
 
-| Service | AWS (this architecture) | Railway (current, approximate) |
-|---|---|---|
-| RDS Postgres, `db.t4g.micro`, single-AZ | $15–25 | Bundled into Railway's usage pricing, likely <$10 at current scale |
-| ElastiCache Redis, `cache.t4g.micro` | $12–15 | Bundled, likely <$10 |
-| ECS Fargate — backend service (0.25–0.5 vCPU, low traffic) | $10–15 | Bundled, likely <$10 |
-| ECS Fargate — admin service (same class) | $10–15 | Bundled, likely <$10 |
-| ECS Fargate — Meilisearch container | $10–15 | Bundled, likely <$10 |
-| Application Load Balancer | $16–20 **flat**, regardless of traffic | No equivalent line item — Railway fronts services without a separate charge |
-| S3 + CloudFront (product images, current volume) | $1–5 | N/A (currently unprovisioned GCS equivalent would be similar) |
-| Route 53 hosted zone | ~$0.50 | N/A if a domain is already pointed elsewhere |
-| **Estimated floor** | **~$75–110/mo** | **Likely well under $50/mo at current scale**, per Railway's usage-based model |
+| Service                                                    | AWS (this architecture)                | Railway (current, approximate)                                                 |
+| ---------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------------ |
+| RDS Postgres, `db.t4g.micro`, single-AZ                    | $15–25                                 | Bundled into Railway's usage pricing, likely <$10 at current scale             |
+| ElastiCache Redis, `cache.t4g.micro`                       | $12–15                                 | Bundled, likely <$10                                                           |
+| ECS Fargate — backend service (0.25–0.5 vCPU, low traffic) | $10–15                                 | Bundled, likely <$10                                                           |
+| ECS Fargate — admin service (same class)                   | $10–15                                 | Bundled, likely <$10                                                           |
+| ECS Fargate — Meilisearch container                        | $10–15                                 | Bundled, likely <$10                                                           |
+| Application Load Balancer                                  | $16–20 **flat**, regardless of traffic | No equivalent line item — Railway fronts services without a separate charge    |
+| S3 + CloudFront (product images, current volume)           | $1–5                                   | N/A (currently unprovisioned GCS equivalent would be similar)                  |
+| Route 53 hosted zone                                       | ~$0.50                                 | N/A if a domain is already pointed elsewhere                                   |
+| **Estimated floor**                                        | **~$75–110/mo**                        | **Likely well under $50/mo at current scale**, per Railway's usage-based model |
 
 **The honest conclusion stands from the earlier discussion:** at this app's current size —
-160 products, pre-launch, no real traffic — this architecture very likely costs *more* than
+160 products, pre-launch, no real traffic — this architecture very likely costs _more_ than
 staying on Railway, primarily because of the ALB's flat fee and RDS/ElastiCache's per-instance
 minimums, both of which Railway bundles away. AWS's cost advantage emerges at scale (traffic
 high enough to make Fargate's pay-per-use model beat Railway's, committed-use discounts,

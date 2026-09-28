@@ -29,7 +29,9 @@ export class CreateProductDto {
   @MinLength(1)
   name!: string;
 
-  @ApiPropertyOptional({ description: 'Brand name. Must already exist — this endpoint does not create brands.' })
+  @ApiPropertyOptional({
+    description: 'Brand name. Must already exist — this endpoint does not create brands.',
+  })
   @IsOptional()
   @IsString()
   brand?: string;

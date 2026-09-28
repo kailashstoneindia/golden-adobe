@@ -9,25 +9,25 @@ Sourcing rules as per [electrical-switchgear-mcb.md](electrical-switchgear-mcb.m
 
 All five are variant-defining → **all required**:
 
-| Attribute | Type |
-|---|---|
-| `device_type` | enum |
-| `module_size` | number, modules |
-| `current_rating` | number, A |
-| `series` | **text** (free) |
-| `finish` | enum |
+| Attribute        | Type            |
+| ---------------- | --------------- |
+| `device_type`    | enum            |
+| `module_size`    | number, modules |
+| `current_rating` | number, A       |
+| `series`         | **text** (free) |
+| `finish`         | enum            |
 
 ---
 
 ## Brand shortlist
 
-| Brand | Catalogue URL | Profile | Part no. | Module | Rating | Series | Finish | Images |
-|---|---|---|---|---|---|---|---|---|
-| **Havells Crabtree** | [havells.com/crabtree/switches.html](https://havells.com/crabtree/switches.html) | **A** ⭐ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Anchor / Panasonic | [lsin.panasonic.com/switches-sockets](https://lsin.panasonic.com/switches-sockets) | **D** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Legrand | pending | ? | | | | | | |
-| Schneider | pending | ? | | | | | | |
-| GM Modular | pending | ? | | | | | | |
+| Brand                | Catalogue URL                                                                      | Profile  | Part no. | Module | Rating | Series | Finish | Images |
+| -------------------- | ---------------------------------------------------------------------------------- | -------- | -------- | ------ | ------ | ------ | ------ | ------ |
+| **Havells Crabtree** | [havells.com/crabtree/switches.html](https://havells.com/crabtree/switches.html)   | **A** ⭐ | ✅       | ✅     | ✅     | ✅     | ✅     | ✅     |
+| Anchor / Panasonic   | [lsin.panasonic.com/switches-sockets](https://lsin.panasonic.com/switches-sockets) | **D**    | ❌       | ❌     | ❌     | ❌     | ❌     | ❌     |
+| Legrand              | pending                                                                            | ?        |          |        |        |        |        |        |
+| Schneider            | pending                                                                            | ?        |          |        |        |        |        |        |
+| GM Modular           | pending                                                                            | ?        |          |        |        |        |        |        |
 
 ---
 
@@ -63,8 +63,8 @@ supersedes it.
 
 `lsin.panasonic.com/switches-sockets/roma/roma-classic` lists only the four
 range names (Switch, Socket, Fan Regulator, Support Function). No part numbers,
-no module sizes, no current ratings, no finishes. The page says *"Download our
-brochure to get all the details"* — specs are PDF-only.
+no module sizes, no current ratings, no finishes. The page says _"Download our
+brochure to get all the details"_ — specs are PDF-only.
 
 ---
 
@@ -83,10 +83,10 @@ brands whose sites are Profile C/D, rather than treating PDF as a last resort.
 
 ## Alias note
 
-| Canonical | Aliases |
-|---|---|
-| Anchor by Panasonic | `Anchor`, `Panasonic` |
-| Havells *(if Crabtree folds in)* | `Crabtree`, `Havells Crabtree` |
+| Canonical                        | Aliases                        |
+| -------------------------------- | ------------------------------ |
+| Anchor by Panasonic              | `Anchor`, `Panasonic`          |
+| Havells _(if Crabtree folds in)_ | `Crabtree`, `Havells Crabtree` |
 
 Crabtree is a real decision, not a formality: if seeded as its own brand it
 needs its own Legal Metrology fields; if an alias, every Crabtree product

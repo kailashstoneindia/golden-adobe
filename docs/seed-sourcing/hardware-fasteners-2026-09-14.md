@@ -10,18 +10,18 @@ have real value for whoever tries next, even though nothing landed.
 
 ## Brands tried, and exactly where each blocked
 
-| Brand | Leaf | Confirmed | Blocked on |
-|---|---|---|---|
-| Hettich (`shop.hettich.com/in_EN`) | Screws | diameter, length*, pack qty, coating("Galvanised") | `fastener_material` — "Galvanised steel" conflates material+coating into one descriptor, not separable |
-| Unbrako (`unbrako.com`) | Bolts & Nuts | `bolt_type`=Hex Bolt, `property_class`=10.9 (exact) | `fastener_material`, `fastener_coating` — both confirmed absent by direct check; property-class table lists coatings as a SEPARATE site section, not tied to this product |
-| fischer (`fischer.in`) | Anchors & Fixings | **Everything else**: `anchor_type`=Wedge Anchor, `base_material`=Concrete, diameter=10mm, length=80mm, pack=20, coating=Zinc Plated, GTIN confirmed | `country_of_origin` only — confirmed absent, checked exhaustively (product page, imprint, company search); fischer manufactures in multiple countries so the brand-default rule doesn't resolve it cleanly |
-| fischer (stainless variant) | Anchors & Fixings | material="Stainless steel" (literal), no coating (correctly — SS doesn't need one) | Diameter 16mm not in enum; grade (304 vs 202) not specified; not pursued further once the ZP variant above got further |
-| Ferry International (`ferry-international.com`) | Anchors & Fixings | `anchor_type` context (expansion), material=Brass, country=India (Ghaziabad, confirmed), per-size table (8/10/12/15mm x 22/28/33/38mm) | Sizes don't match `fastener_diameter`/`fastener_length` enums even after the widening from the fischer row; `anchor_type` enum has no clean "expansion"/brass category |
-| Everest Industries | Screws | — | No dedicated official product page found at all |
-| GKW | Bolts | — | No official manufacturer site found; only reseller/distributor listings |
-| MISUMI India | Screws | — | 403 Forbidden, same as Kajaria/Jaquar/Godrej |
-| Sundram Fasteners (`sflproducts.sundram.com`) | — | — | Digital catalogue is a JS-rendered empty shell to a plain fetch |
-| Deepak Fasteners (`deepakfasteners.com`) | Bolts | `property_class`=10.9, diameter range M4-M80, country="India" (direct brand claim: "Largest Industrial Fasteners Manufacturer in India") | `fastener_material`, `fastener_coating` — both unstated for the specific hex-bolt product line, same wall as Unbrako |
+| Brand                                           | Leaf              | Confirmed                                                                                                                                           | Blocked on                                                                                                                                                                                                 |
+| ----------------------------------------------- | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Hettich (`shop.hettich.com/in_EN`)              | Screws            | diameter, length\*, pack qty, coating("Galvanised")                                                                                                 | `fastener_material` — "Galvanised steel" conflates material+coating into one descriptor, not separable                                                                                                     |
+| Unbrako (`unbrako.com`)                         | Bolts & Nuts      | `bolt_type`=Hex Bolt, `property_class`=10.9 (exact)                                                                                                 | `fastener_material`, `fastener_coating` — both confirmed absent by direct check; property-class table lists coatings as a SEPARATE site section, not tied to this product                                  |
+| fischer (`fischer.in`)                          | Anchors & Fixings | **Everything else**: `anchor_type`=Wedge Anchor, `base_material`=Concrete, diameter=10mm, length=80mm, pack=20, coating=Zinc Plated, GTIN confirmed | `country_of_origin` only — confirmed absent, checked exhaustively (product page, imprint, company search); fischer manufactures in multiple countries so the brand-default rule doesn't resolve it cleanly |
+| fischer (stainless variant)                     | Anchors & Fixings | material="Stainless steel" (literal), no coating (correctly — SS doesn't need one)                                                                  | Diameter 16mm not in enum; grade (304 vs 202) not specified; not pursued further once the ZP variant above got further                                                                                     |
+| Ferry International (`ferry-international.com`) | Anchors & Fixings | `anchor_type` context (expansion), material=Brass, country=India (Ghaziabad, confirmed), per-size table (8/10/12/15mm x 22/28/33/38mm)              | Sizes don't match `fastener_diameter`/`fastener_length` enums even after the widening from the fischer row; `anchor_type` enum has no clean "expansion"/brass category                                     |
+| Everest Industries                              | Screws            | —                                                                                                                                                   | No dedicated official product page found at all                                                                                                                                                            |
+| GKW                                             | Bolts             | —                                                                                                                                                   | No official manufacturer site found; only reseller/distributor listings                                                                                                                                    |
+| MISUMI India                                    | Screws            | —                                                                                                                                                   | 403 Forbidden, same as Kajaria/Jaquar/Godrej                                                                                                                                                               |
+| Sundram Fasteners (`sflproducts.sundram.com`)   | —                 | —                                                                                                                                                   | Digital catalogue is a JS-rendered empty shell to a plain fetch                                                                                                                                            |
+| Deepak Fasteners (`deepakfasteners.com`)        | Bolts             | `property_class`=10.9, diameter range M4-M80, country="India" (direct brand claim: "Largest Industrial Fasteners Manufacturer in India")            | `fastener_material`, `fastener_coating` — both unstated for the specific hex-bolt product line, same wall as Unbrako                                                                                       |
 
 \* Hettich length (28mm, 34mm) doesn't match the enum even after prior
 widenings — not pursued once material blocked the row anyway.
@@ -68,11 +68,11 @@ rows 1  accepted 0  rejected 1
 
 ## Schema fixes made this pass (real value even without a landed product)
 
-| Attribute | Change | Evidence |
-|---|---|---|
-| `fastener_material` | + `Nylon` | fischer Universal Plug UX, GTIN 4006209627570, confirmed directly |
-| `fastener_diameter` | + `14` | Same product — wall-plug diameters commonly fall between screw-gauge sizes |
-| `fastener_pack_quantity` | + `20` | fischer FAZ II Plus, confirmed directly — heavier anchors pack in smaller counts than light screws |
+| Attribute                | Change    | Evidence                                                                                           |
+| ------------------------ | --------- | -------------------------------------------------------------------------------------------------- |
+| `fastener_material`      | + `Nylon` | fischer Universal Plug UX, GTIN 4006209627570, confirmed directly                                  |
+| `fastener_diameter`      | + `14`    | Same product — wall-plug diameters commonly fall between screw-gauge sizes                         |
+| `fastener_pack_quantity` | + `20`    | fischer FAZ II Plus, confirmed directly — heavier anchors pack in smaller counts than light screws |
 
 All three follow the same pattern as prior fixes this session
 (`sweep_size`, `safety_size`, `hinge_size`): the original enum was sized

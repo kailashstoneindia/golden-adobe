@@ -14,6 +14,9 @@ export const vendorService = {
   },
   updateOnboardingProgress(onboardingStage: VendorOnboardingStage): Promise<{ success: boolean }> {
     const requestBody: UpdateVendorOnboardingProgressDto = { onboardingStage };
-    return apiClient.patch<{ success: boolean }>(API_ENDPOINTS.vendors.onboardingProgress, requestBody);
+    return apiClient.patch<{ success: boolean }>(
+      API_ENDPOINTS.vendors.onboardingProgress,
+      requestBody,
+    );
   },
 };

@@ -4,8 +4,8 @@
 Equipment. Fetched 2026-09-14.
 
 Per the project's own docs (`catalog-vendor-export-analysis.md` §4), Hardware
-is the worst-rated category for data availability — *"Poor — highly
-fragmented, many unbranded"* — and the largest by leaf count (19, more than
+is the worst-rated category for data availability — _"Poor — highly
+fragmented, many unbranded"_ — and the largest by leaf count (19, more than
 double any other category). This pass deliberately took only the two
 cheapest leaves (3 required fields each) as a foothold rather than attempting
 the other 17, consistent with the breadth-first approach adopted this
@@ -17,10 +17,10 @@ value for the effort.
 
 ## Seeded
 
-| Leaf | Brand | Products |
-|---|---|---|
-| Adhesives & Sealants | Roff (Pidilite) | 2 — Vitrofix Tile Adhesive, Grey and White |
-| Safety & Site Equipment | Karam | 1 — Safety Helmet with Textile Cradle (PN574) |
+| Leaf                    | Brand           | Products                                      |
+| ----------------------- | --------------- | --------------------------------------------- |
+| Adhesives & Sealants    | Roff (Pidilite) | 2 — Vitrofix Tile Adhesive, Grey and White    |
+| Safety & Site Equipment | Karam           | 1 — Safety Helmet with Textile Cradle (PN574) |
 
 ### Adhesives & Sealants
 
@@ -60,23 +60,23 @@ aggregation, per the standing rule.
 
 ## Schema fixes this pass
 
-| Attribute | Change | Evidence |
-|---|---|---|
-| `safety_size` | + `One Size` | Karam PN574, stated explicitly on-page |
+| Attribute        | Change              | Evidence                                                                                            |
+| ---------------- | ------------------- | --------------------------------------------------------------------------------------------------- |
+| `safety_size`    | + `One Size`        | Karam PN574, stated explicitly on-page                                                              |
 | `hsn_code` table | + `6506` (headgear) | Needed for the helmet row; was missing entirely, same gap class as the original empty-HSN-table bug |
 
 ---
 
 ## Not attempted this pass — the other 17 leaves
 
-| Leaf | Notes |
-|---|---|
-| Hand Tools *(4 sub-leaves: Hammers, Spanners & Wrenches, Screwdrivers & Pliers, Measuring Tools, Masonry Hand Tools)* | Not attempted. Real Indian brands exist (Taparia, Stanley India, GDC) but per-tool spec granularity (size, material, type) across 4 sub-leaves was judged lower-yield than the adhesives/safety wins for the effort, given the category's own "poor" rating. |
-| Power Tools *(4 sub-leaves: Drills, Grinders, Saws & Cutters, Demolition & Breakers)* | Not attempted. Brands (Bosch, Makita, Black+Decker) are real and likely well-documented, but not tried this pass. |
-| Fasteners *(4 sub-leaves: Screws, Bolts & Nuts, Anchors & Fixings, Nails & Rivets)* | Not attempted — this is the leaf group the project's docs most directly describe as "highly fragmented, many unbranded." Likely the worst-yield leaf group in the category if attempted. |
-| Door & Window Hardware *(3 sub-leaves: Locks, Hinges, Handles & Knobs)* | Not attempted. Named brands exist (Godrej, Dorset, Yale) — a plausible foothold if this category is revisited. |
+| Leaf                                                                                                                  | Notes                                                                                                                                                                                                                                                        |
+| --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Hand Tools _(4 sub-leaves: Hammers, Spanners & Wrenches, Screwdrivers & Pliers, Measuring Tools, Masonry Hand Tools)_ | Not attempted. Real Indian brands exist (Taparia, Stanley India, GDC) but per-tool spec granularity (size, material, type) across 4 sub-leaves was judged lower-yield than the adhesives/safety wins for the effort, given the category's own "poor" rating. |
+| Power Tools _(4 sub-leaves: Drills, Grinders, Saws & Cutters, Demolition & Breakers)_                                 | Not attempted. Brands (Bosch, Makita, Black+Decker) are real and likely well-documented, but not tried this pass.                                                                                                                                            |
+| Fasteners _(4 sub-leaves: Screws, Bolts & Nuts, Anchors & Fixings, Nails & Rivets)_                                   | Not attempted — this is the leaf group the project's docs most directly describe as "highly fragmented, many unbranded." Likely the worst-yield leaf group in the category if attempted.                                                                     |
+| Door & Window Hardware _(3 sub-leaves: Locks, Hinges, Handles & Knobs)_                                               | Not attempted. Named brands exist (Godrej, Dorset, Yale) — a plausible foothold if this category is revisited.                                                                                                                                               |
 
-None of these are documented as *tried and blocked* the way Tiles/Lights/RCCB
+None of these are documented as _tried and blocked_ the way Tiles/Lights/RCCB
 are — they are simply **not yet attempted**. That distinction matters for
 anyone picking this back up: these are open opportunities, not dead ends.
 
@@ -100,11 +100,11 @@ confirmed dead end.
 **Yale (`yalehome.com`) IS reachable and DOES publish real specs — but each
 leaf is missing exactly one required field:**
 
-| Leaf | Confirmed | Missing (required) |
-|---|---|---|
-| Locks (EN 85/45, EN 85/60) | `lock_type`=Mortise, `backset`=45mm/60mm (exact enum match), material components (SS/MS/brass, but no single unified `dwh_material`) | `key_type` — genuinely unstated on both product pages checked |
-| Hinges (HIN2BB433, HIN2BB533) | `hinge_type`=Butt, size 4"/5" (see schema fix below), `dwh_material`=Stainless Steel (SS304) | `dwh_finish` — pages show unexplained codes SS/AB/BM with **no legend anywhere on the page**, confirmed absent by direct check |
-| Handles (YMEL-704 Antique Brass Matt) | `dwh_material`=Zinc Alloy, `dwh_finish`="Antique Brass Matt" (clean match) | `centre_to_centre` — genuinely unstated |
+| Leaf                                  | Confirmed                                                                                                                            | Missing (required)                                                                                                             |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| Locks (EN 85/45, EN 85/60)            | `lock_type`=Mortise, `backset`=45mm/60mm (exact enum match), material components (SS/MS/brass, but no single unified `dwh_material`) | `key_type` — genuinely unstated on both product pages checked                                                                  |
+| Hinges (HIN2BB433, HIN2BB533)         | `hinge_type`=Butt, size 4"/5" (see schema fix below), `dwh_material`=Stainless Steel (SS304)                                         | `dwh_finish` — pages show unexplained codes SS/AB/BM with **no legend anywhere on the page**, confirmed absent by direct check |
+| Handles (YMEL-704 Antique Brass Matt) | `dwh_material`=Zinc Alloy, `dwh_finish`="Antique Brass Matt" (clean match)                                                           | `centre_to_centre` — genuinely unstated                                                                                        |
 
 Each leaf was one field short of importable. A genuine, sourceable lead for
 the SS/AB/BM finish codes was found (yaleonline.in states "Satin Steel"

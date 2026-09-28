@@ -8,12 +8,12 @@
 
 Phase 2's "Product Management" deliverable has two paths into `master_product`: bulk
 Excel import (`CatalogImportUploadService`, Phase 3) and the vendor review queue
-(`resolveReviewRowAsLink`, Phase 4). Both create *draft* rows through a batch/row-shaped
+(`resolveReviewRowAsLink`, Phase 4). Both create _draft_ rows through a batch/row-shaped
 flow. There has never been a way to create or edit **one** product directly.
 
-`admin-catalog.controller.ts` says why, in its own comment: *"bulk seeding goes through
+`admin-catalog.controller.ts` says why, in its own comment: _"bulk seeding goes through
 Phase 3's generated Excel templates ... a single-product form is a useful later addition
-for corrections, not a prerequisite for operating the catalog."* That was correct when
+for corrections, not a prerequisite for operating the catalog."_ That was correct when
 written — the catalog was empty and seeding was breadth-first. It no longer holds: 160
 products are seeded, all `status = 'draft'`, and there is no way to fix one row (a typo in
 `name`, a missing enum attribute blocking publish) without re-running an entire sheet
@@ -50,14 +50,14 @@ is explicitly out of scope for this pass. This is the one remaining gap.
   `ColumnPlan`, `buildErrorWorkbook`). Bending it to also accept and return JSON means
   either two return shapes behind one method or a parallel method that duplicates most of
   the body anyway — the worst of both options with none of the benefit.
-- **Con:** The importer's rule 5/5b duplicate checks exist to give a *per-row* error inside
-  a *multi-row* file. A single create either has the same row-level shape for no reason, or
+- **Con:** The importer's rule 5/5b duplicate checks exist to give a _per-row_ error inside
+  a _multi-row_ file. A single create either has the same row-level shape for no reason, or
   the DB constraint fires first and the pre-query becomes dead code.
 
 ### Option C — Derive create/edit from `resolveReviewRowAsLink` instead
 
 - **Pro:** That path already creates a product from a single resolved row.
-- **Con:** It exists to link a vendor's *ambiguous upload row* to a master product via the
+- **Con:** It exists to link a vendor's _ambiguous upload row_ to a master product via the
   match ladder — its whole shape is "resolve this uncertain row," not "an admin typed a
   product." Wrong abstraction for a deliberate, unambiguous admin action.
 
@@ -111,7 +111,7 @@ a re-creation, not a "correction," and this ADR is scoped to corrections.
 
 ## Open questions
 
-- Whether vendor-facing product *requests* (a vendor wanting a genuinely new product, not
+- Whether vendor-facing product _requests_ (a vendor wanting a genuinely new product, not
   matched by the ladder) should eventually go through this same create endpoint with an
   approval step in front of it, rather than only through the review queue's match-or-reject
   shape. Not argued here — no such request path exists yet to attach it to.

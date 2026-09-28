@@ -150,7 +150,9 @@ export class VendorCategoriesService {
     const foundIds = new Set(found.map((category) => category.id));
     const missing = categoryIds.filter((id) => !foundIds.has(id));
     if (missing.length > 0) {
-      throw new BadRequestException(`unknown category ${missing.length === 1 ? 'id' : 'ids'}: ${missing.join(', ')}`);
+      throw new BadRequestException(
+        `unknown category ${missing.length === 1 ? 'id' : 'ids'}: ${missing.join(', ')}`,
+      );
     }
 
     const nonLeaf = found.filter((category) => !category.isLeaf);

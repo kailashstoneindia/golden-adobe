@@ -46,7 +46,7 @@ found by inspection rather than by failure:
 
 - **Pro:** Setting stock writes only `quantity_available`; setting status writes only
   `status`. No hidden second write, so what a vendor changed is what changed.
-- **Pro:** Paint needs `status` as its *only* availability control
+- **Pro:** Paint needs `status` as its _only_ availability control
   ([0007](0007-colour-family-pricing.md)), and a non-paint listing may legitimately be
   paused while in stock. One mechanism serves both without special cases.
 - **Con:** `quantity_available = 0` with `status = 'active'` is reachable and contradictory
@@ -57,7 +57,7 @@ found by inspection rather than by failure:
 - **Pro:** Friendlier; the contradiction cannot arise.
 - **Con:** Writes a column the vendor did not ask to change — a silent edit.
 - **Con:** The reverse rule ("restore to active when stock returns") guesses wrongly for a
-  listing that was paused *deliberately*, and there is no way to tell the two pauses apart
+  listing that was paused _deliberately_, and there is no way to tell the two pauses apart
   without another column recording why it was paused.
 
 #### Option C — Derive availability from stock; drop the status endpoint
@@ -77,7 +77,7 @@ found by inspection rather than by failure:
 - **Pro:** Matches how the row's other optional fields already behave (`mrp` falls back to
   the existing value rather than nulling it).
 - **Con:** Stock cannot be cleared by omission; clearing requires an explicit `0`. A vendor
-  who *meant* "I have none" by leaving it blank is not heard.
+  who _meant_ "I have none" by leaving it blank is not heard.
 
 #### Option B — Blank means zero
 
@@ -153,8 +153,8 @@ it is the one that arrives through an ordinary mistake rather than a deliberate 
 
 **On rule 3.** This codebase has already made this call once, in a closely analogous place:
 export scoping rejects a request naming categories the vendor is not registered for, rather
-than quietly returning a narrower sheet, because *"a vendor who asked for five categories
-and received three would have no way to tell that happened."* The same reasoning applies to
+than quietly returning a narrower sheet, because _"a vendor who asked for five categories
+and received three would have no way to tell that happened."_ The same reasoning applies to
 stock.
 
 **On rule 7.** This one is not aesthetic. The search-sync triggers on `inventory` are
@@ -188,7 +188,7 @@ diagnose later.
   through `CatalogModule`'s exports, the same way `VendorCategoriesService` already reaches
   `AdminVendorsController`.
 - Every inventory write goes through **raw SQL**, not the Sequelize model: `ON CONFLICT ...
-  WHERE warehouse_id IS NULL` targets a partial index and `unnest()` keeps the bulk path to
+WHERE warehouse_id IS NULL` targets a partial index and `unnest()` keeps the bulk path to
   one statement, and neither is expressible through `upsert()`/`bulkCreate()`. The
   `Inventory` model is consequently not injected into `StockService`.
 - **`quantity_reserved` stays at 0.** It has no consumer until the ordering domain exists,

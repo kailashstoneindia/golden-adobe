@@ -42,7 +42,14 @@ export default function OrderDetailScreen() {
           <Circle cx="20" cy="120" r="5" fill={Colors.tangerine} />
           <Circle cx="75" cy="80" r="5" fill={Colors.tangerine} />
           <Circle cx="130" cy="95" r="5" fill={Colors.tangerine} />
-          <Circle cx="185" cy="40" r="7" fill={Colors.tangerine} stroke={Colors.white} strokeWidth={2} />
+          <Circle
+            cx="185"
+            cy="40"
+            r="7"
+            fill={Colors.tangerine}
+            stroke={Colors.white}
+            strokeWidth={2}
+          />
           <Circle cx="245" cy="65" r="5" fill={Colors.white} stroke={Colors.line} strokeWidth={2} />
         </Svg>
       </Card>

@@ -13,12 +13,12 @@ Four known gaps in the approach described in
 
 Ranked by damage, not by effort.
 
-| # | Risk | Damage | Detectable? | Cheap to fix? | Status |
-|---|---|---|---|---|---|
-| 1 | Duplicate brand rows | Multiplies across an entire brand | ❌ silent | ✅ yes | ✅ Implemented |
-| 2 | Vendor confirms a wrong match | Permanent, self-reinforcing | ❌ evades price check | 🟡 UI work | ✅ Implemented |
-| 3 | Blank variant attributes at publish | Only guard for Stone and Hardware | 🟡 partly | ✅ yes | ✅ Implemented |
-| 4 | No customer report path | Errors never surface | — | 🟡 needs order flow | ⛔ Blocked — no ordering domain yet |
+| #   | Risk                                | Damage                            | Detectable?           | Cheap to fix?       | Status                              |
+| --- | ----------------------------------- | --------------------------------- | --------------------- | ------------------- | ----------------------------------- |
+| 1   | Duplicate brand rows                | Multiplies across an entire brand | ❌ silent             | ✅ yes              | ✅ Implemented                      |
+| 2   | Vendor confirms a wrong match       | Permanent, self-reinforcing       | ❌ evades price check | 🟡 UI work          | ✅ Implemented                      |
+| 3   | Blank variant attributes at publish | Only guard for Stone and Hardware | 🟡 partly             | ✅ yes              | ✅ Implemented                      |
+| 4   | No customer report path             | Errors never surface              | —                     | 🟡 needs order flow | ⛔ Blocked — no ordering domain yet |
 
 ---
 
@@ -102,7 +102,7 @@ catches it either — it reaches a customer.
 
 - **Show two or three candidates rather than one yes/no.** A single confirm button invites a
   reflexive tap; a choice forces a read
-- Surface *differing* attributes rather than just the product name — "C-Curve" next to the
+- Surface _differing_ attributes rather than just the product name — "C-Curve" next to the
   alternatives, so the distinguishing detail is visible
 - Let vendors unmap a `vendor_product_map` entry from their own portal
 - Age out or re-prompt mappings that were confirmed once and never revisited
@@ -146,7 +146,7 @@ switch may legitimately have no Series value, and forcing a placeholder is worse
 blank.
 
 Treating blank as an explicit value in the hash does **not** solve it either: two genuinely
-different products *should* hash differently, and the duplicate case is specifically one
+different products _should_ hash differently, and the duplicate case is specifically one
 admin filling a field and another not, for the same product.
 
 ### Sketched fixes

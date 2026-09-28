@@ -42,7 +42,7 @@ now change, and any decision this forecloses.
 
 ## Open questions
 
-What was deliberately *not* settled here, and which discussion will settle it.
+What was deliberately _not_ settled here, and which discussion will settle it.
 
 ## Sources
 

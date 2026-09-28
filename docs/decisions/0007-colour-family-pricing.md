@@ -63,7 +63,7 @@ Two reasons this had to change once pricing did:
    from deep. Keeping base in the SKU would force one "blue" price to be duplicated across
    several listings — directly contradicting "one price for blue".
 
-Base is now resolved *from the shade* at fulfilment and written onto the order line as an
+Base is now resolved _from the shade_ at fulfilment and written onto the order line as an
 instruction to the shop.
 
 ### `paint_shade_base_compatibility` collapses into a column

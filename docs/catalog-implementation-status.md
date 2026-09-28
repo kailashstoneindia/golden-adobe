@@ -14,22 +14,22 @@ provoked on purpose, not just "it compiled"), not assumed correct from code revi
 
 ## Status at a glance
 
-| Phase | What | Status |
-|---|---|---|
-| 0 | Seeding ownership, sourcing paths | Owner assigned; sourcing split decided ([catalog-vendor-export-analysis.md](catalog-vendor-export-analysis.md)) |
-| 1 | Taxonomy foundation | ✅ Done — migrations **and** seeders (58 leaves, 242 attributes, 930 enum options) |
-| 2 | Master catalog + identity/dedup triggers | ✅ Done |
-| 3 | Admin catalog import (Excel) | ✅ Done |
-| 4 | Vendor listings, inventory, match ladder, export/import | ✅ Done |
-| 5 | Paint colour-family pricing, Stone grade listings | ✅ Done |
-| 6a/6b | Geography (city, pincode map) + search document shape | ✅ Done — 163 NCR pincodes seeded across the 5 launch cities |
-| 6c | Postgres search path (also admin search + outage fallback) | ✅ Done — 5/5 |
-| 6e | Meilisearch client, index settings as code, boot bootstrap | ✅ Done — 12/12 |
-| 6f | BullMQ outbox drain worker | ✅ Done — 18/18 |
-| 6g | Query layer, controller, fallback switch | ✅ Done |
-| 6h | Shadow-index rebuild + atomic swap | ✅ Done — 6g+6h verified together, 46/46 |
-| 7 | Integrity hardening (risks 1–3, price outlier, edit re-validation) | ✅ Done |
-| 7 · risk 4 | Customer report path | ⛔ Blocked — needs the ordering domain, which doesn't exist yet |
+| Phase      | What                                                               | Status                                                                                                          |
+| ---------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| 0          | Seeding ownership, sourcing paths                                  | Owner assigned; sourcing split decided ([catalog-vendor-export-analysis.md](catalog-vendor-export-analysis.md)) |
+| 1          | Taxonomy foundation                                                | ✅ Done — migrations **and** seeders (58 leaves, 242 attributes, 930 enum options)                              |
+| 2          | Master catalog + identity/dedup triggers                           | ✅ Done                                                                                                         |
+| 3          | Admin catalog import (Excel)                                       | ✅ Done                                                                                                         |
+| 4          | Vendor listings, inventory, match ladder, export/import            | ✅ Done                                                                                                         |
+| 5          | Paint colour-family pricing, Stone grade listings                  | ✅ Done                                                                                                         |
+| 6a/6b      | Geography (city, pincode map) + search document shape              | ✅ Done — 163 NCR pincodes seeded across the 5 launch cities                                                    |
+| 6c         | Postgres search path (also admin search + outage fallback)         | ✅ Done — 5/5                                                                                                   |
+| 6e         | Meilisearch client, index settings as code, boot bootstrap         | ✅ Done — 12/12                                                                                                 |
+| 6f         | BullMQ outbox drain worker                                         | ✅ Done — 18/18                                                                                                 |
+| 6g         | Query layer, controller, fallback switch                           | ✅ Done                                                                                                         |
+| 6h         | Shadow-index rebuild + atomic swap                                 | ✅ Done — 6g+6h verified together, 46/46                                                                        |
+| 7          | Integrity hardening (risks 1–3, price outlier, edit re-validation) | ✅ Done                                                                                                         |
+| 7 · risk 4 | Customer report path                                               | ⛔ Blocked — needs the ordering domain, which doesn't exist yet                                                 |
 
 ---
 
@@ -120,14 +120,14 @@ Built against [catalog-integrity-residual-risks.md](catalog-integrity-residual-r
 see that file for the original risk analysis, now updated with implementation status per
 item.
 
-| # | Risk / item | Built | Verified live |
-|---|---|---|---|
-| 1 | Duplicate brand rows defeat dedup | `normalize_brand_name()` SQL function + unique functional index + `brand_alias` table + `BrandResolverService` | 6/6 ✅ |
-| 2 | Vendor confirms wrong match, permanently | `matchCandidates` surfaced on listings; `choosePendingListingCandidate` re-points `vendor_product_map` at the **chosen** product, not the original guess | 12/12 ✅ (E2E) |
-| 3 | Blank variant attributes bypass identity_hash | `trg_mp_require_variant_attrs_on_publish` — blocks publish, names the specific missing attribute, scoped to identity-hash-dependent products only (branded products unaffected) | 4/4 ✅ |
-| — | Price-outlier flag | `vendor_listing_price_outliers` view, median-based within `(product, grade)` groups, flags >3x or <⅓x, flag-for-review not auto-unpublish | 3/3 ✅ |
-| — | Catalog-edit re-validation | `vendor_listing_flag` table + `flag_listings_on_variant_attr_edit` trigger, fires on live-product variant-attribute edits only | 5/5 ✅ |
-| — | Brand resolver × match ladder integration | — | 3/3 ✅ |
+| #   | Risk / item                                   | Built                                                                                                                                                                           | Verified live  |
+| --- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| 1   | Duplicate brand rows defeat dedup             | `normalize_brand_name()` SQL function + unique functional index + `brand_alias` table + `BrandResolverService`                                                                  | 6/6 ✅         |
+| 2   | Vendor confirms wrong match, permanently      | `matchCandidates` surfaced on listings; `choosePendingListingCandidate` re-points `vendor_product_map` at the **chosen** product, not the original guess                        | 12/12 ✅ (E2E) |
+| 3   | Blank variant attributes bypass identity_hash | `trg_mp_require_variant_attrs_on_publish` — blocks publish, names the specific missing attribute, scoped to identity-hash-dependent products only (branded products unaffected) | 4/4 ✅         |
+| —   | Price-outlier flag                            | `vendor_listing_price_outliers` view, median-based within `(product, grade)` groups, flags >3x or <⅓x, flag-for-review not auto-unpublish                                       | 3/3 ✅         |
+| —   | Catalog-edit re-validation                    | `vendor_listing_flag` table + `flag_listings_on_variant_attr_edit` trigger, fires on live-product variant-attribute edits only                                                  | 5/5 ✅         |
+| —   | Brand resolver × match ladder integration     | —                                                                                                                                                                               | 3/3 ✅         |
 
 **37 live-Postgres checks total**, all passing, all scratch data cleaned up afterward.
 
@@ -247,15 +247,15 @@ and were empty.
 Data lives in `apps/backend/database/seed-data/taxonomy.js`, transcribed from
 [catalog-structure.md](catalog-structure.md), which stays the source of truth.
 
-| | Seeded | Spec |
-|---|---|---|
-| Leaf categories | **58** | 58 ✓ |
-| Top-level categories | **8** | 8 ✓ |
-| Total category nodes | 71 | 58 leaves + 13 non-leaf |
-| Attributes | 242 | doc estimates "153" — see below |
-| Global attributes (`category_id IS NULL`) | 2 | 2 ✓ |
-| Enum value options | 930 | — |
-| Units of measure | 10 | — |
+|                                           | Seeded | Spec                            |
+| ----------------------------------------- | ------ | ------------------------------- |
+| Leaf categories                           | **58** | 58 ✓                            |
+| Top-level categories                      | **8**  | 8 ✓                             |
+| Total category nodes                      | 71     | 58 leaves + 13 non-leaf         |
+| Attributes                                | 242    | doc estimates "153" — see below |
+| Global attributes (`category_id IS NULL`) | 2      | 2 ✓                             |
+| Enum value options                        | 930    | —                               |
+| Units of measure                          | 10     | —                               |
 
 The attribute count exceeds the doc's "153" because that figure appears to be an estimate;
 the per-category counts all match the doc's own summary table exactly (Tiles declares 12,
@@ -316,13 +316,13 @@ Login, Dashboard, Users and Approvals, and none of the catalog surfaces Phases 2
 `AdminCatalogController` / `AdminCatalogService` at `/api/admin/catalog` — the read-and-publish
 surface the panel needs, which did not previously exist:
 
-| Endpoint | Purpose |
-|---|---|
-| `GET /categories` | Full tree, 8 roots → 58 leaves, with per-node product counts |
-| `GET /categories/:id/attributes` | Effective attribute set — own + inherited + global, each tagged with its scope and the ancestor it came from |
-| `GET /products` | List across every status, filtered by search / category subtree / status |
-| `GET /products/:id` | Detail with attribute values and live listing count |
-| `PATCH /products/:id/publish` · `/unpublish` | draft ⇄ live |
+| Endpoint                                     | Purpose                                                                                                      |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `GET /categories`                            | Full tree, 8 roots → 58 leaves, with per-node product counts                                                 |
+| `GET /categories/:id/attributes`             | Effective attribute set — own + inherited + global, each tagged with its scope and the ancestor it came from |
+| `GET /products`                              | List across every status, filtered by search / category subtree / status                                     |
+| `GET /products/:id`                          | Detail with attribute values and live listing count                                                          |
+| `PATCH /products/:id/publish` · `/unpublish` | draft ⇄ live                                                                                                 |
 
 Reads Postgres directly rather than the search index, because drafts have no listing and
 therefore no search document — Meilisearch structurally cannot represent them (0019).

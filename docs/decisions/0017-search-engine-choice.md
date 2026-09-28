@@ -12,8 +12,8 @@
 designed. It recommends Postgres for Phase 1 and "Meilisearch / Typesense" for Phase 2, and
 justifies the split with:
 
-> *large catalogs on plain SQL hit real failure modes as they grow: full-text queries timing
-> out, the database locking up under heavy filtering*
+> _large catalogs on plain SQL hit real failure modes as they grow: full-text queries timing
+> out, the database locking up under heavy filtering_
 
 That is a real risk **at millions of products**. This catalog is
 [4,000–6,000 SKUs at launch](../catalog-build-order.md). The premise was never checked
@@ -22,8 +22,8 @@ was built on it.
 
 Two questions had to be answered separately, and conflating them is the trap:
 
-1. What is the *industry standard*?
-2. What is right *here*?
+1. What is the _industry standard_?
+2. What is right _here_?
 
 ## Options considered
 
@@ -99,7 +99,7 @@ keeps both, because the mitigation follows from the disagreement: since Postgres
 strong enough to serve this catalog on its own, keeping it wired as the fallback costs very
 little and removes Meilisearch as a single point of failure.
 
-**The rule going forward:** *search must degrade, never 500.* If Meilisearch is unreachable
+**The rule going forward:** _search must degrade, never 500._ If Meilisearch is unreachable
 or mid-rebuild, `SearchService` falls through to `PostgresSearchService`. A `SEARCH_ENGINE`
 config flag forces this manually.
 
@@ -109,15 +109,15 @@ config flag forces this manually.
 
 Every option here can search 5,000 documents instantly. The features are close enough that
 performance is not the differentiator at this scale — **licence exposure is**, because it is
-the only cost that grows with the *business* rather than with the catalog.
+the only cost that grows with the _business_ rather than with the catalog.
 
-| Option | Licence | Exposure for a commercial marketplace |
-|---|---|---|
-| Postgres | PostgreSQL (BSD-like) | None |
-| OpenSearch | Apache 2.0 | None; includes a patent grant |
-| **Meilisearch** | **MIT** (+ BUSL-1.1 for sharding) | **Attribution only** |
-| Typesense | GPL-3.0 | Copyleft; due-diligence friction |
-| ParadeDB | AGPL-3.0 | Network clause targets SaaS directly |
+| Option          | Licence                           | Exposure for a commercial marketplace |
+| --------------- | --------------------------------- | ------------------------------------- |
+| Postgres        | PostgreSQL (BSD-like)             | None                                  |
+| OpenSearch      | Apache 2.0                        | None; includes a patent grant         |
+| **Meilisearch** | **MIT** (+ BUSL-1.1 for sharding) | **Attribution only**                  |
+| Typesense       | GPL-3.0                           | Copyleft; due-diligence friction      |
+| ParadeDB        | AGPL-3.0                          | Network clause targets SaaS directly  |
 
 Meilisearch's `LICENSE` declares `SPDX-License-Identifier: MIT AND BUSL-1.1` — it is
 **dual-licensed, not purely MIT**, which the README badge alone does not reveal. The only
@@ -138,19 +138,19 @@ licence pointed in opposite directions, and licence won.
 ### Numeric typo tolerance is the deciding feature
 
 Construction search is dominated by specification queries where a single character edit is a
-*different product*:
+_different product_:
 
-| Query | Must not match |
-|---|---|
-| `32A MCB` | `32B` curve, `16A` |
-| `2.5 sq mm` | `1.5 sq mm` |
-| `600x600 tile` | `600x300` |
+| Query          | Must not match     |
+| -------------- | ------------------ |
+| `32A MCB`      | `32B` curve, `16A` |
+| `2.5 sq mm`    | `1.5 sq mm`        |
+| `600x600 tile` | `600x300`          |
 
 Meilisearch's default typo tolerance permits one typo at 5–8 characters and two at 9 or
 more. Applied to this catalog that is not a nicety, it is **actively wrong**. Both
 Meilisearch and Typesense ship an explicit off-switch (`disableOnNumbers`,
-`enable_typos_for_numerical_tokens`); Meilisearch documents the result as *"queries with
-numbers only return exact matches"*.
+`enable_typos_for_numerical_tokens`); Meilisearch documents the result as _"queries with
+numbers only return exact matches"_.
 
 This is the strongest feature argument for leaving Postgres, and equally the strongest
 argument that **an untuned search engine would be worse than Postgres here.** The setting is
@@ -160,13 +160,13 @@ not optional.
 
 Two different questions, two different answers:
 
-| Question | Answer |
-|---|---|
-| Most deployed search engine | **Elasticsearch** — DB-Engines rank 1, ~4× Solr |
-| Most bought for ecommerce | **Algolia** |
-| What Meilisearch and Typesense are | **Challengers, not standards** |
+| Question                           | Answer                                          |
+| ---------------------------------- | ----------------------------------------------- |
+| Most deployed search engine        | **Elasticsearch** — DB-Engines rank 1, ~4× Solr |
+| Most bought for ecommerce          | **Algolia**                                     |
+| What Meilisearch and Typesense are | **Challengers, not standards**                  |
 
-So `search-architecture.md` recommended two products that are *not* the industry standard —
+So `search-architecture.md` recommended two products that are _not_ the industry standard —
 and was right to, for a reason it never stated: the standard is sized for problems this
 project does not have. Choosing Elasticsearch here would be selecting operational weight in
 exchange for capability that 5,000 documents cannot use.
@@ -181,7 +181,7 @@ strictly better than a hosted plan on both cost and exposure at this scale.
 ## Consequences
 
 - **A sync pipeline becomes a permanent correctness liability.** Any write path that skips
-  the outbox produces a stale index that *never errors*. Nobody notices until a customer
+  the outbox produces a stale index that _never errors_. Nobody notices until a customer
   reports a wrong price. This is the real price of leaving Postgres and the main reason the
   fallback path stays alive.
 - Two new Railway services eventually (Meilisearch, and a worker once bulk reindexing starts
@@ -195,7 +195,7 @@ strictly better than a hosted plan on both cost and exposure at this scale.
 - **Write-then-search is no longer immediate.** The admin publish path must await the
   indexing task before returning, or an admin will search for the product they just created
   and not find it.
-- `PostgresSearchService` must be written and *kept working*, which means it needs test
+- `PostgresSearchService` must be written and _kept working_, which means it needs test
   coverage even though it is not the primary path. A fallback nobody exercises is not a
   fallback.
 - One attribution line is owed in the app's licences page.
@@ -223,7 +223,7 @@ Fetched and verified during this discussion. Graded, because
 **Primary — repository and vendor documentation, read directly:**
 
 - [Meilisearch `LICENSE`](https://raw.githubusercontent.com/meilisearch/meilisearch/main/LICENSE) — `SPDX-License-Identifier: MIT AND BUSL-1.1`, Copyright (c) 2019-2025 Meili SAS
-- [Meilisearch — Enterprise and Community editions](https://www.meilisearch.com/docs/resources/self_hosting/enterprise_edition) — *"The only feature exclusive to the Enterprise Edition is sharding"*
+- [Meilisearch — Enterprise and Community editions](https://www.meilisearch.com/docs/resources/self_hosting/enterprise_edition) — _"The only feature exclusive to the Enterprise Edition is sharding"_
 - [Meilisearch — typo tolerance settings](https://www.meilisearch.com/docs/learn/relevancy/typo_tolerance_settings) — `disableOnNumbers`; 5–8 chars → 1 typo, 9+ → 2
 - [Meilisearch — asynchronous operations](https://www.meilisearch.com/docs/learn/async/asynchronous_operations) — task states
 - [Meilisearch — basic security](https://www.meilisearch.com/docs/learn/security/basic_security) — search-only keys are documented as frontend-safe
@@ -232,8 +232,8 @@ Fetched and verified during this discussion. Graded, because
 - [Typesense search API](https://typesense.org/docs/29.0/api/search.html) — `enable_typos_for_numerical_tokens`
 - [ParadeDB repository](https://github.com/paradedb/paradedb) — AGPL-3.0; Tantivy-based
 - [Elastic — "Elasticsearch is Open Source, Again"](https://www.elastic.co/blog/elasticsearch-is-open-source-again) — AGPL added alongside ELv2 and SSPL, 29 August 2024
-- [Algolia — B2B personalized pricing](https://www.algolia.com/doc/guides/solutions/ecommerce/b2b-catalog-management/tutorials/personalized-pricing) — *"fewer than 100 pricing levels per product"* → nested attribute; the option S1 ultimately did **not** take, once the business was confirmed as single-city per search (0018)
-- [PostgreSQL 16 — `CREATE TRIGGER`](https://www.postgresql.org/docs/16/sql-createtrigger.html) — *"Multiple events can be specified using `OR`, except when transition relations are requested"*; `OLD TABLE` only on `UPDATE`/`DELETE`, `NEW TABLE` only on `UPDATE`/`INSERT`. This is what forces one trigger per event rather than one per table (26 triggers over 12 tables as of 0018, up from 24 over 10).
+- [Algolia — B2B personalized pricing](https://www.algolia.com/doc/guides/solutions/ecommerce/b2b-catalog-management/tutorials/personalized-pricing) — _"fewer than 100 pricing levels per product"_ → nested attribute; the option S1 ultimately did **not** take, once the business was confirmed as single-city per search (0018)
+- [PostgreSQL 16 — `CREATE TRIGGER`](https://www.postgresql.org/docs/16/sql-createtrigger.html) — _"Multiple events can be specified using `OR`, except when transition relations are requested"_; `OLD TABLE` only on `UPDATE`/`DELETE`, `NEW TABLE` only on `UPDATE`/`INSERT`. This is what forces one trigger per event rather than one per table (26 triggers over 12 tables as of 0018, up from 24 over 10).
 
 **Third-party, weaker — used only for the "industry standard" framing:**
 
@@ -253,4 +253,4 @@ Fetched and verified during this discussion. Graded, because
 
 - Any engineering write-up from an Indian marketplace (Flipkart, Meesho, Udaan) on
   serviceability filtering in a search index. Searched; nothing exists publicly. Anything
-  stated here about how *they* do it would be inference.
+  stated here about how _they_ do it would be inference.

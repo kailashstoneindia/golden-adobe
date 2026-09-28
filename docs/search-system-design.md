@@ -56,12 +56,12 @@ flowchart LR
 only at `meilisearch.railway.internal`, so the master key never crosses the internet and
 there is no public port to secure.
 
-| Service | New? | Notes |
-|---|---|---|
-| `backend` | existing | gains a `SearchModule` |
-| `meilisearch` | **new** | official image, private port only |
-| `search-worker` | **new** | *same Docker image as backend*, different start command |
-| `postgres` · `redis` | existing | Redis is already wired as a `@Global()` module |
+| Service              | New?     | Notes                                                   |
+| -------------------- | -------- | ------------------------------------------------------- |
+| `backend`            | existing | gains a `SearchModule`                                  |
+| `meilisearch`        | **new**  | official image, private port only                       |
+| `search-worker`      | **new**  | _same Docker image as backend_, different start command |
+| `postgres` · `redis` | existing | Redis is already wired as a `@Global()` module          |
 
 The worker is the same image deliberately — it shares Sequelize models and the document
 builder. A separate repo or image would duplicate both and they would drift.
@@ -112,16 +112,16 @@ function 500 times and write 500 outbox rows for perhaps 50 distinct products.
 Statement-level triggers with transition tables (Postgres 10+; this project runs 16) fire
 **once per statement** and write one deduplicated `INSERT … SELECT DISTINCT`.
 
-| | Row-level | **Statement-level** |
-|---|---|---|
-| Trigger declarations | 12 | **26** |
-| Invocations for a 500-row upload | 500 | **1** |
-| Outbox rows written | 500 | **~50** (distinct product/city pairs) |
+|                                  | Row-level | **Statement-level**                   |
+| -------------------------------- | --------- | ------------------------------------- |
+| Trigger declarations             | 12        | **26**                                |
+| Invocations for a 500-row upload | 500       | **1**                                 |
+| Outbox rows written              | 500       | **~50** (distinct product/city pairs) |
 
 The trigger count is forced by Postgres, not by preference:
 
-> *"Multiple events can be specified using `OR`, except when transition relations are
-> requested."* — PostgreSQL 16, `CREATE TRIGGER`
+> _"Multiple events can be specified using `OR`, except when transition relations are
+> requested."_ — PostgreSQL 16, `CREATE TRIGGER`
 
 So each event needs its own trigger. All 26 share just **three** functions — a third was
 added by [0018](decisions/0018-city-scoped-search.md), for reasons below — and the DDL is
@@ -158,7 +158,7 @@ carries no foreign key — no `ON DELETE CASCADE`, so the worker must tolerate a
 that no longer exists. That turns out to be the **delete path** rather than a defect
 (below).
 
-`city_id` is a *different* kind of column — typed and foreign-keyed, because `city` rows
+`city_id` is a _different_ kind of column — typed and foreign-keyed, because `city` rows
 are not deleted in the ordinary course of business. It is populated only when a trigger can
 name the specific city a change affects; `NULL` means "work it out from current state at
 drain time." Why that distinction exists is section 5.1 of
@@ -175,32 +175,32 @@ that transaction.
 Child tables enqueue the **parent they can be resolved from**, not themselves — so the
 outbox never holds an entity type that cannot be expanded later:
 
-| Trigger source | Enqueues | Worker expands to |
-|---|---|---|
-| `master_product` | `master_product`, `city_id` **NULL** | that product, *every current city it's listed in* |
-| `master_product_attribute_value` | `master_product`, `city_id` NULL | same |
-| `master_product_media` | `master_product`, `city_id` NULL | same |
-| `vendor_listing` | `master_product` **+ its vendor's `city_id`, resolved now** | exactly that one pair |
-| `vendor_listing_colour_price` | `master_product` + `city_id` *(via join)* | that listing's exact pair |
-| `inventory` | `master_product` + `city_id` *(via join)* | that listing's exact pair |
-| `stone_variety_alias` | `stone_variety` | all products of that variety, their current cities |
-| `brand` | `brand` | **all products of that brand**, their current cities |
-| `category` | `category` | **the whole subtree** (`path LIKE 'x/%'`), their current cities |
-| `stone_variety` | `stone_variety` | **all products of that variety**, their current cities |
-| `city` *(rename/deactivate)* | `city` | **every product currently listed in that city** |
-| `vendors` *(relocation, `UPDATE OF city_id`)* | `city` **× 2** (old + new) | products listed by that vendor, in both cities |
+| Trigger source                                | Enqueues                                                    | Worker expands to                                               |
+| --------------------------------------------- | ----------------------------------------------------------- | --------------------------------------------------------------- |
+| `master_product`                              | `master_product`, `city_id` **NULL**                        | that product, _every current city it's listed in_               |
+| `master_product_attribute_value`              | `master_product`, `city_id` NULL                            | same                                                            |
+| `master_product_media`                        | `master_product`, `city_id` NULL                            | same                                                            |
+| `vendor_listing`                              | `master_product` **+ its vendor's `city_id`, resolved now** | exactly that one pair                                           |
+| `vendor_listing_colour_price`                 | `master_product` + `city_id` _(via join)_                   | that listing's exact pair                                       |
+| `inventory`                                   | `master_product` + `city_id` _(via join)_                   | that listing's exact pair                                       |
+| `stone_variety_alias`                         | `stone_variety`                                             | all products of that variety, their current cities              |
+| `brand`                                       | `brand`                                                     | **all products of that brand**, their current cities            |
+| `category`                                    | `category`                                                  | **the whole subtree** (`path LIKE 'x/%'`), their current cities |
+| `stone_variety`                               | `stone_variety`                                             | **all products of that variety**, their current cities          |
+| `city` _(rename/deactivate)_                  | `city`                                                      | **every product currently listed in that city**                 |
+| `vendors` _(relocation, `UPDATE OF city_id`)_ | `city` **× 2** (old + new)                                  | products listed by that vendor, in both cities                  |
 
 Four details that are easy to get wrong, the last one added by 0018:
 
 - **`vendor_listing` enqueues its product, not itself.** On delete the listing is gone, so
   a `vendor_listing` entity could never be resolved back to a product at drain time.
 - **The `UPDATE` branch reads both transition tables.** A re-match moves a listing to a
-  different product, and the *old* product needs reindexing just as much as the new one.
+  different product, and the _old_ product needs reindexing just as much as the new one.
 - **Cascade-orphaned child triggers find nothing, and that is correct.** Deleting a listing
   fires its own trigger, which already enqueued the product. The cascade path is redundant,
   not load-bearing.
 - **`vendor_listing`'s trigger resolves `city_id` at trigger time, not later.** A vendor's
-  *last* listing for a product in a city, on `DELETE`, is exactly the row that knows which
+  _last_ listing for a product in a city, on `DELETE`, is exactly the row that knows which
   city just lost coverage. Re-deriving it later from "what listings still exist" would find
   nothing — the row that knew is the row that's gone — and silently leave a ghost document
   in the index forever, with no error anywhere. This is why `vendor_listing` gets its own
@@ -212,7 +212,7 @@ Four details that are easy to get wrong, the last one added by 0018:
 > **Rule:** restrict the column list on fan-out sources. Leave 1:1 sources bare.
 
 A bare `AFTER UPDATE ON brand` reindexes every Havells product because someone touched
-`updated_at`. On a 1:1 source the same over-firing costs *one* redundant rebuild — not
+`updated_at`. On a 1:1 source the same over-firing costs _one_ redundant rebuild — not
 worth maintaining a column list that silently rots as columns are added.
 
 So `brand`, `category` and `stone_variety` name their columns; nothing else does. Those
@@ -243,12 +243,12 @@ Every pair **absent** from that result is deleted from Meilisearch (`{product_id
 is the document ID, so this needs no filtered delete — just the ID). One query covers four
 cases with no special handling:
 
-| Case | Result |
-|---|---|
-| product row deleted, or status moved off `live` | absent → `deleteDocument` |
-| the city was deactivated | absent → `deleteDocument` |
+| Case                                                   | Result                    |
+| ------------------------------------------------------ | ------------------------- |
+| product row deleted, or status moved off `live`        | absent → `deleteDocument` |
+| the city was deactivated                               | absent → `deleteDocument` |
 | no vendor_listing remains for that vendor in that city | absent → `deleteDocument` |
-| product still live, city active, a listing exists | present → `addDocuments` |
+| product still live, city active, a listing exists      | present → `addDocuments`  |
 
 This is why the missing foreign key on `entity_id` is not a defect, and why `city_id` is
 captured early on `vendor_listing` events specifically: an `entity_id` (or a `city_id`)
@@ -309,14 +309,14 @@ addDocuments(batch)     deleteDocuments(ids)   ← id = `{product}__{city}`, no 
 a category subtree is a prefix match against `idx_category_path`, which already exists —
 so doing them in TypeScript would mean pulling IDs over the wire to no purpose.
 
-| Concern | Setting | Why |
-|---|---|---|
-| Poll interval | 2 s | Price freshness a customer would never notice |
-| Batch size | up to 1,000 docs | Meilisearch prefers batched adds over per-document calls |
-| Dedupe | `UNION` inside `expand_search_outbox` | A vendor editing 40 prices dirties one product 40 times |
-| Concurrency | `pg_try_advisory_lock` | A rolling Railway deploy briefly runs two workers |
-| Retry | BullMQ exponential backoff | `processed_at` stays NULL until the task succeeds |
-| Ordering | not required | Documents are upserted whole, so last write wins correctly |
+| Concern       | Setting                               | Why                                                        |
+| ------------- | ------------------------------------- | ---------------------------------------------------------- |
+| Poll interval | 2 s                                   | Price freshness a customer would never notice              |
+| Batch size    | up to 1,000 docs                      | Meilisearch prefers batched adds over per-document calls   |
+| Dedupe        | `UNION` inside `expand_search_outbox` | A vendor editing 40 prices dirties one product 40 times    |
+| Concurrency   | `pg_try_advisory_lock`                | A rolling Railway deploy briefly runs two workers          |
+| Retry         | BullMQ exponential backoff            | `processed_at` stays NULL until the task succeeds          |
+| Ordering      | not required                          | Documents are upserted whole, so last write wins correctly |
 
 ### Why the cutoff is taken first
 
@@ -347,7 +347,7 @@ half-updated for the duration. It routes to the **shadow index + atomic swap** j
 **One index: `products`.** Not one per category, and — per 0018 — **not one per city
 either.** `city` is a filter value on a shared index, exactly like `category` or `brand`.
 
-Facets in Meilisearch are a *query-time* parameter, not an index-time structure — the
+Facets in Meilisearch are a _query-time_ parameter, not an index-time structure — the
 `facets` argument returns a `facetDistribution` scoped to the current result set. So
 per-category facets (which differ across all 58 leaves) are handled by the query layer
 asking for different facet fields once the category is known. Splitting the index per
@@ -361,16 +361,16 @@ Decided in [0018](decisions/0018-city-scoped-search.md). One document per
 
 ```ts
 interface SearchDocument {
-  id: string;              // `${masterProductId}__${cityId}` — deterministic, never generated
+  id: string; // `${masterProductId}__${cityId}` — deterministic, never generated
   master_product_id: string;
   city_id: string;
   name: string;
   category_path: string;
   brand: string | null;
   attributes: Record<string, string | number | boolean>;
-  price: number;                    // cheapest ACTIVE listing among vendors in this city
-  cheapest_vendor_listing_id: string;  // which listing that price came from
-  vendor_count: number;             // how many vendors in this city carry it
+  price: number; // cheapest ACTIVE listing among vendors in this city
+  cheapest_vendor_listing_id: string; // which listing that price came from
+  vendor_count: number; // how many vendors in this city carry it
   in_stock: boolean;
   updated_at: string;
 }
@@ -408,7 +408,7 @@ a second cache would just be one more place for staleness to hide.
 `product_id`, the product page fetches `products/{product_id}__{city_id}` directly from
 Meilisearch — no search query, no ranking, just a document `GET`. That reuses the exact
 figure shown in search results instead of computing it twice, and it is what replaces the
-old *"search results and initial PDP load read `cached_best_price` directly"* behaviour
+old _"search results and initial PDP load read `cached_best_price` directly"_ behaviour
 from `search-architecture.md`, now correctly scoped to one city.
 
 **The live join is still there for exactly one case**, unchanged from the original design:
@@ -423,7 +423,7 @@ it would use to upsert, and either calls `addDocuments` or `deleteDocuments` wit
 becomes one or the other.
 
 A product with no live vendor in a city has **no document** for that pairing — confirmed
-directly, not inferred: *"if product is not at local vendor then don't show."* No
+directly, not inferred: _"if product is not at local vendor then don't show."_ No
 placeholder, no cross-city fallback result; absence from the index is the entire mechanism.
 
 Settings are **code, applied idempotently on boot** — not clicked into a dashboard.
@@ -433,9 +433,11 @@ Settings are **code, applied idempotently on boot** — not clicked into a dashb
 export const PRODUCTS_INDEX = 'products';
 
 export const productsSettings = {
-  searchableAttributes: [ /* ordered: earlier = higher weight */ ],
-  filterableAttributes: [ 'city_id', 'category_path', 'brand', 'attributes.*', /* … */ ],
-  sortableAttributes:   [ 'price', 'updated_at' ],   // plain fields — no per-city variants
+  searchableAttributes: [
+    /* ordered: earlier = higher weight */
+  ],
+  filterableAttributes: ['city_id', 'category_path', 'brand', 'attributes.*' /* … */],
+  sortableAttributes: ['price', 'updated_at'], // plain fields — no per-city variants
   typoTolerance: {
     // VERIFIED against Meilisearch docs: prevents 32A matching 32B.
     disableOnNumbers: true,
@@ -452,16 +454,16 @@ unused feature.
 
 ### Numeric typo tolerance is the one setting that must not be missed
 
-Construction search is full of numbers where a one-character edit is a *different product*:
+Construction search is full of numbers where a one-character edit is a _different product_:
 
-| Query | Must not match |
-|---|---|
-| `32A MCB` | `32B` curve, `16A` |
-| `2.5 sq mm` | `1.5 sq mm` |
-| `600x600 tile` | `600x300` |
+| Query          | Must not match     |
+| -------------- | ------------------ |
+| `32A MCB`      | `32B` curve, `16A` |
+| `2.5 sq mm`    | `1.5 sq mm`        |
+| `600x600 tile` | `600x300`          |
 
-Meilisearch's documented behaviour is that with `disableOnNumbers` enabled, *"queries with
-numbers only return exact matches"*. Default typo tolerance allows one typo at 5–8
+Meilisearch's documented behaviour is that with `disableOnNumbers` enabled, _"queries with
+numbers only return exact matches"_. Default typo tolerance allows one typo at 5–8
 characters and two at 9+, which would actively produce wrong results across this catalog.
 
 ---
@@ -500,8 +502,8 @@ The one Postgres call left is **city resolution** — combining pincode lookup a
 nearest-centroid, not choosing between them ([0019](decisions/0019-search-followups.md)) —
 and it happens once per request, before Meilisearch is touched at all, not once per result.
 
-Caching is safe because the cache key is the *normalised query + filters + resolved
-`city_id`*, and the TTL is short (60 s). A minute of price staleness on a search results
+Caching is safe because the cache key is the _normalised query + filters + resolved
+`city_id`_, and the TTL is short (60 s). A minute of price staleness on a search results
 page is acceptable — the product page resolves live against `vendor_listing`.
 
 ### Proxy for full search; direct-to-Meilisearch for autocomplete — [0019](decisions/0019-search-followups.md)
@@ -531,10 +533,10 @@ search.
 Documented task states: `enqueued → processing → succeeded | failed | canceled`. Indexing
 is **not** immediate.
 
-| Path | Behaviour |
-|---|---|
+| Path                                            | Behaviour                                                                                              |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | Admin publishes a product, then searches for it | **Await the task** before returning 200, so the admin never sees a "missing" product they just created |
-| Bulk seeding / vendor price upload | Fire and forget; the outbox guarantees eventual arrival |
+| Bulk seeding / vendor price upload              | Fire and forget; the outbox guarantees eventual arrival                                                |
 
 Only the interactive admin path pays the wait. Making bulk imports synchronous would make
 a 4,000-row seed crawl.
@@ -564,8 +566,8 @@ document. Do it into a shadow index and swap:
 build products_next  →  verify count + spot-check  →  swapIndexes(products, products_next)
 ```
 
-Meilisearch's specification states that swapping *"allows to atomically deploy several new
-versions of indexes without any downtime for the search clients"*, and that it is an atomic
+Meilisearch's specification states that swapping _"allows to atomically deploy several new
+versions of indexes without any downtime for the search clients"_, and that it is an atomic
 transaction — either all swap or none. The old index can be kept briefly to swap back.
 
 At 4,000–6,000 SKUs a full rebuild is minutes, so this is cheap insurance rather than a
@@ -612,28 +614,28 @@ app both render search results and must agree on the shape.
 
 ## 9. Configuration
 
-| Variable | Where | Notes |
-|---|---|---|
-| `MEILI_HOST` | backend, worker | `http://meilisearch.railway.internal:7700` |
-| `MEILI_MASTER_KEY` | meilisearch, worker | **never** in a client bundle |
-| `MEILI_SEARCH_KEY` | backend | search-only; the one that could be exposed later |
-| `SEARCH_ENGINE` | backend | `meilisearch` \| `postgres` — the kill switch |
-| `WORKER_MODE` | worker | selects the worker start path in the shared image |
+| Variable           | Where               | Notes                                             |
+| ------------------ | ------------------- | ------------------------------------------------- |
+| `MEILI_HOST`       | backend, worker     | `http://meilisearch.railway.internal:7700`        |
+| `MEILI_MASTER_KEY` | meilisearch, worker | **never** in a client bundle                      |
+| `MEILI_SEARCH_KEY` | backend             | search-only; the one that could be exposed later  |
+| `SEARCH_ENGINE`    | backend             | `meilisearch` \| `postgres` — the kill switch     |
+| `WORKER_MODE`      | worker              | selects the worker start path in the shared image |
 
 **One Meilisearch instance per environment.** Not a shared instance with index prefixes:
-settings are per-index but the *task queue and disk are shared*, so a staging bulk reindex
+settings are per-index but the _task queue and disk are shared_, so a staging bulk reindex
 would stall production search behind it.
 
 ---
 
 ## 10. What this costs
 
-| Item | Estimate |
-|---|---|
-| Railway services added | 1 (Meilisearch) at launch, 2 once the worker is split out |
-| New dependencies | `meilisearch`, `bullmq`, `@nestjs/bullmq` |
-| Migration | `city`, `pincode_city_map`, `vendors.city_id`, `search_outbox`, 3 trigger functions, 26 triggers, 5 helper functions, 1 view |
-| Resource sizing | Not a design concern at 4,000–6,000 products × a handful of launch cities |
+| Item                   | Estimate                                                                                                                     |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Railway services added | 1 (Meilisearch) at launch, 2 once the worker is split out                                                                    |
+| New dependencies       | `meilisearch`, `bullmq`, `@nestjs/bullmq`                                                                                    |
+| Migration              | `city`, `pincode_city_map`, `vendors.city_id`, `search_outbox`, 3 trigger functions, 26 triggers, 5 helper functions, 1 view |
+| Resource sizing        | Not a design concern at 4,000–6,000 products × a handful of launch cities                                                    |
 
 The largest genuine cost is **the sync pipeline is a permanent correctness liability**.
 Any write path that skips the outbox produces a stale index that never errors and nobody
@@ -653,22 +655,22 @@ Nothing in this design is Railway-specific except deployment configuration. The 
 code moves unchanged; `railway.toml` is rewritten as an ECS task definition or Terraform.
 Taking AWS as the worked example:
 
-| Railway | AWS | Application change |
-|---|---|---|
-| `backend` container | ECS Fargate / App Runner | none — the Dockerfile already exists |
-| `search-worker` | ECS task, same image | none — same `WORKER_MODE` flag |
-| `postgres` | RDS Postgres | none. `pgcrypto` and `pg_trgm` are both supported on RDS |
-| `redis` | ElastiCache | see **hash tags** below |
-| `meilisearch` | EC2 / ECS-on-EC2 + EBS | see **storage** below |
-| `*.railway.internal` | Cloud Map / internal ALB | one env var — `MEILI_HOST` |
-| `healthcheckPath: /health` | ALB target group | none — already implemented |
+| Railway                    | AWS                      | Application change                                       |
+| -------------------------- | ------------------------ | -------------------------------------------------------- |
+| `backend` container        | ECS Fargate / App Runner | none — the Dockerfile already exists                     |
+| `search-worker`            | ECS task, same image     | none — same `WORKER_MODE` flag                           |
+| `postgres`                 | RDS Postgres             | none. `pgcrypto` and `pg_trgm` are both supported on RDS |
+| `redis`                    | ElastiCache              | see **hash tags** below                                  |
+| `meilisearch`              | EC2 / ECS-on-EC2 + EBS   | see **storage** below                                    |
+| `*.railway.internal`       | Cloud Map / internal ALB | one env var — `MEILI_HOST`                               |
+| `healthcheckPath: /health` | ALB target group         | none — already implemented                               |
 
 ### Two constraints that must be honoured now, not later
 
 **1. Meilisearch needs local disk, not network storage.** It uses LMDB and memory-maps its
-database. Meilisearch's storage documentation recommends *"a low-latency disk (for example,
-an NVMe SSD)"* over *"a high-latency disk (for example, HDD, NFS, or other network-mounted
-storage)"*.
+database. Meilisearch's storage documentation recommends _"a low-latency disk (for example,
+an NVMe SSD)"_ over _"a high-latency disk (for example, HDD, NFS, or other network-mounted
+storage)"_.
 
 > **Do not deploy Meilisearch on Fargate + EFS.** EFS is network-mounted, which is precisely
 > what that guidance excludes. Use ECS-on-EC2 or EC2 with an EBS volume — or Meilisearch
@@ -680,11 +682,11 @@ Sizing is not a concern: Meilisearch's own measured example is roughly 305 MB of
 **2. Give every BullMQ queue a bracketed prefix from day one.**
 
 ```ts
-new Queue('search-index', { prefix: '{golden-abode}' })
+new Queue('search-index', { prefix: '{golden-abode}' });
 ```
 
-BullMQ's documentation states that *"Bull internals require atomic operations that span
-different keys. This behavior breaks Redis's rules for cluster configurations"*, and
+BullMQ's documentation states that _"Bull internals require atomic operations that span
+different keys. This behavior breaks Redis's rules for cluster configurations"_, and
 requires a hash tag to fix it. On single-node Redis the prefix is free and invisible. On
 ElastiCache in cluster mode it is mandatory. **Adding it later changes every queue key and
 orphans in-flight jobs** — so it costs nothing now and is disruptive to retrofit.

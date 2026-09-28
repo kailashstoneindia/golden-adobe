@@ -36,20 +36,20 @@ Treat it as a workstream with an owner, not a task.
 
 Two things that cost nothing now and a lot later.
 
-| Item | Why now | Status |
-|---|---|---|
-| **Catalog seeding owner** | 4,000–6,000 SKUs is domain work, not data entry | **Assigned: the Golden Abode team**, sourcing directly from each brand's own published catalog/website |
-| **Verify MPN availability** | Confirm each product carries a code — determines how much of the catalog the primary dedup constraint actually covers | Folds into seeding itself now — the same pass through Havells' and Jaquar's sites that pulls specs also confirms MPN presence, no separate task |
-| **Name a `pincode_city_map` owner** | Scope is known — Delhi, Gurugram, Faridabad, Noida, Ghaziabad ([0020](decisions/0020-ncr-launch-cities.md)) | **Seeded 2026-09-01** — 163 pincodes for the five cities. Sources and confidence in `apps/backend/database/seed-data/ncr-pincodes.js`; reconcile against India Post’s official directory before launch |
+| Item                                | Why now                                                                                                               | Status                                                                                                                                                                                                 |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Catalog seeding owner**           | 4,000–6,000 SKUs is domain work, not data entry                                                                       | **Assigned: the Golden Abode team**, sourcing directly from each brand's own published catalog/website                                                                                                 |
+| **Verify MPN availability**         | Confirm each product carries a code — determines how much of the catalog the primary dedup constraint actually covers | Folds into seeding itself now — the same pass through Havells' and Jaquar's sites that pulls specs also confirms MPN presence, no separate task                                                        |
+| **Name a `pincode_city_map` owner** | Scope is known — Delhi, Gurugram, Faridabad, Noida, Ghaziabad ([0020](decisions/0020-ncr-launch-cities.md))           | **Seeded 2026-09-01** — 163 pincodes for the five cities. Sources and confidence in `apps/backend/database/seed-data/ncr-pincodes.js`; reconcile against India Post’s official directory before launch |
 
 **Two sourcing paths, not one, split by data-availability rating in
 [catalog-vendor-export-analysis.md](catalog-vendor-export-analysis.md):**
 
-| | Electrical, Plumbing, Sanitaryware, Tiles | Hardware, Stone |
-|---|---|---|
-| Rated | **Good** | **Poor** |
+|        | Electrical, Plumbing, Sanitaryware, Tiles                                        | Hardware, Stone                                                                                                                                                             |
+| ------ | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Rated  | **Good**                                                                         | **Poor**                                                                                                                                                                    |
 | Source | Brand websites — Havells, Jaquar, Astral, Kajaria and similar publish full specs | **The client** — fragmented/unbranded stock and no standard catalog mean brand-site extraction structurally doesn't apply; the client's own listings are the source instead |
-| Owner | Golden Abode team | Golden Abode team, requesting from the client |
+| Owner  | Golden Abode team                                                                | Golden Abode team, requesting from the client                                                                                                                               |
 
 Same seeding owner either way — only the source differs. Specs pulled from either source
 are facts, free to use: dimensions, MPN, ratings, materials. **Brand-authored marketing
@@ -166,12 +166,12 @@ and abandons the flow.
 
 Can run partly in parallel with Phase 4.
 
-| Item | Notes |
-|---|---|
+| Item                        | Notes                                                                                             |
+| --------------------------- | ------------------------------------------------------------------------------------------------- |
 | ~~`paint_shade` ingestion~~ | **Dropped (0014).** Customer picks a colour family; the vendor finalises the shade at the counter |
-| `stone_variety` + aliases | No published source — assembled from trade knowledge |
-| Paint colour-family pricing | Vendor template pre-expands one row per family |
-| Stone grade listings | One row per grade; `UNIQUE` includes `stated_grade` |
+| `stone_variety` + aliases   | No published source — assembled from trade knowledge                                              |
+| Paint colour-family pricing | Vendor template pre-expands one row per family                                                    |
+| Stone grade listings        | One row per grade; `UNIQUE` includes `stated_grade`                                               |
 
 **These two categories carry the most unknowns and the least available data.** If Phase 0
 chose a narrow launch, this phase is where Paint and Stone join.
@@ -188,7 +188,7 @@ chose a narrow launch, this phase is where Paint and Stone join.
 > (document ID separator, `disableOnNumbers` version requirement, one-directional synonyms).
 > See [catalog-implementation-status.md](catalog-implementation-status.md).
 
-Only useful once products *and* listings exist, so it genuinely follows Phase 4.
+Only useful once products _and_ listings exist, so it genuinely follows Phase 4.
 
 Engine decided in [0017](decisions/0017-search-engine-choice.md): **Meilisearch**,
 self-hosted on Railway, with the Postgres path kept permanently — not just as a fallback,
@@ -277,17 +277,17 @@ customer report path            ⛔ blocked — risk 4 — needs the ordering do
 
 ## Dependency summary
 
-| Phase | Blocked by | Blocks | Status (2026-08-26) |
-|---|---|---|---|
-| 0 | — | everything | Owner assigned, sourcing decided |
-| 1 | 0 | seeding, all catalog work | ✅ Done |
-| 2 | 1 | manual entry, import | ✅ Done |
-| 3 | 2 | bulk seeding | ✅ Done |
-| 4 | 2 + a real catalog | vendor onboarding, search | ✅ Done |
-| 5 | 1, partly parallel with 4 | Paint and Stone launch | ✅ Done |
-| 6a/6b | 4 | 6c–6h | ✅ Done |
-| 6c/6e–6h | 6a/6b | customer-facing browse | ⏸️ Skipped for now, not blocked |
-| 7 | 4 | nothing — hardening | ✅ Done except risk 4 (⛔ needs ordering domain) |
+| Phase    | Blocked by                | Blocks                    | Status (2026-08-26)                              |
+| -------- | ------------------------- | ------------------------- | ------------------------------------------------ |
+| 0        | —                         | everything                | Owner assigned, sourcing decided                 |
+| 1        | 0                         | seeding, all catalog work | ✅ Done                                          |
+| 2        | 1                         | manual entry, import      | ✅ Done                                          |
+| 3        | 2                         | bulk seeding              | ✅ Done                                          |
+| 4        | 2 + a real catalog        | vendor onboarding, search | ✅ Done                                          |
+| 5        | 1, partly parallel with 4 | Paint and Stone launch    | ✅ Done                                          |
+| 6a/6b    | 4                         | 6c–6h                     | ✅ Done                                          |
+| 6c/6e–6h | 6a/6b                     | customer-facing browse    | ⏸️ Skipped for now, not blocked                  |
+| 7        | 4                         | nothing — hardening       | ✅ Done except risk 4 (⛔ needs ordering domain) |
 
 **The two things that gate everything else:** Phase 1 shipping, and seeding having an owner.
 Both can start immediately.

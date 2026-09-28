@@ -33,7 +33,7 @@ relying on a profile.
 
    Sequence: record URL → build workstream 3 (S3 + admin upload) → obtain brand
    permission (parallel; real lead time) → download from the recorded URL and
-   rehost. Step 4 is scriptable *because* step 1 recorded the URLs.
+   rehost. Step 4 is scriptable _because_ step 1 recorded the URLs.
 
    > ⚠️ `master_product_media` has **no `source_url` column**. Add one in
    > workstream 3's migration, or a rehosted image becomes indistinguishable
@@ -69,13 +69,13 @@ From `database/seed-data/taxonomy.js` — variant-defining attributes are
 **required**; a blank one gets the row rejected
 (`catalog-import-upload.service.ts` Rule 1).
 
-| Attribute | Source | Required? |
-|---|---|---|
-| `number_of_poles` | inherited from Switchgear | ✅ required |
-| `rated_current` | MCB leaf | ✅ required |
-| `tripping_curve` | MCB leaf | ✅ required |
-| `breaking_capacity` | inherited | optional |
-| `mounting` | inherited | optional |
+| Attribute           | Source                    | Required?   |
+| ------------------- | ------------------------- | ----------- |
+| `number_of_poles`   | inherited from Switchgear | ✅ required |
+| `rated_current`     | MCB leaf                  | ✅ required |
+| `tripping_curve`    | MCB leaf                  | ✅ required |
+| `breaking_capacity` | inherited                 | optional    |
+| `mounting`          | inherited                 | optional    |
 
 Plus identity columns `name`, `brand`, `gst_rate`, `country_of_origin` — all
 required — and optional `mfr_part_number`, `gtin`, `hsn_code`, `pack_qty`.
@@ -88,17 +88,17 @@ whether that brand can be seeded from one page or needs one fetch per product.
 
 ## Brand shortlist
 
-| Brand | Catalogue URL | Profile | Part no. | Curve | Verified |
-|---|---|---|---|---|---|
-| **Havells** | [circuit-breaker.html](https://havells.com/home-electricals/switchgears/circuit-breaker.html) | **B** | ✅ listing | ⚠️ name only | 2026-09-08 |
-| **Legrand** | [shop.legrand.co.in/protection/dx3](https://shop.legrand.co.in/protection/dx3/miniature-circuit-breaker-mcb) | **B** | ❌ detail | ⚠️ name only | 2026-09-08 |
-| **Schneider** | [se.com/…/acti-9](https://www.se.com/in/en/product-subcategory/1605-miniature-circuit-breakers-mcbs-acti-9/) | **C/D** | ❌ | ❌ | 2026-09-08 |
-| **Lauritz Knudsen** (ex-L&T) | [smartshop.lk-ea.com/…/exora/mcb](https://smartshop.lk-ea.com/shop-by-category/final-distribution-products/exora/mcb.html) | **?** | ? | ? | blocked |
-| Siemens (Betagard) | not located | ? | ? | ? | pending |
-| ABB (SH200) | not located | ? | ? | ? | pending |
+| Brand                        | Catalogue URL                                                                                                              | Profile | Part no.   | Curve        | Verified   |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ------- | ---------- | ------------ | ---------- |
+| **Havells**                  | [circuit-breaker.html](https://havells.com/home-electricals/switchgears/circuit-breaker.html)                              | **B**   | ✅ listing | ⚠️ name only | 2026-09-08 |
+| **Legrand**                  | [shop.legrand.co.in/protection/dx3](https://shop.legrand.co.in/protection/dx3/miniature-circuit-breaker-mcb)               | **B**   | ❌ detail  | ⚠️ name only | 2026-09-08 |
+| **Schneider**                | [se.com/…/acti-9](https://www.se.com/in/en/product-subcategory/1605-miniature-circuit-breakers-mcbs-acti-9/)               | **C/D** | ❌         | ❌           | 2026-09-08 |
+| **Lauritz Knudsen** (ex-L&T) | [smartshop.lk-ea.com/…/exora/mcb](https://smartshop.lk-ea.com/shop-by-category/final-distribution-products/exora/mcb.html) | **?**   | ?          | ?            | blocked    |
+| Siemens (Betagard)           | not located                                                                                                                | ?       | ?          | ?            | pending    |
+| ABB (SH200)                  | not located                                                                                                                | ?       | ?          | ?            | pending    |
 
 **Profiles:** A = codes+specs on listing · B = partial, some attrs in product
-*names* · C = specs on detail pages only · D = PDF brochure only ·
+_names_ · C = specs on detail pages only · D = PDF brochure only ·
 E = unreachable
 
 ---
@@ -111,7 +111,7 @@ E = unreachable
 `DHMYBSPM006`, …), current rating and poles.
 
 `tripping_curve` is **not a spec field**. It appears only where the product
-*name* contains it:
+_name_ contains it:
 
 ```
 "MCB SP C Curve"   DHMGCSPF032   → curve C readable from the name   (7 rows)
@@ -157,8 +157,8 @@ job.
 via search carry codes (`BB10160C` = Exora 16A SP C-curve), suggesting the data
 is there but the storefront is JS-rendered.
 
-> ⚠️ **Brand rename.** L&T Switchgear is now *Lauritz Knudsen Electrical &
-> Automation*. Vendors will type "L&T" for years. See aliases below.
+> ⚠️ **Brand rename.** L&T Switchgear is now _Lauritz Knudsen Electrical &
+> Automation_. Vendors will type "L&T" for years. See aliases below.
 
 ### Siemens / ABB — not yet located
 
@@ -176,6 +176,7 @@ importer rejects products whose brand row does not exist. So these gate all
 product seeding.
 
 ### Havells ✅ complete
+
 ```
 manufacturer_name    Havells India Ltd
 manufacturer_address QRG Towers, 2D, Sec-126, Expressway, Noida 201304, U.P.
@@ -185,6 +186,7 @@ source               https://havells.com/contact-us
 ```
 
 ### Legrand ✅ complete
+
 ```
 manufacturer_name    Legrand India
 manufacturer_address 61 & 62, 6th Floor, Kalpataru Square, Kondivita Road,
@@ -203,10 +205,10 @@ source               https://www.legrand.co.in/contact-us
 `brand_alias` is matched **first** by `BrandResolverService`, so these must be
 deliberate, not discovered later (Phase 7 risk 1).
 
-| Canonical brand | Aliases |
-|---|---|
+| Canonical brand                         | Aliases                                    |
+| --------------------------------------- | ------------------------------------------ |
 | Lauritz Knudsen Electrical & Automation | `L&T`, `L&T Switchgear`, `Lauritz Knudsen` |
-| Anchor by Panasonic | `Anchor`, `Panasonic` |
+| Anchor by Panasonic                     | `Anchor`, `Panasonic`                      |
 
 ⚠️ `idx_brand_normalized_name_unique` is a functional unique index over
 `normalize_brand_name()`, which strips `pvt ltd|ltd|limited|india|electricals?`.
@@ -233,7 +235,7 @@ Two method notes, both learned the hard way:
 
 ### Cannot be verified from here
 
-**Which brands the NCR vendors actually stock.** This list means *"publishes
-usable data"*, not *"sells well in NCR"*. Catalogue pages state no regional
+**Which brands the NCR vendors actually stock.** This list means _"publishes
+usable data"_, not _"sells well in NCR"_. Catalogue pages state no regional
 availability, and this needs confirming against real vendor demand before
 anyone spends days seeding a brand nobody carries.

@@ -10,7 +10,11 @@ import { City } from '../catalog/models/city.model';
 import { CityResolverService } from '../catalog/city-resolver.service';
 import { UsersService } from '../users/users.service';
 import { toVendorProfileDto } from './vendor-profile.mapper';
-import { VENDOR_ONBOARDING_STAGES, VendorOnboardingStage, VendorProfileDto } from '@golden-abode/types';
+import {
+  VENDOR_ONBOARDING_STAGES,
+  VendorOnboardingStage,
+  VendorProfileDto,
+} from '@golden-abode/types';
 
 @Injectable()
 export class VendorsService {

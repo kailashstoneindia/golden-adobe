@@ -42,11 +42,11 @@ this record captures the findings, not the raw files.
 
 Checked against the actual code, not just the schema docs:
 
-| Piece | Status |
-|---|---|
-| `POST /admin/catalog-import/:categoryId` (+ template GET) | **Built.** Validates required columns, enum membership, numeric parsing, brand resolution, brand+MPN dedup, gtin dedup. Creates draft `master_product` rows. Rejected rows return as an annotated error workbook. |
-| Brand creation | **Not built.** `Brand` Sequelize model exists; no `POST /admin/brand` endpoint anywhere in the codebase. Import Rule 4 deliberately *rejects* an unresolved brand name rather than auto-creating one, because brand rows carry mandatory Legal Metrology fields the import sheet has no column for. |
-| Image upload | **Not built.** `master_product_media` table exists with the right shape (`url`, `type`, `display_order`, `is_primary`, `is_representative`) but nothing in the codebase writes to it. [0024](0024-product-images-gcs.md) designed the GCS-backed `StorageService` in full; zero implementation code exists, no bucket provisioned, `@google-cloud/storage` not yet a dependency. |
+| Piece                                                     | Status                                                                                                                                                                                                                                                                                                                                                                           |
+| --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /admin/catalog-import/:categoryId` (+ template GET) | **Built.** Validates required columns, enum membership, numeric parsing, brand resolution, brand+MPN dedup, gtin dedup. Creates draft `master_product` rows. Rejected rows return as an annotated error workbook.                                                                                                                                                                |
+| Brand creation                                            | **Not built.** `Brand` Sequelize model exists; no `POST /admin/brand` endpoint anywhere in the codebase. Import Rule 4 deliberately _rejects_ an unresolved brand name rather than auto-creating one, because brand rows carry mandatory Legal Metrology fields the import sheet has no column for.                                                                              |
+| Image upload                                              | **Not built.** `master_product_media` table exists with the right shape (`url`, `type`, `display_order`, `is_primary`, `is_representative`) but nothing in the codebase writes to it. [0024](0024-product-images-gcs.md) designed the GCS-backed `StorageService` in full; zero implementation code exists, no bucket provisioned, `@google-cloud/storage` not yet a dependency. |
 
 ## Decision
 
@@ -69,7 +69,7 @@ concretely blocking on Pearl specifically.
 **Corrected during this discussion.** The first draft of this record sequenced rollout
 PDF-by-PDF ("seed Sanitary Ware first, then CP, then PTMT, then Pipes"). That is wrong,
 because Pearl's 4 PDFs and our leaf categories are not a 1:1 mapping — several of our leaves
-are fed by *more than one* PDF:
+are fed by _more than one_ PDF:
 
 ```
 sanitaryware/cisterns      ← Sanitary Ware PDF  +  PTMT PDF (PTMT has its own
@@ -85,7 +85,7 @@ plumbing/valves            ← CP PDF's "Allied" section (bottle traps, conceale
 ```
 
 A PDF-by-PDF pass would seed `Cisterns` once from the Sanitary Ware PDF, then come back
-*weeks later* on the PTMT pass to add the same leaf's colour variants as an afterthought —
+_weeks later_ on the PTMT pass to add the same leaf's colour variants as an afterthought —
 exactly the kind of split that produces the drift this record already found once (the
 `C-007/WH` vs `C-007/FLR/WH` inconsistency). Seeding one leaf in two disconnected sessions,
 each unaware of the other's data, is how that kind of gap gets missed rather than caught.
@@ -166,17 +166,17 @@ Sanitaryware root covers metal fitting finish, not plastic body colour — wrong
 
 **Decision:** model `Colour` the same way `Finish` already works elsewhere —
 `is_variant_defining = true`, enum, one `master_product` row per colour. Because
-variant-defining attributes are enforced at publish by a DB trigger, this must land *before*
+variant-defining attributes are enforced at publish by a DB trigger, this must land _before_
 any coloured Sanitaryware SKU is seeded, or publish will fail with a trigger error naming the
 missing attribute.
 
 **Scope, filled in — evidence-based, not assumed:**
 
-| Leaf | Add `Colour`? | Evidence |
-|---|---|---|
-| `sanitaryware/cisterns` | ✅ Yes | Directly observed — **citation corrected**: PTMT catalog PDF pages 5-6 (printed page numbers "01"-"02" in the document's own footer, under the "FLUSHING CISTERNS" section per the PDF's table of contents on PDF page 3) show the same cistern model issued under distinct Cat No.s per colour (`C-001/WH`, `C-001/IV`, `C-001/CLR`; `C-007/FLR/WH`, `C-008/EG/WH`, `C-008/FH/WH` etc.). An earlier revision of this record cited "PTMT catalog page 2," which was wrong — that page is the document's cover/about page, not the cisterns section. Re-verified by direct re-read after the citation was found not to hold. |
-| **Sanitary Ware PDF's own "Concealed Cistern" section (page 21) is a DIFFERENT product** | N/A — no colour needed there | Checked separately: in-wall concealed cisterns (`CCQF-100`, `CCQF-101`) are white/chrome only, no colour options observed. The two PDFs' "cistern" sections are not the same product line — PTMT's is the free-standing coloured plastic flush tank; Sanitary Ware's is an in-wall concealed unit. Confirms the earlier "pull Cisterns from both PDFs together" plan still holds, but for genuinely different SKUs, not overlapping ones. |
-| Water Closets, Wash Basins, Urinals, Bath Accessories | ❓ Not confirmed | An earlier revision of this record claimed these "likely" need it too — that was an unverified guess, not a finding, and is corrected here. No colour-coded SKU was actually read on any page of those leaves' catalogs (Sanitary Ware PDF, 24 pp, was read and showed dimensions/trap/flush data only, no colour options). Do not add `Colour` to these leaves speculatively — check during Stage 2 seeding of each leaf, and only add it if the same pattern (distinct Cat No. per colour) actually appears. |
+| Leaf                                                                                     | Add `Colour`?                | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ---------------------------------------------------------------------------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sanitaryware/cisterns`                                                                  | ✅ Yes                       | Directly observed — **citation corrected**: PTMT catalog PDF pages 5-6 (printed page numbers "01"-"02" in the document's own footer, under the "FLUSHING CISTERNS" section per the PDF's table of contents on PDF page 3) show the same cistern model issued under distinct Cat No.s per colour (`C-001/WH`, `C-001/IV`, `C-001/CLR`; `C-007/FLR/WH`, `C-008/EG/WH`, `C-008/FH/WH` etc.). An earlier revision of this record cited "PTMT catalog page 2," which was wrong — that page is the document's cover/about page, not the cisterns section. Re-verified by direct re-read after the citation was found not to hold. |
+| **Sanitary Ware PDF's own "Concealed Cistern" section (page 21) is a DIFFERENT product** | N/A — no colour needed there | Checked separately: in-wall concealed cisterns (`CCQF-100`, `CCQF-101`) are white/chrome only, no colour options observed. The two PDFs' "cistern" sections are not the same product line — PTMT's is the free-standing coloured plastic flush tank; Sanitary Ware's is an in-wall concealed unit. Confirms the earlier "pull Cisterns from both PDFs together" plan still holds, but for genuinely different SKUs, not overlapping ones.                                                                                                                                                                                   |
+| Water Closets, Wash Basins, Urinals, Bath Accessories                                    | ❓ Not confirmed             | An earlier revision of this record claimed these "likely" need it too — that was an unverified guess, not a finding, and is corrected here. No colour-coded SKU was actually read on any page of those leaves' catalogs (Sanitary Ware PDF, 24 pp, was read and showed dimensions/trap/flush data only, no colour options). Do not add `Colour` to these leaves speculatively — check during Stage 2 seeding of each leaf, and only add it if the same pattern (distinct Cat No. per colour) actually appears.                                                                                                              |
 
 **Enum values, from the PTMT catalog's own "COLORS..." legend (PDF page 6, printed "02"):**
 White, Ivory, Pink, Blue, Alpine Blue, Green, Maroon, Magenta — plus the observed non-solid
@@ -189,7 +189,7 @@ compound values (`White + Floral`) — deferred to implementation, revisit if mo
 out to be more than a handful once Cisterns is actually seeded.
 
 **Implementation note:** the `taxonomy.js` seed data was already updated with `cistern_colour`
-(enum, variant-defining) during this discussion — added *before* the citation above was
+(enum, variant-defining) during this discussion — added _before_ the citation above was
 re-verified. Re-checked against the corrected source and the enum values match what the
 PDF actually shows, so the addition stands; flagged here only so the sequence (attribute
 added, then its source re-verified) is honest in the record.
@@ -285,8 +285,8 @@ per-row/per-file validation, a report of what didn't match, nothing silently wro
 `master_product` has **no price column at all**. `price`, `mrp`, and `min_order_qty` live on
 `vendor_listing` (confirmed directly against `catalog-schema.sql`), populated when a vendor
 does an inventory upload (Flow 2, [0011](0011-product-code-and-vendor-export.md)) — a
-separate stage from catalog seeding, and one Pearl goes through as a *vendor*, not as a
-*brand*. The CP catalog's 2022-dated MRP is therefore not a blocker to seeding the catalog at
+separate stage from catalog seeding, and one Pearl goes through as a _vendor_, not as a
+_brand_. The CP catalog's 2022-dated MRP is therefore not a blocker to seeding the catalog at
 all; it was wrongly listed as one in an earlier revision of this record. By the time price
 matters (Stage 3), Pearl supplies it fresh through their own vendor upload — there is nothing
 to "confirm is current" from a scraped PDF, because that PDF was never going to be the source
@@ -415,11 +415,11 @@ Two real environment findings, corrected mid-task:
 1. **Port 5432 was already held by `masteracres-postgres`** (a different, unrelated project,
    confirmed by its logs and by a `SELECT datname` query returning `masteracres` — not
    `golden_abode` — before this was caught). The earlier TCP/Sequelize "reachability" check
-   in this session's history connected to *that* container, not Golden Abode's; no data was
+   in this session's history connected to _that_ container, not Golden Abode's; no data was
    read or written there beyond a read-only `SELECT`.
 2. **Port 3000 was already held by a running MasterAcres backend** (confirmed by its own
    root response: `"MasterAcres API is running"`) — the first upload attempts against
-   `localhost:3000` 404's were hitting *that* server, not this one, because Golden Abode's
+   `localhost:3000` 404's were hitting _that_ server, not this one, because Golden Abode's
    backend was never actually running yet.
 
 Per the user's explicit instruction, **`masteracres-postgres` was stopped and the
@@ -436,7 +436,7 @@ the hand-built sheet, none of which were visible from reading the template-gener
 alone:
 
 1. **`sanitary_finish*` — missing from the sheet entirely.** This is declared at the
-   Sanitaryware *root* (inherited by all 7 leaves, including Cisterns) and had been missed
+   Sanitaryware _root_ (inherited by all 7 leaves, including Cisterns) and had been missed
    because the first sheet was built from a manual reading of
    `catalog-import-template.service.ts`, not from an actually-downloaded template.
 2. **`"Clear" is not a valid option`** for `cistern_colour` (rows for `C-001/CLR`,
@@ -489,6 +489,7 @@ Batch 1's failures paid off immediately here.
 Cisterns + 22 Water Closets + 35 Wash Basins + 5 Urinals).
 
 **Known simplifications, flagged rather than silently asserted:**
+
 - `sanitary_finish = 'White'` used for every row — same unresolved semantic mismatch as
   Batch 1 (vitreous china has no metal fitting finish; White is the closest real enum value
   and matches every product photo, but this is a placeholder, not a considered mapping).
@@ -558,13 +559,13 @@ new leaves.
 
 **Decision (bounded change, brainstorming skill, approved by user):**
 
-| Change | Where |
-|---|---|
-| New leaf `Seat Covers` | `sanitaryware/seat-covers` |
-| New leaf `Jet Sprays` | `sanitaryware/jet-sprays` |
-| Enum extension: `Soap Dispenser` added to `accessory_type` | `sanitaryware/bath-accessories` (no new leaf needed) |
-| New leaf `Hoses & Couplings` | `plumbing/hoses-couplings` (covers Connection Hose, Washing Machine Inlet/Outlet, Waste Coupling) |
-| **New top-level category `Kitchen`** | 4 new leaves: `sinks`, `cabinets`, `floor-gratings`, `pest-odour-control` |
+| Change                                                     | Where                                                                                             |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| New leaf `Seat Covers`                                     | `sanitaryware/seat-covers`                                                                        |
+| New leaf `Jet Sprays`                                      | `sanitaryware/jet-sprays`                                                                         |
+| Enum extension: `Soap Dispenser` added to `accessory_type` | `sanitaryware/bath-accessories` (no new leaf needed)                                              |
+| New leaf `Hoses & Couplings`                               | `plumbing/hoses-couplings` (covers Connection Hose, Washing Machine Inlet/Outlet, Waste Coupling) |
+| **New top-level category `Kitchen`**                       | 4 new leaves: `sinks`, `cabinets`, `floor-gratings`, `pest-odour-control`                         |
 
 **Explicitly excluded, per user decision:** Bucket Sets, Cloth Dryers, Aluminium Ladders,
 Garden Pipes — general household plasticware/hardware, not a fit for a building-materials

@@ -125,6 +125,7 @@ inventory (
 ```
 
 **Best price / best vendor query:**
+
 ```sql
 SELECT vl.*
 FROM vendor_listing vl
@@ -136,6 +137,7 @@ WHERE vl.master_product_id = ?
 ORDER BY vl.price ASC
 LIMIT 1
 ```
+
 Vendor-compare toggle on the PDP = same query without `LIMIT 1`.
 
 ---
@@ -156,6 +158,7 @@ catalog_import_row (
   status                          -- auto_matched, needs_review, approved, rejected
 )
 ```
+
 Match order: exact GTIN/MPN → brand + category + key attributes → fuzzy name match. High-confidence matches auto-attach; everything else goes to a review queue rather than auto-merging.
 
 **Path C — New product request.** Only when nothing in the catalog matches. Goes to admin for approval before going live — this is the dedup gate that keeps the catalog from fragmenting into near-duplicate entries.
@@ -164,12 +167,12 @@ Match order: exact GTIN/MPN → brand + category + key attributes → fuzzy name
 
 ## Summary
 
-| Entity | Purpose |
-|---|---|
-| `category` / `attribute` | Taxonomy + flexible specs per category |
-| `master_product` | One canonical, deduplicated SKU, grouped by `product_family_id` |
-| `vendor_listing` | One vendor's offer (price, MOQ, status) |
-| `inventory` | Stock per listing per warehouse/branch |
-| `catalog_import_row` | Staging + matching table for Excel uploads |
+| Entity                   | Purpose                                                         |
+| ------------------------ | --------------------------------------------------------------- |
+| `category` / `attribute` | Taxonomy + flexible specs per category                          |
+| `master_product`         | One canonical, deduplicated SKU, grouped by `product_family_id` |
+| `vendor_listing`         | One vendor's offer (price, MOQ, status)                         |
+| `inventory`              | Stock per listing per warehouse/branch                          |
+| `catalog_import_row`     | Staging + matching table for Excel uploads                      |
 
 Covers cement, steel, tiles, paint, putty, wires, switches, electricals, sanitaryware, taps, door hardware, and laminate under one consistent model — no category-specific schema needed.

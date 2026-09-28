@@ -102,32 +102,32 @@ inconsistency there would cause products to be silently missed.
 
 ## Everything else, as decided
 
-| # | Question | Resolution |
-|---|---|---|
-| 1 | Catalog seeding owner | Seeded in-house from internet sources; client supplies corrections after launch |
-| 2 | Launch scope | **All eight categories** |
-| 3 | When seeding starts | Manually, during Phase 2 |
-| 4 | Drainer schedule | NestJS `@Cron`, ~60s |
-| 5 | Excel format | `.xlsx` via `exceljs` — locked columns and dropdowns |
-| 8 | Vendor portal owner | Backend developer |
-| 9 | Custom / computer-matched shades | Supported |
-| 10 | Shade whose family a vendor hasn't priced | Show as unavailable |
-| 11 | Untinted white | An ordinary `colour_family` value |
-| 12 | Paint availability | `vendor_listing.status = 'out_of_stock'` — no new column |
-| 13 | Stone volume discounts | Deferred |
-| 14 | Stone order quantity | `min_order_qty` |
-| 15 | Coarse grade band | Yes, add |
-| 16 | "Packer" for loose goods | **Moot** — sand, aggregate and cement are not among the eight categories. The concern was inherited from the original draft doc's examples |
-| 18 | Stone sample requests | Not needed |
-| 23 | Grade label normalisation | Dropdown of common labels + normalise on write |
-| 24 | Soft duplicate warning blocking | Not now |
-| 29 | Hash algorithm | `md5` |
-| 30 | Price-only update sheet | Yes, keyed on `product_code` |
-| 31 | Wastage | Customer supplies a pre-calculated quantity; no schema change |
-| 32 | Brand creation | Allowed, subject to the `NOT NULL` care fields above |
-| 33 | Wrong-match confirmation UI | Show ranked candidates, not a single confirm button |
-| 34 | Require variant attributes at publish | **No** — residual risk 3 accepted |
-| 35 | Customer "report wrong product" | Not for now |
+| #   | Question                                  | Resolution                                                                                                                                 |
+| --- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | Catalog seeding owner                     | Seeded in-house from internet sources; client supplies corrections after launch                                                            |
+| 2   | Launch scope                              | **All eight categories**                                                                                                                   |
+| 3   | When seeding starts                       | Manually, during Phase 2                                                                                                                   |
+| 4   | Drainer schedule                          | NestJS `@Cron`, ~60s                                                                                                                       |
+| 5   | Excel format                              | `.xlsx` via `exceljs` — locked columns and dropdowns                                                                                       |
+| 8   | Vendor portal owner                       | Backend developer                                                                                                                          |
+| 9   | Custom / computer-matched shades          | Supported                                                                                                                                  |
+| 10  | Shade whose family a vendor hasn't priced | Show as unavailable                                                                                                                        |
+| 11  | Untinted white                            | An ordinary `colour_family` value                                                                                                          |
+| 12  | Paint availability                        | `vendor_listing.status = 'out_of_stock'` — no new column                                                                                   |
+| 13  | Stone volume discounts                    | Deferred                                                                                                                                   |
+| 14  | Stone order quantity                      | `min_order_qty`                                                                                                                            |
+| 15  | Coarse grade band                         | Yes, add                                                                                                                                   |
+| 16  | "Packer" for loose goods                  | **Moot** — sand, aggregate and cement are not among the eight categories. The concern was inherited from the original draft doc's examples |
+| 18  | Stone sample requests                     | Not needed                                                                                                                                 |
+| 23  | Grade label normalisation                 | Dropdown of common labels + normalise on write                                                                                             |
+| 24  | Soft duplicate warning blocking           | Not now                                                                                                                                    |
+| 29  | Hash algorithm                            | `md5`                                                                                                                                      |
+| 30  | Price-only update sheet                   | Yes, keyed on `product_code`                                                                                                               |
+| 31  | Wastage                                   | Customer supplies a pre-calculated quantity; no schema change                                                                              |
+| 32  | Brand creation                            | Allowed, subject to the `NOT NULL` care fields above                                                                                       |
+| 33  | Wrong-match confirmation UI               | Show ranked candidates, not a single confirm button                                                                                        |
+| 34  | Require variant attributes at publish     | **No** — residual risk 3 accepted                                                                                                          |
+| 35  | Customer "report wrong product"           | Not for now                                                                                                                                |
 
 Deferred with no decision: 21 (auto-publish threshold) and 22 (price-outlier threshold) —
 both need real data to tune.
@@ -151,7 +151,7 @@ both need real data to tune.
 
 1. **Colour-family pricing scope** — answered "per vendor", but an absolute price cannot be
    vendor-wide: Royale 20L blue and Tractor 4L blue are different amounts. Either it is
-   per listing (as currently modelled), or it is a per-vendor *delta* on top of a base
+   per listing (as currently modelled), or it is a per-vendor _delta_ on top of a base
    price. Needs one more round. See below.
 2. Whether a vendor's contact details can legally substitute for a brand's consumer care
    details (question 2 above).

@@ -15,7 +15,7 @@ Customer buys C-curve → receives B-curve
 
 The damage is asymmetric: the vendor is paid, the customer is wrong, and the platform
 carries the dispute. Nothing in the data looks broken afterwards — the listing is valid, the
-price is sane, the stock is real. Only the *link* is wrong.
+price is sane, the stock is real. Only the _link_ is wrong.
 
 ---
 
@@ -26,12 +26,12 @@ price is sane, the stock is real. Only the *link* is wrong.
 Amazon does not fuzzy-match sellers onto catalog products. A listing feed either resolves by
 identifier or it **fails at ingest with a specific error code**:
 
-| Code | Meaning |
-|---|---|
-| 8005 | Product information conflicts with how Amazon identifies the item |
-| 8541 | Your UPC is already assigned to a *different* product |
-| 8560 / 8572 / 8573 | Duplicate or inconsistent feed values |
-| 8574 | Invalid ASIN |
+| Code               | Meaning                                                           |
+| ------------------ | ----------------------------------------------------------------- |
+| 8005               | Product information conflicts with how Amazon identifies the item |
+| 8541               | Your UPC is already assigned to a _different_ product             |
+| 8560 / 8572 / 8573 | Duplicate or inconsistent feed values                             |
+| 8574               | Invalid ASIN                                                      |
 
 Sellers are told to confirm the identifier is "the exact GTIN that appears on the product's
 barcode". Ambiguity is escalated to Seller Support — a human — rather than resolved
@@ -68,7 +68,7 @@ Poor data quality is estimated to cost organisations ~$12.9M annually on average
 
 Mirakl (marketplace platform software) runs ML price-anomaly detection across marketplace
 and dropship catalogs, catching "accidental decimal point errors or attempts at price
-manipulation *before they impact your business*".
+manipulation _before they impact your business_".
 
 **Why this matters for matching, not just pricing:** a wrongly matched product almost always
 presents as a price outlier. A ₹4,200 paint bucket matched onto a ₹420 MCB is visible
@@ -91,13 +91,13 @@ a simple deviation threshold against sibling listings catches the large majority
 
 ## What Golden Abode already has
 
-| Mechanism | Where |
-|---|---|
+| Mechanism                 | Where                                                 |
+| ------------------------- | ----------------------------------------------------- |
 | Match confidence + method | `catalog_import_row.match_confidence`, `match_method` |
-| Review queue | `status = 'needs_review'` |
-| Full provenance | `catalog_import_row.raw_row_json` |
-| Alias learning | `stone_variety_alias` |
-| No duplicate listings | `UNIQUE (vendor_id, master_product_id, grade)` |
+| Review queue              | `status = 'needs_review'`                             |
+| Full provenance           | `catalog_import_row.raw_row_json`                     |
+| Alias learning            | `stone_variety_alias`                                 |
+| No duplicate listings     | `UNIQUE (vendor_id, master_product_id, grade)`        |
 
 The bones are right — this is the Amazon/MDM shape. Four gaps remain.
 
@@ -136,7 +136,7 @@ one ASIN.
 Rows are matched and published without the one person who knows what they meant ever seeing
 the result.
 
-**Fix — confirm on first match only.** The vendor sees "we matched *your* `HAV-32C` to
+**Fix — confirm on first match only.** The vendor sees "we matched _your_ `HAV-32C` to
 **Havells 32A SP MCB C-Curve**" and accepts or rejects. Confirmation writes
 `vendor_product_map`, so it is asked once per SKU, not once per upload.
 
@@ -154,7 +154,7 @@ catalog_import_row.match_candidates  JSONB
 -- [ {master_product_id, score, matched_on, differing_attributes}, … ]
 ```
 
-The reviewer picks from a ranked list showing *why* each candidate matched and *how* it
+The reviewer picks from a ranked list showing _why_ each candidate matched and _how_ it
 differs. Every manual resolution writes back an alias or a `vendor_product_map` row, so the
 same decision is never made twice.
 

@@ -22,16 +22,16 @@ B.  A vendor's stock attaches to the       (correct attachment)
 Three identity paths, each a hard database constraint. Every product falls into at least
 one.
 
-| # | Applies to | Constraint | Strength |
-|---|---|---|---|
-| 1 | **Branded products — the primary path** | `UNIQUE (brand_id, mfr_part_number)` partial | 🟢 Hard |
-| 2 | Generics, stone, unbranded | `UNIQUE (category_id, identity_hash)` where `status='live'` | 🟢 Hard at publish |
-| 3 | Bonus, where a barcode exists | `UNIQUE (gtin)` | 🟢 Hard, but sparse |
-| 4 | Everything, as a net | Fuzzy name warning at admin entry | 🟡 Soft — dismissible |
+| #   | Applies to                              | Constraint                                                  | Strength              |
+| --- | --------------------------------------- | ----------------------------------------------------------- | --------------------- |
+| 1   | **Branded products — the primary path** | `UNIQUE (brand_id, mfr_part_number)` partial                | 🟢 Hard               |
+| 2   | Generics, stone, unbranded              | `UNIQUE (category_id, identity_hash)` where `status='live'` | 🟢 Hard at publish    |
+| 3   | Bonus, where a barcode exists           | `UNIQUE (gtin)`                                             | 🟢 Hard, but sparse   |
+| 4   | Everything, as a net                    | Fuzzy name warning at admin entry                           | 🟡 Soft — dismissible |
 
 ### Why brand + MPN leads, not GTIN
 
-GTIN *is* India's barcode standard — GS1 India is the sole authorised issuer, using the
+GTIN _is_ India's barcode standard — GS1 India is the sole authorised issuer, using the
 `890` prefix, and there is no domestic alternative. The problem is **adoption**, not
 standardisation: barcodes exist where point-of-sale scanning exists, and Indian building
 materials sell across trade counters that do not scan.
@@ -51,22 +51,22 @@ cannot be globally unique by construction. `UNIQUE (mfr_part_number)` alone woul
 
 ### Why path 2 fires at publish, not insert
 
-Attribute values are written *after* the product row, so at insert there is nothing to hash.
+Attribute values are written _after_ the product row, so at insert there is nothing to hash.
 Drafts stay unconstrained; `status → live` is already a deliberate step, and by then the
 attributes exist.
 
 ### Coverage by category
 
-| Category | Primary path | Notes |
-|---|---|---|
-| Electrical | 1 — brand + MPN | Havells/Legrand/Anchor publish part numbers |
-| Plumbing | 1 | Astral, Supreme, Prince |
-| Sanitaryware | 1 | Jaquar codes (ACN, AHS, AKP…) |
-| Tiles | 1 | Kajaria, Somany |
-| Lights | 1, falling to 2 | Unbranded imports have neither |
-| Paint | 1 | No usable GTIN — barcode is on the base tin |
-| Hardware | 1, **heavily** falling to 2 | Fasteners and small brands often unbranded |
-| Stone | **2 only** | No brand, no MPN, no GTIN — quarried, not manufactured |
+| Category     | Primary path                | Notes                                                  |
+| ------------ | --------------------------- | ------------------------------------------------------ |
+| Electrical   | 1 — brand + MPN             | Havells/Legrand/Anchor publish part numbers            |
+| Plumbing     | 1                           | Astral, Supreme, Prince                                |
+| Sanitaryware | 1                           | Jaquar codes (ACN, AHS, AKP…)                          |
+| Tiles        | 1                           | Kajaria, Somany                                        |
+| Lights       | 1, falling to 2             | Unbranded imports have neither                         |
+| Paint        | 1                           | No usable GTIN — barcode is on the base tin            |
+| Hardware     | 1, **heavily** falling to 2 | Fasteners and small brands often unbranded             |
+| Stone        | **2 only**                  | No brand, no MPN, no GTIN — quarried, not manufactured |
 
 Hardware and Stone rest entirely on the identity hash, which makes the prerequisites below
 non-optional for those two.
@@ -135,8 +135,8 @@ repeated statistical problem into a one-time one.
 
 ### Confirm on first match only
 
-Rows resolved at step 4 or 5 are shown to the vendor before going live — *"we matched your
-`HAV-32C` to Havells 32A SP MCB C-Curve"*. Accepting writes `vendor_product_map`, so the
+Rows resolved at step 4 or 5 are shown to the vendor before going live — _"we matched your
+`HAV-32C` to Havells 32A SP MCB C-Curve"_. Accepting writes `vendor_product_map`, so the
 question is asked once per SKU, not once per upload. Rejection feeds the review queue.
 
 ### Review queue holds ranked candidates, not a flag
@@ -157,11 +157,11 @@ particular never improves, since it has no identifier to fall back on.
 
 ## Part C — Catch what still leaks
 
-| Check | Trigger | Action |
-|---|---|---|
-| **Price outlier** | Listing price deviates sharply from siblings on the same product | Flag for admin. Do **not** auto-unpublish — stone grades and paint colour families produce legitimate spread |
-| **Catalog edit re-validation** | Admin changes a variant-defining attribute | Flag attached listings; they now describe something subtly different. `catalog_reindex_queue` already carries this shape |
-| **Customer report** | Buyer says the product is wrong | Not designed yet — the final safety net |
+| Check                          | Trigger                                                          | Action                                                                                                                   |
+| ------------------------------ | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| **Price outlier**              | Listing price deviates sharply from siblings on the same product | Flag for admin. Do **not** auto-unpublish — stone grades and paint colour families produce legitimate spread             |
+| **Catalog edit re-validation** | Admin changes a variant-defining attribute                       | Flag attached listings; they now describe something subtly different. `catalog_reindex_queue` already carries this shape |
+| **Customer report**            | Buyer says the product is wrong                                  | Not designed yet — the final safety net                                                                                  |
 
 A wrong match usually surfaces as a price outlier long before a customer complains:
 
@@ -175,18 +175,18 @@ No product knowledge required. Cheapest high-yield check available.
 
 ## What is guaranteed, and what is not
 
-| | Mechanism |
-|---|---|
-| 🟢 **Enforced by the database** | Unique GTIN · unique brand+MPN · unique category+identity_hash at publish · one listing per vendor/product/grade |
-| 🟡 **Enforced by process** | Vendor confirmation on first match · admin review of candidates · fuzzy-name warning at entry |
-| 🔴 **Not covered** | Two brand rows for one real brand · a vendor confirming the wrong match · products published with variant attributes blank · customer-side reporting |
+|                                 | Mechanism                                                                                                                                            |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 🟢 **Enforced by the database** | Unique GTIN · unique brand+MPN · unique category+identity_hash at publish · one listing per vendor/product/grade                                     |
+| 🟡 **Enforced by process**      | Vendor confirmation on first match · admin review of candidates · fuzzy-name warning at entry                                                        |
+| 🔴 **Not covered**              | Two brand rows for one real brand · a vendor confirming the wrong match · products published with variant attributes blank · customer-side reporting |
 
 The red row is the honest residual, and it is documented in full — cause, blast radius and
 sketched fixes — in
 [catalog-integrity-residual-risks.md](catalog-integrity-residual-risks.md). **Not yet
 decided.**
 
-Two of the four are worse than the table suggests: duplicate brand rows fail *silently*
+Two of the four are worse than the table suggests: duplicate brand rows fail _silently_
 while appearing to work, and a wrongly confirmed match is the only risk in the system that
 compounds over time rather than staying static.
 
@@ -196,18 +196,18 @@ compounds over time rather than staying static.
 
 Ordered by value per unit of effort.
 
-| # | Item | Why first |
-|---|---|---|
-| 1 | `product_code` + sequence | Everything else references it |
-| 2 | `UNIQUE (brand_id, mfr_part_number)` | One index; closes duplicates for most of the catalog |
-| 3 | Brand dedup + MPN normalisation | Without these, #2 does nothing |
-| 4 | Pre-filled export with scoping | Removes most matching entirely |
-| 5 | `vendor_product_map` + step 0 | Makes matching one-time |
-| 6 | Six text attributes → enum | Prerequisite for #7 |
-| 7 | `identity_hash` + publish constraint | Closes Hardware and Stone |
-| 8 | Ranked `match_candidates` | Makes the review queue usable |
-| 9 | Price-outlier flag | Cheap detection net |
-| 10 | Catalog-edit re-validation | Lowest frequency |
+| #   | Item                                 | Why first                                            |
+| --- | ------------------------------------ | ---------------------------------------------------- |
+| 1   | `product_code` + sequence            | Everything else references it                        |
+| 2   | `UNIQUE (brand_id, mfr_part_number)` | One index; closes duplicates for most of the catalog |
+| 3   | Brand dedup + MPN normalisation      | Without these, #2 does nothing                       |
+| 4   | Pre-filled export with scoping       | Removes most matching entirely                       |
+| 5   | `vendor_product_map` + step 0        | Makes matching one-time                              |
+| 6   | Six text attributes → enum           | Prerequisite for #7                                  |
+| 7   | `identity_hash` + publish constraint | Closes Hardware and Stone                            |
+| 8   | Ranked `match_candidates`            | Makes the review queue usable                        |
+| 9   | Price-outlier flag                   | Cheap detection net                                  |
+| 10  | Catalog-edit re-validation           | Lowest frequency                                     |
 
 Items 1–5 deliver most of the protection. Items 6–7 close the two weakest categories.
 8–10 are detection rather than prevention.

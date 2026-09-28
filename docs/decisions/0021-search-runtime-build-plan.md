@@ -75,13 +75,13 @@ The rule for the Railway gap, stated so it can be quoted back:
 
 Sub-phase order and what each must prove before the next begins:
 
-| Order | Sub-phase | Must prove |
-|---|---|---|
-| 1 | **6c** Postgres search path | City filter excludes other cities; trigram catches a misspelling; the admin path finds a draft product that has no listing (0019's reason for existing) |
-| 2 | **6e** Meilisearch + settings as code | Index exists with the exact declared settings; `typoTolerance.disableOnNumbers` genuinely stops `32A` matching `42A` |
-| 3 | **6f** Sync worker | A listing price change reaches the index; deactivating the last listing **deletes** the document rather than leaving it stale |
-| 4 | **6g** Query layer | Both engines return the identical `SearchDocument[]` shape; `SEARCH_ENGINE=postgres` switches path transparently; Meilisearch being down falls back instead of erroring |
-| 5 | **6h** Rebuild job | Search stays continuously available across a full rebuild and index swap |
+| Order | Sub-phase                             | Must prove                                                                                                                                                              |
+| ----- | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | **6c** Postgres search path           | City filter excludes other cities; trigram catches a misspelling; the admin path finds a draft product that has no listing (0019's reason for existing)                 |
+| 2     | **6e** Meilisearch + settings as code | Index exists with the exact declared settings; `typoTolerance.disableOnNumbers` genuinely stops `32A` matching `42A`                                                    |
+| 3     | **6f** Sync worker                    | A listing price change reaches the index; deactivating the last listing **deletes** the document rather than leaving it stale                                           |
+| 4     | **6g** Query layer                    | Both engines return the identical `SearchDocument[]` shape; `SEARCH_ENGINE=postgres` switches path transparently; Meilisearch being down falls back instead of erroring |
+| 5     | **6h** Rebuild job                    | Search stays continuously available across a full rebuild and index swap                                                                                                |
 
 6c ships first specifically because it is **not scaffolding** — per
 [0019](0019-search-followups.md) it is permanent, serving as both admin's primary search
@@ -130,7 +130,7 @@ Recording them here means they are not rediscovered at deploy time.
 ## Corrections found by building it
 
 > [!NOTE]
-> The three corrections below are the ones that change *this decision's own assumptions*.
+> The three corrections below are the ones that change _this decision's own assumptions_.
 > The defects found in the application code while implementing it — including two that would
 > have reached production — are recorded separately in
 > [search-runtime-build-log.md](../search-runtime-build-log.md), along with what is still
@@ -160,7 +160,7 @@ design work referenced. That release **does not support `disableOnNumbers` at al
 server responds `Unknown field 'disableOnNumbers' inside '.typoTolerance': expected one of
 enabled, minWordSizeForTypos, disableOnWords, disableOnAttributes`.
 
-Since section 5 of the design doc calls this *"the one setting that must not be missed"*
+Since section 5 of the design doc calls this _"the one setting that must not be missed"_
 (32A must never match 42A), the fix is the version, not a workaround. Pinned to
 **v1.53.1**, where it is supported and verified working. Note that a Meilisearch data volume
 is not backward compatible across a jump like this — upgrading needs `MEILI_UPGRADE_DB` or a

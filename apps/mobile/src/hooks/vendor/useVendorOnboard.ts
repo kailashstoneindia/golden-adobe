@@ -1,8 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import {
-  type VendorOnboardDto,
-  type VendorOnboardingStage,
-} from '@golden-abode/types';
+import { type VendorOnboardDto, type VendorOnboardingStage } from '@golden-abode/types';
 import { router } from 'expo-router';
 
 import { ApiError } from '../../api';

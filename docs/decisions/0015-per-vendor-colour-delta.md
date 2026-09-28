@@ -53,7 +53,7 @@ Because the vendor-level delta represents **colorant cost**, and that is genuine
 product-independent: tinting 20L of deep blue consumes the same colorant whether the base is
 a premium or an economy line.
 
-What *is* product-dependent is **margin** — a shop may charge more to tint a premium line
+What _is_ product-dependent is **margin** — a shop may charge more to tint a premium line
 because those buyers are less price-sensitive. That is what the per-listing override covers:
 
 ```sql

@@ -13,7 +13,8 @@ import { ApiProperty } from '@nestjs/swagger';
 export class SetVendorCategoriesDto {
   @ApiProperty({
     type: [String],
-    description: 'Complete set of LEAF category IDs this vendor is registered for. Replaces the existing set.',
+    description:
+      'Complete set of LEAF category IDs this vendor is registered for. Replaces the existing set.',
     example: [],
   })
   @IsArray()

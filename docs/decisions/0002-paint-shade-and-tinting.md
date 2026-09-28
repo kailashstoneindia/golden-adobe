@@ -48,7 +48,7 @@ A ~450× difference, where the larger number is almost entirely fictional — no
   the chosen shade is achievable from the selected base, no hex value for a swatch picker,
   and no structured place for colorant pricing.
 
-### Option C — Base is the SKU, `paint_shade` reference table, shade as order-time configuration *(chosen)*
+### Option C — Base is the SKU, `paint_shade` reference table, shade as order-time configuration _(chosen)_
 
 - **Pro:** Option B done properly. Colour browsing and hex-driven pickers become possible,
   the base↔shade constraint is enforceable, colorant pricing has somewhere to live, and SKU
@@ -63,7 +63,7 @@ A ~450× difference, where the larger number is almost entirely fictional — no
 
 This is the core reframe, and it resolves the stated conflict cleanly: **`Shade` never
 enters `attribute` / `attribute_value_option` at all.** The finite-enum assumption was never
-wrong; shade simply is not an attribute. What *is* an attribute is `Base Type` — a genuine
+wrong; shade simply is not an attribute. What _is_ an attribute is `Base Type` — a genuine
 finite enum of 4–5 values, and variant-defining.
 
 The schema already has a concept for made-to-order goods. `sale_unit_type: 'discrete' |
@@ -126,8 +126,8 @@ at both ends of the pack range.
 line price = vendor_listing.price  +  (delta_per_litre[depth_band] × pack_volume_litres)
 ```
 
-Rejected: *base price only, quote later* — it breaks the best-price comparison the entire
-catalog is built around. *Vendor sets a price per shade* — thousands of price rows per
+Rejected: _base price only, quote later_ — it breaks the best-price comparison the entire
+catalog is built around. _Vendor sets a price per shade_ — thousands of price rows per
 vendor, unmaintainable for a local shop owner.
 
 ### Search — colour family only

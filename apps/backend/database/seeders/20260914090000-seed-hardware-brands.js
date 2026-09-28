@@ -110,7 +110,9 @@ module.exports = {
       `[seed-hardware-brands] inserted this run: ${brandsInserted} brands, ${aliasesInserted} aliases`,
     );
     // eslint-disable-next-line no-console
-    console.log(`[seed-hardware-brands] totals now: ${totals.brands} brands, ${totals.aliases} aliases`);
+    console.log(
+      `[seed-hardware-brands] totals now: ${totals.brands} brands, ${totals.aliases} aliases`,
+    );
   },
 
   down: async (queryInterface) => {

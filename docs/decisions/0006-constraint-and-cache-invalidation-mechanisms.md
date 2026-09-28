@@ -12,7 +12,7 @@ Two mechanisms were left unsettled when `catalog-schema.sql` was first written:
 1. **Leaf-only attachment** (decision 0001) was enforced with a composite-foreign-key
    trick — `UNIQUE (id, is_leaf)` on `category`, a `GENERATED ALWAYS AS (TRUE)` column on
    `master_product`, and an FK against `(id, is_leaf)`. Declarative and complete, but
-   obscure enough that a reader has to work out *why* it functions.
+   obscure enough that a reader has to work out _why_ it functions.
 2. **`attributes_flat` invalidation** (decision 0005) had no defined rebuild path, and its
    most easily forgotten case — an inherited attribute changing — can affect tens of
    thousands of product rows.
@@ -24,7 +24,7 @@ Two mechanisms were left unsettled when `catalog-schema.sql` was first written:
 `master_product.category_id` becomes an ordinary foreign key, with
 `enforce_master_product_leaf_category()` running `BEFORE INSERT OR UPDATE OF category_id`.
 
-**The swap is not free.** The composite FK enforced *both* directions: `ON UPDATE RESTRICT`
+**The swap is not free.** The composite FK enforced _both_ directions: `ON UPDATE RESTRICT`
 also prevented a category from flipping `is_leaf` to `FALSE` while products referenced it.
 A trigger on `master_product` only guards the insert side, so a second trigger —
 `enforce_category_leaf_transition()` on `category` — is required to stop a leaf gaining a
@@ -35,11 +35,11 @@ would have quietly lost a guarantee rather than merely changed how one is expres
 
 ### `attributes_flat` has three invalidation sources, handled two different ways
 
-| Source | Scope | Handling |
-|---|---|---|
-| Product's own values change | One row | Row trigger on `master_product_attribute_value`, inline |
-| Product moves category | One row | Row trigger on `master_product`, `AFTER UPDATE OF category_id` |
-| An `attribute` row changes | Whole subtree | **Enqueued** to `catalog_reindex_queue`, drained by a background job |
+| Source                      | Scope         | Handling                                                             |
+| --------------------------- | ------------- | -------------------------------------------------------------------- |
+| Product's own values change | One row       | Row trigger on `master_product_attribute_value`, inline              |
+| Product moves category      | One row       | Row trigger on `master_product`, `AFTER UPDATE OF category_id`       |
+| An `attribute` row changes  | Whole subtree | **Enqueued** to `catalog_reindex_queue`, drained by a background job |
 
 The first two are cheap and immediate. The third must not run inline: editing an attribute
 on `Tiles` invalidates every product beneath it, and an admin saving one form should not

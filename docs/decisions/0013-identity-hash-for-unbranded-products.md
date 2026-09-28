@@ -19,8 +19,8 @@ whether that is actually sound, from evidence rather than reasoning.
 >
 > An earlier revision of this record quoted several passages that could not be verified when
 > the primary documents were checked. Specifically: a quotation attributed to
-> blog.affiliate.com does not appear there (that page says only *"Require Brand plus MPN to
-> reduce collisions across regions or bundles"*); the claim that MPN is unique only within a
+> blog.affiliate.com does not appear there (that page says only _"Require Brand plus MPN to
+> reduce collisions across regions or bundles"_); the claim that MPN is unique only within a
 > manufacturer's namespace was attributed to a source that does not state it; and the
 > Köpcke EDBT paper could not be read.
 >
@@ -62,13 +62,13 @@ data rather than from anyone's blog.
 Counting variant-defining attributes across all 58 leaf categories in
 [catalog-structure.md](../catalog-structure.md):
 
-| Data type | Count | Deterministically hashable? |
-|---|---|---|
-| enum | 101 | ✅ constrained by `attribute_value_option` |
-| number | 44 | ✅ with canonicalisation |
-| boolean | 2 | ✅ |
-| **text** | **6** | ❌ free text — the failure mode above |
-| **Total** | **153** | **96% safe** |
+| Data type | Count   | Deterministically hashable?                |
+| --------- | ------- | ------------------------------------------ |
+| enum      | 101     | ✅ constrained by `attribute_value_option` |
+| number    | 44      | ✅ with canonicalisation                   |
+| boolean   | 2       | ✅                                         |
+| **text**  | **6**   | ❌ free text — the failure mode above      |
+| **Total** | **153** | **96% safe**                               |
 
 The attribute model already forces most variant-defining values through
 `attribute_value_option`, which is what makes exact-agreement matching viable here. This was
@@ -76,28 +76,28 @@ not designed for deduplication, but it is what makes deduplication possible.
 
 **All six free-text offenders, named:**
 
-| Category | Attribute |
-|---|---|
-| Switches & Sockets | Series |
-| Switch Plates & Frames | Series |
-| Fans | Finish |
-| Wash Basins | Dimensions |
-| Adhesives & Sealants | Colour |
-| Stone (level 1) | Slab / Tile Size |
+| Category               | Attribute        |
+| ---------------------- | ---------------- |
+| Switches & Sockets     | Series           |
+| Switch Plates & Frames | Series           |
+| Fans                   | Finish           |
+| Wash Basins            | Dimensions       |
+| Adhesives & Sealants   | Colour           |
+| Stone (level 1)        | Slab / Tile Size |
 
 Each is a genuine dedup hole: `"Crabtree Athena"` and `"Crabtree ATHENA"` would publish as
 two products.
 
 ### 4. Not depending on GTIN — weaker evidence than first claimed
 
-An earlier revision cited a figure that GTIN is *"hidden, missing, or wrong on roughly a
-third of the pages"*. On checking, that comes from a **commercial web-scraping vendor's own
+An earlier revision cited a figure that GTIN is _"hidden, missing, or wrong on roughly a
+third of the pages"_. On checking, that comes from a **commercial web-scraping vendor's own
 client work** — European cosmetics retail across 13 retailers — with no published
 methodology, no category breakdown, and no relevance to Indian building materials. It is a
 marketing claim, not research, and is **not load-bearing here**.
 
 What does support the decision is closer to home: our own categories include stone,
-generics and unbranded hardware that have no GTIN *by construction* — quarried material has
+generics and unbranded hardware that have no GTIN _by construction_ — quarried material has
 no manufacturer, and sand has no packer. That argument needs no external data.
 
 ### 5. Rules plus review, never rules alone
@@ -133,14 +133,14 @@ attributes where `is_variant_defining = true`, reusing the machinery built for
 
 ### Normalisation before hashing — mandatory, not optional
 
-Per the Sony TV failure mode and MDM normalisation practice (*"standardizing text case,
-punctuation, and abbreviations"*):
+Per the Sony TV failure mode and MDM normalisation practice (_"standardizing text case,
+punctuation, and abbreviations"_):
 
-| Type | Canonicalisation |
-|---|---|
-| text / enum | trim, collapse internal whitespace, case-fold |
-| number | strip trailing zeros — `18`, `18.0`, `18.00` must hash identically |
-| all | sort by attribute code before hashing, so ordering cannot vary |
+| Type        | Canonicalisation                                                   |
+| ----------- | ------------------------------------------------------------------ |
+| text / enum | trim, collapse internal whitespace, case-fold                      |
+| number      | strip trailing zeros — `18`, `18.0`, `18.00` must hash identically |
+| all         | sort by attribute code before hashing, so ordering cannot vary     |
 
 Without numeric canonicalisation the constraint is theatre: `thickness 18` and `18.0` are
 the single most likely duplicate pair in a tile or stone catalog.
@@ -196,8 +196,8 @@ for descriptive attributes, which do not enter the hash.
   "one third" figure is this **commercial scraping vendor's own client data** from European
   cosmetics retail. No methodology, no category breakdown. Downgraded; not load-bearing.
 - [Identifier governance for AI catalogs — affiliate.com](https://blog.affiliate.com/identifier-governance-for-ai-catalogs/)
-  — **vendor marketing blog**. States only *"Require Brand plus MPN to reduce collisions
-  across regions or bundles"*. An earlier revision attributed a stronger quotation to this
+  — **vendor marketing blog**. States only _"Require Brand plus MPN to reduce collisions
+  across regions or bundles"_. An earlier revision attributed a stronger quotation to this
   page that does not appear on it.
 
 **Cited but not verified — could not read the source:**

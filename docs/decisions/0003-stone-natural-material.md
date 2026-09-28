@@ -11,7 +11,7 @@
 
 ## Context
 
-The catalog model assumes a `master_product` is a *real, physically identical SKU* — one
+The catalog model assumes a `master_product` is a _real, physically identical SKU_ — one
 row per manufactured thing, deduplicated across vendors, with vendors differing only in
 price, stock and service area. That holds for a switch or a TMT bar. It does not hold for
 granite and marble.
@@ -25,49 +25,55 @@ Two findings from trade practice shaped this record:
 
 - **Grading is not standardized.** Grade A/B/C and First Choice / Commercial / Builder are
   both in use, but different quarries, importers and distributors each run in-house
-  systems, and *the same word means different things depending on origin country* — Indian,
+  systems, and _the same word means different things depending on origin country_ — Indian,
   Brazilian and Chinese granite are graded under different conventions.
 - **Indicative imagery is universal practice, not a hedge.** Every stone seller carries the
   same disclaimer: the material delivered may differ from the picture, and a later order is
   not guaranteed to match the first. Sellers actively encourage buyers to request photos of
-  the *current lot*, and blending is treated as the installer's responsibility.
+  the _current lot_, and blending is treated as the installer's responsibility.
 
 ## Options considered
 
 ### What is one `master_product` row for stone?
 
-**A — Variety + finish + thickness** *(chosen)*
+**A — Variety + finish + thickness** _(chosen)_
+
 - **Pro:** Preserves the core value proposition — "who has Black Galaxy cheapest near me" —
   and keeps dedup meaningful. Lot-specific reality lives on the listing where it belongs.
 - **Con:** Asserts that two vendors' "Black Galaxy Polished 18mm" are the same product when
   physically they are not. Mitigated by the disclaimer and lot photos below.
 
 **B — Each vendor's stone is its own product**
+
 - **Pro:** Honest about lot variation; no false equivalence between two vendors' slabs.
 - **Con:** Kills price comparison for the entire category and fragments search results into
   near-duplicate entries — exactly the catalog fragmentation the master/listing split exists
   to prevent.
 
 **C — Variety only; finish and thickness as attributes**
+
 - **Pro:** Fewest rows.
 - **Con:** A polished 18mm and a flamed 30mm slab differ in price by multiples, so a single
   `cached_best_price` across both is meaningless.
 
 ### Where does grade live?
 
-**A — On `vendor_listing`** *(chosen)*
-- **Pro:** Grade is a claim about *that vendor's stock*, structurally alongside price and
+**A — On `vendor_listing`** _(chosen)_
+
+- **Pro:** Grade is a claim about _that vendor's stock_, structurally alongside price and
   stock level. Matches the finding that no cross-vendor standard exists.
 - **Con:** Not filterable as a catalog facet without normalization, which is deliberately
   deferred.
 
 **B — As a `master_product` attribute**
+
 - **Pro:** Familiar shape; grade becomes variant-defining and filterable.
 - **Con:** Asserts cross-vendor comparability that demonstrably does not exist. One
   vendor's "Grade A" and another's are different claims — presenting them as one facet is
   misleading precision.
 
 **C — Not captured at MVP**
+
 - **Con:** Grade drives price differences of 2–3× in this category, so buyers would be
   comparing prices that are not comparable.
 
@@ -83,7 +89,7 @@ the identity.
 
 Stone shares sand's and aggregate's lack of a `brand_id`, so `is_generic` is set. But the
 two are not the same case: sand has no identity beyond category + attributes, whereas
-"Black Galaxy" is a strong, recognized name that simply is not a *brand*. The product name
+"Black Galaxy" is a strong, recognized name that simply is not a _brand_. The product name
 carries weight here that it does not for aggregate.
 
 ### Grade lives on `vendor_listing` as a vendor-stated claim
@@ -102,8 +108,8 @@ as a neutral product property.
 
 ### A `stone_variety` reference table with aliases
 
-The `catalog_import_row` match order in the draft schema is *exact GTIN → MPN → brand +
-category + attributes → fuzzy name*. For stone the entire top of that order is unavailable.
+The `catalog_import_row` match order in the draft schema is _exact GTIN → MPN → brand +
+category + attributes → fuzzy name_. For stone the entire top of that order is unavailable.
 Vendors will upload "Black Galaxy", "black galexy", "BG Granite", "Galaxy Black".
 
 ```sql
@@ -123,7 +129,7 @@ Structurally the same move as `paint_shade` in [0002](0002-paint-shade-and-tinti
 reference table for values that are neither attributes nor SKUs.
 
 **Import matching for stone is alias-first, and defaults to review.** Match order becomes
-*variety alias exact → fuzzy name*. Rows resolve to `needs_review` rather than
+_variety alias exact → fuzzy name_. Rows resolve to `needs_review` rather than
 `auto_matched` unless an alias matches exactly, because fuzzy-matching trade names across
 vendors is exactly how a catalog fragments.
 

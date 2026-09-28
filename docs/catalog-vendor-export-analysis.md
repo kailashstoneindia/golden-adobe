@@ -71,12 +71,12 @@ ORDER BY b.name, mp.name;
 
 Emitted columns:
 
-| Column | Vendor edits? |
-|---|---|
-| `product_code` | **No** — locked |
-| `product_name` | **No** — display only, ignored on import |
-| `brand`, `pack`, `unit` | No — context so they recognise the row |
-| `price`, `qty_available`, `min_order_qty`, `pincodes`, `status` | **Yes** |
+| Column                                                          | Vendor edits?                            |
+| --------------------------------------------------------------- | ---------------------------------------- |
+| `product_code`                                                  | **No** — locked                          |
+| `product_name`                                                  | **No** — display only, ignored on import |
+| `brand`, `pack`, `unit`                                         | No — context so they recognise the row   |
+| `price`, `qty_available`, `min_order_qty`, `pincodes`, `status` | **Yes**                                  |
 
 ### Import
 
@@ -93,16 +93,16 @@ warning that they edited the wrong row.
 
 ### Effort
 
-| Piece | Estimate |
-|---|---|
-| `product_code` column, sequence, backfill | 0.5 day |
-| Export query + scoping (categories, brands, incremental) | 3 days |
-| Vendor-facing download UI | 2 days |
-| Import: code path, upsert, idempotency | 3 days |
-| Validation + returned error file | 3 days |
-| Paint and stone variants | 3 days |
-| Testing with real vendor spreadsheets | 3 days |
-| **Total** | **~3 weeks** |
+| Piece                                                    | Estimate     |
+| -------------------------------------------------------- | ------------ |
+| `product_code` column, sequence, backfill                | 0.5 day      |
+| Export query + scoping (categories, brands, incremental) | 3 days       |
+| Vendor-facing download UI                                | 2 days       |
+| Import: code path, upsert, idempotency                   | 3 days       |
+| Validation + returned error file                         | 3 days       |
+| Paint and stone variants                                 | 3 days       |
+| Testing with real vendor spreadsheets                    | 3 days       |
+| **Total**                                                | **~3 weeks** |
 
 Assumes catalog CRUD and vendor auth already exist. Much of the import work is needed
 regardless of this approach.
@@ -135,13 +135,13 @@ Without at least the first two, this approach fails on contact with a real catal
 
 Beyond scientific notation and leading zeros:
 
-| Behaviour | Impact | Mitigation |
-|---|---|---|
-| Auto-date conversion (`3-5` → 3 May) | Corrupts sizes, ratios | Quote fields; validate on import |
-| Comma-separated pincodes split across columns | Service area lost | Quote; or accept space/semicolon separators |
-| UTF-8 mangling of ₹ and Indian names | Garbled text | UTF-8 BOM on export |
-| Trailing whitespace on codes | Lookup miss | `TRIM()` before lookup |
-| Vendor deletes the code column entirely | Everything falls to fuzzy | Detect missing header, reject file with guidance |
+| Behaviour                                     | Impact                    | Mitigation                                       |
+| --------------------------------------------- | ------------------------- | ------------------------------------------------ |
+| Auto-date conversion (`3-5` → 3 May)          | Corrupts sizes, ratios    | Quote fields; validate on import                 |
+| Comma-separated pincodes split across columns | Service area lost         | Quote; or accept space/semicolon separators      |
+| UTF-8 mangling of ₹ and Indian names          | Garbled text              | UTF-8 BOM on export                              |
+| Trailing whitespace on codes                  | Lookup miss               | `TRIM()` before lookup                           |
+| Vendor deletes the code column entirely       | Everything falls to fuzzy | Detect missing header, reject file with guidance |
 
 These are not edge cases. Every one will occur within the first fifty uploads.
 
@@ -159,9 +159,9 @@ renamed, or reclassified.
 
 **Paint** needs one row per colour family. Two options:
 
-- *Pre-expand*: 50 products × 13 families = 650 rows. Mechanically simple; the sheet is
+- _Pre-expand_: 50 products × 13 families = 650 rows. Mechanically simple; the sheet is
   large but every row is meaningful.
-- *Vendor duplicates rows*: smaller export, but relies on the vendor understanding they must
+- _Vendor duplicates rows_: smaller export, but relies on the vendor understanding they must
   add rows.
 
 Pre-expansion is safer, and a paint shop's export is small enough to absorb it.
@@ -195,17 +195,17 @@ Admin approval throughput becomes the growth bottleneck, not vendor signup.
 
 The dominant cost. Rough sizing for a credible launch catalog:
 
-| Category | Est. SKUs | Data availability |
-|---|---|---|
-| Electrical | 800–1,200 | Good — Havells, Legrand, Anchor publish full catalogs |
-| Plumbing | 400–600 | Good — Astral, Supreme, Prince publish specs |
-| Sanitaryware & Bath | 500–800 | Good — Jaquar, Cera, Hindware catalogs |
-| Hardware Tools | 1,000–1,500 | **Poor** — highly fragmented, many unbranded |
-| Lights | 300–500 | Medium — decorative, image-heavy |
-| Tiles | 600–1,000 | Good — Kajaria, Somany, Nitco publish specs |
-| Paint | 150–250 products + shade cards | Good — but shades are a separate ingestion |
-| Stone | 100–200 varieties | **Poor** — no standard catalog exists |
-| **Total** | **~4,000–6,000** | |
+| Category            | Est. SKUs                      | Data availability                                     |
+| ------------------- | ------------------------------ | ----------------------------------------------------- |
+| Electrical          | 800–1,200                      | Good — Havells, Legrand, Anchor publish full catalogs |
+| Plumbing            | 400–600                        | Good — Astral, Supreme, Prince publish specs          |
+| Sanitaryware & Bath | 500–800                        | Good — Jaquar, Cera, Hindware catalogs                |
+| Hardware Tools      | 1,000–1,500                    | **Poor** — highly fragmented, many unbranded          |
+| Lights              | 300–500                        | Medium — decorative, image-heavy                      |
+| Tiles               | 600–1,000                      | Good — Kajaria, Somany, Nitco publish specs           |
+| Paint               | 150–250 products + shade cards | Good — but shades are a separate ingestion            |
+| Stone               | 100–200 varieties              | **Poor** — no standard catalog exists                 |
+| **Total**           | **~4,000–6,000**               |                                                       |
 
 At a realistic 20–40 products per hour for structured entry from brand catalogs — slower
 where specs must be read off PDFs — that is **150–300 hours**, or roughly **4–8 person-weeks**
@@ -221,11 +221,11 @@ Plus, separately:
 
 ### Ongoing
 
-| Activity | Load |
-|---|---|
-| Reviewing new-product requests | Scales with vendor count; heaviest in months 1–3 |
-| Maintaining brand and attribute data | Low once established |
-| Re-verifying prices and specs | Vendor-driven; low platform cost |
+| Activity                             | Load                                             |
+| ------------------------------------ | ------------------------------------------------ |
+| Reviewing new-product requests       | Scales with vendor count; heaviest in months 1–3 |
+| Maintaining brand and attribute data | Low once established                             |
+| Re-verifying prices and specs        | Vendor-driven; low platform cost                 |
 
 ### Skills needed
 
@@ -238,14 +238,14 @@ produce a catalog that looks complete and matches badly.
 
 ## 5. Risks
 
-| Risk | Severity | Mitigation |
-|---|---|---|
-| Export too large to be usable | **High** | Leaf-level + brand scoping before launch |
-| Seed catalog delays vendor onboarding | **High** | Launch category by category rather than all eight at once |
-| Excel corrupts codes | Medium | `GA-` prefix, quoting, UTF-8 BOM, `TRIM()` |
-| Vendors ignore the export and paste their own sheet | Medium | Fuzzy ladder still exists as fallback |
-| Request queue overwhelms admin | Medium | Batch review UI; auto-approve high-confidence duplicates |
-| Hardware and stone data unavailable | Medium | Launch those categories later |
+| Risk                                                | Severity | Mitigation                                                |
+| --------------------------------------------------- | -------- | --------------------------------------------------------- |
+| Export too large to be usable                       | **High** | Leaf-level + brand scoping before launch                  |
+| Seed catalog delays vendor onboarding               | **High** | Launch category by category rather than all eight at once |
+| Excel corrupts codes                                | Medium   | `GA-` prefix, quoting, UTF-8 BOM, `TRIM()`                |
+| Vendors ignore the export and paste their own sheet | Medium   | Fuzzy ladder still exists as fallback                     |
+| Request queue overwhelms admin                      | Medium   | Batch review UI; auto-approve high-confidence duplicates  |
+| Hardware and stone data unavailable                 | Medium   | Launch those categories later                             |
 
 ---
 
@@ -262,7 +262,7 @@ Adopt it — the mechanism is sound and it removes most of the wrong-match risk 
 3. **Budget the seed catalog as a real workstream**, with a domain-literate owner, not as a
    task attached to development.
 
-The pre-filled export makes the *vendor's* job easy. It does so by moving that work to the
+The pre-filled export makes the _vendor's_ job easy. It does so by moving that work to the
 platform, and that transfer should be planned rather than discovered.
 
 ---

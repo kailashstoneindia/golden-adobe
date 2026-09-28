@@ -7,12 +7,12 @@ import { ApiProperty } from '@nestjs/swagger';
 // itself uses (dataType-specific parsing/validation happens against the
 // resolved Attribute, not against the DTO).
 export class AttributeValueInputDto {
-  @ApiProperty({ description: "The attribute's code, e.g. \"current_rating\"." })
+  @ApiProperty({ description: 'The attribute\'s code, e.g. "current_rating".' })
   @IsString()
   @IsNotEmpty()
   code!: string;
 
-  @ApiProperty({ description: 'Value as a string, regardless of the attribute\'s data type.' })
+  @ApiProperty({ description: "Value as a string, regardless of the attribute's data type." })
   @IsString()
   value!: string;
 }

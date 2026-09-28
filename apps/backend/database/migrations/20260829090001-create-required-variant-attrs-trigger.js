@@ -81,9 +81,7 @@ module.exports = {
   down: async (queryInterface) => {
     await queryInterface.sequelize.transaction(async (t) => {
       const q = (sql) => queryInterface.sequelize.query(sql, { transaction: t });
-      await q(
-        'DROP TRIGGER IF EXISTS trg_mp_require_variant_attrs_on_publish ON master_product;',
-      );
+      await q('DROP TRIGGER IF EXISTS trg_mp_require_variant_attrs_on_publish ON master_product;');
       await q('DROP FUNCTION IF EXISTS enforce_required_variant_attrs_on_publish();');
     });
   },

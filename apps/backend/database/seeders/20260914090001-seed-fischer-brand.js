@@ -104,7 +104,9 @@ module.exports = {
       `[seed-fischer-brand] inserted this run: ${brandsInserted} brands, ${aliasesInserted} aliases`,
     );
     // eslint-disable-next-line no-console
-    console.log(`[seed-fischer-brand] totals now: ${totals.brands} brands, ${totals.aliases} aliases`);
+    console.log(
+      `[seed-fischer-brand] totals now: ${totals.brands} brands, ${totals.aliases} aliases`,
+    );
   },
 
   down: async (queryInterface) => {

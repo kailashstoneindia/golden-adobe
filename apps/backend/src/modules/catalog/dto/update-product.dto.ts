@@ -23,7 +23,7 @@ export class UpdateProductDto {
   @ApiPropertyOptional({
     type: [AttributeValueInputDto],
     description:
-      'Full replacement of this product\'s attribute values. Omit to leave existing values ' +
+      "Full replacement of this product's attribute values. Omit to leave existing values " +
       'untouched; send [] to clear all of them (blocked at publish time if any cleared ' +
       'attribute is variant-defining on a live product).',
   })

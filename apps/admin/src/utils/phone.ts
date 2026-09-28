@@ -18,7 +18,8 @@ export function formatPhoneDisplay(phone: string | null): string {
   }
 
   const digits = phone.replace(/\D/g, '');
-  const local = digits.length >= 12 && digits.startsWith('91') ? digits.slice(2, 12) : digits.slice(0, 10);
+  const local =
+    digits.length >= 12 && digits.startsWith('91') ? digits.slice(2, 12) : digits.slice(0, 10);
   if (local.length <= 5) return local;
   return `${local.slice(0, 5)} ${local.slice(5)}`;
 }

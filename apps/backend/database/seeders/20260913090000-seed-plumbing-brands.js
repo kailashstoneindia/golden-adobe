@@ -22,7 +22,12 @@ const BRANDS = [
     // source: https://www.astralpipes.com/contact-us/
     // Formerly "Astral Poly Technik Limited" (per their own investor PDFs) —
     // aliased below since older invoices/vendor sheets may still carry it.
-    aliases: ['astral pipes', 'astral limited', 'astral poly technik', 'astral poly technik limited'],
+    aliases: [
+      'astral pipes',
+      'astral limited',
+      'astral poly technik',
+      'astral poly technik limited',
+    ],
   },
   {
     name: 'Supreme',
@@ -105,7 +110,9 @@ module.exports = {
       `[seed-plumbing-brands] inserted this run: ${brandsInserted} brands, ${aliasesInserted} aliases`,
     );
     // eslint-disable-next-line no-console
-    console.log(`[seed-plumbing-brands] totals now: ${totals.brands} brands, ${totals.aliases} aliases`);
+    console.log(
+      `[seed-plumbing-brands] totals now: ${totals.brands} brands, ${totals.aliases} aliases`,
+    );
   },
 
   down: async (queryInterface) => {
