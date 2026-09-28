@@ -346,6 +346,38 @@ conflict as before; stopped that process (PID identified via `netstat`) and star
 Abode's own backend, confirmed via the API's own JSON error shape (not MasterAcres' "API is
 running" string) before uploading anything.
 
+## Image sourcing: representative sample (20 of 150 GVT/PGVT products)
+
+Per explicit user decision, a representative sample was pulled first rather than committing
+to all 150 products' images up front. Unlike Pearl (filename = SKU, direct URL construction),
+Lavish has no printed SKU-to-filename pattern — the only path is each series' own website
+design page (`/products/{slug}/`), one page per series, each showing that series' real
+colourways with real image URLs.
+
+**Sample:** 27 series, 3 per finish collection, covering all 9 real GVT/PGVT finish
+collections. **20 of 27 (74%) had a findable page and a verified real image**; 7 URL attempts
+were tried across all 27 (2 slug corrections needed: "Visby" → actual page is "Visbi";
+"Calacatta" query resolved to the "Calcatta Oro" page, a plausible but not certain same-series
+match). **5 series had no findable individual product page at all**: Brixstone, Sistelo,
+Glamstone, Hilux, Margarita — notably all 3 sampled **R10B** series failed, which may mean
+that whole finish collection lacks individual pages on the site, not just unlucky sampling;
+not confirmed against the other 2 R10B series that weren't sampled.
+
+**Real false positives caught, not assumed away:** 2 of the first 20 image downloads
+(Visby, Helen) returned HTTP 404 pages saved as `.jpg` files at ~200KB — large enough to look
+plausible by size alone, same failure mode 0026 first documented for Pearl. Caught by
+checking real `file --mime-type` output against actual bytes, not extension or size; both
+re-fetched from corrected URLs and confirmed as genuine JPEGs before being kept. This
+confirms the mime-type check (not just HTTP status) is a necessary part of the verification
+step, not a formality — HTTP 200-with-wrong-content-type slipped past a status-code-only
+check in this exact test.
+
+Images and full detail in
+[`docs/vendor-assets/lavish-ceramics/README.md`](../vendor-assets/lavish-ceramics/README.md).
+**130 of 150 GVT/PGVT products still have no image** — this was an explicit first-step sample,
+not a claim of broader coverage; scaling to the rest means repeating the same per-series
+website-fetch process ~123 more times.
+
 ## Status
 
 Discovery pass complete for 18 of 23 PDFs (plus site data for every major product line);
@@ -354,7 +386,9 @@ taxonomy gap-fill designed, approved, applied, reseeded, and verified against th
 real compliance data; Batches 1-7 complete (192 products, DB-verified) — scope has narrowed
 per client direction to Floor Tiles (GVT+PGVT), where all 150 real series from both PDF
 indexes are now represented at one size each, colour/pattern data explicitly flagged as
-inferred pending either a deeper read or vendor confirmation. Deprioritized, not abandoned:
-the 34 other floor-tile products, the 8 Subway wall-tile products, Glossy Matt Wall, image
-sourcing/verification, and 4 still-unread PDFs (Decor, Large Format Evocative, Curve 3D Slab,
+inferred pending either a deeper read or vendor confirmation; image sourcing started with a
+20-of-150 representative sample, real coverage rate (74% of sampled series) and gaps (R10B
+collection) now known. Deprioritized, not abandoned: the 34 other floor-tile products, the 8
+Subway wall-tile products, Glossy Matt Wall, full image coverage for the remaining 130
+GVT/PGVT products, and 4 still-unread PDFs (Decor, Large Format Evocative, Curve 3D Slab,
 Polished Slab).
