@@ -272,14 +272,89 @@ batch: build Excel from real extracted data → upload via the real
   plus the new `tile_colour_name` field in one batch, all confirmed working end to end
 - **Running total:** 55 products (DB-verified)
 
+## Client scope change: focus narrowed to Floor Tiles (GVT + PGVT)
+
+After the 6 broad-sampling batches above, the client (via a call with their own downstream
+client) narrowed scope: **generate our own internal SKU** (see below — already true, no work
+needed) and **stop spreading across the full catalog; go deep on the 1-2 lines with the best
+ROI** instead. A research pass (site product counts per line, PDF/site data quality per line,
+India tiles-market demand data) found **GVT + PGVT ("Glazed Porcelain") wins on every axis**:
+293 real products on Lavish's own site for this segment (vs. 20-110 for every other line), the
+only two lines with a full consolidated series/size index already read from their own PDFs,
+zero rejected rows in batches 1-2 (the two lines with no taxonomy issues at all), and GVT alone
+is ~50% of India's vitrified-tile market share (vitrified being ~30% of the total India tiles
+market — [Deep Market Insights](https://deepmarketinsights.com/report/vitrified-tiles-market-research-report),
+[TilesWale](https://tileswale.com/blog-detail/gvt-pgvt-tiles-manufacturer-in-india)). Both GVT
+and PGVT are `Floor Tiles` in our taxonomy — confirmed by direct query, every product entered
+under those SKU-code prefixes landed in `floor-tiles`. The 34 non-GVT/PGVT floor-tile products
+from batches 3-5 (Wooden, Outdoor, Architectural, Moroccan, Terrazzo, Grit-Tech, Fullbody,
+Double Charge, Soluble Salt, Endless) and the 8 Subway wall-tile products from batch 6 are
+**left as-is**, not deleted — background/future-expansion inventory, not the current focus.
+
+**On the SKU-numbering ask specifically:** `master_product.product_code` (format
+`GA-0000001`, a real Postgres sequence, unique + indexed) already is Golden Abode's own
+internal SKU and already is the platform's real identifier — every product row auto-generates
+one on creation. Vendor `mfr_part_number` (e.g. `GVT-AMBRE-6060`) has only ever been a
+secondary reference/dedup field, never the identifier the platform itself uses. **No code
+change was needed** — this was a clarification, not a gap.
+
+### Batch 7: GVT + PGVT depth expansion — complete
+
+- **Source:** the same GVT (pg 94-95) and PGVT (pg 81-83) index pages used for batches 1-2,
+  transcribed exhaustively this time rather than sampled. Careful line-by-line recount (not
+  the earlier rough estimate) found **81 real GVT series** across 7 finish collections (Matt
+  22, Matt with Structure 12, Grit-Tech 6, Carvin with Structure 4, R10B 3, Carvin 26, Sugar
+  8) and **75 real PGVT series** across 2 collections (Polished 57, Highgloss 18) — 156 total
+  distinct (series, material) pairs after removing same-name repeats across collections within
+  a material (e.g. "Andora" appears in both PGVT Polished and Highgloss — kept as one row per
+  material, not duplicated, since our SKU code already disambiguates by material+series).
+- **13 series already seeded in batches 1-2** (GVT: Ambient, Ambre, Bangkok, Blaze, Brixstone,
+  Croto, Glamstone; PGVT: Andora, Calacatta, Negro, Pulpis, Royal Onyx, Verona) were excluded
+  from this batch to avoid duplicates — confirmed against the live DB before building the
+  sheet, not assumed from memory.
+- **Depth, not full fidelity:** each of the 143 new series got **one row at 600×600mm** (the
+  size every series shares per the index's own matrix), not every size each series is sold in
+  — an explicit scope choice, not an oversight (some series are available in up to 8 sizes;
+  full fidelity would mean 800-1000+ rows, out of scope for this pass).
+- **Colour/pattern data is inferred, not confirmed, for all 143 new rows.** The PDF index
+  gives series name + available sizes only — colour and exact pattern only show on each
+  series' own individual page spread, which wasn't read for 143 names (that would mean 143
+  separate page reads, out of scope here). `tile_colour_family` and `tile_pattern` were
+  assigned by a simple keyword match against the series name (e.g. "Calacatta"/"Onyx" →
+  Marble pattern; "Negro"/"Turkiye" → Black family) with `Multi`/`Plain` as the default when
+  the name gives no signal. **This is a real, explicit limitation of this batch** — if a buyer
+  or the vendor needs accurate colour data before this goes live, that means either reading
+  each series' own spread or asking Lavish directly, not trusting these inferred values.
+- **Result:** 72/72 GVT rows accepted, 65/65 PGVT rows accepted, 0 rejected across both —
+  matches the two lines' track record from batches 1-2 (zero taxonomy issues here, unlike
+  Wooden/Architectural/Subway which each needed a `tile_size` fix)
+- **Running total:** 192 products overall (150 of which are GVT/PGVT — DB-verified against
+  both the brand-wide count and a `mfr_part_number LIKE 'GVT%' OR 'PGVT%'` filter, matching
+  the expected 13 + 137 = 150)
+
+### Real environment issue hit and fixed before this batch
+
+Returning to this work after a break, `golden-abode-postgres` had exited (clean shutdown, not
+a crash — likely a host restart) and `masteracres-db` had taken over port 5432 in the
+meantime — same class of conflict documented in 0026's pipeline-test narrative. Stopped
+`masteracres-db`, but `docker start golden-abode-postgres` (rather than `docker compose up`)
+came back up **without its host port binding** (`docker port` showed nothing, confirmed via
+`docker inspect` — `HostPort` empty despite `pg_isready` succeeding *inside* the container).
+Fixed by recreating properly via `docker compose up -d postgres`, which restored the
+`5432:5432` mapping from the compose file. Port 3000 had the same MasterAcres-backend
+conflict as before; stopped that process (PID identified via `netstat`) and started Golden
+Abode's own backend, confirmed via the API's own JSON error shape (not MasterAcres' "API is
+running" string) before uploading anything.
+
 ## Status
 
 Discovery pass complete for 18 of 23 PDFs (plus site data for every major product line);
 taxonomy gap-fill designed, approved, applied, reseeded, and verified against the live API
-(4 mid-batch fixes total: `tile_size` 200×1200, 300×1200, and 75×300 — three real Lavish
-sizes missed in the first taxonomy pass, each found only once real data was being entered,
-not guessed in advance); brand row created with real compliance data; Batches 1-6 complete
-(55 products, DB-verified) — every enum value added in this decision has now been exercised
-by at least one real accepted product. Not yet started: Glossy Matt Wall (last remaining
-line with site/PDF data available), image sourcing/verification, and 4 still-unread PDFs
-(Decor, Large Format Evocative, Curve 3D Slab, Polished Slab).
+(4 mid-batch fixes total: `tile_size` 200×1200, 300×1200, and 75×300); brand row created with
+real compliance data; Batches 1-7 complete (192 products, DB-verified) — scope has narrowed
+per client direction to Floor Tiles (GVT+PGVT), where all 150 real series from both PDF
+indexes are now represented at one size each, colour/pattern data explicitly flagged as
+inferred pending either a deeper read or vendor confirmation. Deprioritized, not abandoned:
+the 34 other floor-tile products, the 8 Subway wall-tile products, Glossy Matt Wall, image
+sourcing/verification, and 4 still-unread PDFs (Decor, Large Format Evocative, Curve 3D Slab,
+Polished Slab).
