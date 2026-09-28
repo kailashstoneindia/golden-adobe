@@ -7,7 +7,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-const logoMark = require('../../../assets/logo-mark.png');
+import logoMark from '../../../assets/logo-mark.png';
 
 export interface BrandLogoProps {
   /** Logo width in density-independent pixels. Height scales with aspect ratio. */

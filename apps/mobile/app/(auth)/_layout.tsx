@@ -1,6 +1,5 @@
 import { Redirect, Stack } from 'expo-router';
 
-import { ROUTES } from '../../src/constants';
 import { useAuth } from '../../src/hooks/auth';
 import { resolveAuthenticatedRoute } from '../../src/utils/user';
 
