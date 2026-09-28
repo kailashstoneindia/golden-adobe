@@ -12,6 +12,14 @@ pattern as [`pearl-precision/`](../pearl-precision/README.md).
   cover the full 150-product catalog once the sample confirmed the method worked. Each
   filename is the product's `mfr_part_number` (e.g. `GVT-AMBRE-6060.jpg`), matching the
   join-key convention used for Pearl's images.
+- **`lavish-ceramics-products.csv`** — a snapshot of all **192 products** (every line seeded
+  so far, not just GVT/PGVT), exported directly from the live database — same approach as
+  Pearl's CSV, reflecting exactly what's actually seeded. Columns: `category_slug`,
+  `category_name`, `product_name`, `mfr_part_number`, `hsn_code`, `gst_rate`,
+  `country_of_origin`, `attributes_json` (the full `attributes_flat` blob — `tile_material`,
+  `tile_finish`, `tile_colour_family`, etc. live here, not as separate columns), and
+  `has_image` (`yes`/`no`, cross-referenced against the `images/gvt-pgvt-sample/` folder by
+  filename — a real check, not a guess).
 
 ## How these were verified (and why some initially looked right but weren't)
 
