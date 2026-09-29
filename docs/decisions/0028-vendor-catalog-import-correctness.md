@@ -16,7 +16,7 @@ never firing as a bug. Both premises are wrong:
    commit implements, and `vendor-catalog-export.service.ts`, which is the real, working
    pre-filled-export mechanism this doc describes as a future option.
 2. The comment at `vendor-catalog-import.service.ts:40-43` states directly that vendors are
-   *deliberately* never asked for brand/category on upload — "vendors supply price/stock,
+   _deliberately_ never asked for brand/category on upload — "vendors supply price/stock,
    never specs, so there is nothing to vary per-category here" — because the export-first flow
    already makes exact `product_code` matching the primary path (ladder step 1). Steps 2 and 4
    exist for a narrower case (blank-code fallback rows on products the vendor's export didn't
@@ -81,7 +81,7 @@ candidate via name similarity, borrow that candidate's `brand_id`/`category_id` 
 steps 2/4 as a tie-breaker.
 
 - **Pro:** No template or vendor-facing change required.
-- **Con:** Steps 2/4 exist specifically to match rows where `product_ref`/SKU do *not* already
+- **Con:** Steps 2/4 exist specifically to match rows where `product_ref`/SKU do _not_ already
   resolve. Borrowing brand/category from a fuzzy name match makes steps 2/4 redundant with step 5
   rather than genuinely functional — it doesn't add matching power, just relabels step 5's output.
   Rejected.
@@ -158,7 +158,7 @@ implicit (accidental) partial-success, now made explicit and safe.
 Hard rejection (not fuzzy-matching) on brand/category values was chosen because these are meant to
 be exact identifiers resolving to specific master-data rows, not free text — fuzzy-matching an
 identifier field reintroduces the same typo-tolerance problem that exact-match steps 0/1/3 exist to
-avoid, and would double the review queue's job (ambiguity on name *and* brand *and* category)
+avoid, and would double the review queue's job (ambiguity on name _and_ brand _and_ category)
 against a stated priority of match correctness, not upload convenience.
 
 Attributes were deferred rather than designed now because they are category-specific

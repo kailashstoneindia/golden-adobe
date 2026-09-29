@@ -366,9 +366,11 @@ export class AdminCatalogService {
   // variant-defining attributes (Phase 7 risk 3) mixed in with hundreds of
   // otherwise-clean ones, and one bad row should not block the rest from
   // publishing, mirroring the vendor importer's own per-row philosophy.
-  async bulkPublish(
-    dto: BulkPublishProductsDto,
-  ): Promise<{ requested: number; published: number; failed: { productId: string; reason: string }[] }> {
+  async bulkPublish(dto: BulkPublishProductsDto): Promise<{
+    requested: number;
+    published: number;
+    failed: { productId: string; reason: string }[];
+  }> {
     if (!dto.productIds?.length && !dto.categoryId && !dto.brandId) {
       throw new BadRequestException('provide productIds, categoryId, or brandId');
     }

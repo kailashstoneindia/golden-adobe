@@ -312,10 +312,7 @@ export class PostgresSearchService {
   //
   // idx_vendor_listing_price (master_product_id, price) WHERE status =
   // 'active' already covers this query's WHERE + ORDER BY with no new index.
-  async listingsForProduct(
-    masterProductId: string,
-    cityId: string,
-  ): Promise<ProductListingRow[]> {
+  async listingsForProduct(masterProductId: string, cityId: string): Promise<ProductListingRow[]> {
     const rows = await this.sequelize.query<{
       vendor_listing_id: string;
       vendor_id: string;

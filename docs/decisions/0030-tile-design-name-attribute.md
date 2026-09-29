@@ -44,6 +44,7 @@ the full 122-product original collision set with zero remaining duplicates befor
 anything.
 
 This was applied in three passes as the true scope became clear:
+
 1. 122 draft products in the original collision groups.
 2. 2 more draft products that collided against **already-published** products from the very
    first bulk-publish run (published before this attribute existed, so never in the initial
@@ -100,7 +101,7 @@ initially did.
   catalog duplicates (which should be merged/removed, not force-published). The full list of
   29 colliding groups was exported for this review but is not reproduced here — see the
   `master_product` table, `WHERE brand_id = '64f268c5-a864-42f9-9a6f-e2be0028ab74' AND status =
-  'draft' GROUP BY category_id, identity_hash HAVING COUNT(*) > 1`.
+'draft' GROUP BY category_id, identity_hash HAVING COUNT(*) > 1`.
 - Whether `tile_design_name` should be promoted to a required-variant-defining attribute
   enforced by the publish trigger (Phase 7 risk 3), so this gap can't silently recur for a
   future tile product with no design name recorded at all.
