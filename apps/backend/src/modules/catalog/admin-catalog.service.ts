@@ -12,6 +12,7 @@ import { ListProductsQueryDto } from './dto/list-products-query.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { AttributeValueInputDto } from './dto/attribute-value-input.dto';
+import { BulkPublishProductsDto } from './dto/bulk-publish-products.dto';
 
 // Backing service for the admin panel's catalog screens (browse, inspect,
 // publish). Reads Postgres directly rather than the search index, because
@@ -356,6 +357,74 @@ export class AdminCatalogService {
     }
 
     return this.getProduct(productId);
+  }
+
+  // Bulk publish — for turning a freshly-seeded brand catalog (hundreds of
+  // draft rows from a single vendor onboarding) live in one call instead of
+  // one setProductStatus per row. Per-row error collection, not all-or-
+  // nothing: a real brand catalog can have a handful of rows with missing
+  // variant-defining attributes (Phase 7 risk 3) mixed in with hundreds of
+  // otherwise-clean ones, and one bad row should not block the rest from
+  // publishing, mirroring the vendor importer's own per-row philosophy.
+  async bulkPublish(
+    dto: BulkPublishProductsDto,
+  ): Promise<{ requested: number; published: number; failed: { productId: string; reason: string }[] }> {
+    if (!dto.productIds?.length && !dto.categoryId && !dto.brandId) {
+      throw new BadRequestException('provide productIds, categoryId, or brandId');
+    }
+    if (dto.productIds?.length && (dto.categoryId || dto.brandId)) {
+      // productIds is an explicit, exact selection — combining it with a
+      // filter is ambiguous (does the filter narrow productIds, or does the
+      // caller expect both sets unioned?) rather than useful, so this is
+      // rejected instead of silently picking one interpretation.
+      throw new BadRequestException(
+        'productIds cannot be combined with categoryId/brandId — use one selection mode',
+      );
+    }
+
+    let productIds: string[];
+    if (dto.productIds?.length) {
+      productIds = dto.productIds;
+    } else {
+      const where: string[] = [`mp.status = 'draft'`];
+      const replacements: Record<string, unknown> = {};
+      if (dto.categoryId) {
+        // Same subtree match as listProducts — a top-level category
+        // selection reaches every leaf under it.
+        where.push(
+          `mp.category_id IN (
+             SELECT d.id FROM category c JOIN category d
+               ON d.id = c.id OR d.path LIKE c.path || '/%'
+             WHERE c.id = :categoryId
+           )`,
+        );
+        replacements.categoryId = dto.categoryId;
+      }
+      if (dto.brandId) {
+        where.push('mp.brand_id = :brandId');
+        replacements.brandId = dto.brandId;
+      }
+      const rows = await this.sequelize.query<{ id: string }>(
+        `SELECT mp.id FROM master_product mp WHERE ${where.join(' AND ')}`,
+        { replacements, type: QueryTypes.SELECT },
+      );
+      productIds = rows.map((r) => r.id);
+    }
+
+    const failed: { productId: string; reason: string }[] = [];
+    let published = 0;
+
+    for (const productId of productIds) {
+      try {
+        await this.setProductStatus(productId, 'live');
+        published++;
+      } catch (err) {
+        const reason = err instanceof Error ? err.message : String(err);
+        failed.push({ productId, reason });
+      }
+    }
+
+    return { requested: productIds.length, published, failed };
   }
 
   // Single-product create (decision 0023) — the correction/addition path
