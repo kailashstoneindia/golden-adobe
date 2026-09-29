@@ -2,6 +2,15 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "module": "commonjs",
+    // meilisearch@0.60+ is pure ESM and exposes its types only via the package
+    // "exports" map, which node10 resolution cannot read. Rather than move the
+    // whole backend to node16/bundler module semantics for one dependency
+    // (which would change emit for every file), the declaration file is
+    // pointed at directly. Node 24 require()s the ESM package fine at runtime
+    // (verified); this is purely a typechecking concern.
+    "paths": {
+      "meilisearch": ["./node_modules/meilisearch/dist/index.d.ts"]
+    },
     "declaration": true,
     "removeComments": true,
     "emitDecoratorMetadata": true,

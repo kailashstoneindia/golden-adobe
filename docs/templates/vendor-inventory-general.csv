@@ -1,0 +1,8 @@
+product_code,product_name,brand,pack,unit,price*,mrp,qty_available*,min_order_qty,pincodes*,status
+GA-0100234,Havells 32A SP MCB C-Curve,Havells,1,piece,420,495,60,1,"380001,380015,380009",active
+GA-0100235,Havells 16A SP MCB C-Curve,Havells,1,piece,385,455,120,1,"380001,380015,380009",active
+GA-0100236,Legrand 63A DP MCB C-Curve,Legrand,1,piece,1180,1395,18,1,380001,active
+GA-0100810,Kajaria Eternity Carrara White 600x600 GVT,Kajaria,4,box,58,72,4000,50,"380001,380015",active
+GA-0100811,Somany Wood Oak Rustic 200x1200,Somany,5,box,,,,,,
+GA-0101402,Astral CPVC Elbow 90 25mm,Astral,1,piece,42,55,340,10,380001,active
+,Anchor 6A Modular Switch White,,,,,38,45,200,10,380001,active

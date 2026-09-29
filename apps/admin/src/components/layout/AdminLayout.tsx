@@ -27,14 +27,18 @@ export function AdminLayout() {
         <nav className={styles.nav}>
           <NavLink
             to={ROUTES.dashboard}
-            className={({ isActive }) => `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`}
+            className={({ isActive }) =>
+              `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`
+            }
             end
           >
             Dashboard
           </NavLink>
           <NavLink
             to={ROUTES.approvalsVendors}
-            className={({ isActive }) => `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`}
+            className={({ isActive }) =>
+              `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`
+            }
           >
             Approvals
           </NavLink>
@@ -58,10 +62,54 @@ export function AdminLayout() {
           </div>
           <NavLink
             to={ROUTES.users}
-            className={({ isActive }) => `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`}
+            className={({ isActive }) =>
+              `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`
+            }
           >
             All users
           </NavLink>
+          <NavLink
+            to={ROUTES.catalogProducts}
+            className={({ isActive }) =>
+              `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`
+            }
+          >
+            Catalog
+          </NavLink>
+          <div className={styles.subNav}>
+            <NavLink
+              to={ROUTES.catalogProducts}
+              className={({ isActive }) =>
+                `${styles.subNavLink} ${isActive ? styles.subNavLinkActive : ''}`
+              }
+            >
+              Products
+            </NavLink>
+            <NavLink
+              to={ROUTES.catalogCategories}
+              className={({ isActive }) =>
+                `${styles.subNavLink} ${isActive ? styles.subNavLinkActive : ''}`
+              }
+            >
+              Categories
+            </NavLink>
+            <NavLink
+              to={ROUTES.catalogImport}
+              className={({ isActive }) =>
+                `${styles.subNavLink} ${isActive ? styles.subNavLinkActive : ''}`
+              }
+            >
+              Import
+            </NavLink>
+            <NavLink
+              to={ROUTES.catalogReview}
+              className={({ isActive }) =>
+                `${styles.subNavLink} ${isActive ? styles.subNavLinkActive : ''}`
+              }
+            >
+              Review queue
+            </NavLink>
+          </div>
         </nav>
         <div className={styles.sidebarFooter}>
           <p className={styles.sidebarUser}>{adminUser?.email ?? adminUser?.name ?? 'Admin'}</p>

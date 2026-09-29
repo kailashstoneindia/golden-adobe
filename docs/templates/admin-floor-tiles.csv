@@ -1,0 +1,5 @@
+name*,brand*,mfr_part_number,gtin,hsn_code,gst_rate*,country_of_origin*,importer_details,pack_content_qty,tile_material*,size*,finish*,colour_family*,thickness*,pattern,pei_rating,anti_skid,shade_variation,tiles_per_box,coverage_per_box,water_absorption,application_area,warranty_months,certification_mark
+Kajaria Eternity Carrara White 600x600 GVT,Kajaria,KJ-ETR-CW-60,8901234500011,6907,18,India,,4,Vitrified (GVT),600x600,Glossy,White,9,Marble,PEI IV,FALSE,V2,4,15.5,0.5,Living Room,60,BIS
+Kajaria Eternity Carrara White 800x800 GVT,Kajaria,KJ-ETR-CW-80,8901234500012,6907,18,India,,3,Vitrified (GVT),800x800,Glossy,White,10,Marble,PEI IV,FALSE,V2,3,20.6,0.5,Living Room,60,BIS
+Somany Wood Oak Rustic 200x1200,Somany,SOM-WO-1200,8901234500013,6907,18,India,,5,Vitrified (PGVT),600x1200,Matte,Wood,9,Wood,PEI IV,TRUE,V3,5,38.7,0.5,Living Room,60,BIS
+Nitco Anti-Skid Grey 300x300,Nitco,NIT-AS-GY-30,8901234500014,6907,18,India,,9,Ceramic,300x300,Matte,Grey,8,Plain,PEI III,TRUE,V2,9,8.7,3.0,Bathroom,24,BIS

@@ -22,10 +22,7 @@ export default function ProductsTabScreen() {
     >
       <View style={styles.list}>
         {DEMO_PRODUCTS.map((product) => (
-          <Pressable
-            key={product.name}
-            onPress={() => router.push(ROUTES.screens.productDetail)}
-          >
+          <Pressable key={product.name} onPress={() => router.push(ROUTES.screens.productDetail)}>
             <Card>
               <View style={styles.row}>
                 <View style={styles.thumb} />

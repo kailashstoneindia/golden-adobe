@@ -73,7 +73,11 @@ function CustomerHome({ firstName }: { firstName: string }) {
         </Text>
         <CategoryGrid onCategoryPress={handleBrowsePress} />
 
-        <SectionHeader title="Verified Ustaads nearby" actionLabel="See all" onActionPress={handleBrowsePress} />
+        <SectionHeader
+          title="Verified Ustaads nearby"
+          actionLabel="See all"
+          onActionPress={handleBrowsePress}
+        />
         <HorizontalCardList items={USTAADS} onItemPress={() => handleProductPress()} />
 
         <SectionHeader title="Top vendors, Jaipur East" onActionPress={handleBrowsePress} />
@@ -124,7 +128,11 @@ function VendorHome() {
           </Pressable>
         </View>
 
-        <SectionHeader title="Pending orders" actionLabel="See all" onActionPress={handleOrdersPress} />
+        <SectionHeader
+          title="Pending orders"
+          actionLabel="See all"
+          onActionPress={handleOrdersPress}
+        />
         <View style={styles.orderList}>
           {PENDING_ORDERS.map((order) => (
             <Pressable key={order.id} onPress={() => handleOrderPress(order.id)}>

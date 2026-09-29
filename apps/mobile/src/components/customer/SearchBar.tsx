@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
 
 import { Colors, Radius, Spacing } from '../../theme';
 import { Text } from '../ui';
@@ -8,7 +8,10 @@ interface SearchBarProps {
   onPress?: () => void;
 }
 
-export function SearchBar({ placeholder = 'Search tiles, pipes, paint…', onPress }: SearchBarProps) {
+export function SearchBar({
+  placeholder = 'Search tiles, pipes, paint…',
+  onPress,
+}: SearchBarProps) {
   return (
     <Pressable style={styles.bar} onPress={onPress}>
       <Text variant="body" color={Colors.inkSoft}>

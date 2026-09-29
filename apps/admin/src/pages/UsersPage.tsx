@@ -6,11 +6,7 @@ import { isEmpty } from 'lodash';
 import { APP_CONSTANTS } from '@/constants/appConstants';
 import { ERROR_MESSAGES } from '@/constants/error.constants';
 import { UserDetailModal } from '@/components/approvals/UserDetailModal';
-import {
-  useAdminUsersQuery,
-  useApproveUserMutation,
-  useRejectUserMutation,
-} from '@/queries';
+import { useAdminUsersQuery, useApproveUserMutation, useRejectUserMutation } from '@/queries';
 import styles from '@/styles/shared.module.css';
 import { formatPhoneDisplay } from '@/utils/phone';
 import { formatRoleLabel } from '@/utils/role';

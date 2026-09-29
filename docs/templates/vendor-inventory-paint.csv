@@ -1,0 +1,11 @@
+product_code,product_name,pack,unit,colour_family,price*,supports_tinting*,pincodes*,status
+GA-0106001,Asian Paints Royale Luxury Emulsion 20L,20,litre,white,4200,TRUE,"380001,380015",active
+GA-0106001,Asian Paints Royale Luxury Emulsion 20L,20,litre,beige,4400,TRUE,"380001,380015",active
+GA-0106001,Asian Paints Royale Luxury Emulsion 20L,20,litre,grey,4400,TRUE,"380001,380015",active
+GA-0106001,Asian Paints Royale Luxury Emulsion 20L,20,litre,blue,4650,TRUE,"380001,380015",active
+GA-0106001,Asian Paints Royale Luxury Emulsion 20L,20,litre,red,4900,TRUE,"380001,380015",active
+GA-0106002,Asian Paints Royale Luxury Emulsion 4L,4,litre,white,980,TRUE,380001,active
+GA-0106002,Asian Paints Royale Luxury Emulsion 4L,4,litre,blue,1090,TRUE,380001,active
+GA-0106010,Asian Paints Tractor Emulsion 20L,20,litre,white,2650,TRUE,380001,active
+GA-0106010,Asian Paints Tractor Emulsion 20L,20,litre,beige,2790,TRUE,380001,active
+GA-0106040,Asian Paints Wall Putty 40kg,40,kg,,1150,FALSE,380001,active

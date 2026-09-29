@@ -1,0 +1,7 @@
+product_code,product_name,unit,grade*,price_per_sqft*,qty_sqft*,min_order_qty,pincodes*,status
+GA-0104501,Black Galaxy Granite Polished 18mm,sqft,Grade A,165,2400,100,"380001,380015",active
+GA-0104501,Black Galaxy Granite Polished 18mm,sqft,Commercial,132,800,100,"380001,380015",active
+GA-0104502,Black Galaxy Granite Polished 20mm,sqft,Grade A,182,900,100,380001,active
+GA-0104503,Kashmir White Granite Polished 18mm,sqft,Grade A,118,1500,100,380001,active
+GA-0104504,Makrana White Marble Polished 18mm,sqft,Premium,240,600,100,380001,active
+GA-0104505,Kota Blue Honed 25mm,sqft,Standard,52,5000,200,"380001,380015,380009",active

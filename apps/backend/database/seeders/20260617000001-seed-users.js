@@ -7,6 +7,8 @@ module.exports = {
       {
         id: uuidv4(),
         name: 'Super Admin',
+        email: 'admin@goldenabode.com',
+        password_hash: '$2b$12$kbM1UTqWVPQ5eAUWlsBSEOVfUsyvbXyEqPNWGjCGbq/t5HPKCPnDS',
         phone: '+919999999999',
         role: 'ADMIN',
         is_active: true,

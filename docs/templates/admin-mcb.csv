@@ -1,0 +1,5 @@
+name*,brand*,mfr_part_number,gtin,hsn_code,gst_rate*,country_of_origin*,importer_details,pack_content_qty,poles*,breaking_capacity,mounting,rated_current*,tripping_curve*,warranty_months,certification_mark
+Havells 32A SP MCB C-Curve,Havells,DHMGCSPF032,8901234567890,8536,18,India,,1,SP,10,DIN Rail,32,C,24,ISI
+Havells 16A SP MCB C-Curve,Havells,DHMGCSPF016,8901234567891,8536,18,India,,1,SP,10,DIN Rail,16,C,24,ISI
+Legrand 63A DP MCB C-Curve,Legrand,LG-DP-63C,8901234567892,8536,18,India,,1,DP,10,DIN Rail,63,C,24,ISI
+Schneider 40A TP MCB D-Curve,Schneider,SCH-TP-40D,,8536,18,France,Schneider Electric India Pvt Ltd Bangalore,1,TP,10,DIN Rail,40,D,36,CE

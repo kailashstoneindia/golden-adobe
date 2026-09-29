@@ -1,11 +1,9 @@
 import { StyleSheet, View } from 'react-native';
 
 import { DemoScreen } from '../../src/components/demo/DemoScreen';
-import { DemoOrderCard } from '../../src/components/demo/DemoCards';
 import { Badge, Card, Text } from '../../src/components/ui';
-import { ROUTES } from '../../src/constants';
 import { DEMO_ACTIVE_PROJECTS, DEMO_PROJECTS } from '../../src/data/demo-content';
-import { Colors, Spacing } from '../../src/theme';
+import { Spacing } from '../../src/theme';
 
 export default function MyProjectsScreen() {
   return (

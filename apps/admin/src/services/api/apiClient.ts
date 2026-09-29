@@ -48,10 +48,7 @@ export async function getRequest<TResponse>(url: string): Promise<TResponse> {
   return response.data.data;
 }
 
-export async function postRequest<TResponse, TBody>(
-  url: string,
-  body: TBody,
-): Promise<TResponse> {
+export async function postRequest<TResponse, TBody>(url: string, body: TBody): Promise<TResponse> {
   const response = await apiClient.post<ApiSuccessResponse<TResponse>>(url, body);
   return response.data.data;
 }
@@ -62,4 +59,46 @@ export async function patchRequest<TResponse, TBody>(
 ): Promise<TResponse> {
   const response = await apiClient.patch<ApiSuccessResponse<TResponse>>(url, body ?? {});
   return response.data.data;
+}
+
+/**
+ * Multipart upload. Deliberately does NOT set Content-Type — the browser must
+ * generate it so the multipart boundary is correct; overriding it with the
+ * client's JSON default silently breaks the upload.
+ */
+export async function uploadRequest<TResponse>(
+  url: string,
+  file: File,
+  fieldName = 'file',
+): Promise<TResponse> {
+  const formData = new FormData();
+  formData.append(fieldName, file);
+  const response = await apiClient.post<ApiSuccessResponse<TResponse>>(url, formData, {
+    headers: { 'Content-Type': undefined },
+  });
+  return response.data.data;
+}
+
+/**
+ * Fetches a binary response (a generated .xlsx template) and triggers a save.
+ * Returns the filename used, taken from Content-Disposition when the server
+ * supplies one.
+ */
+export async function downloadRequest(url: string, fallbackFilename: string): Promise<string> {
+  const response = await apiClient.get<Blob>(url, { responseType: 'blob' });
+
+  const disposition = response.headers['content-disposition'] as string | undefined;
+  const match = disposition?.match(/filename="?([^"]+)"?/);
+  const filename = match?.[1] ?? fallbackFilename;
+
+  const objectUrl = window.URL.createObjectURL(response.data);
+  const anchor = document.createElement('a');
+  anchor.href = objectUrl;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.URL.revokeObjectURL(objectUrl);
+
+  return filename;
 }

@@ -1,0 +1,6 @@
+name*,variety*,is_generic*,has_natural_variation*,hsn_code,gst_rate*,country_of_origin*,importer_details,unit_of_measure*,finish*,thickness*,slab_size*,colour_family,application,edge_type,stone_type*,origin_region,porosity,certification_mark
+Black Galaxy Granite Polished 18mm,Black Galaxy,TRUE,TRUE,6802,18,India,,sqft,Polished,18,1800x600,Black,Flooring,Machine Cut,Granite,Andhra Pradesh,Low,
+Black Galaxy Granite Polished 20mm,Black Galaxy,TRUE,TRUE,6802,18,India,,sqft,Polished,20,1800x600,Black,Countertop,Machine Cut,Granite,Andhra Pradesh,Low,
+Kashmir White Granite Polished 18mm,Kashmir White,TRUE,TRUE,6802,18,India,,sqft,Polished,18,1700x600,White,Flooring,Machine Cut,Granite,Rajasthan,Low,
+Makrana White Marble Polished 18mm,Makrana White,TRUE,TRUE,6802,18,India,,sqft,Polished,18,1200x600,White,Flooring,Machine Cut,Marble,Rajasthan,Medium,
+Kota Blue Honed 25mm,Kota Blue,TRUE,TRUE,6802,18,India,,sqft,Honed,25,900x600,Grey,Flooring,Hand Cut,Kota,Rajasthan,Medium,

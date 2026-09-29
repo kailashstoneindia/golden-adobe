@@ -20,7 +20,11 @@ export default function CartTabScreen() {
             <Text variant="bodyMedium">Total</Text>
             <Text variant="numeric">{grandTotal}</Text>
           </View>
-          <Button title="Proceed to checkout" fullWidth onPress={() => router.push(ROUTES.screens.checkout)} />
+          <Button
+            title="Proceed to checkout"
+            fullWidth
+            onPress={() => router.push(ROUTES.screens.checkout)}
+          />
         </View>
       }
     >

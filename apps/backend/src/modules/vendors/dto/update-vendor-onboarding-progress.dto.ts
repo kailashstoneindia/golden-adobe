@@ -1,13 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import {
-  IsIn,
-  IsNotEmpty,
-  IsString,
-} from 'class-validator';
-import {
-  VENDOR_ONBOARDING_STAGES,
-  VendorOnboardingStage,
-} from '@golden-abode/types';
+import { IsIn, IsNotEmpty, IsString } from 'class-validator';
+import { VENDOR_ONBOARDING_STAGES, VendorOnboardingStage } from '@golden-abode/types';
 
 export class UpdateVendorOnboardingProgressDto {
   @ApiProperty({
