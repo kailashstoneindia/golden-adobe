@@ -1,10 +1,31 @@
 # 0029 — Pre-filled Vendor Export (Catalog-First Inventory Upload)
 
 - **Date:** 2026-09-28
-- **Status:** Accepted
-- **Supersedes / Superseded by:** Supersedes 0028-vendor-catalog-import-correctness.md
+- **Status:** Retracted — the design it "commits to build" was already built
+- **Supersedes / Superseded by:** Supersedes 0028-vendor-catalog-import-correctness.md (also retracted)
 
-## Context
+## Retraction (2026-09-28, same day)
+
+This document commits to building the mechanism `catalog-vendor-export-analysis.md` proposed,
+treating it as unbuilt. It is not unbuilt. `apps/backend/src/modules/catalog/vendor-catalog-export.service.ts`
+already implements this exact design — leaf-category + brand scoping, `countRows()` as the
+pre-download size guard, locked `.xlsx` columns via `exceljs` sheet protection, `product_code`
+pre-fill, paint colour-family pre-expansion, and a generated-at timestamp for staleness — and
+has been committed since `b07a377` (2026-09-02), on this same branch, well before this decision
+was written. `master_product.product_code` (the `GA-XXXXXXX` scheme) already exists as a
+DB-generated column with its own Postgres sequence, matching the analysis doc's schema exactly.
+
+This decision's four "open questions" (export scope shape, file format, seed-catalog handling,
+price-only updates) were answered here as if being decided for the first time; the first two
+were in fact already decided and shipped (leaf+brand scope, locked `.xlsx`) by whoever
+implemented `b07a377`. Only the seed-catalog sequencing and price-only-update questions remain
+genuinely open.
+
+The actual remaining gap in this area, as of this retraction, is narrower: the import side's
+per-row write still lacks transaction safety (see 0028's retraction note). There is no
+outstanding export-side work this document should be read as authorizing.
+
+## Context (original — kept for record, premise above is wrong)
 
 0028 fixed match-ladder correctness for the current flow, where a vendor types
 `product_ref`/brand/category into a blank template from memory. `docs/catalog-vendor-export-analysis.md`

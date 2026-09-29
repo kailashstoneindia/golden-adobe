@@ -91,14 +91,16 @@ family and the vendor finalises the shade at the counter.
 Unlike the admin flow, this does not vary by category, because a vendor supplies price,
 stock and service area — never specs. Specs already exist in the master catalog.
 
-| product_ref                | vendor_sku | price | mrp | qty_available | min_order_qty | grade | pincodes      | status |
-| -------------------------- | ---------- | ----- | --- | ------------- | ------------- | ----- | ------------- | ------ |
-| 8901234567890              | HAV-32C    | 420   | 495 | 60            | 1             |       | 380001,380015 | active |
-| Havells 32A SP MCB C-Curve | HAV-32C2   | 418   | 495 | 25            | 1             |       | 380001        | active |
+| product_code | vendor_sku | price | mrp | qty_available | min_order_qty | grade | pincodes      | status |
+| ------------ | ---------- | ----- | --- | ------------- | ------------- | ----- | ------------- | ------ |
+| GA-0100234   | HAV-32C    | 420   | 495 | 60            | 1             |       | 380001,380015 | active |
+| GA-0100235   | HAV-32C2   | 418   | 495 | 25            | 1             |       | 380001        | active |
 
-`product_ref` deliberately accepts **anything the vendor already has** — a barcode, a
-manufacturer part number, or a plain product name. Forcing vendors to learn platform IDs is
-the fastest way to make an upload flow unused.
+`product_code` is pre-filled and locked by the export (`vendor-catalog-export.service.ts`) —
+the vendor scopes by category/brand, downloads a sheet already carrying each product's
+`product_code`, and fills in price/stock only. This column is the primary match key (ladder
+step 1, exact lookup); the free-text matching described below is the fallback path for a row
+whose code was blanked out or edited, not the normal case.
 
 ### Matching ladder
 
@@ -122,20 +124,20 @@ because fuzzy-matching trade names is how a catalog fragments.
 `UNIQUE (vendor_id, master_product_id, COALESCE(stated_grade,''))` makes grade part of
 listing identity. `price` is per sq ft, `qty_available` in sq ft.
 
-| product_ref                | price | qty_available | grade      |
-| -------------------------- | ----- | ------------- | ---------- |
-| Black Galaxy Polished 18mm | 165   | 2400          | Grade A    |
-| Black Galaxy Polished 18mm | 132   | 800           | Commercial |
+| product_code | price | qty_available | grade      |
+| ------------ | ----- | ------------- | ---------- |
+| GA-0100501   | 165   | 2400          | Grade A    |
+| GA-0100501   | 132   | 800           | Commercial |
 
 **Paint** — one row per product **per colour family**, with an absolute price
 ([0016](decisions/0016-colour-price-per-listing.md)). No `qty_available`, since paint carries
 no `inventory` rows.
 
-| product_ref                | colour_family | price |
-| -------------------------- | ------------- | ----- |
-| Royale Luxury Emulsion 20L | white         | 4200  |
-| Royale Luxury Emulsion 20L | blue          | 4650  |
-| Tractor Emulsion 20L       | white         | 2650  |
+| product_code | colour_family | price |
+| ------------ | ------------- | ----- |
+| GA-0100702   | white         | 4200  |
+| GA-0100702   | blue          | 4650  |
+| GA-0100703   | white         | 2650  |
 
 The export arrives pre-expanded, so this is a column to fill rather than rows to create. A
 colour with no row is not offered by that vendor.

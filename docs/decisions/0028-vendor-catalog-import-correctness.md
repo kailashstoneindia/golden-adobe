@@ -1,10 +1,34 @@
 # 0028 — Vendor Catalog Import: Match-Ladder Correctness & Transaction Safety
 
 - **Date:** 2026-09-28
-- **Status:** Superseded
-- **Supersedes / Superseded by:** Superseded by 0029-prefilled-vendor-export.md; amends 0011-product-code-and-vendor-export.md (match ladder description)
+- **Status:** Retracted — written from a stale/incomplete read of the codebase
+- **Supersedes / Superseded by:** Superseded by 0029-prefilled-vendor-export.md, which is itself retracted for the same reason — see its header.
 
-## Context
+## Retraction (2026-09-28, same day)
+
+This document's Context section treats the vendor upload path as taking free-text
+`product_ref`/brand/category typed by the vendor, and diagnoses the ladder's steps 2 and 4
+never firing as a bug. Both premises are wrong:
+
+1. The export-first flow this doc's "Option C" proposes **already exists**, fully built and
+   committed at `b07a377` (`feat(catalog): vendor listings, inventory and the match ladder`,
+   2026-09-02), on this same branch. See 0011-product-code-and-vendor-export.md, which this
+   commit implements, and `vendor-catalog-export.service.ts`, which is the real, working
+   pre-filled-export mechanism this doc describes as a future option.
+2. The comment at `vendor-catalog-import.service.ts:40-43` states directly that vendors are
+   *deliberately* never asked for brand/category on upload — "vendors supply price/stock,
+   never specs, so there is nothing to vary per-category here" — because the export-first flow
+   already makes exact `product_code` matching the primary path (ladder step 1). Steps 2 and 4
+   exist for a narrower case (blank-code fallback rows on products the vendor's export didn't
+   cover), not as a general-purpose path every upload was meant to exercise. Treating their
+   low fire-rate as a defect misread the design.
+
+What **is** still accurate and unaddressed: the per-row write in `processRow()` /
+`applyInventory()` still has zero `sequelize.transaction()` wrapping (reconfirmed 2026-09-28
+against the current file) — that specific finding stands and should be tracked as its own,
+narrower decision rather than bundled with the retracted match-ladder analysis above.
+
+## Context (original — kept for record, premises above are wrong)
 
 Vendor onboarding was reported as "pending" but investigation showed the backend for
 account creation (`POST /vendors/onboard`) is real, transactional, and working. The
