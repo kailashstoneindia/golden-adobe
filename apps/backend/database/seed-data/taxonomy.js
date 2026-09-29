@@ -2037,6 +2037,20 @@ const TREE = [
       // Not variant-defining/not a searchable filter — free-text passthrough
       // only, tile_colour_family remains the one that drives search/filter.
       ['tile_colour_name', 'Colour Name', 'text', null, false, false, []],
+      // Added while publishing Lavish's seeded catalog for the first time:
+      // identity_hash (0013) collapsed distinct real designs sharing the
+      // same finish/material/size into one identity — e.g. 11 different
+      // GVT porcelain designs (Dimona, Dublin, Elvas, ...) all "Matt with
+      // Structure", 600x600, all collided on publish. tile_pattern (above)
+      // is too coarse (buckets to "Plain"/"Marble"), and tile_colour_name
+      // is a real colour, not a design identity — neither was the actual
+      // gap. design_name is the marketing/collection name printed on the
+      // product itself (the word(s) left after stripping finish/material/
+      // "Tile" from the catalog name) and is variant-defining because two
+      // products with the same finish/material/size but different design
+      // names are, in fact, different physical products a customer can
+      // tell apart, which is exactly what identity_hash exists to protect.
+      ['tile_design_name', 'Design Name', 'text', null, true, true, []],
       // 15mm (Fullbody) and 20mm (Outdoor 2CM) added per decision 0027 —
       // confirmed from Lavish's own website ("15mm... vs 3 to 4mm standard")
       // and Outdoor PDF pg 69 header ("20MM Thick Outdoor Tiles").
