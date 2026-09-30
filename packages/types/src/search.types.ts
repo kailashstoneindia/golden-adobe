@@ -139,3 +139,28 @@ export type SearchResponse = {
   servedFromCache: boolean;
   facets?: Record<string, Record<string, number>>;
 };
+
+/** Query params for public `GET /search/:masterProductId/listings`. */
+export type ProductListingsQueryParams = {
+  pincode?: string;
+  lat?: number;
+  lng?: number;
+};
+
+export type ProductListingRow = {
+  vendorListingId: string;
+  vendorId: string;
+  shopName: string;
+  price: number;
+  mrp: number | null;
+  statedGrade: string | null;
+  quantityAvailable: number | null;
+  inStock: boolean;
+};
+
+/** Response from public `GET /search/:masterProductId/listings`. */
+export type ProductListingsResponse = {
+  masterProductId: string;
+  cityId: string | null;
+  listings: ProductListingRow[];
+};

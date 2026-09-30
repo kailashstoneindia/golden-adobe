@@ -19,6 +19,7 @@ export const API_ENDPOINTS = {
   },
   search: {
     products: '/search',
+    listings: (masterProductId: string) => `/search/${masterProductId}/listings`,
   },
   vendorListings: {
     list: '/vendor/listings',

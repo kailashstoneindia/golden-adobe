@@ -1,4 +1,9 @@
-import type { SearchQueryParams, SearchResponse } from '@golden-abode/types';
+import type {
+  ProductListingsQueryParams,
+  ProductListingsResponse,
+  SearchQueryParams,
+  SearchResponse,
+} from '@golden-abode/types';
 
 import { apiClient } from '../api/client';
 import { API_ENDPOINTS } from '../constants';
@@ -21,10 +26,29 @@ function buildSearchParams(params: SearchQueryParams): Record<string, string | n
   return queryParams;
 }
 
+function buildListingsParams(
+  params: ProductListingsQueryParams,
+): Record<string, string | number> {
+  const queryParams: Record<string, string | number> = {};
+  if (params.pincode) queryParams.pincode = params.pincode;
+  if (params.lat !== undefined) queryParams.lat = params.lat;
+  if (params.lng !== undefined) queryParams.lng = params.lng;
+  return queryParams;
+}
+
 export const searchService = {
   searchProducts(params: SearchQueryParams): Promise<SearchResponse> {
     return apiClient.get<SearchResponse>(API_ENDPOINTS.search.products, {
       params: buildSearchParams(params),
+    });
+  },
+
+  fetchProductListings(
+    masterProductId: string,
+    params: ProductListingsQueryParams,
+  ): Promise<ProductListingsResponse> {
+    return apiClient.get<ProductListingsResponse>(API_ENDPOINTS.search.listings(masterProductId), {
+      params: buildListingsParams(params),
     });
   },
 };

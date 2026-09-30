@@ -16,6 +16,7 @@ export const ERROR_MESSAGES = {
   accountNumberInvalid: 'Enter a valid account number.',
   vendorOnboardFailed: 'Could not save your shop profile. Try again.',
   searchFailed: 'Could not search products. Try again.',
+  productListingsFailed: 'Could not load other sellers. Try again.',
   searchLocationRequired: 'Enter your area pincode or use current location to see local prices.',
   invalidPincode: 'Enter a valid 6-digit Indian pincode.',
   vendorListingsFailed: 'Could not load your product listings. Try again.',

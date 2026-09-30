@@ -15,6 +15,8 @@ export const QUERY_KEYS = {
   search: {
     all: ['search'] as const,
     products: (paramsKey: string) => [...QUERY_KEYS.search.all, 'products', paramsKey] as const,
+    listings: (masterProductId: string, paramsKey: string) =>
+      [...QUERY_KEYS.search.all, 'listings', masterProductId, paramsKey] as const,
   },
   vendorListings: {
     all: ['vendorListings'] as const,

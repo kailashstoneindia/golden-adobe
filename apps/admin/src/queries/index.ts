@@ -14,6 +14,7 @@ export {
 
 export {
   CATALOG_QUERY_KEYS,
+  useBulkPublishProductsMutation,
   useCategoryAttributesQuery,
   useCategoryTreeQuery,
   useLinkReviewRowMutation,
@@ -25,3 +26,12 @@ export {
   useUnpublishProductMutation,
   useUploadImportMutation,
 } from './useCatalogQueries';
+
+export {
+  VENDORS_QUERY_KEYS,
+  useCitiesQuery,
+  useSetVendorCategoriesMutation,
+  useSetVendorCityMutation,
+  useVendorCategoriesQuery,
+  useVendorsQuery,
+} from './useVendorsQueries';

@@ -132,3 +132,19 @@ export type ReviewQueueRow = {
   status: string;
   createdAt?: string;
 };
+
+export type BulkPublishRequest = {
+  productIds?: string[];
+  categoryId?: string;
+};
+
+export type BulkPublishFailure = {
+  productId: string;
+  reason: string;
+};
+
+export type BulkPublishResult = {
+  requested: number;
+  published: number;
+  failed: BulkPublishFailure[];
+};

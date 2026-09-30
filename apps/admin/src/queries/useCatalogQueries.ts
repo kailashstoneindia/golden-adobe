@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { APP_CONSTANTS } from '@/constants/appConstants';
 import { catalogService } from '@/services';
-import type { ListProductsQuery } from '@/types/catalog.types';
+import type { BulkPublishRequest, ListProductsQuery } from '@/types/catalog.types';
 
 export const CATALOG_QUERY_KEYS = {
   all: ['catalog'] as const,
@@ -62,6 +62,14 @@ export function useUnpublishProductMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (productId: string) => catalogService.unpublishProduct(productId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: CATALOG_QUERY_KEYS.all }),
+  });
+}
+
+export function useBulkPublishProductsMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: BulkPublishRequest) => catalogService.bulkPublishProducts(body),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: CATALOG_QUERY_KEYS.all }),
   });
 }

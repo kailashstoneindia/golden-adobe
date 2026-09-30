@@ -8,6 +8,7 @@ export const ERROR_MESSAGES = {
   sessionExpired: 'Your session expired. Please sign in again.',
   userNotFound: 'User not found.',
   loadUsersFailed: 'Could not load users.',
+  loadVendorsFailed: 'Could not load vendors.',
   loadStatsFailed: 'Could not load dashboard stats.',
   approvalFailed: 'Could not update approval status.',
 } as const;

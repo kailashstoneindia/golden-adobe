@@ -14,6 +14,7 @@ import { CatalogCategoriesPage } from '@/pages/CatalogCategoriesPage';
 import { CatalogProductsPage } from '@/pages/CatalogProductsPage';
 import { CatalogImportPage } from '@/pages/CatalogImportPage';
 import { CatalogReviewQueuePage } from '@/pages/CatalogReviewQueuePage';
+import { VendorsPage } from '@/pages/VendorsPage';
 import styles from '@/styles/shared.module.css';
 
 function ProtectedRoute() {
@@ -43,6 +44,7 @@ export function AppRouter() {
           <Route path={ROUTES.approvalsVendors} element={<ApprovalsPage />} />
           <Route path={ROUTES.approvalsArtisans} element={<ApprovalsPage />} />
           <Route path={ROUTES.users} element={<UsersPage />} />
+          <Route path={ROUTES.vendors} element={<VendorsPage />} />
           <Route path={ROUTES.catalogCategories} element={<CatalogCategoriesPage />} />
           <Route path={ROUTES.catalogProducts} element={<CatalogProductsPage />} />
           <Route path={ROUTES.catalogImport} element={<CatalogImportPage />} />

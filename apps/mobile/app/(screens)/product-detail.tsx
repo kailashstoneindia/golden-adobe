@@ -3,8 +3,10 @@ import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { OtherSellersList } from '../../src/components/catalog';
 import { Screen } from '../../src/components/layout/Screen';
 import { Button, Card, Text } from '../../src/components/ui';
+import { useProductListingsQuery } from '../../src/hooks/search';
 import {
   selectHasSearchLocation,
   useLocationPreferenceStore,
@@ -18,6 +20,7 @@ export default function ProductDetailScreen() {
   const selectedProduct = useSelectedSearchProductStore((store) => store.selectedProduct);
   const preference = useLocationPreferenceStore((store) => store.preference);
   const hasSearchLocation = useLocationPreferenceStore(selectHasSearchLocation);
+  const listingsQuery = useProductListingsQuery(selectedProduct?.masterProductId ?? null);
   const footerPaddingBottom = Math.max(insets.bottom, Spacing.md);
   const attributeRows = useMemo(
     () => buildAttributeRows(selectedProduct?.attributes ?? {}),
@@ -48,10 +51,7 @@ export default function ProductDetailScreen() {
               ‹ Back
             </Text>
           </Pressable>
-          <Pressable
-            onPress={() => navigateToLocationGate()}
-            style={styles.locationChip}
-          >
+          <Pressable onPress={() => navigateToLocationGate()} style={styles.locationChip}>
             <Text variant="caption" color={Colors.navy}>
               {hasSearchLocation ? locationLabel : 'Set area'}
             </Text>
@@ -85,6 +85,13 @@ export default function ProductDetailScreen() {
               {selectedProduct.inStock ? '' : ' · stock accuracy coming soon'}
             </Text>
           </Card>
+
+          <OtherSellersList
+            listings={listingsQuery.data?.listings ?? []}
+            isLoading={listingsQuery.isLoading}
+            isError={listingsQuery.isError}
+            hasSearchLocation={hasSearchLocation}
+          />
 
           {attributeRows.length > 0 ? (
             <Card>

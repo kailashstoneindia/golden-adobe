@@ -40,6 +40,8 @@ import { VendorCatalogImportController } from './vendor-catalog-import.controlle
 import { CatalogReviewQueueController } from './catalog-review-queue.controller';
 import { AdminCatalogController } from './admin-catalog.controller';
 import { AdminCatalogService } from './admin-catalog.service';
+import { AdminCitiesController } from './admin-cities.controller';
+import { CitiesService } from './cities.service';
 import { StockService } from './stock.service';
 
 // Phase 1 (taxonomy) + Phase 2 (master catalog, incl. the attributes_flat /
@@ -117,6 +119,7 @@ import { StockService } from './stock.service';
     VendorCatalogImportController,
     CatalogReviewQueueController,
     AdminCatalogController,
+    AdminCitiesController,
   ],
   providers: [
     CatalogAttributeResolverService,
@@ -129,6 +132,7 @@ import { StockService } from './stock.service';
     BrandResolverService,
     VendorCategoriesService,
     AdminCatalogService,
+    CitiesService,
     StockService,
   ],
   exports: [
@@ -138,6 +142,7 @@ import { StockService } from './stock.service';
     CityResolverService,
     BrandResolverService,
     VendorCategoriesService,
+    CitiesService,
     // Exported rather than paired with a controller here: the vendor stock
     // controller needs VendorsService to resolve "which vendor is this
     // caller", and VendorsModule already imports CatalogModule. Declaring

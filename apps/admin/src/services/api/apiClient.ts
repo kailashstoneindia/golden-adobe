@@ -61,6 +61,14 @@ export async function patchRequest<TResponse, TBody>(
   return response.data.data;
 }
 
+export async function putRequest<TResponse, TBody>(
+  url: string,
+  body: TBody,
+): Promise<TResponse> {
+  const response = await apiClient.put<ApiSuccessResponse<TResponse>>(url, body);
+  return response.data.data;
+}
+
 /**
  * Multipart upload. Deliberately does NOT set Content-Type — the browser must
  * generate it so the multipart boundary is correct; overriding it with the
