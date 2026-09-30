@@ -1,44 +1,68 @@
-import { router } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
-import { DemoScreen } from '../../src/components/demo/DemoScreen';
-import { DemoVendorCard } from '../../src/components/demo/DemoCards';
+import { CategoryGrid } from '../../src/components/customer/CategoryGrid';
 import { SearchBar } from '../../src/components/customer/SearchBar';
+import { Screen } from '../../src/components/layout/Screen';
 import { Text } from '../../src/components/ui';
-import { ROUTES } from '../../src/constants';
-import { DEMO_VENDORS } from '../../src/data/demo-content';
+import type { LaunchCategory } from '../../src/constants';
+import {
+  selectHasSearchLocation,
+  useLocationPreferenceStore,
+} from '../../src/stores/location-preference.store';
 import { Colors, Spacing } from '../../src/theme';
+import { navigateToCatalogSearch, navigateToLocationGate } from '../../src/utils';
 
 export default function BrowseTabScreen() {
-  return (
-    <DemoScreen title="Browse" subtitle="Vendors and materials across Jaipur East">
-      <View style={styles.search}>
-        <SearchBar placeholder="Search vendors, stones, pipes…" />
-      </View>
+  const preference = useLocationPreferenceStore((store) => store.preference);
+  const hasSearchLocation = useLocationPreferenceStore(selectHasSearchLocation);
+  const locationLabel = preference.pincode ?? (hasSearchLocation ? 'Near you' : 'Set your area');
 
-      <Text variant="label" color={Colors.tangerine}>
-        Top vendors
-      </Text>
-      <View style={styles.list}>
-        {DEMO_VENDORS.map((vendor) => (
-          <DemoVendorCard
-            key={vendor.id}
-            name={vendor.name}
-            subtitle={vendor.category}
-            onPress={() => router.push(ROUTES.screens.productDetail)}
-          />
-        ))}
+  const handleSearchPress = () => navigateToCatalogSearch();
+  const handleLocationPress = () => navigateToLocationGate();
+  const handleCategoryPress = (category: LaunchCategory) =>
+    navigateToCatalogSearch({ category: category.path });
+
+  return (
+    <Screen edges={['top']}>
+      <View style={styles.root}>
+        <Text variant="h1">Browse</Text>
+        <Text variant="caption" color={Colors.inkSoft} style={styles.subtitle}>
+          Search materials from local vendors
+        </Text>
+
+        <View style={styles.search}>
+          <SearchBar placeholder="Search MCB, pipes, paint…" onPress={handleSearchPress} />
+        </View>
+
+        <Pressable onPress={handleLocationPress}>
+          <Text variant="label" color={Colors.tangerine}>
+            Area: {locationLabel}
+          </Text>
+        </Pressable>
+
+        <Text variant="h3" style={styles.sectionTitle}>
+          Shop by category
+        </Text>
+        <CategoryGrid onCategoryPress={handleCategoryPress} />
       </View>
-    </DemoScreen>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  search: {
+  root: {
+    flex: 1,
+    paddingHorizontal: Spacing.lg + 2,
+    paddingTop: Spacing.sm,
+    gap: Spacing.md,
+  },
+  subtitle: {
     marginTop: -Spacing.sm,
   },
-  list: {
-    gap: Spacing.sm + 2,
-    marginTop: -Spacing.sm,
+  search: {
+    marginTop: Spacing.xs,
+  },
+  sectionTitle: {
+    marginTop: Spacing.sm,
   },
 });

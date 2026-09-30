@@ -119,3 +119,33 @@ export type BulkStockItem = {
 export type BulkStockResult = {
   updatedCount: number;
 };
+
+export type VendorListingStatus = VendorListingStockDto['status'];
+
+export type ListVendorListingsQuery = {
+  status?: VendorListingStatus;
+  page?: number;
+  limit?: number;
+};
+
+export type SetVendorStockRequest = {
+  quantityAvailable: number;
+};
+
+export type SetVendorListingStatusRequest = {
+  status: VendorListingStatus;
+};
+
+export type VendorCatalogExportScope = {
+  leafCategoryIds: string[];
+  brandIds?: string[];
+  sinceDate?: string;
+};
+
+export type VendorCatalogExportCount = {
+  rowCount: number;
+};
+
+export type ChoosePendingCandidateRequest = {
+  masterProductId: string;
+};

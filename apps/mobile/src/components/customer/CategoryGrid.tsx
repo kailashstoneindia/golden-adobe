@@ -2,20 +2,27 @@ import { type ComponentType } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
+import { LAUNCH_CATEGORIES, type LaunchCategory } from '../../constants';
 import { Colors, FontFamily, Radius } from '../../theme';
 import { Text } from '../ui';
 
-interface CategoryIconProps {
+type CategoryIconProps = {
   color: string;
   size?: number;
-}
+};
 
-interface CategoryGridProps {
-  onCategoryPress?: (categoryName: string) => void;
-}
+type CategoryGridProps = {
+  onCategoryPress?: (category: LaunchCategory) => void;
+};
 
 const ICON_SIZE = 26;
 const STROKE = 2;
+
+type CategoryVisual = {
+  bg: string;
+  iconColor: string;
+  Icon: ComponentType<CategoryIconProps>;
+};
 
 function PlumbingIcon({ color, size = ICON_SIZE }: CategoryIconProps) {
   return (
@@ -85,60 +92,80 @@ function HardwareIcon({ color, size = ICON_SIZE }: CategoryIconProps) {
   );
 }
 
-const CATEGORIES = [
-  { name: 'Plumbing', bg: Colors.skyTint, iconColor: Colors.sky, Icon: PlumbingIcon },
-  {
-    name: 'Electrical',
+function LightsIcon({ color, size = ICON_SIZE }: CategoryIconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M9 18h6M10 21h4M12 3a6 6 0 0 1 4 10c-.8.8-1.2 1.5-1.4 2.5H9.4C9.2 14.5 8.8 13.8 8 13a6 6 0 0 1 4-10z"
+        stroke={color}
+        strokeWidth={STROKE}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
+
+const CATEGORY_VISUALS: Record<LaunchCategory['id'], CategoryVisual> = {
+  electrical: {
     bg: Colors.categoryElectricalBg,
     iconColor: Colors.tangerine,
     Icon: ElectricalIcon,
   },
-  {
-    name: 'Stones & Tiles',
-    bg: Colors.categoryStonesBg,
-    iconColor: Colors.categoryStonesIcon,
-    Icon: StonesTilesIcon,
+  plumbing: {
+    bg: Colors.skyTint,
+    iconColor: Colors.sky,
+    Icon: PlumbingIcon,
   },
-  {
-    name: 'Sanitaryware',
+  sanitaryware: {
     bg: Colors.categorySanitaryBg,
     iconColor: Colors.categorySanitaryIcon,
     Icon: SanitarywareIcon,
   },
-  {
-    name: 'Paints',
-    bg: Colors.categoryPaintsBg,
-    iconColor: Colors.categoryPaintsIcon,
-    Icon: PaintsIcon,
-  },
-  {
-    name: 'Hardware',
+  hardware: {
     bg: Colors.categoryHardwareBg,
     iconColor: Colors.categoryHardwareIcon,
     Icon: HardwareIcon,
   },
-] as const satisfies ReadonlyArray<{
-  name: string;
-  bg: string;
-  iconColor: string;
-  Icon: ComponentType<CategoryIconProps>;
-}>;
+  lights: {
+    bg: Colors.skyTint,
+    iconColor: Colors.navySoft,
+    Icon: LightsIcon,
+  },
+  tiles: {
+    bg: Colors.categoryStonesBg,
+    iconColor: Colors.categoryStonesIcon,
+    Icon: StonesTilesIcon,
+  },
+  paint: {
+    bg: Colors.categoryPaintsBg,
+    iconColor: Colors.categoryPaintsIcon,
+    Icon: PaintsIcon,
+  },
+  stone: {
+    bg: Colors.categoryStonesBg,
+    iconColor: Colors.categoryStonesIcon,
+    Icon: StonesTilesIcon,
+  },
+};
 
 export function CategoryGrid({ onCategoryPress }: CategoryGridProps) {
   return (
     <View style={styles.grid}>
-      {CATEGORIES.map((category) => (
-        <Pressable
-          key={category.name}
-          style={styles.item}
-          onPress={() => onCategoryPress?.(category.name)}
-        >
-          <View style={[styles.tile, { backgroundColor: category.bg }]}>
-            <category.Icon color={category.iconColor} />
-          </View>
-          <Text style={styles.label}>{category.name}</Text>
-        </Pressable>
-      ))}
+      {LAUNCH_CATEGORIES.map((category) => {
+        const visual = CATEGORY_VISUALS[category.id];
+        return (
+          <Pressable
+            key={category.id}
+            style={styles.item}
+            onPress={() => onCategoryPress?.(category)}
+          >
+            <View style={[styles.tile, { backgroundColor: visual.bg }]}>
+              <visual.Icon color={visual.iconColor} />
+            </View>
+            <Text style={styles.label}>{category.name}</Text>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }

@@ -108,3 +108,34 @@ export function parseSearchDocumentId(
   if (parts.length !== 2 || !parts[0] || !parts[1]) return null;
   return { masterProductId: parts[0], cityId: parts[1] };
 }
+
+/** Query params for public `GET /search` (city is resolved server-side). */
+export type SearchQueryParams = {
+  q?: string;
+  pincode?: string;
+  lat?: number;
+  lng?: number;
+  category?: string;
+  brand?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  attr?: string[];
+  limit?: number;
+  offset?: number;
+};
+
+export type SearchResolvedVia = 'coordinates' | 'pincode' | 'none';
+
+export type SearchEngine = 'meilisearch' | 'postgres';
+
+/** Response from public `GET /search`. */
+export type SearchResponse = {
+  cityId: string | null;
+  resolvedVia: SearchResolvedVia;
+  engine: SearchEngine;
+  degraded: boolean;
+  total: number;
+  hits: SearchDocument[];
+  servedFromCache: boolean;
+  facets?: Record<string, Record<string, number>>;
+};

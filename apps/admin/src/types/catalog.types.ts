@@ -28,6 +28,18 @@ export type CategoryAttribute = {
   options: string[];
 };
 
+export type CategoryTreeRowProps = {
+  node: CategoryNode;
+  selectedId: string | null;
+  expandedIds: ReadonlySet<string>;
+  onSelect: (node: CategoryNode) => void;
+  onToggle: (nodeId: string) => void;
+};
+
+export type CategoryAttributeRowProps = {
+  attribute: CategoryAttribute;
+};
+
 export type CategoryAttributesResponse = {
   category: { id: string; path: string; name: string };
   attributes: CategoryAttribute[];
