@@ -58,6 +58,17 @@ export type AdminSearchResult = {
   listingCount: number;
 };
 
+export type ProductListingRow = {
+  vendorListingId: string;
+  vendorId: string;
+  shopName: string;
+  price: number;
+  mrp: number | null;
+  statedGrade: string | null;
+  quantityAvailable: number | null;
+  inStock: boolean;
+};
+
 // word_similarity floor, compared inline in each query. Named here so the
 // threshold is reviewable rather than implicit, and kept out of session state
 // (set_limit) so a server-level change cannot silently alter search results.
@@ -288,6 +299,63 @@ export class PostgresSearchService {
       brand: row.brand,
       status: row.status,
       listingCount: Number(row.listing_count),
+    }));
+  }
+
+  // Every active listing for one product, city-scoped — the "other sellers"
+  // panel a product detail page needs. Deliberately Postgres-direct, not
+  // Meilisearch: the search document collapses to a single cheapest listing
+  // per (product, city) by design (search-document.builder.ts), so the full
+  // per-vendor list this answers structurally does not exist in the index —
+  // same reasoning as admin search's Postgres-only path above, just for a
+  // different question Meilisearch can't answer.
+  //
+  // idx_vendor_listing_price (master_product_id, price) WHERE status =
+  // 'active' already covers this query's WHERE + ORDER BY with no new index.
+  async listingsForProduct(masterProductId: string, cityId: string): Promise<ProductListingRow[]> {
+    const rows = await this.sequelize.query<{
+      vendor_listing_id: string;
+      vendor_id: string;
+      shop_name: string;
+      price: string;
+      mrp: string | null;
+      stated_grade: string | null;
+      quantity_available: string | null;
+    }>(
+      `SELECT
+         vl.id AS vendor_listing_id,
+         vl.vendor_id,
+         v.shop_name,
+         vl.price,
+         vl.mrp,
+         vl.stated_grade,
+         inv.quantity_available
+       FROM vendor_listing vl
+       JOIN vendors v ON v.id = vl.vendor_id
+       JOIN master_product mp ON mp.id = vl.master_product_id
+       LEFT JOIN inventory inv
+         ON inv.vendor_listing_id = vl.id AND inv.warehouse_id IS NULL
+       WHERE vl.master_product_id = :masterProductId
+         AND vl.status = 'active'
+         AND mp.status = 'live'
+         AND v.city_id = :cityId
+       ORDER BY vl.price ASC`,
+      { type: QueryTypes.SELECT, replacements: { masterProductId, cityId } },
+    );
+
+    return rows.map((row) => ({
+      vendorListingId: row.vendor_listing_id,
+      vendorId: row.vendor_id,
+      shopName: row.shop_name,
+      price: Number(row.price),
+      mrp: row.mrp === null ? null : Number(row.mrp),
+      statedGrade: row.stated_grade,
+      quantityAvailable: row.quantity_available === null ? null : Number(row.quantity_available),
+      // Paint listings carry no inventory row by design (no per-unit stock
+      // concept), so null quantity_available means "not applicable", not
+      // "out of stock" — mirrors the same null-vs-zero distinction
+      // stock.service.ts's listForVendor already makes.
+      inStock: row.quantity_available === null || Number(row.quantity_available) > 0,
     }));
   }
 }

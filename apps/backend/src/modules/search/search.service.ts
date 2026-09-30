@@ -10,7 +10,7 @@ import {
 import { RedisService } from '../../core/redis/redis.service';
 import { CityResolverService } from '../catalog/city-resolver.service';
 import { MeiliClient } from './meili/meili.client';
-import { PostgresSearchService } from './fallback/postgres-search.service';
+import { PostgresSearchService, ProductListingRow } from './fallback/postgres-search.service';
 
 // Phase 6g (decision 0021, search-system-design.md section 6).
 //
@@ -150,6 +150,30 @@ export class SearchService {
 
   private configuredEngine(): 'meilisearch' | 'postgres' {
     return this.config.get<string>('search.engine') === 'postgres' ? 'postgres' : 'meilisearch';
+  }
+
+  // "Other sellers" for a product detail page — every active vendor_listing
+  // for this master_product, city-scoped, cheapest first. Always Postgres:
+  // per-vendor listings do not exist in the search index at all (rule 3
+  // above assumes one SearchDocument per (product, city), collapsed to the
+  // cheapest listing by search-document.builder.ts) — there is no
+  // Meilisearch path to prefer or fall back from here.
+  async listVendorsForProduct(
+    masterProductId: string,
+    req: { pincode?: string; latitude?: number; longitude?: number },
+  ): Promise<{ masterProductId: string; cityId: string | null; listings: ProductListingRow[] }> {
+    const resolution = await this.cityResolver.resolveCity({
+      pincode: req.pincode,
+      latitude: req.latitude,
+      longitude: req.longitude,
+    });
+
+    if (!resolution.cityId) {
+      return { masterProductId, cityId: null, listings: [] };
+    }
+
+    const listings = await this.postgres.listingsForProduct(masterProductId, resolution.cityId);
+    return { masterProductId, cityId: resolution.cityId, listings };
   }
 
   private async searchMeili(

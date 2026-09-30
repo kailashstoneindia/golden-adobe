@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, ParseUUIDPipe, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Role } from '@golden-abode/types';
 
@@ -9,6 +9,7 @@ import { SearchService } from './search.service';
 import { PostgresSearchService } from './fallback/postgres-search.service';
 import { SearchRebuildService } from './indexing/rebuild.service';
 import { AdminSearchQueryDto, SearchQueryDto, parseAttrPairs } from './dto/search-query.dto';
+import { ProductListingsQueryDto } from './dto/product-listings-query.dto';
 
 // Phase 6g (decision 0021, search-system-design.md sections 6 and 8).
 //
@@ -41,6 +42,25 @@ export class SearchController {
       maxPrice: dto.maxPrice,
       limit: dto.limit,
       offset: dto.offset,
+    });
+  }
+
+  @Get(':masterProductId/listings')
+  @ApiOperation({
+    summary: "Every seller of one product in the customer's resolved city",
+    description:
+      'The product detail page\'s "other sellers" panel — cheapest first. Always Postgres: ' +
+      'the search index stores only the cheapest listing per (product, city) by design, so ' +
+      'the per-vendor list this answers does not exist in Meilisearch to query or fall back to.',
+  })
+  async listings(
+    @Param('masterProductId', new ParseUUIDPipe()) masterProductId: string,
+    @Query() dto: ProductListingsQueryDto,
+  ) {
+    return this.searchService.listVendorsForProduct(masterProductId, {
+      pincode: dto.pincode,
+      latitude: dto.lat,
+      longitude: dto.lng,
     });
   }
 }

@@ -9,6 +9,7 @@ import { AdminCatalogService } from './admin-catalog.service';
 import { ListProductsQueryDto } from './dto/list-products-query.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { BulkPublishProductsDto } from './dto/bulk-publish-products.dto';
 
 // Read + publish + create/edit surface for the admin panel's catalog
 // screens. Bulk seeding still goes through Phase 3's generated Excel
@@ -77,6 +78,21 @@ export class AdminCatalogController {
   })
   async createProduct(@Body() dto: CreateProductDto) {
     return this.adminCatalog.createProduct(dto);
+  }
+
+  @Patch('products/bulk-publish')
+  @ApiOperation({
+    summary: 'Publish many draft products at once (draft → live)',
+    description:
+      'Selects by explicit productIds, OR by categoryId/brandId (draft products only, ' +
+      'the two ANDed if both given) — combining productIds with a filter is rejected as ' +
+      'ambiguous rather than merged. Per-row error collection — one product tripping the ' +
+      'required-variant-attributes trigger does not block the rest from publishing. ' +
+      'Declared before products/:productId — Express/Nest route matching is order-' +
+      'sensitive for same-depth static-vs-param segments, and this one must win.',
+  })
+  async bulkPublish(@Body() dto: BulkPublishProductsDto) {
+    return this.adminCatalog.bulkPublish(dto);
   }
 
   @Patch('products/:productId')
