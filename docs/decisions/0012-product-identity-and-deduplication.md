@@ -7,7 +7,7 @@
 
 ## Context
 
-`product_code` (0011) identifies a product *once it exists*. It cannot prevent the same real
+`product_code` (0011) identifies a product _once it exists_. It cannot prevent the same real
 product being entered twice — two entries would simply receive two codes.
 
 That matters because duplicates are the dominant catalog-quality risk. MDM practice is
@@ -26,8 +26,8 @@ it with sourced reasoning.
 > the primary documents, those quotations could not be located at the URLs cited — they came
 > from search-result summaries. The page attributed to them
 > ([blog.affiliate.com](https://blog.affiliate.com/identifier-governance-for-ai-catalogs/),
-> a vendor marketing blog) says only *"Require Brand plus MPN to reduce collisions across
-> regions or bundles"*.
+> a vendor marketing blog) says only _"Require Brand plus MPN to reduce collisions across
+> regions or bundles"_.
 >
 > **The decision is unchanged**, because the argument is definitional and does not depend on
 > those quotations. It is restated honestly below.
@@ -38,7 +38,7 @@ it with sourced reasoning.
 
 Using brand together with manufacturer part number as a dedup key is standard practice in
 B2B product data, and the one verifiable source consulted supports the weaker form of the
-claim: *"Require Brand plus MPN to reduce collisions across regions or bundles."*
+claim: _"Require Brand plus MPN to reduce collisions across regions or bundles."_
 
 Stated as design judgement rather than as research: an MPN identifies a part within a
 manufacturer's catalog, which is exactly the granularity a duplicate check needs for branded
@@ -46,7 +46,7 @@ goods.
 
 ### 2. MPN alone is NOT unique — this is definitional
 
-A *manufacturer* part number is assigned by an individual manufacturer, with no
+A _manufacturer_ part number is assigned by an individual manufacturer, with no
 cross-manufacturer coordination and no central registry. It therefore cannot be globally
 unique by construction: two manufacturers may legitimately use the same string for unrelated
 products.
@@ -68,13 +68,13 @@ under different brand names through rebranding, white-label and OEM arrangements
 This answers the earlier question of why `gtin` survives alongside `product_code`: they
 solve different problems, and the industry keeps both deliberately.
 
-Where barcodes exist they should be matched first — *"when you barcode match first, you get
-stronger normalization, better deduplication"* — which is why the ladder in 0011 runs GTIN
+Where barcodes exist they should be matched first — _"when you barcode match first, you get
+stronger normalization, better deduplication"_ — which is why the ladder in 0011 runs GTIN
 before brand + MPN.
 
 ### 4. Indian building-material brands do publish catalogue codes
 
-Jaquar's published price lists list, for every product, *"the code, type, size and MRP"*,
+Jaquar's published price lists list, for every product, _"the code, type, size and MRP"_,
 with codes carrying prefixes such as ACN, AHS, AKP, ALD, ALI across the Designer, Kubix,
 Fusion, Vignette, Opal, Solo, Florentine, Aria, Fonte and Lyric ranges.
 
@@ -88,8 +88,8 @@ healthcare. **Building materials and hardware appear in neither list.** Barcode 
 tracks point-of-sale scanning, and Indian building materials sell largely through
 traditional trade counters that do not scan.
 
-Amazon's GTIN-exemption policy exists precisely for *"generic, unbranded products"* and
-*"parts that don't have a product ID"* — a category-level acknowledgement that whole product
+Amazon's GTIN-exemption policy exists precisely for _"generic, unbranded products"_ and
+_"parts that don't have a product ID"_ — a category-level acknowledgement that whole product
 types lack barcodes.
 
 No published per-category penetration data exists for Indian building materials. Anyone
@@ -178,8 +178,8 @@ manufacturer part number is.
 **Verified:**
 
 - [Identifier governance for AI catalogs — affiliate.com](https://blog.affiliate.com/identifier-governance-for-ai-catalogs/)
-  — vendor marketing blog. Confirmed to say *"Require Brand plus MPN to reduce collisions
-  across regions or bundles"*, and nothing stronger.
+  — vendor marketing blog. Confirmed to say _"Require Brand plus MPN to reduce collisions
+  across regions or bundles"_, and nothing stronger.
 
 **Not verified — cited from search summaries only:**
 

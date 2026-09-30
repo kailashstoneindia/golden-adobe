@@ -32,32 +32,66 @@
 
 const HSN = [
   // --- Electrical (Chapter 85) ---
-  ['8536', 'Electrical apparatus for switching or protecting circuits (switches, sockets, MCBs, RCCBs) for a voltage not exceeding 1000 V', 18],
-  ['8537', 'Boards, panels, consoles and distribution boards equipped with switching apparatus', 18],
+  [
+    '8536',
+    'Electrical apparatus for switching or protecting circuits (switches, sockets, MCBs, RCCBs) for a voltage not exceeding 1000 V',
+    18,
+  ],
+  [
+    '8537',
+    'Boards, panels, consoles and distribution boards equipped with switching apparatus',
+    18,
+  ],
   ['8544', 'Insulated wire, cable and other insulated electric conductors', 18],
   ['8539', 'Electric filament or discharge lamps, including LED lamps', 12],
   ['9405', 'Luminaires and lighting fittings, LED lights and fixtures', 18],
-  ['8414', 'Air or vacuum pumps, fans and ventilating hoods (includes ceiling and exhaust fans)', 18],
+  [
+    '8414',
+    'Air or vacuum pumps, fans and ventilating hoods (includes ceiling and exhaust fans)',
+    18,
+  ],
   ['8504', 'Electrical transformers, static converters and inductors', 18],
 
   // --- Plumbing (Chapter 39 plastics, 73/74 metal) ---
   ['3917', 'Tubes, pipes and hoses and their fittings, of plastics', 18],
+  // 8-digit variant added onboarding Pearl Precision (decision 0026): their
+  // Flowshield CPVC pipe/fitting catalog prints this specific code on every
+  // page ("HSN Code: 39172390"), not the 4-digit 3917 above. Kept as its
+  // own row rather than truncated to 3917 — the printed code is the real
+  // data; truncating it would be a guess dressed up as precision.
+  ['39172390', 'Tubes, pipes and hoses, rigid, of other plastics (CPVC pipes & fittings)', 18],
   ['3922', 'Baths, wash basins, lavatory seats and covers, of plastics', 18],
   ['7307', 'Tube or pipe fittings of iron or steel', 18],
   ['8481', 'Taps, cocks, valves and similar appliances for pipes and tanks', 18],
 
   // --- Sanitaryware (Chapter 69) ---
-  ['6910', 'Ceramic sinks, wash basins, water closet pans, cisterns and similar sanitary fixtures', 18],
+  [
+    '6910',
+    'Ceramic sinks, wash basins, water closet pans, cisterns and similar sanitary fixtures',
+    18,
+  ],
 
   // --- Tiles & Stone (Chapters 68, 69) ---
   ['6907', 'Ceramic flags and paving, hearth or wall tiles; mosaic cubes', 18],
   ['6802', 'Worked monumental or building stone and articles thereof (granite, marble slabs)', 18],
-  ['2515', 'Marble, travertine and other calcareous monumental or building stone, crude or roughly trimmed', 5],
+  [
+    '2515',
+    'Marble, travertine and other calcareous monumental or building stone, crude or roughly trimmed',
+    5,
+  ],
   ['2516', 'Granite, porphyry, basalt, sandstone and other monumental or building stone', 5],
 
   // --- Paint (Chapter 32) ---
-  ['3208', 'Paints and varnishes based on synthetic polymers, dispersed or dissolved in a non-aqueous medium', 18],
-  ['3209', 'Paints and varnishes based on synthetic polymers, dispersed or dissolved in an aqueous medium (emulsions)', 18],
+  [
+    '3208',
+    'Paints and varnishes based on synthetic polymers, dispersed or dissolved in a non-aqueous medium',
+    18,
+  ],
+  [
+    '3209',
+    'Paints and varnishes based on synthetic polymers, dispersed or dissolved in an aqueous medium (emulsions)',
+    18,
+  ],
   ['3214', 'Glaziers putty, resin cements, caulking compounds and surfacing preparations', 18],
 
   // --- Hardware (Chapters 32, 35, 73, 82, 83) ---
@@ -65,7 +99,11 @@ const HSN = [
   ['7318', 'Screws, bolts, nuts, washers and similar articles of iron or steel', 18],
   ['8205', 'Hand tools not elsewhere specified', 18],
   ['8301', 'Padlocks and locks of base metal; keys and parts thereof', 18],
-  ['8302', 'Base metal mountings, fittings and similar articles for furniture, doors and windows', 18],
+  [
+    '8302',
+    'Base metal mountings, fittings and similar articles for furniture, doors and windows',
+    18,
+  ],
   ['6506', 'Other headgear, including industrial safety helmets', 18],
 ];
 
@@ -85,9 +123,7 @@ module.exports = {
       if (res[0].length > 0) inserted += 1;
     }
 
-    const [[total]] = await queryInterface.sequelize.query(
-      'SELECT COUNT(*) AS n FROM hsn_code',
-    );
+    const [[total]] = await queryInterface.sequelize.query('SELECT COUNT(*) AS n FROM hsn_code');
     // eslint-disable-next-line no-console
     console.log(`[seed-hsn-codes] inserted this run: ${inserted}; total now: ${total.n}`);
   },

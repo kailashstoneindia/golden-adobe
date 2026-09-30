@@ -149,7 +149,7 @@ erDiagram
 `serviceable_pincodes` / `service_radius_km` (per-listing, on `vendor_listing`) are
 **removed** by this decision — a vendor doesn't serve a different area per product. `city_id`
 lives once, on `vendors`. Customer location (pincode or GPS) resolves to one `city_id`
-*before* any product query runs; see [0018](decisions/0018-city-scoped-search.md).
+_before_ any product query runs; see [0018](decisions/0018-city-scoped-search.md).
 
 ---
 
@@ -228,7 +228,7 @@ erDiagram
 
 `stone_variety` holds no product rows — it is a lookup table for values that are neither
 attributes nor SKUs, which is why it does not violate the single-table product model. It is
-referenced *from* `master_product`, because for stone the variety trade name **is** the
+referenced _from_ `master_product`, because for stone the variety trade name **is** the
 product's identity.
 
 **Paint has no equivalent table.** A `paint_shade` entity was designed in 0002 and dropped
@@ -241,41 +241,41 @@ needs nothing to join against.
 
 ## Full relationship reference
 
-| # | Parent | Child | FK column | Card. | On delete |
-|---|---|---|---|---|---|
-| 1 | users | vendors | user_id | 1:1 | CASCADE |
-| 2 | category | category | parent_id | 1:N | RESTRICT |
-| 3 | unit_of_measure | category | unit_of_measure_default_id | 0..1:N | — |
-| 4 | vendors | vendor_category | vendor_id | 1:N | CASCADE |
-| 5 | category | vendor_category | category_id | 1:N | RESTRICT |
-| 6 | category | attribute | category_id | 0..1:N | CASCADE |
-| 7 | attribute | attribute_value_option | attribute_id | 1:N | CASCADE |
-| 8 | category | master_product | category_id | 1:N | RESTRICT |
-| 9 | product_family | master_product | product_family_id | 0..1:N | SET NULL |
-| 10 | brand | master_product | brand_id | 0..1:N | RESTRICT |
-| 11 | stone_variety | master_product | stone_variety_id | 0..1:N | RESTRICT |
-| 12 | unit_of_measure | master_product | unit_of_measure_id | 0..1:N | — |
-| 13 | master_product | master_product_attribute_value | master_product_id | 1:N | CASCADE |
-| 14 | attribute | master_product_attribute_value | attribute_id | 1:N | RESTRICT |
-| 15 | master_product | master_product_media | master_product_id | 1:N | CASCADE |
-| 16 | stone_variety | stone_variety_alias | stone_variety_id | 1:N | CASCADE |
-| 17 | vendors | vendor_listing | vendor_id | 1:N | CASCADE |
-| 18 | master_product | vendor_listing | master_product_id | 1:N | RESTRICT |
-| 19 | vendor_listing | vendor_listing_colour_price | vendor_listing_id | 1:N | CASCADE |
-| 20 | vendors | warehouse | vendor_id | 1:N | CASCADE |
-| 21 | vendor_listing | inventory | vendor_listing_id | 1:N | CASCADE |
-| 22 | warehouse | inventory | warehouse_id | 0..1:N | SET NULL |
-| 23 | vendors | catalog_import_batch | vendor_id | 1:N | CASCADE |
-| 24 | catalog_import_batch | catalog_import_row | import_batch_id | 1:N | CASCADE |
-| 25 | vendors | catalog_import_row | vendor_id | 1:N | CASCADE |
-| 26 | master_product | catalog_import_row | matched_master_product_id | 0..1:N | SET NULL |
-| 27 | category | catalog_reindex_queue | category_id | 0..1:N | CASCADE |
-| 28 | master_product | catalog_reindex_queue | master_product_id | 0..1:N | CASCADE |
-| 29 | hsn_code | master_product | hsn_code | 0..1:N | — |
-| 30 | vendors | vendor_product_map | vendor_id | 1:N | CASCADE |
-| 31 | master_product | vendor_product_map | master_product_id | 1:N | CASCADE |
-| 32 | city | vendors | city_id | 1:N | RESTRICT *(0018 — new column on an existing table)* |
-| 33 | city | pincode_city_map | city_id | 1:N | RESTRICT |
+| #   | Parent               | Child                          | FK column                  | Card.  | On delete                                           |
+| --- | -------------------- | ------------------------------ | -------------------------- | ------ | --------------------------------------------------- |
+| 1   | users                | vendors                        | user_id                    | 1:1    | CASCADE                                             |
+| 2   | category             | category                       | parent_id                  | 1:N    | RESTRICT                                            |
+| 3   | unit_of_measure      | category                       | unit_of_measure_default_id | 0..1:N | —                                                   |
+| 4   | vendors              | vendor_category                | vendor_id                  | 1:N    | CASCADE                                             |
+| 5   | category             | vendor_category                | category_id                | 1:N    | RESTRICT                                            |
+| 6   | category             | attribute                      | category_id                | 0..1:N | CASCADE                                             |
+| 7   | attribute            | attribute_value_option         | attribute_id               | 1:N    | CASCADE                                             |
+| 8   | category             | master_product                 | category_id                | 1:N    | RESTRICT                                            |
+| 9   | product_family       | master_product                 | product_family_id          | 0..1:N | SET NULL                                            |
+| 10  | brand                | master_product                 | brand_id                   | 0..1:N | RESTRICT                                            |
+| 11  | stone_variety        | master_product                 | stone_variety_id           | 0..1:N | RESTRICT                                            |
+| 12  | unit_of_measure      | master_product                 | unit_of_measure_id         | 0..1:N | —                                                   |
+| 13  | master_product       | master_product_attribute_value | master_product_id          | 1:N    | CASCADE                                             |
+| 14  | attribute            | master_product_attribute_value | attribute_id               | 1:N    | RESTRICT                                            |
+| 15  | master_product       | master_product_media           | master_product_id          | 1:N    | CASCADE                                             |
+| 16  | stone_variety        | stone_variety_alias            | stone_variety_id           | 1:N    | CASCADE                                             |
+| 17  | vendors              | vendor_listing                 | vendor_id                  | 1:N    | CASCADE                                             |
+| 18  | master_product       | vendor_listing                 | master_product_id          | 1:N    | RESTRICT                                            |
+| 19  | vendor_listing       | vendor_listing_colour_price    | vendor_listing_id          | 1:N    | CASCADE                                             |
+| 20  | vendors              | warehouse                      | vendor_id                  | 1:N    | CASCADE                                             |
+| 21  | vendor_listing       | inventory                      | vendor_listing_id          | 1:N    | CASCADE                                             |
+| 22  | warehouse            | inventory                      | warehouse_id               | 0..1:N | SET NULL                                            |
+| 23  | vendors              | catalog_import_batch           | vendor_id                  | 1:N    | CASCADE                                             |
+| 24  | catalog_import_batch | catalog_import_row             | import_batch_id            | 1:N    | CASCADE                                             |
+| 25  | vendors              | catalog_import_row             | vendor_id                  | 1:N    | CASCADE                                             |
+| 26  | master_product       | catalog_import_row             | matched_master_product_id  | 0..1:N | SET NULL                                            |
+| 27  | category             | catalog_reindex_queue          | category_id                | 0..1:N | CASCADE                                             |
+| 28  | master_product       | catalog_reindex_queue          | master_product_id          | 0..1:N | CASCADE                                             |
+| 29  | hsn_code             | master_product                 | hsn_code                   | 0..1:N | —                                                   |
+| 30  | vendors              | vendor_product_map             | vendor_id                  | 1:N    | CASCADE                                             |
+| 31  | master_product       | vendor_product_map             | master_product_id          | 1:N    | CASCADE                                             |
+| 32  | city                 | vendors                        | city_id                    | 1:N    | RESTRICT _(0018 — new column on an existing table)_ |
+| 33  | city                 | pincode_city_map               | city_id                    | 1:N    | RESTRICT                                            |
 
 ---
 

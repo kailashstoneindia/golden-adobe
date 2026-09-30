@@ -63,19 +63,14 @@ export function useRejectUserMutation() {
 
 export function useAdminLoginMutation() {
   return useMutation({
-    mutationFn: (options: { email: string; password: string }) =>
-      authService.loginAdmin(options),
+    mutationFn: (options: { email: string; password: string }) => authService.loginAdmin(options),
   });
 }
 
 export function useAdminRegisterMutation() {
   return useMutation({
-    mutationFn: (options: {
-      name: string;
-      email: string;
-      password: string;
-      secretKey: string;
-    }) => authService.registerAdmin(options),
+    mutationFn: (options: { name: string; email: string; password: string; secretKey: string }) =>
+      authService.registerAdmin(options),
   });
 }
 

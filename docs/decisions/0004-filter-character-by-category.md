@@ -22,7 +22,7 @@ record decides whether that column should exist.
 
 ## Options considered
 
-### A — No schema support; `display_order` is sufficient *(chosen)*
+### A — No schema support; `display_order` is sufficient _(chosen)_
 
 - **Pro:** Aesthetic attributes for Lights are **declared on Lights itself**, not inherited
   from the root, so the existing `attribute.display_order` already controls their prominence
@@ -40,7 +40,7 @@ record decides whether that column should exist.
 ### C — `category_facet_config` table
 
 - **Pro:** Most flexible. Handles the one case `display_order` genuinely cannot: an
-  attribute declared high in the tree needing *different* prominence in different
+  attribute declared high in the tree needing _different_ prominence in different
   descendants.
 - **Con:** A new entity for a problem not yet encountered.
 
@@ -51,7 +51,7 @@ for choosing and ordering attributes, not a property the schema needs to model.
 
 The guideline, to be applied when per-category attribute lists are drawn up:
 
-> Set `is_searchable_filter` according to how the category is *shopped*, not by what data
+> Set `is_searchable_filter` according to how the category is _shopped_, not by what data
 > happens to exist. Lights, Tiles and Stone skew aesthetic — finish, theme, colour family.
 > Electrical, Plumbing and Hardware skew technical — rating, size, capacity. Technical specs
 > still belong on the product page for decorative categories; they just should not be the
@@ -69,7 +69,7 @@ arise for the aesthetic/technical split, since aesthetic attributes like `Theme`
 `Finish` are naturally declared on the decorative categories themselves and never inherited
 by Electrical.
 
-Option C remains the correct answer *if* that case ever appears. It is not speculatively
+Option C remains the correct answer _if_ that case ever appears. It is not speculatively
 built now.
 
 ## Consequences

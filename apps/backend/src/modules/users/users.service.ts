@@ -1,14 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { User } from './models/user.model';
-import {
-  Role,
-  VENDOR_ONBOARDING_STAGES,
-  VendorOnboardingStage,
-} from '@golden-abode/types';
+import { Role, VENDOR_ONBOARDING_STAGES, VendorOnboardingStage } from '@golden-abode/types';
 import { Vendor } from '../vendors/models/vendor.model';
 import { VendorAccountDetails } from '../vendors/models/vendor-account-details.model';
-
 
 @Injectable()
 export class UsersService {
@@ -26,7 +21,8 @@ export class UsersService {
   }
 
   async findById(id: string, role?: Role): Promise<User | null> {
-    const include = role === Role.VENDOR ? [{ model: Vendor, include: [VendorAccountDetails] }] : [];
+    const include =
+      role === Role.VENDOR ? [{ model: Vendor, include: [VendorAccountDetails] }] : [];
     return this.userModel.findByPk(id, { include });
   }
 
@@ -43,11 +39,7 @@ export class UsersService {
     return user!;
   }
 
-  async createAdmin(data: {
-    name: string;
-    email: string;
-    passwordHash: string;
-  }): Promise<User> {
+  async createAdmin(data: { name: string; email: string; passwordHash: string }): Promise<User> {
     const created = await this.userModel.create({
       name: data.name,
       email: data.email,

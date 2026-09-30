@@ -252,12 +252,16 @@ export default function VendorOnboardScreen() {
                 </Text>
                 <View style={styles.bankOptionsWrap}>
                   {indianBanks.map((bankName) => {
-                    const isSelectedBank = vendorForm.formValues.accountDetails.bankName === bankName;
+                    const isSelectedBank =
+                      vendorForm.formValues.accountDetails.bankName === bankName;
                     return (
                       <Pressable
                         key={bankName}
                         onPress={() => vendorForm.updateAccountDetailsField('bankName', bankName)}
-                        style={[styles.bankOption, isSelectedBank ? styles.bankOptionSelected : null]}
+                        style={[
+                          styles.bankOption,
+                          isSelectedBank ? styles.bankOptionSelected : null,
+                        ]}
                       >
                         <Text
                           variant="caption"
@@ -275,14 +279,18 @@ export default function VendorOnboardScreen() {
                 label="Account number"
                 placeholder="123456789012"
                 value={vendorForm.formValues.accountDetails.accountNumber}
-                onChangeText={(value) => vendorForm.updateAccountDetailsField('accountNumber', value)}
+                onChangeText={(value) =>
+                  vendorForm.updateAccountDetailsField('accountNumber', value)
+                }
                 keyboardType="number-pad"
               />
               <TextInput
                 label="IFSC code"
                 placeholder="HDFC0000123"
                 value={vendorForm.formValues.accountDetails.ifscCode}
-                onChangeText={(value) => vendorForm.updateAccountDetailsField('ifscCode', value.toUpperCase())}
+                onChangeText={(value) =>
+                  vendorForm.updateAccountDetailsField('ifscCode', value.toUpperCase())
+                }
                 autoCapitalize="characters"
                 maxLength={11}
               />
@@ -312,7 +320,12 @@ export default function VendorOnboardScreen() {
 
           <View style={styles.navigationButtonsWrap}>
             {!isFirstStep ? (
-              <Button title="Back" variant="secondary" onPress={handleBack} style={styles.navigationButton} />
+              <Button
+                title="Back"
+                variant="secondary"
+                onPress={handleBack}
+                style={styles.navigationButton}
+              />
             ) : null}
             {isFinalStep ? (
               <Button
@@ -438,9 +451,9 @@ function resolveBankStepErrorMessage(params: ResolveBankStepErrorMessageParams):
 
 function resolveStepIndexFromStage(onboardingStage: VendorOnboardingStage | null): number {
   if (
-    !onboardingStage
-    || onboardingStage === VENDOR_ONBOARDING_STAGES.basicDetails
-    || onboardingStage === VENDOR_ONBOARDING_STAGES.shopDetails
+    !onboardingStage ||
+    onboardingStage === VENDOR_ONBOARDING_STAGES.basicDetails ||
+    onboardingStage === VENDOR_ONBOARDING_STAGES.shopDetails
   ) {
     return 0;
   }

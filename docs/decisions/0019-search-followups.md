@@ -16,12 +16,12 @@ A single review pass over the open questions left by 0017 and 0018, in the shape
 
 ## 1. City resolution combines pincode AND coordinates — amends 0018
 
-0018 described pincode and GPS as two *separate* paths that "converge on the same
+0018 described pincode and GPS as two _separate_ paths that "converge on the same
 `city_id`" without saying what happens if both are available and disagree. They should be
 combined, not chosen between:
 
-> *"what if we get the location coordinates of the customer's construction site location
-> and vendor's shop location... we can use a combination of both, many sites do that."*
+> _"what if we get the location coordinates of the customer's construction site location
+> and vendor's shop location... we can use a combination of both, many sites do that."_
 
 ```
 resolve_city(pincode?, coordinates?)
@@ -50,7 +50,7 @@ being collected.
 
 ### What this does not change
 
-Still exactly one `city_id` per search, per 0018. This is a resolution-*accuracy* change —
+Still exactly one `city_id` per search, per 0018. This is a resolution-_accuracy_ change —
 better inputs, a tie-breaking rule — not a reopening of city-scoping itself.
 
 ### Still open
@@ -66,7 +66,7 @@ leaving it open.
 
 ## 2. Multi-city vendors — reconfirmed deferred
 
-> *"ignore it for now."*
+> _"ignore it for now."_
 
 No change from 0018. Recorded here only so this batch has one place answering all six
 questions raised in the same pass.
@@ -75,7 +75,7 @@ questions raised in the same pass.
 
 ## 3. Admin search stays on Postgres — not a preference, a structural fit
 
-> *"can you elaborate any significant benefit of any approach for admin"*
+> _"can you elaborate any significant benefit of any approach for admin"_
 
 The deciding fact isn't UX preference — it's that **one of the two options cannot represent
 the data admin needs to search:**
@@ -87,12 +87,12 @@ A search document only exists where a LIVE vendor_listing exists, for a
 nothing in Meilisearch for admin to find until publish.
 ```
 
-| | Postgres for admin | Meilisearch for admin |
-|---|---|---|
-| Can it show a draft product at all? | Yes — queries `master_product` directly | **No** — a draft with no listings has no document |
-| Risk of a draft leaking to a real customer | None — separate code path entirely | One missed `status = 'live'` filter, ever, in one query |
-| Extra sync volume | None | Every draft edit fires the sync pipeline for data nobody should see |
-| Fit for the audience | Trained staff, near-exact queries (SKU, product code) — `pg_trgm` is enough | Typo tolerance mostly wasted here |
+|                                            | Postgres for admin                                                          | Meilisearch for admin                                               |
+| ------------------------------------------ | --------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Can it show a draft product at all?        | Yes — queries `master_product` directly                                     | **No** — a draft with no listings has no document                   |
+| Risk of a draft leaking to a real customer | None — separate code path entirely                                          | One missed `status = 'live'` filter, ever, in one query             |
+| Extra sync volume                          | None                                                                        | Every draft edit fires the sync pipeline for data nobody should see |
+| Fit for the audience                       | Trained staff, near-exact queries (SKU, product code) — `pg_trgm` is enough | Typo tolerance mostly wasted here                                   |
 
 **Decision: admin search uses `PostgresSearchService`** — the same fallback path already
 built for when Meilisearch is down (0017 §"Consistency and failure") now serves double duty
@@ -105,7 +105,7 @@ Closes: 0017 open question 4; `search-system-design.md` open question 7.
 
 ## 4. Autocomplete — direct-to-Meilisearch, approved
 
-> *"yes we need this."*
+> _"yes we need this."_
 
 Clarified first, since "autocomplete" was ambiguous: this is a **product/query suggestion
 dropdown** —
@@ -142,7 +142,7 @@ Closes: `search-system-design.md` open question 5.
 
 ## 5. Synonyms — approved, admin-editable
 
-> *"let's be open for this."*
+> _"let's be open for this."_
 
 Read as: approved, and kept **open-ended** rather than a fixed one-time seed. Designed as an
 admin-editable table, not a hardcoded settings blob — so `commode → water closet` or
@@ -156,15 +156,15 @@ Closes: 0017 open question 3; `search-system-design.md` open question 6.
 
 ## 6. Licensing — reconfirmed, nothing here touches Enterprise
 
-> *"can all this be done without enterprise thing, we don't want heavy and legal stuff for
-> now."*
+> _"can all this be done without enterprise thing, we don't want heavy and legal stuff for
+> now."_
 
 Yes. Restated from 0017, because it bears repeating against this specific list: Meilisearch's
 **only** Enterprise-gated feature is sharding. Combined location resolution, admin search on
 Postgres, direct autocomplete, and an editable synonym table are all ordinary Community
 Edition (MIT) functionality — sharding is not a scenario a catalog this size will ever reach.
 
-This does not fully close 0017 open question 2 (whether the *official Docker image itself*
+This does not fully close 0017 open question 2 (whether the _official Docker image itself_
 contains any Enterprise code) — that remains a one-email question for Meilisearch, worth
 asking only if the client's counsel wants it in writing. Nothing in this record depends on
 its answer.

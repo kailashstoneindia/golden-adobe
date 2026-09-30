@@ -9,28 +9,28 @@ Sourcing rules as per [electrical-switchgear-mcb.md](electrical-switchgear-mcb.m
 
 From `database/seed-data/taxonomy.js`:
 
-| Attribute | Type | Required? |
-|---|---|---|
-| `fan_type` | enum: Ceiling, Exhaust, Wall, Pedestal, Table, Tower | ✅ **required** |
-| `sweep_size` | number, mm — options `600, 900, 1200, 1400` | ✅ **required** |
-| `motor_type` | enum: Induction, BLDC | ✅ **required** |
-| `fan_finish` | **text** (free) | ✅ **required** |
-| `power_consumption` | number, W | optional |
-| `star_rating` | enum 1–5 | optional |
-| `blade_count` | number | optional |
-| `fan_speed` | number, RPM | optional |
+| Attribute           | Type                                                 | Required?       |
+| ------------------- | ---------------------------------------------------- | --------------- |
+| `fan_type`          | enum: Ceiling, Exhaust, Wall, Pedestal, Table, Tower | ✅ **required** |
+| `sweep_size`        | number, mm — options `600, 900, 1200, 1400`          | ✅ **required** |
+| `motor_type`        | enum: Induction, BLDC                                | ✅ **required** |
+| `fan_finish`        | **text** (free)                                      | ✅ **required** |
+| `power_consumption` | number, W                                            | optional        |
+| `star_rating`       | enum 1–5                                             | optional        |
+| `blade_count`       | number                                               | optional        |
+| `fan_speed`         | number, RPM                                          | optional        |
 
 ---
 
 ## Brand shortlist
 
-| Brand | Catalogue URL | Profile | Model no. | Sweep | Motor | Verified |
-|---|---|---|---|---|---|---|
-| **Crompton** | [crompton.co.in/collections/ceiling-fans](https://www.crompton.co.in/collections/ceiling-fans) | **C+** | ❌ | ❌ | ❌ | 2026-09-08 |
-| **Orient Electric** | [orientelectric.com/collections/ceiling-fans](https://orientelectric.com/collections/ceiling-fans) | **C** | ? | ? | ? | 2026-09-08 |
-| Havells | not yet located | ? | ? | ? | ? | pending |
-| Usha | not yet located | ? | ? | ? | ? | pending |
-| Atomberg | not yet located | ? | ? | ? | ? | pending |
+| Brand               | Catalogue URL                                                                                      | Profile | Model no. | Sweep | Motor | Verified   |
+| ------------------- | -------------------------------------------------------------------------------------------------- | ------- | --------- | ----- | ----- | ---------- |
+| **Crompton**        | [crompton.co.in/collections/ceiling-fans](https://www.crompton.co.in/collections/ceiling-fans)     | **C+**  | ❌        | ❌    | ❌    | 2026-09-08 |
+| **Orient Electric** | [orientelectric.com/collections/ceiling-fans](https://orientelectric.com/collections/ceiling-fans) | **C**   | ?         | ?     | ?     | 2026-09-08 |
+| Havells             | not yet located                                                                                    | ?       | ?         | ?     | ?     | pending    |
+| Usha                | not yet located                                                                                    | ?       | ?         | ?     | ?     | pending    |
+| Atomberg            | not yet located                                                                                    | ?       | ?         | ?     | ?     | pending    |
 
 ---
 
@@ -46,16 +46,16 @@ data is rendered server-side.
 
 **Detail page** (`/products/crompton-luxian-statement-senze-ceiling-fan`):
 
-| Field | Present |
-|---|---|
-| Product name | ✅ |
-| Price (₹24,000) | ✅ |
-| Colour variant | ✅ |
-| Image URLs (4) | ✅ |
-| Model / SKU | ❌ |
-| **`sweep_size`** | ❌ **required** |
-| **`motor_type`** | ❌ **required** |
-| star rating, blade count, wattage | ❌ |
+| Field                             | Present         |
+| --------------------------------- | --------------- |
+| Product name                      | ✅              |
+| Price (₹24,000)                   | ✅              |
+| Colour variant                    | ✅              |
+| Image URLs (4)                    | ✅              |
+| Model / SKU                       | ❌              |
+| **`sweep_size`**                  | ❌ **required** |
+| **`motor_type`**                  | ❌ **required** |
+| star rating, blade count, wattage | ❌              |
 
 **Even the detail page does not yield the required attributes.** Sweep and
 motor type are known from marketing copy (search surfaced "SilentPro
@@ -69,7 +69,7 @@ Collection page is the same Shopify-style filter UI. A detail page from search
 (`/products/wendy-antidust-48-inch-ceiling-fan`) **404'd** — the URL had moved
 since indexing, so detail-page structure remains unverified.
 
-Note the product *name* carries the sweep ("48 Inch" = 1219mm) — the same
+Note the product _name_ carries the sweep ("48 Inch" = 1219mm) — the same
 name-encoding pattern seen in Havells MCB, and a possible extraction route.
 
 ---
@@ -80,7 +80,7 @@ name-encoding pattern seen in Havells MCB, and a possible extraction route.
 barely half the real range. Now
 `600, 750, 900, 1050, 1200, 1219, 1300, 1320, 1400`.
 
-**Correction to an earlier claim in this file:** these values are *not*
+**Correction to an earlier claim in this file:** these values are _not_
 DB-enforced. `enforce_attribute_value_option()` fires only when
 `data_type = 'enum'`, and `sweep_size` is `number`, so a 1050mm fan would have
 imported fine. The real impact is narrower but still real:
@@ -114,6 +114,7 @@ products with part numbers and 7 usable curves. For fans, neither brand
 surfaces a single required attribute on either page type.
 
 Likely routes, in order of preference:
+
 1. **Spec sheets / PDF catalogues** — Orient publishes a
    [product catalogue page](https://orientelectric.com/pages/product-catalogue);
    likely Profile D but with real specs.
@@ -123,6 +124,6 @@ Likely routes, in order of preference:
    and 1219 is not in the option list either.
 
 **Do not seed fans from marketing copy.** "SilentPro fans have 900–1200mm
-sweep" describes a *range across a product line*, not one SKU's value —
+sweep" describes a _range across a product line_, not one SKU's value —
 exactly the Cera failure mode, where a plausible value was inferred from
 adjacent context.

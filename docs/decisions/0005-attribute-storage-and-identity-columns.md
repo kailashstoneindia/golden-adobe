@@ -89,7 +89,7 @@ Phase-1 Postgres search — it is not on the critical path once Meilisearch land
 ## Consequences
 
 - **`attributes_flat` can go stale.** It must be rebuilt whenever
-  `master_product_attribute_value` changes *or* whenever an inherited `attribute` row
+  `master_product_attribute_value` changes _or_ whenever an inherited `attribute` row
   changes — the second is easy to forget, since editing an attribute on `Tiles` invalidates
   the cache for every product beneath it.
 - Global attributes cannot be scoped later without a data migration; a value that turns out

@@ -7,18 +7,18 @@
 
 ## Context
 
-> *"our app will be launched in Delhi NCR first, so we just need to have pincode and
-> availability data for NCR only."*
+> _"our app will be launched in Delhi NCR first, so we just need to have pincode and
+> availability data for NCR only."_
 
 Straightforward on the surface, except **NCR is not one city administratively.** It spans
 three states/union territories:
 
-| Area | State/UT |
-|---|---|
-| Delhi | NCT of Delhi |
-| Gurugram | Haryana |
-| Faridabad | Haryana |
-| Noida | Uttar Pradesh |
+| Area      | State/UT      |
+| --------- | ------------- |
+| Delhi     | NCT of Delhi  |
+| Gurugram  | Haryana       |
+| Faridabad | Haryana       |
+| Noida     | Uttar Pradesh |
 | Ghaziabad | Uttar Pradesh |
 
 `city.state` (0018) already exists specifically to disambiguate same-named cities across
@@ -26,7 +26,7 @@ states — this decision is the first real test of why that column is there.
 
 The question that needed asking before seeding anything: does a customer in Gurugram see
 Delhi/Noida vendors too — treating "NCR" as one unified metro market — or does each area
-stay its own walled market, consistent with *"local vendors in that area or city"*
+stay its own walled market, consistent with _"local vendors in that area or city"_
 ([0018](0018-city-scoped-search.md))?
 
 ## Decision
@@ -59,7 +59,7 @@ defined — city-level, not radius, not region.
 **This is exactly the tight-boundary case 0018's open question 1 was worried about.** Delhi,
 Gurugram, Noida, Ghaziabad and Faridabad sit within roughly 30–40 km of central Delhi — far
 closer together than a hypothetical Delhi/Mumbai/Bangalore launch would be. Centroid-nearest
-GPS resolution is *more* likely to misjudge a boundary customer here than in a spread-out
+GPS resolution is _more_ likely to misjudge a boundary customer here than in a spread-out
 launch, not less. This raises the priority of getting pincode data right for this launch,
 rather than treating it as a background concern — pincode should be the primary signal for
 NCR, with coordinates as the tie-break 0019 already specifies, not the reverse.

@@ -29,6 +29,8 @@ const REQUIRED_ROUTES = [
   { method: 'POST', path: '/api/admin/search/rebuild' },
   { method: 'GET', path: '/api/admin/catalog/categories' },
   { method: 'GET', path: '/api/admin/catalog/products' },
+  { method: 'POST', path: '/api/admin/catalog/products' },
+  { method: 'PATCH', path: '/api/admin/catalog/products/:productId' },
   { method: 'PATCH', path: '/api/admin/catalog/products/:productId/publish' },
   { method: 'GET', path: '/api/admin/catalog-review-queue' },
   // Phase 2 completion — vendor profile CRUD + city (workstream 1)

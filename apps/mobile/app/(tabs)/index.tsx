@@ -10,10 +10,7 @@ import { SearchBar } from '../../src/components/customer/SearchBar';
 import { Badge, Card, Text } from '../../src/components/ui';
 import { ROUTES, type LaunchCategory } from '../../src/constants';
 import { useAuth } from '../../src/hooks/auth';
-import {
-  usePendingConfirmationsQuery,
-  useVendorListingsQuery,
-} from '../../src/hooks/vendor';
+import { usePendingConfirmationsQuery, useVendorListingsQuery } from '../../src/hooks/vendor';
 import {
   selectHasSearchLocation,
   useLocationPreferenceStore,
@@ -88,7 +85,11 @@ function CustomerHome({ firstName }: { firstName: string }) {
         </Text>
         <CategoryGrid onCategoryPress={handleCategoryPress} />
 
-        <SectionHeader title="Verified Ustaads nearby" actionLabel="See all" onActionPress={handleBrowsePress} />
+        <SectionHeader
+          title="Verified Ustaads nearby"
+          actionLabel="See all"
+          onActionPress={handleBrowsePress}
+        />
         <HorizontalCardList items={USTAADS} onItemPress={handleBrowsePress} />
 
         <SectionHeader title="Top vendors nearby" onActionPress={handleBrowsePress} />
@@ -166,7 +167,11 @@ function VendorHome() {
           </Card>
         </Pressable>
 
-        <SectionHeader title="Pending orders" actionLabel="See all" onActionPress={handleOrdersPress} />
+        <SectionHeader
+          title="Pending orders"
+          actionLabel="See all"
+          onActionPress={handleOrdersPress}
+        />
         <View style={styles.orderList}>
           {PENDING_ORDERS.map((order) => (
             <Pressable key={order.id} onPress={() => handleOrderPress(order.id)}>
@@ -198,11 +203,11 @@ function SectionHeader({
   title,
   actionLabel,
   onActionPress,
-}: {
+}: Readonly<{
   title: string;
   actionLabel?: string;
   onActionPress?: () => void;
-}) {
+}>) {
   return (
     <View style={styles.sectionHeader}>
       <Text variant="h3">{title}</Text>

@@ -1,13 +1,7 @@
 import type { VendorListingStockDto } from '@golden-abode/types';
 import { router } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
 
 import { Screen } from '../../src/components/layout/Screen';
 import { VendorListingCard, type ListingStatusFilter } from '../../src/components/vendor';
@@ -95,10 +89,7 @@ export default function ProductsTabScreen() {
         ) : null}
 
         {needsStockCount > 0 && statusFilter !== 'needs_stock' ? (
-          <Pressable
-            style={styles.stockBanner}
-            onPress={() => setStatusFilter('needs_stock')}
-          >
+          <Pressable style={styles.stockBanner} onPress={() => setStatusFilter('needs_stock')}>
             <Text variant="bodyMedium" color={Colors.navy}>
               {needsStockCount} listing{needsStockCount === 1 ? '' : 's'} need stock
             </Text>
@@ -117,10 +108,7 @@ export default function ProductsTabScreen() {
                 style={[styles.chip, isActive ? styles.chipActive : null]}
                 onPress={() => setStatusFilter(filter.id)}
               >
-                <Text
-                  variant="caption"
-                  color={isActive ? Colors.white : Colors.inkSoft}
-                >
+                <Text variant="caption" color={isActive ? Colors.white : Colors.inkSoft}>
                   {filter.label}
                 </Text>
               </Pressable>
@@ -195,9 +183,7 @@ function ProductsListBody({
     <FlatList
       data={listings}
       keyExtractor={(item) => item.vendorListingId}
-      renderItem={({ item }) => (
-        <VendorListingCard listing={item} onPress={onListingPress} />
-      )}
+      renderItem={({ item }) => <VendorListingCard listing={item} onPress={onListingPress} />}
       contentContainerStyle={styles.listContent}
       ItemSeparatorComponent={ListSeparator}
       showsVerticalScrollIndicator={false}

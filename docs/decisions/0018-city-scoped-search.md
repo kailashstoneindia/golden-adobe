@@ -22,9 +22,9 @@
 
 The business connects customers to **local** vendors. Explicitly, from this discussion:
 
-> *"we have to search from the vendor in the current locality or city. Not from different
+> _"we have to search from the vendor in the current locality or city. Not from different
 > cities... Our business is connecting customer from the local vendors in that area or
-> city."*
+> city."_
 
 This is a scope decision, not just a search-relevance one, and it exposed a gap checked
 directly against the schema rather than assumed: **nothing in the database represents a
@@ -86,10 +86,10 @@ document per product, carrying a nested price map keyed by zone (`price_by_zone.
 A product with zero listings from any vendor in a city has **no document** for that
 pairing — confirmed explicitly:
 
-> *"not for now, if product is not at local vendor then don't show."*
+> _"not for now, if product is not at local vendor then don't show."_
 
 No "not available in your city" placeholder, no cross-city fallback result. Absence from
-the index is the entire mechanism — nothing in the query layer needs to know *why* a
+the index is the entire mechanism — nothing in the query layer needs to know _why_ a
 product is missing.
 
 ### The `city` entity, admin-curated
@@ -105,7 +105,7 @@ below, not for browsing.
 
 ### One vendor, one city — for now
 
-Confirmed directly: *"they serve one city for now."* Modelled as `vendors.city_id`, a
+Confirmed directly: _"they serve one city for now."_ Modelled as `vendors.city_id`, a
 plain foreign key, not a join table. The **for now** is honoured by shape, not by a
 workaround: moving to multiple cities per vendor later is widening the cardinality
 (`vendors.city_id` → a `vendor_city` join table), never a rename or a data migration of
@@ -120,17 +120,17 @@ never load-bearing once a vendor has exactly one city.
 
 ### Customer location — pincode and GPS, combined — amended by [0019](0019-search-followups.md)
 
-Confirmed both are fine: *"pincode or gps both will be fine."* They resolve differently,
+Confirmed both are fine: _"pincode or gps both will be fine."_ They resolve differently,
 and deliberately avoid a third-party dependency:
 
-| Path | Mechanism | Why this shape |
-|---|---|---|
-| **Pincode** | `pincode_city_map` lookup table (`pincode → city_id`) | Pincodes do not self-describe a city; a lookup is unavoidable. Seeded from the public India Post pincode dataset — an open government dataset, not trade knowledge assembled by hand like `stone_variety` — filtered to launch cities and grown as new ones launch. |
-| **GPS** | Nearest **active** city by haversine distance to `city.centroid_lat/lng` | Avoids a third-party reverse-geocoding API entirely. At launch-city scale (a handful of rows), a distance calculation over `city` is enough — no external call, no per-request cost. |
+| Path        | Mechanism                                                                | Why this shape                                                                                                                                                                                                                                                      |
+| ----------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Pincode** | `pincode_city_map` lookup table (`pincode → city_id`)                    | Pincodes do not self-describe a city; a lookup is unavoidable. Seeded from the public India Post pincode dataset — an open government dataset, not trade knowledge assembled by hand like `stone_variety` — filtered to launch cities and grown as new ones launch. |
+| **GPS**     | Nearest **active** city by haversine distance to `city.centroid_lat/lng` | Avoids a third-party reverse-geocoding API entirely. At launch-city scale (a handful of rows), a distance calculation over `city` is enough — no external call, no per-request cost.                                                                                |
 
 **Amended by 0019: this is not "use whichever is available," it's a combination with a
 tie-break.** When both are present and disagree, coordinates win — a pincode is an India
-Post *administrative* boundary and can legitimately straddle two cities, while a coordinate
+Post _administrative_ boundary and can legitimately straddle two cities, while a coordinate
 pair carries no such ambiguity. Full algorithm and the vendor-side reuse of this same logic
 (auto-suggesting `vendors.city_id` from the `latitude`/`longitude` columns that already
 exist) are in [0019](0019-search-followups.md).
@@ -145,7 +145,7 @@ signal.
 
 This is the concrete, checkable reason C beats the zone/price-map idea, not a preference.
 Meilisearch's `sortableAttributes` is declared once per index. A price-per-zone document
-needs a distinct sortable field per zone that exists *at settings-definition time* — so
+needs a distinct sortable field per zone that exists _at settings-definition time_ — so
 "launch city #6" becomes a schema change to the search index, not new data. Per-(product,
 city) documents need exactly one sortable field, `price`, permanently. This also
 retroactively confirms Option C would have been the right call even under the earlier,
@@ -156,7 +156,7 @@ point it stopped being justified, and re-examining it here is what caught that.
 
 This is the requirement that forced a change to the **sync design**, not just the document
 shape — documented in full in
-[`../search-schema.sql`](../search-schema.sql) section 2b. Short version: a vendor's *last*
+[`../search-schema.sql`](../search-schema.sql) section 2b. Short version: a vendor's _last_
 listing for a product in a city being deleted must remove exactly that city's document,
 not the product's documents in every other city it's still sold in. The row that knows
 which city is the row that's about to disappear, so the city has to be captured **at
@@ -184,14 +184,13 @@ customers often enough to matter.
 - `vendor_listing.serviceable_pincodes` and `.service_radius_km` are removed — never
   implemented in a real migration, so this is a design correction, not a data migration.
 - **`master_product.cached_best_price` (the global column) can no longer be shown to a
-  customer** — but best price itself is not retired, it *relocates*. The same
+  customer** — but best price itself is not retired, it _relocates_. The same
   cheapest-among-vendors figure is recomputed per `(product, city)` at search-document
   build time and lives in the document's `price` field; PDP reads it by document ID rather
   than re-querying. Repurposed the global column as admin/ops visibility only (catalog
   monitoring — "is anyone stocking this at all, anywhere"). Full mechanism in
   [`../search-system-design.md`](../search-system-design.md) §5.
-- **Search sync gains a third trigger function and 2 more triggers** (26 total, up from
-  24) — one for `vendors.city_id` relocation, one for `city` rename/deactivation. Full
+- **Search sync gains a third trigger function and 2 more triggers** (26 total, up from 24) — one for `vendors.city_id` relocation, one for `city` rename/deactivation. Full
   detail in [`../search-schema.sql`](../search-schema.sql).
 - `expand_search_outbox()` now returns `(master_product_id, city_id)` pairs, and the
   add-vs-delete decision is a single `EXISTS`-based query over those pairs, re-verified

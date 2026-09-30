@@ -4,7 +4,7 @@ Narrative table design and the reasoning behind each column, implementing
 [decisions 0001–0016](decisions/README.md).
 
 > **[catalog-schema.sql](catalog-schema.sql) is the canonical DDL.** Where this document and
-> the SQL disagree, the SQL wins. This one exists to explain *why* each column is shaped the
+> the SQL disagree, the SQL wins. This one exists to explain _why_ each column is shaped the
 > way it is — the SQL cannot carry that.
 
 Both supersede the entity sketch in the root-level
@@ -155,7 +155,7 @@ result is what search and the PDP consume, so they see an ETIM-shaped flat list.
 > decided against it. Lights/Tiles/Stone filters should skew aesthetic (finish, theme,
 > colour family) while Electrical/Plumbing skew technical (amperage, pressure rating), but
 > that is a guideline for choosing attributes, not a property the schema models. Aesthetic
-> attributes are declared *on* the decorative category rather than inherited, so
+> attributes are declared _on_ the decorative category rather than inherited, so
 > `display_order` already controls their prominence.
 
 ## 3. Master catalog
@@ -247,7 +247,7 @@ by 0014.
 ## 5. Stone varieties
 
 Stone has no GTIN and no manufacturer part number — a variety is a **trade name** tied to a
-quarry region. `master_product` for stone is *variety + finish + thickness*, e.g. "Black
+quarry region. `master_product` for stone is _variety + finish + thickness_, e.g. "Black
 Galaxy Granite, Polished, 18mm", with `is_generic = true` and `brand_id IS NULL`.
 
 ```sql
@@ -263,8 +263,8 @@ stone_variety_alias (                            -- NEW
 )
 ```
 
-`stone_variety_alias` exists because the draft match order (*exact GTIN → MPN → structured
-→ fuzzy*) has its entire top half unavailable for stone, while vendors upload "Black
+`stone_variety_alias` exists because the draft match order (_exact GTIN → MPN → structured
+→ fuzzy_) has its entire top half unavailable for stone, while vendors upload "Black
 Galaxy", "black galexy", "BG Granite", "Galaxy Black". Match order for stone becomes
 **variety alias exact → fuzzy name**, and rows default to `needs_review` rather than
 `auto_matched` unless an alias matches exactly.
@@ -340,10 +340,10 @@ order_item (
 `configuration` generalizes across every made-to-order `sale_unit_type`, which is why 0002
 reused the existing concept rather than inventing a paint-specific one:
 
-| `sale_unit_type` | `configuration` payload | inventory decrements |
-|---|---|---|
-| `discrete` | `null` | the SKU itself |
-| `cut_to_length` | `{ length_m }` | coil stock, in metres |
+| `sale_unit_type`  | `configuration` payload                    | inventory decrements                    |
+| ----------------- | ------------------------------------------ | --------------------------------------- |
+| `discrete`        | `null`                                     | the SKU itself                          |
+| `cut_to_length`   | `{ length_m }`                             | coil stock, in metres                   |
 | `tinted_to_order` | `{ colour_family, reference_hex?, note? }` | nothing — paint has no `inventory` rows |
 
 The shade fields are **snapshotted, not merely referenced**. Shade cards get revised and
@@ -378,16 +378,16 @@ Per `search-architecture.md`, with two additions from these decisions:
 
 ## Open items reflected above
 
-| Column / table | Status | Tracked in |
-|---|---|---|
-| `vendor_listing.supports_tinting` | Provisional | 0002 open question 2 |
-| Custom / computer-matched shades | No home in `configuration` yet | 0002 open question 1 |
+| Column / table                                 | Status                               | Tracked in           |
+| ---------------------------------------------- | ------------------------------------ | -------------------- |
+| `vendor_listing.supports_tinting`              | Provisional                          | 0002 open question 2 |
+| Custom / computer-matched shades               | No home in `configuration` yet       | 0002 open question 1 |
 | Colour-family price per listing vs. per vendor | Per-listing modelled; may be tedious | 0007 open question 1 |
-| Shade whose family a vendor hasn't priced | Hide, or show unavailable | 0007 open question 2 |
-| Normalized grade band for filtering | Deferred, not rejected | 0003 open question 1 |
-| Lot-level `inventory` | Post-MVP | 0003 open question 2 |
-| Sample-request flow | No home in the schema | 0003 open question 3 |
-| Wastage on the order line | UI concern for now | 0003 open question 4 |
+| Shade whose family a vendor hasn't priced      | Hide, or show unavailable            | 0007 open question 2 |
+| Normalized grade band for filtering            | Deferred, not rejected               | 0003 open question 1 |
+| Lot-level `inventory`                          | Post-MVP                             | 0003 open question 2 |
+| Sample-request flow                            | No home in the schema                | 0003 open question 3 |
+| Wastage on the order line                      | UI concern for now                   | 0003 open question 4 |
 
 `attribute.filter_character` was proposed in an earlier revision of this document and
 **removed** by [0004](decisions/0004-filter-character-by-category.md).

@@ -52,8 +52,9 @@ export function validateVendorOnboardForm(
   }
 
   const accountNumber = formValues.accountDetails.accountNumber.trim();
-  const isAccountNumberLengthInvalid = accountNumber.length < VENDOR_CONSTANTS.minAccountNumberLength
-    || accountNumber.length > VENDOR_CONSTANTS.maxAccountNumberLength;
+  const isAccountNumberLengthInvalid =
+    accountNumber.length < VENDOR_CONSTANTS.minAccountNumberLength ||
+    accountNumber.length > VENDOR_CONSTANTS.maxAccountNumberLength;
   if (isAccountNumberLengthInvalid) {
     return { isValid: false, errorMessage: ERROR_MESSAGES.accountNumberInvalid };
   }

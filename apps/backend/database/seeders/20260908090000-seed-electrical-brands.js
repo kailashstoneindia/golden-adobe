@@ -88,11 +88,7 @@ const BRANDS = [
     // India storefront confirmed INR (₹446, ₹267) at shop.legrand.co.in.
     // 'legrand india' is omitted deliberately — it normalizes to 'legrand'
     // and so already resolves via the resolver's second step.
-    aliases: [
-      'legrand (india) private limited',
-      'legrand india pvt ltd',
-      'legrand dx3',
-    ],
+    aliases: ['legrand (india) private limited', 'legrand india pvt ltd', 'legrand dx3'],
   },
   {
     name: 'Polycab',

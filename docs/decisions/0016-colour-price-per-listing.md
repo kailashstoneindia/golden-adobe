@@ -11,7 +11,7 @@
 per-litre delta, to spare vendors from maintaining ~500 prices. It then needed a per-listing
 override for margin, which introduced a two-level `COALESCE` and a genuinely confusing
 behaviour: an override with no matching vendor-level row still returned `NULL`, because the
-vendor row declared *availability* while the override only set the *rate*.
+vendor row declared _availability_ while the override only set the _rate_.
 
 That subtlety is the signal. A pricing model that needs a paragraph to explain why a number
 you can see is not the number being used is too clever for the problem.
@@ -83,4 +83,4 @@ here stays, and a default layer sits underneath.
 1. Should white / untinted be required as a row, or inferred from `vendor_listing.price`?
    Requiring it is more uniform; inferring it is one less thing to forget.
 2. If vendors do find per-product entry tedious at scale, revisit with a vendor-level default
-   layer *underneath* this table rather than replacing it.
+   layer _underneath_ this table rather than replacing it.

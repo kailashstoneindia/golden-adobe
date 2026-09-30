@@ -2,7 +2,7 @@
 
 **As of 2026-09-01.** Companion to
 [decisions/0021-search-runtime-build-plan.md](decisions/0021-search-runtime-build-plan.md),
-which records the *plan*. This file records what actually happened while building it: the
+which records the _plan_. This file records what actually happened while building it: the
 defects found by running the code against live Postgres, Redis and Meilisearch, and — for
 anything still open — why it is still open.
 
@@ -35,7 +35,7 @@ whether the application could start.** Nobody had booted it since Phase 6a.
 
 `Vendor` has declared `@BelongsTo(() => City)` since Phase 6a added `vendors.city_id`, but
 `City` was never added to `DatabaseModule`'s eager `models: []` list. Models listed there are
-associated at connection time, *before* `CatalogModule`'s `forFeature` has registered `City`.
+associated at connection time, _before_ `CatalogModule`'s `forFeature` has registered `City`.
 
 ```
 Error: City has not been defined
@@ -46,7 +46,7 @@ Error: City has not been defined
 **Why nothing caught it:** the Jest suites build their own Sequelize instance from
 `test-db.ts`, which registers every model in one explicit list — so the association always
 resolved there. `nest build` type-checks fine because the decorator is valid TypeScript. The
-bug only exists at *runtime module-init ordering*, and nothing had exercised that path since
+bug only exists at _runtime module-init ordering_, and nothing had exercised that path since
 6a landed.
 
 **Fix:** register `City` alongside `Vendor` in
@@ -62,7 +62,7 @@ association graph with it. Adding a `@BelongsTo` to `User`, `Vendor`, `RefreshTo
 ### B2 — Meilisearch indexing failures were silently swallowed ⚠️ the exact failure mode the design warns about
 
 `MeiliClient.addDocuments` awaited `tasks.waitForTask(...)` and then returned. But
-`waitForTask` resolves when a task reaches **any terminal state** — `succeeded` *and*
+`waitForTask` resolves when a task reaches **any terminal state** — `succeeded` _and_
 `failed` alike. It does not throw.
 
 The consequence is the worst kind:
@@ -78,8 +78,8 @@ The drain reported `3 pairs -> 3 indexed` while the index genuinely held **0 doc
 
 **Why this matters more than the average bug:**
 [search-system-design.md](search-system-design.md) section 10 names this precise scenario as
-the single largest cost of leaving Postgres — *"a stale index that never errors and nobody
-notices until a customer reports a wrong price."* The code had implemented exactly that.
+the single largest cost of leaving Postgres — _"a stale index that never errors and nobody
+notices until a customer reports a wrong price."_ The code had implemented exactly that.
 
 **Fix:** an `awaitTask()` helper in
 [meili.client.ts](../apps/backend/src/modules/search/meili/meili.client.ts) that inspects
@@ -94,22 +94,22 @@ leaves the whole cutoff window unprocessed for the next cycle.
 The Postgres path filtered with `similarity(mp.name, :query) >= threshold`. Measured against
 real data:
 
-| Expression | Score |
-|---|---|
-| `similarity('V6G Havells MCB 32A C-Curve', 'MCB')` | **0.148** |
-| `word_similarity('MCB', 'V6G Havells MCB 32A C-Curve')` | **1.0** |
+| Expression                                              | Score     |
+| ------------------------------------------------------- | --------- |
+| `similarity('V6G Havells MCB 32A C-Curve', 'MCB')`      | **0.148** |
+| `word_similarity('MCB', 'V6G Havells MCB 32A C-Curve')` | **1.0**   |
 
-`similarity()` compares two strings *as wholes* and penalises length difference, so a short
+`similarity()` compares two strings _as wholes_ and penalises length difference, so a short
 keyword against a full product name always scores near zero. No threshold can accept 0.148
 without also accepting noise — the customer-facing search returned nothing for every query.
 
-`word_similarity()` finds the best-matching word run *inside* the target: exact keyword 1.0,
+`word_similarity()` finds the best-matching word run _inside_ the target: exact keyword 1.0,
 the typo `Havels` 0.71, unrelated text 0.0.
 
 **Fix:** all four call sites in
 [postgres-search.service.ts](../apps/backend/src/modules/search/fallback/postgres-search.service.ts)
 switched to `word_similarity(:query, mp.name)`, threshold raised from 0.2 to 0.5 (which is
-*stricter* under the new operator, not looser).
+_stricter_ under the new operator, not looser).
 
 ---
 
@@ -203,7 +203,7 @@ Document identifier "89a3c851-…:3b4c3da6-…" is invalid.
 ```
 
 **Fix:** rebuild `packages/types`. **The underlying trap:** `npx nest build` inside
-`apps/backend` does *not* rebuild workspace dependencies. Turbo's root `build` task declares
+`apps/backend` does _not_ rebuild workspace dependencies. Turbo's root `build` task declares
 `dependsOn: ["^build"]` and does handle it — so `pnpm build` from the root is correct and
 `npx nest build` alone is not, any time `packages/types` has changed.
 
@@ -213,7 +213,7 @@ Document identifier "89a3c851-…:3b4c3da6-…" is invalid.
 
 `SearchService` returned cached entries with their stored `engine` and `degraded` values. A
 response cached while Meilisearch was healthy would therefore keep reporting
-`engine: meilisearch, degraded: false` *during* an outage — the hits were correct, but the
+`engine: meilisearch, degraded: false` _during_ an outage — the hits were correct, but the
 operational metadata lied, and `degraded` is exactly the field an operator would alert on.
 
 **Fix:** a `servedFromCache` flag on `SearchResponse`. `engine` and `degraded` still describe
@@ -230,7 +230,7 @@ no longer be misread as a live all-clear.
 6g's Meilisearch-path assertions now pass. **Combined 6g+6h verification: 46 checks, 0
 failures.**
 
-The diagnosis recorded when this was open was correct but incomplete. The harness *was*
+The diagnosis recorded when this was open was correct but incomplete. The harness _was_
 contending with the scheduled drain for the advisory lock — fixed by the `WORKER_MODE` work
 below — but underneath that sat **two genuine product defects** (B9 and B10) that the
 contention had been hiding. Resolving O1 therefore meant fixing real bugs, not only the
@@ -246,7 +246,7 @@ harness:
 - **B10** — cached responses misreported `engine`/`degraded`.
 
 What 6g now demonstrates end to end, through real HTTP: Meilisearch-backed results with
-correct city-scoped prices, facet distribution, city isolation by pincode *and* by
+correct city-scoped prices, facet distribution, city isolation by pincode _and_ by
 coordinates, a client-supplied `city_id` being ignored, attribute and price filters, a
 transparent Postgres fallback when Meilisearch is killed mid-run, identical document shape
 from both engines, and `SEARCH_ENGINE=postgres` as a deliberate non-degraded mode.

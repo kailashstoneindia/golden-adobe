@@ -8,7 +8,7 @@
 
 Vendors attach inventory to catalog products by uploading a spreadsheet. Matching a
 vendor's free text to a catalog product is unreliable, and a wrong match is invisible after
-the fact — the listing is valid, the price is sane, only the *link* is wrong, and the
+the fact — the listing is valid, the price is sane, only the _link_ is wrong, and the
 customer receives the wrong item.
 
 [catalog-consistency.md](../catalog-consistency.md) surveys how Amazon, MDM practice and
@@ -70,11 +70,11 @@ all. Revisit if support tickets show hand-typed codes causing mismatches.
 4. Uploads → exact code match
 ```
 
-| Column | Vendor edits? |
-|---|---|
-| `product_code` | No — locked |
-| `product_name`, `brand`, `pack`, `unit` | No — context, ignored on import |
-| `price`, `qty_available`, `min_order_qty`, `pincodes`, `status` | Yes |
+| Column                                                          | Vendor edits?                   |
+| --------------------------------------------------------------- | ------------------------------- |
+| `product_code`                                                  | No — locked                     |
+| `product_name`, `brand`, `pack`, `unit`                         | No — context, ignored on import |
+| `price`, `qty_available`, `min_order_qty`, `pincodes`, `status` | Yes                             |
 
 `product_name` is deliberately **ignored** rather than trusted on import. A mismatch between
 the supplied name and the catalog name is logged as a warning — it usually means the vendor
@@ -86,12 +86,12 @@ Without scoping this approach fails on contact with a real catalog: a vendor reg
 Hardware inherits 19 leaf categories and could receive 10,000 rows while stocking 200. A
 sheet that large is as unusable as no sheet.
 
-| Filter | Behaviour |
-|---|---|
-| Leaf category | 58 options, limited to the vendor's registered shop types |
-| Brand | Only brands present in the chosen categories |
-| Since date | Incremental — products added since last download |
-| **Search picker** | Type a name, add individual products to a basket |
+| Filter            | Behaviour                                                 |
+| ----------------- | --------------------------------------------------------- |
+| Leaf category     | 58 options, limited to the vendor's registered shop types |
+| Brand             | Only brands present in the chosen categories              |
+| Since date        | Incremental — products added since last download          |
+| **Search picker** | Type a name, add individual products to a basket          |
 
 **A live row count is shown before download.** That is the real guard against an unusable
 export.
@@ -182,7 +182,7 @@ paint colour families in particular.
 ### 8. GTIN stays a single nullable column
 
 > **Amended same day.** This section first specified a `master_product_gtin` table holding
-> many barcodes per product, because paint's barcode sits on the *base* tin while
+> many barcodes per product, because paint's barcode sits on the _base_ tin while
 > [0007](0007-colour-family-pricing.md) made `master_product` the product line plus pack
 > size — so one paint product spans four barcodes.
 >
@@ -220,7 +220,7 @@ backbone.
   Codes are never reused, so a stale code always resolves to something.
 - Paint exports pre-expand to one row per colour family; stone exports carry a blank `grade`
   column the vendor duplicates rows against. Stone is the only category where the vendor
-  must *add* rows rather than only edit them.
+  must _add_ rows rather than only edit them.
 
 ## Open questions
 

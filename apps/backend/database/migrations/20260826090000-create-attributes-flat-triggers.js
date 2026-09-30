@@ -375,18 +375,12 @@ module.exports = {
       await q('DROP FUNCTION IF EXISTS rebuild_attributes_flat_for_category(UUID);');
       await q('DROP TRIGGER IF EXISTS trg_attribute_enqueue_reindex ON attribute;');
       await q('DROP FUNCTION IF EXISTS enqueue_attribute_reindex();');
-      await q(
-        'DROP TRIGGER IF EXISTS trg_master_product_refresh_flat_on_move ON master_product;',
-      );
+      await q('DROP TRIGGER IF EXISTS trg_master_product_refresh_flat_on_move ON master_product;');
       await q('DROP FUNCTION IF EXISTS refresh_attributes_flat_on_move();');
-      await q(
-        'DROP TRIGGER IF EXISTS trg_mpav_refresh_flat ON master_product_attribute_value;',
-      );
+      await q('DROP TRIGGER IF EXISTS trg_mpav_refresh_flat ON master_product_attribute_value;');
       await q('DROP FUNCTION IF EXISTS refresh_attributes_flat();');
       await q('DROP FUNCTION IF EXISTS build_identity_hash(UUID);');
-      await q(
-        'DROP TRIGGER IF EXISTS trg_mpav_enum_value ON master_product_attribute_value;',
-      );
+      await q('DROP TRIGGER IF EXISTS trg_mpav_enum_value ON master_product_attribute_value;');
       await q('DROP FUNCTION IF EXISTS enforce_attribute_value_option();');
       await q('DROP FUNCTION IF EXISTS flat_rebuild_suppressed();');
       await q('DROP FUNCTION IF EXISTS build_attributes_flat(UUID);');

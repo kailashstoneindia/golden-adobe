@@ -50,7 +50,7 @@ the direct cause of Problem 1.
 
 Full slab-level tracking is not viable here — MSI has scanners and distribution centres; a
 local yard has a phone, and will not serialise and photograph every slab. But the
-intermediate tier the trade already uses *is* viable: the **bundle**, meaning slabs cut from
+intermediate tier the trade already uses _is_ viable: the **bundle**, meaning slabs cut from
 one block, sold together, sharing one photograph and one price.
 
 ```sql
@@ -102,11 +102,11 @@ vendor_listing (
 )
 ```
 
-| Mode | Price source | Used by |
-|---|---|---|
-| `flat` | `vendor_listing.price` | Everything ordinary |
+| Mode               | Price source                  | Used by                                       |
+| ------------------ | ----------------------------- | --------------------------------------------- |
+| `flat`             | `vendor_listing.price`        | Everything ordinary                           |
 | `by_colour_family` | `vendor_listing_colour_price` | Paint ([0007](0007-colour-family-pricing.md)) |
-| `by_bundle` | `stone_bundle.price_per_sqft` | Stone |
+| `by_bundle`        | `stone_bundle.price_per_sqft` | Stone                                         |
 
 `cached_best_price` is the minimum across whichever source the mode names. This also makes
 the two exceptions legible rather than special-cased in application code.

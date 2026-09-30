@@ -1,5 +1,16 @@
-import { Image, StyleSheet, View, type ImageStyle, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  Image,
+  StyleSheet,
+  View,
+  type ImageStyle,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 
+// No *.png module declarations exist in this project; `require` is the working
+// pattern Metro/Expo expects for static image assets here, `import` fails
+// type-check without one.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const logoMark = require('../../../assets/logo-mark.png');
 
 export interface BrandLogoProps {

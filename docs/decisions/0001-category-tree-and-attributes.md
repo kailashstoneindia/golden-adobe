@@ -24,7 +24,7 @@ Launch categories that prompted the discussion:
 
 ## Options considered
 
-### Option A — Variable depth, 2–3 levels, hard cap at 3 *(chosen)*
+### Option A — Variable depth, 2–3 levels, hard cap at 3 _(chosen)_
 
 - **Pro:** Matches ETIM's definition of a product class — the unit that carries one fixed
   feature set. Matches the near-universal taxonomy rule that a property spanning more than
@@ -45,7 +45,7 @@ Launch categories that prompted the discussion:
 ### Option C — Flat categories plus tags
 
 - **Pro:** Simplest queries, no recursion, no depth debate.
-- **Con:** Leaves nothing for attributes to be inherited *from*, killing Decision 2. A flat
+- **Con:** Leaves nothing for attributes to be inherited _from_, killing Decision 2. A flat
   list of ~40 categories also blows past the 10–12 top-level threshold at which mobile
   navigation becomes cognitively overloaded.
 
@@ -55,7 +55,7 @@ Launch categories that prompted the discussion:
 
 Depth follows the product, not a template. The governing test:
 
-> A node is a **category** only if its products need a *different attribute set*. If two
+> A node is a **category** only if its products need a _different attribute set_. If two
 > candidate children share the same fields and differ only in a value, that is an
 > **attribute**, not a category.
 
@@ -63,25 +63,25 @@ Depth follows the product, not a template. The governing test:
 the kind of local business the seller runs, which conveniently doubles as vendor
 registration scope. This is a deliberate departure from Infra.Market's project-lifecycle
 top level (Structural / Finishing / Lifestyle), justified because Golden Abode's sellers
-*are* local shops rather than project-supply channels.
+_are_ local shops rather than project-supply channels.
 
 **The resulting tree — 8 top-level categories.** Only Electrical and Hardware reach depth 3.
 
-| Top level | Children | Depth |
-|---|---|---|
-| **Electrical** | Wires & Cables · Switches & Sockets · Switch Plates & Frames · Conduits & Accessories · Fans · LED Bulbs & Tubes | 2 |
-| | Switchgear → MCB · RCCB · Distribution Board · Isolator | **3** |
-| **Plumbing** | Pipes · Pipe Fittings · Valves · Water Tanks | 2 |
-| **Sanitaryware & Bath** | Water Closets · Wash Basins · Cisterns · Urinals · Taps & Faucets · Showers · Bath Accessories | 2 |
-| **Hardware Tools & Accessories** | Adhesives & Sealants · Safety & Site Equipment | 2 |
-| | Hand Tools → Hammer · Spanner · Measuring Tape · Trowel … | **3** |
-| | Power Tools → Drill · Angle Grinder · Circular Saw … | **3** |
-| | Fasteners → Screws · Bolts · Anchors · Nails | **3** |
-| | Door & Window Hardware → Locks · Hinges · Handles · Closers | **3** |
-| **Lights** (decorative) | Ceiling Lights · Wall Lights · Outdoor & Garden · Lamps | 2 |
-| **Tiles** | Floor · Wall · Outdoor/Parking · Elevation | 2 |
-| **Paint** | Interior Emulsion · Exterior Emulsion · Enamel · Primer · Putty · Waterproofing · Wood Finish · Texture | 2 |
-| **Stone** | Natural Stone · Engineered Stone | 2 |
+| Top level                        | Children                                                                                                         | Depth |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ----- |
+| **Electrical**                   | Wires & Cables · Switches & Sockets · Switch Plates & Frames · Conduits & Accessories · Fans · LED Bulbs & Tubes | 2     |
+|                                  | Switchgear → MCB · RCCB · Distribution Board · Isolator                                                          | **3** |
+| **Plumbing**                     | Pipes · Pipe Fittings · Valves · Water Tanks                                                                     | 2     |
+| **Sanitaryware & Bath**          | Water Closets · Wash Basins · Cisterns · Urinals · Taps & Faucets · Showers · Bath Accessories                   | 2     |
+| **Hardware Tools & Accessories** | Adhesives & Sealants · Safety & Site Equipment                                                                   | 2     |
+|                                  | Hand Tools → Hammer · Spanner · Measuring Tape · Trowel …                                                        | **3** |
+|                                  | Power Tools → Drill · Angle Grinder · Circular Saw …                                                             | **3** |
+|                                  | Fasteners → Screws · Bolts · Anchors · Nails                                                                     | **3** |
+|                                  | Door & Window Hardware → Locks · Hinges · Handles · Closers                                                      | **3** |
+| **Lights** (decorative)          | Ceiling Lights · Wall Lights · Outdoor & Garden · Lamps                                                          | 2     |
+| **Tiles**                        | Floor · Wall · Outdoor/Parking · Elevation                                                                       | 2     |
+| **Paint**                        | Interior Emulsion · Exterior Emulsion · Enamel · Primer · Putty · Waterproofing · Wood Finish · Texture          | 2     |
+| **Stone**                        | Natural Stone · Engineered Stone                                                                                 | 2     |
 
 Eight top-level categories sits at the top of the researched 5–8 range.
 
@@ -103,7 +103,7 @@ Essentials", "Under ₹500", festive picks) become a separate `collection` entit
 - **Product attachment:** `master_product` attaches to **leaf categories only**. Non-leaf
   attachment makes attribute resolution ambiguous and distorts browse counts.
 - **External taxonomy mapping:** treat Google / Shopify Standard Product Taxonomy as an
-  *export* concern (feeds, SEO) via a nullable mapping column — never as the internal tree.
+  _export_ concern (feeds, SEO) via a nullable mapping column — never as the internal tree.
 
 ## Why
 
@@ -112,7 +112,7 @@ Essentials", "Under ₹500", festive picks) become a separate `collection` entit
 ETIM — the classification standard actually used by electrical and plumbing wholesalers
 worldwide, 5,600+ classes as of ETIM 10.0 (Dec 2024), covering precisely our sectors
 (electrical, HVAC/plumbing, tools/hardware, building materials) — is structured as
-**Group → Class → Features**, where a Class is *defined* as the product type carrying one
+**Group → Class → Features**, where a Class is _defined_ as the product type carrying one
 fixed feature set. The general e-commerce taxonomy literature states the same test from the
 other direction: a property applying to products in more than one category is an attribute.
 Two separate traditions converging on one rule is why it was adopted rather than a
@@ -126,13 +126,13 @@ recorded because they are the clearest evidence the rule does real work:
 - **Stone type is an attribute, not a category.** It was initially argued that granite /
   marble / kota / sandstone should be categories, since material is the primary browse axis
   for stone. But they share slab size, thickness, finish, origin and pattern — same fields,
-  different values. Only *engineered* quartz genuinely diverges (consistency guarantee,
+  different values. Only _engineered_ quartz genuinely diverges (consistency guarantee,
   warranty) and earns its own category. Hence `Natural Stone` + `Engineered Stone`, depth 2.
 - **Cable type is an attribute.** House wire, flexible, armoured and submersible cable all
   carry {cores, sq mm, length, voltage grade, insulation} — one `Wires & Cables` category
   with a `Cable Type` attribute, not four categories.
 
-Where the rule *does* split: `Hammer` vs `Drill` (weight and head material vs. voltage, RPM
+Where the rule _does_ split: `Hammer` vs `Drill` (weight and head material vs. voltage, RPM
 and chuck size); `MCB` vs `Distribution Board` (poles, breaking capacity, curve vs. ways and
 IP rating). Where it explicitly does not: `Vitrified` vs `Ceramic` tile — identical fields
 (size, finish, thickness, PEI, water absorption), so `Material` is an attribute.
@@ -155,7 +155,7 @@ with no runtime join cost: one recursive CTE, at author time only.
 
 Keeping them fused means any merchandising change to the menu is a change to the spec
 model, and campaign categories ("Festive Picks") end up permanently polluting the taxonomy.
-Home Depot runs trade, room and project-type browse paths *in parallel* over one product
+Home Depot runs trade, room and project-type browse paths _in parallel_ over one product
 set — multiple navigation views over a single taxonomy is the mature pattern, not
 over-engineering.
 
@@ -215,7 +215,7 @@ Deliberately not settled here:
 
 ## Sources
 
-- [ETIM (standard) — Wikipedia](https://en.wikipedia.org/wiki/ETIM_(standard))
+- [ETIM (standard) — Wikipedia](<https://en.wikipedia.org/wiki/ETIM_(standard)>)
 - [ETIM Classification: Classes, Codes & Technical Attributes Explained — WisePIM](https://wisepim.com/guides/product-taxonomy/etim)
 - [ETIM Classification: How It Works — AtroPIM](https://www.atropim.com/en/blog/etim)
 - [Infra.Market product catalogue](https://infra.market/catalogue/)

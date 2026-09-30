@@ -12,7 +12,7 @@ generic e-commerce practice.
 
 **1. Missing mandatory declarations.** The Legal Metrology (Packaged Commodities) Rules
 2011, amended 2023, require e-commerce listings to display — prominently, next to the
-product image, *before* purchase:
+product image, _before_ purchase:
 
 - manufacturer / packer / importer name and address
 - consumer care email **and** phone
@@ -82,7 +82,7 @@ so the migration is straightforward if rates start drifting.
 - `master_product` goes from 23 to 26 columns; `brand` gains 4.
 - **Generic products have no brand**, so `is_generic = true` rows (sand, aggregate, GI
   fittings) carry no manufacturer or consumer care details. Legal Metrology applies to
-  *pre-packaged* commodities, so loose material sold by weight or volume is outside its
+  _pre-packaged_ commodities, so loose material sold by weight or volume is outside its
   scope — but a packaged generic product would be a genuine gap.
 - Excel templates need three new columns: `country_of_origin` (required), `gst_rate`,
   `importer_details`. Brand-level fields are entered once when a brand is created, not per

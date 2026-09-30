@@ -28,10 +28,7 @@ type VendorOnboardFormState = {
   errorMessage: string | null;
   isSubmitting: boolean;
   updateField: (field: 'shopName' | 'address' | 'upiId' | 'gstin', value: string) => void;
-  updateAccountDetailsField: (
-    field: keyof VendorAccountDetailsFormValues,
-    value: string,
-  ) => void;
+  updateAccountDetailsField: (field: keyof VendorAccountDetailsFormValues, value: string) => void;
   handleSubmit: (coordinates: ShopCoordinates | null) => void;
 };
 

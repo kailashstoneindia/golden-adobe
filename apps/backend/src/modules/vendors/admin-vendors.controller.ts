@@ -77,10 +77,7 @@ export class AdminVendorsController {
   @ApiResponse({ status: 200, description: 'The vendor registered categories after replacement' })
   @ApiResponse({ status: 400, description: 'Unknown or non-leaf category ids' })
   @ApiResponse({ status: 404, description: 'No such vendor' })
-  async setCategories(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: SetVendorCategoriesDto,
-  ) {
+  async setCategories(@Param('id', ParseUUIDPipe) id: string, @Body() dto: SetVendorCategoriesDto) {
     return this.vendorCategoriesService.replaceForVendor(id, dto.categoryIds);
   }
 }

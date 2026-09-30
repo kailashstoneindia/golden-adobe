@@ -142,7 +142,7 @@ export class VendorCatalogImportService {
         row: row.rowNumber,
         productRef: '',
         outcome: 'rejected',
-        message: 'product_ref is required',
+        message: 'product_code is required',
       };
     }
     if (row.price === undefined || Number.isNaN(row.price) || row.price < 0) {
@@ -786,7 +786,7 @@ export class VendorCatalogImportService {
 
       rows.push({
         rowNumber,
-        productRef: str(get(row, 'product_ref')),
+        productRef: str(get(row, 'product_code')),
         vendorSku: str(get(row, 'vendor_sku')),
         price: num(get(row, 'price')),
         mrp: num(get(row, 'mrp')),

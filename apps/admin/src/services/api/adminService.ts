@@ -36,15 +36,10 @@ export const adminService = {
   },
 
   approveUser(userId: string): Promise<UserDto> {
-    return patchRequest<UserDto, Record<string, never>>(
-      API_ENDPOINTS.admin.approveUser(userId),
-    );
+    return patchRequest<UserDto, Record<string, never>>(API_ENDPOINTS.admin.approveUser(userId));
   },
 
   rejectUser(userId: string, body: RejectUserRequest): Promise<UserDto> {
-    return patchRequest<UserDto, RejectUserRequest>(
-      API_ENDPOINTS.admin.rejectUser(userId),
-      body,
-    );
+    return patchRequest<UserDto, RejectUserRequest>(API_ENDPOINTS.admin.rejectUser(userId), body);
   },
 };

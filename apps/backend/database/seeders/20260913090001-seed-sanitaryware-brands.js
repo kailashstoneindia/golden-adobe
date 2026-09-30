@@ -97,7 +97,9 @@ module.exports = {
       `[seed-sanitaryware-brands] inserted this run: ${brandsInserted} brands, ${aliasesInserted} aliases`,
     );
     // eslint-disable-next-line no-console
-    console.log(`[seed-sanitaryware-brands] totals now: ${totals.brands} brands, ${totals.aliases} aliases`);
+    console.log(
+      `[seed-sanitaryware-brands] totals now: ${totals.brands} brands, ${totals.aliases} aliases`,
+    );
   },
 
   down: async (queryInterface) => {

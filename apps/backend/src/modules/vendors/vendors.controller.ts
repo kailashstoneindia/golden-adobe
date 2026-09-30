@@ -102,10 +102,7 @@ export class VendorsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Persist vendor onboarding progress stage' })
   @ApiResponse({ status: 200, description: 'Onboarding stage updated' })
-  async updateOnboardingProgress(
-    @Req() req: any,
-    @Body() dto: UpdateVendorOnboardingProgressDto,
-  ) {
+  async updateOnboardingProgress(@Req() req: any, @Body() dto: UpdateVendorOnboardingProgressDto) {
     const userId = req.user.sub;
     await this.vendorsService.updateOnboardingProgress(userId, dto.onboardingStage);
     return { success: true };

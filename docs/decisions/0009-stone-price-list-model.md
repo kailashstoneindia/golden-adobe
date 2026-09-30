@@ -15,7 +15,7 @@ Slabsmith.
 **That research was US-centric, and generalising from it was a mistake.** Those are American
 distributors and fabricator software: 17 distribution centres, slab scanners, per-slab
 serial numbers, 30,000+ photographs. The conclusion drawn from them — that the physical tier
-is how stone is sold — is true *there*.
+is how stone is sold — is true _there_.
 
 Research into the Indian market shows a different trade. Every major Indian source —
 RK Marbles, Petros, Stonegalleria, Sudarshan Stone, Nakul International — publishes the same
@@ -28,8 +28,8 @@ around 5–10% above 500 sq ft. Kishangarh is the processing hub, and dealers qu
 lists.
 
 That is **a row in a spreadsheet**. Not a photographed block-batch with slab counts and
-measured dimensions. And crucially, *grade appears in those lists as an ordinary pricing
-column* — which is the simple answer that 0008 stepped over.
+measured dimensions. And crucially, _grade appears in those lists as an ordinary pricing
+column_ — which is the simple answer that 0008 stepped over.
 
 This also matters because the platform's onboarding is Excel-first: admin uploads the master
 catalog as a spreadsheet, vendors upload inventory and new-product requests the same way.
@@ -80,7 +80,7 @@ trade.
 Quantity in sq ft against the listing. `pricing_mode` drops back to two values — `flat` and
 `by_colour_family` — so **paint is the only pricing exception**, and stone stops being one.
 
-> *Later:* [0016](0016-colour-price-per-listing.md) removed `pricing_mode` altogether. The
+> _Later:_ [0016](0016-colour-price-per-listing.md) removed `pricing_mode` altogether. The
 > point above still holds — stone prices flat — but the column no longer exists.
 
 ## What survives from 0003

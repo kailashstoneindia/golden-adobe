@@ -3,11 +3,15 @@ import { StyleSheet, View } from 'react-native';
 import { DemoScreen } from '../../src/components/demo/DemoScreen';
 import { Badge, Card, Text } from '../../src/components/ui';
 import { DEMO_ADDRESSES } from '../../src/data/demo-content';
-import { Colors, Spacing } from '../../src/theme';
+import { Spacing } from '../../src/theme';
 
 export default function SavedAddressesScreen() {
   return (
-    <DemoScreen title="Saved addresses" subtitle="Delivery locations tied to your projects" showBack>
+    <DemoScreen
+      title="Saved addresses"
+      subtitle="Delivery locations tied to your projects"
+      showBack
+    >
       <View style={styles.list}>
         {DEMO_ADDRESSES.map((address) => (
           <Card key={address.label}>

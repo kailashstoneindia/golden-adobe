@@ -16,17 +16,17 @@ export const selectAdminUser = (authStore: AuthStoreState): UserDto | null => au
 
 export const selectIsHydrated = (authStore: AuthStoreState): boolean => authStore.isHydrated;
 
-export const selectSetSession = (
-  authStore: AuthStoreState,
-): AuthStoreState['setSession'] => authStore.setSession;
+export const selectSetSession = (authStore: AuthStoreState): AuthStoreState['setSession'] =>
+  authStore.setSession;
 
-export const selectSetUser = (authStore: AuthStoreState): AuthStoreState['setUser'] => authStore.setUser;
+export const selectSetUser = (authStore: AuthStoreState): AuthStoreState['setUser'] =>
+  authStore.setUser;
 
-export const selectClearSession = (
-  authStore: AuthStoreState,
-): AuthStoreState['clearSession'] => authStore.clearSession;
+export const selectClearSession = (authStore: AuthStoreState): AuthStoreState['clearSession'] =>
+  authStore.clearSession;
 
-export const selectHydrate = (authStore: AuthStoreState): AuthStoreState['hydrate'] => authStore.hydrate;
+export const selectHydrate = (authStore: AuthStoreState): AuthStoreState['hydrate'] =>
+  authStore.hydrate;
 
 export const useAuthStore = create<AuthStoreState>((set) => ({
   user: null,

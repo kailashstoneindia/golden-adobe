@@ -68,10 +68,9 @@ module.exports = {
         transaction: t,
       });
 
-      await queryInterface.sequelize.query(
-        `CREATE INDEX idx_city_active ON city (is_active);`,
-        { transaction: t },
-      );
+      await queryInterface.sequelize.query(`CREATE INDEX idx_city_active ON city (is_active);`, {
+        transaction: t,
+      });
     });
   },
 

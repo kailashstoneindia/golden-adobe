@@ -15,11 +15,7 @@ import { CatalogModule } from '../catalog/catalog.module';
 // own vendor-scoped controllers. Importing VendorsModule into CatalogModule
 // instead would close a cycle.
 @Module({
-  imports: [
-    SequelizeModule.forFeature([Vendor, VendorAccountDetails]),
-    UsersModule,
-    CatalogModule,
-  ],
+  imports: [SequelizeModule.forFeature([Vendor, VendorAccountDetails]), UsersModule, CatalogModule],
   // VendorListingsController is declared here rather than in CatalogModule
   // even though it lives in the catalog folder beside the models it serves:
   // it injects VendorsService to resolve the caller's vendor, and
