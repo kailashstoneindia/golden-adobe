@@ -1,13 +1,7 @@
 import type { SearchDocument } from '@golden-abode/types';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
 
 import { SearchProductCard } from '../../src/components/catalog';
 import { Screen } from '../../src/components/layout/Screen';
@@ -255,9 +249,7 @@ function SearchResultsBody({
     <FlatList
       data={hits}
       keyExtractor={(item) => item.id}
-      renderItem={({ item }) => (
-        <SearchProductCard product={item} onPress={onProductPress} />
-      )}
+      renderItem={({ item }) => <SearchProductCard product={item} onPress={onProductPress} />}
       contentContainerStyle={styles.listContent}
       ItemSeparatorComponent={ListSeparator}
       ListHeaderComponent={
@@ -286,9 +278,7 @@ function ListSeparator() {
   return <View style={styles.separator} />;
 }
 
-function buildBrandOptions(
-  brandFacet: Record<string, number> | undefined,
-): FilterOption[] {
+function buildBrandOptions(brandFacet: Record<string, number> | undefined): FilterOption[] {
   if (!brandFacet) {
     return [];
   }

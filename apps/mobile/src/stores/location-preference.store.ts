@@ -8,7 +8,11 @@ type LocationPreferenceState = {
   isHydrated: boolean;
   hydratePreference: () => Promise<void>;
   setPincode: (pincode: string) => Promise<void>;
-  setCoordinates: (options: { latitude: number; longitude: number; pincode?: string }) => Promise<void>;
+  setCoordinates: (options: {
+    latitude: number;
+    longitude: number;
+    pincode?: string;
+  }) => Promise<void>;
   clearPreference: () => Promise<void>;
 };
 

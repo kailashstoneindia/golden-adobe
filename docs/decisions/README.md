@@ -39,6 +39,7 @@ valid when circumstances change.
 | [0025](0025-full-aws-migration.md)                           | Full AWS migration: target architecture and cost                                      | 2026-09-18 | Proposed — awaiting client go-ahead |
 | [0026](0026-pearl-precision-brand-onboarding.md)             | Onboarding Pearl Precision (Sparsh Pearl): brand + catalog seeding strategy           | 2026-09-24 | Accepted                            |
 | [0027](0027-lavish-ceramics-brand-onboarding.md)             | Onboarding Lavish Ceramics: brand + catalog seeding strategy                          | 2026-09-25 | Accepted                            |
+| [0031](0031-local-data-to-production.md)                     | Moving the local catalog, vendor and inventory data to production                     | 2026-10-02 | Accepted                            |
 
 ## Adding a record
 

@@ -12,13 +12,8 @@ import { navigateToSearchResultsAfterLocation } from '../../src/utils';
 
 export default function LocationGateScreen() {
   const routeParams = useLocalSearchParams<{ q?: string; category?: string }>();
-  const {
-    errorMessage,
-    isSavingPincode,
-    isCapturingGps,
-    handleSavePincode,
-    handleCaptureGps,
-  } = useCustomerLocationPreference();
+  const { errorMessage, isSavingPincode, isCapturingGps, handleSavePincode, handleCaptureGps } =
+    useCustomerLocationPreference();
   const { showSuccess, showError } = useToast();
 
   const [pincodeInput, setPincodeInput] = useState('');

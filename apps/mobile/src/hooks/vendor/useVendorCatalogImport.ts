@@ -22,10 +22,7 @@ async function invalidatePendingAndListings(queryClient: QueryClient): Promise<v
   await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.vendorListings.all });
 }
 
-export function useVendorExportCountQuery(
-  scope: VendorCatalogExportScope,
-  isEnabled: boolean,
-) {
+export function useVendorExportCountQuery(scope: VendorCatalogExportScope, isEnabled: boolean) {
   return useQuery({
     queryKey: QUERY_KEYS.vendorCatalogImport.exportCount(buildExportScopeKey(scope)),
     queryFn: () => vendorCatalogImportService.fetchExportCount(scope),
@@ -80,10 +77,7 @@ export function useChoosePendingCandidateMutation() {
 
   return useMutation({
     mutationFn: (variables: { vendorListingId: string; body: ChoosePendingCandidateRequest }) =>
-      vendorCatalogImportService.choosePendingCandidate(
-        variables.vendorListingId,
-        variables.body,
-      ),
+      vendorCatalogImportService.choosePendingCandidate(variables.vendorListingId, variables.body),
     onSuccess: async () => {
       await invalidatePendingAndListings(queryClient);
     },

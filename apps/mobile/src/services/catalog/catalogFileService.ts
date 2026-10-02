@@ -71,8 +71,7 @@ export async function pickCatalogWorkbook(): Promise<CatalogUploadFile | null> {
       uri: asset.uri,
       name: asset.name || 'catalog-upload.xlsx',
       mimeType:
-        asset.mimeType ||
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        asset.mimeType || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     };
   } catch {
     throw new CatalogFileToolsError(ERROR_MESSAGES.vendorCatalogFileToolsMissing);

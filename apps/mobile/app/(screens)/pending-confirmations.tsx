@@ -1,13 +1,7 @@
 import type { PendingConfirmation } from '@golden-abode/types';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
 
 import { Screen } from '../../src/components/layout/Screen';
 import { Button, Card, Text } from '../../src/components/ui';
@@ -54,10 +48,7 @@ export default function PendingConfirmationsScreen() {
     }
   };
 
-  const handleChoose = async (options: {
-    vendorListingId: string;
-    masterProductId: string;
-  }) => {
+  const handleChoose = async (options: { vendorListingId: string; masterProductId: string }) => {
     setActionError(null);
     try {
       await chooseMutation.mutateAsync({

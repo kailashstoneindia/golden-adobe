@@ -73,7 +73,9 @@ function CategoryTreeRow({
   const isExpanded = expandedIds.has(node.id);
   const isSelected = selectedId === node.id;
   const leafTotal = hasChildren ? countLeaves(node.children) : 0;
-  const productTotal = hasChildren ? countProducts(node.children) + node.productCount : node.productCount;
+  const productTotal = hasChildren
+    ? countProducts(node.children) + node.productCount
+    : node.productCount;
 
   return (
     <li className={catalogStyles.treeItem}>
@@ -95,11 +97,7 @@ function CategoryTreeRow({
           <span className={catalogStyles.treeSpacer} />
         )}
 
-        <button
-          type="button"
-          className={catalogStyles.treeSelect}
-          onClick={() => onSelect(node)}
-        >
+        <button type="button" className={catalogStyles.treeSelect} onClick={() => onSelect(node)}>
           <span className={catalogStyles.treeName}>{node.name}</span>
           <span className={catalogStyles.treeMeta}>
             {node.isLeaf ? (
@@ -172,10 +170,7 @@ export function CatalogCategoriesPage() {
 
   const tree = useMemo(() => treeQuery.data ?? [], [treeQuery.data]);
   const normalizedQuery = searchText.trim().toLowerCase();
-  const visibleTree = useMemo(
-    () => filterTree(tree, normalizedQuery),
-    [tree, normalizedQuery],
-  );
+  const visibleTree = useMemo(() => filterTree(tree, normalizedQuery), [tree, normalizedQuery]);
   const leafCount = useMemo(() => countLeaves(tree), [tree]);
   const searchExpandedIds = useMemo(() => {
     if (!normalizedQuery) {
@@ -274,7 +269,9 @@ export function CatalogCategoriesPage() {
             <>
               <div className={catalogStyles.detailHeader}>
                 <h3 className={catalogStyles.detailTitle}>{selected.name}</h3>
-                <span className={selected.isLeaf ? catalogStyles.badgeLeaf : catalogStyles.badgeBranch}>
+                <span
+                  className={selected.isLeaf ? catalogStyles.badgeLeaf : catalogStyles.badgeBranch}
+                >
                   {selected.isLeaf ? 'Leaf' : 'Group'}
                 </span>
               </div>
