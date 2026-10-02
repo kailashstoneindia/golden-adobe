@@ -211,6 +211,48 @@ Before the demo: set `LOAD_DEMO_DATA=true` on the Railway backend service, make 
 database has no seeded reference data, merge, deploy. Before the real launch: delete this migration
 file and its `demo-data/` folder (or leave the flag unset, which keeps it a no-op).
 
+### Second migration, after the first loaded nothing on Railway (2026-10-02)
+
+PR #17 deployed to the Railway demo environment and the migration ran, but **loaded nothing**
+(`GET /api/search?pincode=110001` still `cityId: null`). Read-only queries on the demo DB showed
+why: `category`, `brand`, `master_product` and `city` were all 0, **`vendors` was 2** (created while
+testing vendor onboarding), and the migration's row was in `"SequelizeMeta"` (so it ran once and was
+recorded). Two blockers, and nobody with Railway dashboard access was available to set variables:
+
+1. It needed `LOAD_DEMO_DATA=true` on the service.
+2. Its blank-database guard included `vendors`, so the two test vendors made it skip even with the flag.
+
+[20261002140000-load-demo-data-on-railway-demo.js](../../apps/backend/database/migrations/20261002140000-load-demo-data-on-railway-demo.js)
+loads the same data and fixes both. Migrations never re-run, so this had to be a new file; the first
+one is left untouched.
+
+- **No variable to set.** It switches itself on when `RAILWAY_PROJECT_ID` equals the demo project's id, or
+  `RAILWAY_PUBLIC_DOMAIN` equals the demo service's domain (two independent signals; Railway injects both
+  into every deployment, per Railway's variables reference). `LOAD_DEMO_DATA=true` still works as an
+  override. CI, developers' databases and any other Railway project: no-op.
+- **Existing vendors are kept.** `vendors` and `users` are no longer in the blank-database guard. A demo
+  vendor whose user already owns a vendor is not inserted; its account details, categories and listings
+  are attached to the existing vendor. Users with the same phone keep their password and get the demo id.
+- Still skips (with a warning, never a failed deploy) if `unit_of_measure`, `city`, `category`,
+  `attribute`, `brand` or `master_product` already has rows. `hsn_code` is not in that list: its primary key
+  is the natural code, so rows that already exist are left as they are.
+- `down` also clears `vendor_category` rows that point at demo categories, because a vendor that existed
+  before is not deleted with the demo data.
+
+Tested 2026-10-02 on a scratch database shaped like the Railway one (catalog empty; two test vendors, one
+sharing a phone with a demo vendor; a hand-made admin; an extra user): gate off → no-op; gate on via
+`RAILWAY_PROJECT_ID` → 645 products, 4 vendors (demo vendor B reused the existing one and got its 63
+listings, no duplicate), 268 listings, 0 orphan rows, `md5` of products identical to the source; re-run
+over loaded data → warning, nothing changed; `down` → catalog gone, existing vendors and users kept;
+load again; `LOAD_DEMO_DATA=true` override works; gate via `RAILWAY_PUBLIC_DOMAIN` alone works; a
+pre-existing `hsn_code` row does not block the load (26 rows after); a pre-existing `unit_of_measure`
+row with a different id makes it skip with a warning and change nothing. About 10-14 s.
+
+Not tested: inside the Railway container, and whether Railway really injects `RAILWAY_PROJECT_ID` into the
+migration step of this service (documented for all deployments, but this service's entrypoint runs the
+migration at container start, which is where the variable is read). If the load still does not happen,
+`LOAD_DEMO_DATA=true` on the service plus deleting this migration's `"SequelizeMeta"` row is the fallback.
+
 ### Fallback: manual restore
 
 Remote restore. The user's Railway **public** Postgres URL goes in `$RAILWAY_DB_URL` (never
