@@ -61,10 +61,7 @@ export async function patchRequest<TResponse, TBody>(
   return response.data.data;
 }
 
-export async function putRequest<TResponse, TBody>(
-  url: string,
-  body: TBody,
-): Promise<TResponse> {
+export async function putRequest<TResponse, TBody>(url: string, body: TBody): Promise<TResponse> {
   const response = await apiClient.put<ApiSuccessResponse<TResponse>>(url, body);
   return response.data.data;
 }

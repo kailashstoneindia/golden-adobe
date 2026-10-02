@@ -2,10 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { APP_CONSTANTS } from '@/constants/appConstants';
 import { vendorsService } from '@/services/api/vendorsService';
-import type {
-  SetVendorCategoriesRequest,
-  SetVendorCityRequest,
-} from '@/types/vendors.types';
+import type { SetVendorCategoriesRequest, SetVendorCityRequest } from '@/types/vendors.types';
 
 export const VENDORS_QUERY_KEYS = {
   all: ['vendors'] as const,

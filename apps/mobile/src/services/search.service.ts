@@ -26,9 +26,7 @@ function buildSearchParams(params: SearchQueryParams): Record<string, string | n
   return queryParams;
 }
 
-function buildListingsParams(
-  params: ProductListingsQueryParams,
-): Record<string, string | number> {
+function buildListingsParams(params: ProductListingsQueryParams): Record<string, string | number> {
   const queryParams: Record<string, string | number> = {};
   if (params.pincode) queryParams.pincode = params.pincode;
   if (params.lat !== undefined) queryParams.lat = params.lat;

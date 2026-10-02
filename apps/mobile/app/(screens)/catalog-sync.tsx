@@ -38,10 +38,7 @@ export default function CatalogSyncScreen() {
     () => ({ leafCategoryIds: selectedCategoryIds }),
     [selectedCategoryIds],
   );
-  const exportCountQuery = useVendorExportCountQuery(
-    exportScope,
-    selectedCategoryIds.length > 0,
-  );
+  const exportCountQuery = useVendorExportCountQuery(exportScope, selectedCategoryIds.length > 0);
 
   const handleToggleCategory = (categoryId: string) => {
     setSelectedCategoryIds((current) => toggleCategoryId(current, categoryId));

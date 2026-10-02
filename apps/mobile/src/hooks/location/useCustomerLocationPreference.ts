@@ -1,10 +1,7 @@
 import { useCallback, useState } from 'react';
 
 import { ERROR_MESSAGES } from '../../constants';
-import {
-  captureCurrentShopLocation,
-  ShopLocationNativeError,
-} from '../../services';
+import { captureCurrentShopLocation, ShopLocationNativeError } from '../../services';
 import { useLocationPreferenceStore } from '../../stores/location-preference.store';
 import { isValidIndianPincode, sanitizePincodeDigits } from '../../utils/pincode';
 

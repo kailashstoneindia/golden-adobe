@@ -30,10 +30,7 @@ export const vendorListingsService = {
     );
   },
 
-  setStock(
-    vendorListingId: string,
-    body: SetVendorStockRequest,
-  ): Promise<VendorListingStockDto> {
+  setStock(vendorListingId: string, body: SetVendorStockRequest): Promise<VendorListingStockDto> {
     return apiClient.patch<VendorListingStockDto>(
       API_ENDPOINTS.vendorListings.stock(vendorListingId),
       body,

@@ -2,10 +2,7 @@ import type { CityDto, VendorCategoryDto, VendorProfileDto } from '@golden-abode
 
 import { API_ENDPOINTS } from '@/constants/apiEndpoints';
 import { getRequest, patchRequest, putRequest } from '@/services/api/apiClient';
-import type {
-  SetVendorCategoriesRequest,
-  SetVendorCityRequest,
-} from '@/types/vendors.types';
+import type { SetVendorCategoriesRequest, SetVendorCityRequest } from '@/types/vendors.types';
 
 export const vendorsService = {
   fetchVendors(): Promise<VendorProfileDto[]> {
