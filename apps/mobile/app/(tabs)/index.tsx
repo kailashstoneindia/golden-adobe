@@ -4,11 +4,10 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CategoryGrid } from '../../src/components/customer/CategoryGrid';
-import { HorizontalCardList } from '../../src/components/customer/HorizontalCardList';
 import { ProjectPill } from '../../src/components/customer/ProjectPill';
 import { SearchBar } from '../../src/components/customer/SearchBar';
-import { Badge, Card, Text } from '../../src/components/ui';
-import { ROUTES, type LaunchCategory } from '../../src/constants';
+import { Card, EmptyStateCard, Text } from '../../src/components/ui';
+import { EMPTY_STATE_MESSAGES, ROUTES, type LaunchCategory } from '../../src/constants';
 import { useAuth } from '../../src/hooks/auth';
 import { usePendingConfirmationsQuery, useVendorListingsQuery } from '../../src/hooks/vendor';
 import {
@@ -17,21 +16,6 @@ import {
 } from '../../src/stores/location-preference.store';
 import { Colors, Radius, Spacing } from '../../src/theme';
 import { navigateToCatalogSearch, navigateToLocationGate } from '../../src/utils';
-
-const USTAADS = [
-  { id: '1', title: 'Ramesh Kumar', subtitle: 'Plumbing · 6 yrs' },
-  { id: '2', title: "Bittu's Team", subtitle: 'Electrical · Group' },
-];
-
-const VENDORS = [
-  { id: '1', title: 'Kailash Stones', subtitle: 'Stones · 4.8★' },
-  { id: '2', title: 'Sharma Hardware', subtitle: 'Hardware · 4.6★' },
-];
-
-const PENDING_ORDERS = [
-  { id: 'GA1042', customer: 'Sharma Residence', items: '3 items', status: 'Confirm' as const },
-  { id: 'GA1039', customer: 'Mehta Residence', items: '1 item', status: 'Dispatched' as const },
-];
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -59,7 +43,6 @@ function CustomerHome({ firstName }: { firstName: string }) {
   const handleLocationPress = () => navigateToLocationGate();
   const handleCategoryPress = (category: LaunchCategory) =>
     navigateToCatalogSearch({ category: category.path });
-  const handleBrowsePress = () => router.push(ROUTES.tabs.browse);
 
   return (
     <View style={styles.root}>
@@ -85,15 +68,15 @@ function CustomerHome({ firstName }: { firstName: string }) {
         </Text>
         <CategoryGrid onCategoryPress={handleCategoryPress} />
 
-        <SectionHeader
-          title="Verified Ustaads nearby"
-          actionLabel="See all"
-          onActionPress={handleBrowsePress}
-        />
-        <HorizontalCardList items={USTAADS} onItemPress={handleBrowsePress} />
+        <Text variant="h3" style={styles.sectionHeaderTitle}>
+          Verified Ustaads nearby
+        </Text>
+        <EmptyStateCard message={EMPTY_STATE_MESSAGES.homeUstaadsEmpty} />
 
-        <SectionHeader title="Top vendors nearby" onActionPress={handleBrowsePress} />
-        <HorizontalCardList items={VENDORS} onItemPress={handleBrowsePress} />
+        <Text variant="h3" style={styles.sectionHeaderTitle}>
+          Top vendors nearby
+        </Text>
+        <EmptyStateCard message={EMPTY_STATE_MESSAGES.homeVendorsEmpty} />
       </ScrollView>
     </View>
   );
@@ -116,8 +99,6 @@ function VendorHome() {
   const pendingCount = pendingQuery.data?.length ?? 0;
 
   const handleOrdersPress = () => router.push(ROUTES.tabs.orders);
-  const handleOrderPress = (orderId: string) =>
-    router.push({ pathname: ROUTES.screens.orderDetail, params: { id: orderId } });
   const handleProductsPress = () => router.push(ROUTES.tabs.products);
   const handlePendingPress = () => router.push(ROUTES.screens.pendingConfirmations);
   const handleSyncPress = () => router.push(ROUTES.screens.catalogSync);
@@ -172,28 +153,7 @@ function VendorHome() {
           actionLabel="See all"
           onActionPress={handleOrdersPress}
         />
-        <View style={styles.orderList}>
-          {PENDING_ORDERS.map((order) => (
-            <Pressable key={order.id} onPress={() => handleOrderPress(order.id)}>
-              <Card>
-                <View style={styles.orderTop}>
-                  <View>
-                    <Text variant="bodyMedium" style={styles.orderId}>
-                      #{order.id}
-                    </Text>
-                    <Text variant="caption">
-                      {order.customer} · {order.items}
-                    </Text>
-                  </View>
-                  <Badge
-                    label={order.status}
-                    variant={order.status === 'Confirm' ? 'pending' : 'info'}
-                  />
-                </View>
-              </Card>
-            </Pressable>
-          ))}
-        </View>
+        <EmptyStateCard message={EMPTY_STATE_MESSAGES.homePendingOrdersEmpty} />
       </ScrollView>
     </View>
   );
@@ -257,6 +217,9 @@ const styles = StyleSheet.create({
   sectionTitle: {
     marginBottom: 0,
   },
+  sectionHeaderTitle: {
+    marginTop: Spacing.xl + 2,
+  },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -276,16 +239,5 @@ const styles = StyleSheet.create({
   },
   statCard: {
     gap: Spacing.xs,
-  },
-  orderList: {
-    gap: Spacing.sm + 2,
-  },
-  orderTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  orderId: {
-    fontSize: 14,
   },
 });

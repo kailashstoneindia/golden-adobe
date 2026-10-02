@@ -12,3 +12,5 @@ export type { CardProps } from './Card';
 
 export { TextInput } from './TextInput';
 export type { TextInputProps } from './TextInput';
+
+export { EmptyStateCard } from './EmptyStateCard';

@@ -4,8 +4,9 @@ import { StyleSheet, View } from 'react-native';
 
 import { Screen } from '../../src/components/layout/Screen';
 import { Button, Text, TextInput } from '../../src/components/ui';
-import { ERROR_MESSAGES } from '../../src/constants';
+import { ERROR_MESSAGES, TOAST_MESSAGES } from '../../src/constants';
 import { useCustomerLocationPreference } from '../../src/hooks/location';
+import { useToast } from '../../src/hooks/useToast';
 import { Colors, Spacing } from '../../src/theme';
 import { navigateToSearchResultsAfterLocation } from '../../src/utils';
 
@@ -18,14 +19,17 @@ export default function LocationGateScreen() {
     handleSavePincode,
     handleCaptureGps,
   } = useCustomerLocationPreference();
+  const { showSuccess, showError } = useToast();
 
   const [pincodeInput, setPincodeInput] = useState('');
 
   const handleContinueWithPincode = async () => {
     const didSave = await handleSavePincode(pincodeInput);
     if (!didSave) {
+      showError(TOAST_MESSAGES.locationSaveFailed);
       return;
     }
+    showSuccess(TOAST_MESSAGES.locationSaved);
     navigateToSearchResultsAfterLocation({
       q: routeParams.q,
       category: routeParams.category,
@@ -35,8 +39,10 @@ export default function LocationGateScreen() {
   const handleContinueWithGps = async () => {
     const didCapture = await handleCaptureGps();
     if (!didCapture) {
+      showError(TOAST_MESSAGES.locationSaveFailed);
       return;
     }
+    showSuccess(TOAST_MESSAGES.locationSaved);
     navigateToSearchResultsAfterLocation({
       q: routeParams.q,
       category: routeParams.category,

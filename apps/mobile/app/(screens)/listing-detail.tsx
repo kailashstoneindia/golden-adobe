@@ -1,15 +1,24 @@
 import type { VendorListingStatus } from '@golden-abode/types';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import {
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
 
 import { Screen } from '../../src/components/layout/Screen';
 import { Button, Card, Text, TextInput } from '../../src/components/ui';
-import { ERROR_MESSAGES } from '../../src/constants';
+import { ERROR_MESSAGES, TOAST_MESSAGES } from '../../src/constants';
 import {
   useSetVendorListingStatusMutation,
   useSetVendorStockMutation,
 } from '../../src/hooks/vendor';
+import { useToast } from '../../src/hooks/useToast';
 import { useSelectedVendorListingStore } from '../../src/stores/selected-vendor-listing.store';
 import { Colors, Radius, Spacing } from '../../src/theme';
 import { formatInr } from '../../src/utils';
@@ -22,6 +31,7 @@ export default function ListingDetailScreen() {
 
   const stockMutation = useSetVendorStockMutation();
   const statusMutation = useSetVendorListingStatusMutation();
+  const { showSuccess, showError, showWarning } = useToast();
 
   const [quantityInput, setQuantityInput] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<VendorListingStatus>('active');
@@ -51,13 +61,18 @@ export default function ListingDetailScreen() {
   const isSubmitting = stockMutation.isPending || statusMutation.isPending;
 
   const handleSaveStock = async () => {
+    Keyboard.dismiss();
     if (selectedListing.isPaint) {
-      setFormError('Paint listings have no countable stock.');
+      const paintMessage = TOAST_MESSAGES.paintHasNoStock;
+      setFormError(paintMessage);
+      showWarning(paintMessage);
       return;
     }
     const quantityAvailable = Number(quantityInput);
     if (!Number.isFinite(quantityAvailable) || quantityAvailable < 0) {
-      setFormError('Enter a valid stock quantity (0 or more).');
+      const invalidMessage = TOAST_MESSAGES.invalidStockQuantity;
+      setFormError(invalidMessage);
+      showWarning(invalidMessage);
       return;
     }
 
@@ -68,12 +83,16 @@ export default function ListingDetailScreen() {
         body: { quantityAvailable },
       });
       setSelectedListing(updated);
+      showSuccess(TOAST_MESSAGES.quantityUpdated);
+      router.back();
     } catch {
       setFormError(ERROR_MESSAGES.vendorStockUpdateFailed);
+      showError(ERROR_MESSAGES.vendorStockUpdateFailed);
     }
   };
 
   const handleSaveStatus = async () => {
+    Keyboard.dismiss();
     setFormError(null);
     try {
       const updated = await statusMutation.mutateAsync({
@@ -81,95 +100,114 @@ export default function ListingDetailScreen() {
         body: { status: selectedStatus },
       });
       setSelectedListing(updated);
+      showSuccess(TOAST_MESSAGES.listingStatusUpdated);
+      router.back();
     } catch {
       setFormError(ERROR_MESSAGES.vendorStatusUpdateFailed);
+      showError(ERROR_MESSAGES.vendorStatusUpdateFailed);
     }
   };
 
   return (
     <Screen edges={['top']}>
-      <View style={styles.root}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
-          <Text variant="bodyMedium" color={Colors.sky}>
-            ‹ Back
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? Spacing.md : 0}
+      >
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          showsVerticalScrollIndicator={false}
+        >
+          <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
+            <Text variant="bodyMedium" color={Colors.sky}>
+              ‹ Back
+            </Text>
+          </Pressable>
+
+          <Text variant="h2">{selectedListing.productName}</Text>
+          <Text variant="caption" color={Colors.inkSoft}>
+            {selectedListing.productCode}
           </Text>
-        </Pressable>
 
-        <Text variant="h2">{selectedListing.productName}</Text>
-        <Text variant="caption" color={Colors.inkSoft}>
-          {selectedListing.productCode}
-        </Text>
-
-        <Card>
-          <Text variant="numeric">{formatInr(selectedListing.price)}</Text>
-          <Text variant="caption" color={Colors.inkSoft} style={styles.meta}>
-            Price is set by catalog import · edit stock and status here
-          </Text>
-        </Card>
-
-        {!selectedListing.isPaint ? (
           <Card>
-            <Text variant="bodyMedium">Stock</Text>
-            <TextInput
-              label="Quantity available"
-              value={quantityInput}
-              onChangeText={setQuantityInput}
-              keyboardType="decimal-pad"
-              placeholder="0"
-              containerStyle={styles.field}
-            />
+            <Text variant="numeric">{formatInr(selectedListing.price)}</Text>
+            <Text variant="caption" color={Colors.inkSoft} style={styles.meta}>
+              Price is set by catalog import · edit stock and status here
+            </Text>
+          </Card>
+
+          {!selectedListing.isPaint ? (
+            <Card>
+              <Text variant="bodyMedium">Stock</Text>
+              <TextInput
+                label="Quantity available"
+                value={quantityInput}
+                onChangeText={setQuantityInput}
+                keyboardType="decimal-pad"
+                placeholder="0"
+                returnKeyType="done"
+                onSubmitEditing={() => {
+                  void handleSaveStock();
+                }}
+                containerStyle={styles.field}
+              />
+              <Button
+                title={stockMutation.isPending ? 'Saving…' : 'Save stock'}
+                fullWidth
+                disabled={isSubmitting}
+                onPress={() => {
+                  void handleSaveStock();
+                }}
+              />
+            </Card>
+          ) : (
+            <Card>
+              <Text variant="bodyMedium">Stock</Text>
+              <Text variant="caption" color={Colors.inkSoft} style={styles.meta}>
+                Paint is tinted to order — availability is controlled by status only.
+              </Text>
+            </Card>
+          )}
+
+          <Card>
+            <Text variant="bodyMedium">Status</Text>
+            <View style={styles.statusRow}>
+              {STATUS_OPTIONS.map((status) => {
+                const isActive = selectedStatus === status;
+                return (
+                  <Pressable
+                    key={status}
+                    style={[styles.statusChip, isActive ? styles.statusChipActive : null]}
+                    onPress={() => setSelectedStatus(status)}
+                  >
+                    <Text variant="caption" color={isActive ? Colors.white : Colors.inkSoft}>
+                      {formatStatusOption(status)}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
             <Button
-              title={stockMutation.isPending ? 'Saving…' : 'Save stock'}
+              title={statusMutation.isPending ? 'Saving…' : 'Save status'}
               fullWidth
               disabled={isSubmitting}
               onPress={() => {
-                void handleSaveStock();
+                void handleSaveStatus();
               }}
             />
           </Card>
-        ) : (
-          <Card>
-            <Text variant="bodyMedium">Stock</Text>
-            <Text variant="caption" color={Colors.inkSoft} style={styles.meta}>
-              Paint is tinted to order — availability is controlled by status only.
+
+          {formError ? (
+            <Text variant="caption" color={Colors.brick}>
+              {formError}
             </Text>
-          </Card>
-        )}
-
-        <Card>
-          <Text variant="bodyMedium">Status</Text>
-          <View style={styles.statusRow}>
-            {STATUS_OPTIONS.map((status) => {
-              const isActive = selectedStatus === status;
-              return (
-                <Pressable
-                  key={status}
-                  style={[styles.statusChip, isActive ? styles.statusChipActive : null]}
-                  onPress={() => setSelectedStatus(status)}
-                >
-                  <Text variant="caption" color={isActive ? Colors.white : Colors.inkSoft}>
-                    {formatStatusOption(status)}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-          <Button
-            title={statusMutation.isPending ? 'Saving…' : 'Save status'}
-            fullWidth
-            disabled={isSubmitting}
-            onPress={() => {
-              void handleSaveStatus();
-            }}
-          />
-        </Card>
-
-        {formError ? (
-          <Text variant="caption" color={Colors.brick}>
-            {formError}
-          </Text>
-        ) : null}
-      </View>
+          ) : null}
+        </ScrollView>
+      </KeyboardAvoidingView>
     </Screen>
   );
 }
@@ -181,9 +219,12 @@ function formatStatusOption(status: VendorListingStatus): string {
 }
 
 const styles = StyleSheet.create({
-  root: {
+  flex: {
     flex: 1,
+  },
+  content: {
     paddingHorizontal: Spacing.lg + 2,
+    paddingBottom: Spacing.xxl + Spacing.xl,
     gap: Spacing.md,
   },
   backBtn: {

@@ -11,13 +11,14 @@ import {
 
 import { Screen } from '../../src/components/layout/Screen';
 import { Button, Card, Text } from '../../src/components/ui';
-import { ERROR_MESSAGES } from '../../src/constants';
+import { ERROR_MESSAGES, TOAST_MESSAGES } from '../../src/constants';
 import {
   useChoosePendingCandidateMutation,
   useConfirmPendingListingMutation,
   usePendingConfirmationsQuery,
   useRejectPendingListingMutation,
 } from '../../src/hooks/vendor';
+import { useToast } from '../../src/hooks/useToast';
 import { Colors, Spacing } from '../../src/theme';
 
 export default function PendingConfirmationsScreen() {
@@ -25,6 +26,7 @@ export default function PendingConfirmationsScreen() {
   const confirmMutation = useConfirmPendingListingMutation();
   const chooseMutation = useChoosePendingCandidateMutation();
   const rejectMutation = useRejectPendingListingMutation();
+  const { showSuccess, showError } = useToast();
   const [actionError, setActionError] = useState<string | null>(null);
 
   const isMutating =
@@ -34,8 +36,10 @@ export default function PendingConfirmationsScreen() {
     setActionError(null);
     try {
       await confirmMutation.mutateAsync(vendorListingId);
+      showSuccess(TOAST_MESSAGES.matchConfirmed);
     } catch {
       setActionError(ERROR_MESSAGES.vendorConfirmMatchFailed);
+      showError(ERROR_MESSAGES.vendorConfirmMatchFailed);
     }
   };
 
@@ -43,8 +47,10 @@ export default function PendingConfirmationsScreen() {
     setActionError(null);
     try {
       await rejectMutation.mutateAsync(vendorListingId);
+      showSuccess(TOAST_MESSAGES.matchRejected);
     } catch {
       setActionError(ERROR_MESSAGES.vendorConfirmMatchFailed);
+      showError(ERROR_MESSAGES.vendorConfirmMatchFailed);
     }
   };
 
@@ -58,8 +64,10 @@ export default function PendingConfirmationsScreen() {
         vendorListingId: options.vendorListingId,
         body: { masterProductId: options.masterProductId },
       });
+      showSuccess(TOAST_MESSAGES.matchCandidateChosen);
     } catch {
       setActionError(ERROR_MESSAGES.vendorConfirmMatchFailed);
+      showError(ERROR_MESSAGES.vendorConfirmMatchFailed);
     }
   };
 

@@ -5,7 +5,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'reac
 
 import { Screen } from '../../src/components/layout/Screen';
 import { Button, Card, Text } from '../../src/components/ui';
-import { ERROR_MESSAGES, ROUTES } from '../../src/constants';
+import { ERROR_MESSAGES, ROUTES, TOAST_MESSAGES } from '../../src/constants';
 import {
   useDownloadVendorExportMutation,
   usePendingConfirmationsQuery,
@@ -13,6 +13,7 @@ import {
   useVendorCategoriesQuery,
   useVendorExportCountQuery,
 } from '../../src/hooks/vendor';
+import { useToast } from '../../src/hooks/useToast';
 import {
   CatalogFileToolsError,
   pickCatalogWorkbook,
@@ -25,6 +26,7 @@ export default function CatalogSyncScreen() {
   const pendingQuery = usePendingConfirmationsQuery();
   const downloadMutation = useDownloadVendorExportMutation();
   const uploadMutation = useUploadVendorCatalogMutation();
+  const { showSuccess, showError, showWarning } = useToast();
 
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
@@ -55,7 +57,8 @@ export default function CatalogSyncScreen() {
 
   const handleDownload = async () => {
     if (selectedCategoryIds.length === 0) {
-      setActionError('Select at least one category to export.');
+      setActionError(TOAST_MESSAGES.catalogSelectCategory);
+      showWarning(TOAST_MESSAGES.catalogSelectCategory);
       return;
     }
     setActionError(null);
@@ -66,9 +69,12 @@ export default function CatalogSyncScreen() {
         buffer,
         filename: `vendor-catalog-export-${Date.now()}.xlsx`,
       });
-      setActionMessage('Catalog sheet ready — save it from the share sheet.');
+      setActionMessage(TOAST_MESSAGES.catalogExportReady);
+      showSuccess(TOAST_MESSAGES.catalogExportReady);
     } catch (error: unknown) {
-      setActionError(resolveFileActionError(error, ERROR_MESSAGES.vendorCatalogExportFailed));
+      const message = resolveFileActionError(error, ERROR_MESSAGES.vendorCatalogExportFailed);
+      setActionError(message);
+      showError(message);
     }
   };
 
@@ -82,12 +88,16 @@ export default function CatalogSyncScreen() {
       }
       const result = await uploadMutation.mutateAsync(file);
       setLastUploadResult(result);
-      setActionMessage(buildUploadSummary(result));
+      const summary = buildUploadSummary(result);
+      setActionMessage(summary);
+      showSuccess(TOAST_MESSAGES.catalogUploadSuccess);
       if (result.pendingConfirmationCount > 0) {
         router.push(ROUTES.screens.pendingConfirmations);
       }
     } catch (error: unknown) {
-      setActionError(resolveFileActionError(error, ERROR_MESSAGES.vendorCatalogUploadFailed));
+      const message = resolveFileActionError(error, ERROR_MESSAGES.vendorCatalogUploadFailed);
+      setActionError(message);
+      showError(message);
     }
   };
 
