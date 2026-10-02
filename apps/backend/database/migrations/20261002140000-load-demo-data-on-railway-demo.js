@@ -37,6 +37,8 @@ const DATA_FILE = path.join(__dirname, '..', 'demo-data', 'demo-data.json');
 // The Railway project that hosts the demo environment (its id appears in the deployment URLs on
 // GitHub; it is an identifier, not a credential).
 const RAILWAY_DEMO_PROJECT_ID = '355dd876-ccac-4d8a-b004-606f3777c17f';
+// A second, independent signal in case one of the two variables is ever missing at migration time.
+const RAILWAY_DEMO_PUBLIC_DOMAIN = 'golden-adobe-production.up.railway.app';
 
 const INSERT_ORDER = [
   'unit_of_measure',
@@ -60,10 +62,10 @@ const INSERT_ORDER = [
 
 // If any of these already has rows, the reference/catalog data is already there in some other form
 // and we skip. vendors and users are deliberately NOT listed (see 2. above); vendor_listing cannot
-// have rows while master_product is empty.
+// have rows while master_product is empty. hsn_code is not listed either: its primary key is the
+// natural code, so rows that already exist are simply left as they are.
 const MUST_BE_EMPTY = [
   'unit_of_measure',
-  'hsn_code',
   'city',
   'category',
   'attribute',
@@ -79,7 +81,8 @@ const log = (msg) => console.log(`[demo-data] ${msg}`);
 
 const isEnabled = () =>
   process.env.LOAD_DEMO_DATA === 'true' ||
-  process.env.RAILWAY_PROJECT_ID === RAILWAY_DEMO_PROJECT_ID;
+  process.env.RAILWAY_PROJECT_ID === RAILWAY_DEMO_PROJECT_ID ||
+  process.env.RAILWAY_PUBLIC_DOMAIN === RAILWAY_DEMO_PUBLIC_DOMAIN;
 
 module.exports = {
   async up(queryInterface) {

@@ -226,14 +226,16 @@ recorded). Two blockers, and nobody with Railway dashboard access was available 
 loads the same data and fixes both. Migrations never re-run, so this had to be a new file; the first
 one is left untouched.
 
-- **No variable to set.** It switches itself on when `RAILWAY_PROJECT_ID` equals the demo project's id
-  (Railway injects it into every deployment, per Railway's variables reference). `LOAD_DEMO_DATA=true`
-  still works as an override. CI, developers' databases and any other Railway project: no-op.
+- **No variable to set.** It switches itself on when `RAILWAY_PROJECT_ID` equals the demo project's id, or
+  `RAILWAY_PUBLIC_DOMAIN` equals the demo service's domain (two independent signals; Railway injects both
+  into every deployment, per Railway's variables reference). `LOAD_DEMO_DATA=true` still works as an
+  override. CI, developers' databases and any other Railway project: no-op.
 - **Existing vendors are kept.** `vendors` and `users` are no longer in the blank-database guard. A demo
   vendor whose user already owns a vendor is not inserted; its account details, categories and listings
   are attached to the existing vendor. Users with the same phone keep their password and get the demo id.
-- Still skips (with a warning, never a failed deploy) if `unit_of_measure`, `hsn_code`, `city`, `category`,
-  `attribute`, `brand` or `master_product` already has rows.
+- Still skips (with a warning, never a failed deploy) if `unit_of_measure`, `city`, `category`,
+  `attribute`, `brand` or `master_product` already has rows. `hsn_code` is not in that list: its primary key
+  is the natural code, so rows that already exist are left as they are.
 - `down` also clears `vendor_category` rows that point at demo categories, because a vendor that existed
   before is not deleted with the demo data.
 
@@ -242,7 +244,9 @@ sharing a phone with a demo vendor; a hand-made admin; an extra user): gate off 
 `RAILWAY_PROJECT_ID` → 645 products, 4 vendors (demo vendor B reused the existing one and got its 63
 listings, no duplicate), 268 listings, 0 orphan rows, `md5` of products identical to the source; re-run
 over loaded data → warning, nothing changed; `down` → catalog gone, existing vendors and users kept;
-load again; `LOAD_DEMO_DATA=true` override works. About 10-14 s.
+load again; `LOAD_DEMO_DATA=true` override works; gate via `RAILWAY_PUBLIC_DOMAIN` alone works; a
+pre-existing `hsn_code` row does not block the load (26 rows after); a pre-existing `unit_of_measure`
+row with a different id makes it skip with a warning and change nothing. About 10-14 s.
 
 Not tested: inside the Railway container, and whether Railway really injects `RAILWAY_PROJECT_ID` into the
 migration step of this service (documented for all deployments, but this service's entrypoint runs the
