@@ -121,8 +121,10 @@ jobs:
       - name: 🪣 Start MinIO (S3 stand-in for media tests)
         # A step, not a service container, because the image needs a `server` command.
         # Credentials match the defaults the media specs use (decision 0033).
+        # --user root: the image runs as a non-root user that cannot create /data
+        # (it does not exist), and MinIO then exits with "file access denied".
         run: |
-          docker run -d --name minio -p 9000:9000 \
+          docker run -d --name minio --user root -p 9000:9000 \
             -e MINIO_ROOT_USER=golden_dev -e MINIO_ROOT_PASSWORD=golden_dev_secret \
             cgr.dev/chainguard/minio:latest server /data
           for i in $(seq 1 30); do
