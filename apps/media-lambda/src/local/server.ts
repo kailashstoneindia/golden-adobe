@@ -40,24 +40,46 @@ const handler = createHandler({
   notify: (mediaId, result) => sendResult(config, mediaId, result),
 });
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+// The deployed function is capped (reserved concurrency, see the runbook). Without
+// a cap here, a bulk upload would start hundreds of image jobs at once on one
+// machine, starving the callbacks until they time out and are retried.
+const concurrency = Number(env.LOCAL_CONCURRENCY ?? 4);
 
-async function invokeWithRetries(event: S3Event): Promise<void> {
-  for (let attempt = 0; ; attempt++) {
-    try {
-      await handler(event);
-      return;
-    } catch (error) {
-      if (attempt >= retryDelaysMs.length) {
-        console.error(JSON.stringify({ event: 'gave-up', error: String(error) }));
-        return;
-      }
-      console.warn(
-        JSON.stringify({ event: 'retrying', attempt: attempt + 1, error: String(error) }),
-      );
-      await sleep(retryDelaysMs[attempt]);
-    }
+type Job = { event: S3Event; attempt: number };
+const queue: Job[] = [];
+let running = 0;
+
+function pump(): void {
+  while (running < concurrency && queue.length > 0) {
+    const job = queue.shift()!;
+    running++;
+    void run(job).finally(() => {
+      running--;
+      pump();
+    });
   }
+}
+
+async function run({ event, attempt }: Job): Promise<void> {
+  try {
+    await handler(event);
+  } catch (error) {
+    if (attempt >= retryDelaysMs.length) {
+      console.error(JSON.stringify({ event: 'gave-up', error: String(error) }));
+      return;
+    }
+    console.warn(JSON.stringify({ event: 'retrying', attempt: attempt + 1, error: String(error) }));
+    // The wait happens outside the pool, so a failing event never holds a slot.
+    setTimeout(() => {
+      queue.push({ event, attempt: attempt + 1 });
+      pump();
+    }, retryDelaysMs[attempt]);
+  }
+}
+
+function enqueue(event: S3Event): void {
+  queue.push({ event, attempt: 0 });
+  pump();
 }
 
 http
@@ -77,7 +99,7 @@ http
       res.writeHead(200).end('ok');
       try {
         const event = JSON.parse(Buffer.concat(chunks).toString('utf8')) as S3Event;
-        void invokeWithRetries(event);
+        enqueue(event);
       } catch (error) {
         console.error(JSON.stringify({ event: 'bad-request', error: String(error) }));
       }
