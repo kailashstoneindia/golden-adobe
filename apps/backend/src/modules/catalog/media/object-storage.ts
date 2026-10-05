@@ -3,6 +3,7 @@
 // adapter is the only file that knows which cloud is behind it.
 
 export const OBJECT_STORAGE = Symbol('OBJECT_STORAGE');
+export const MEDIA_STORAGE_CONFIG = Symbol('MEDIA_STORAGE_CONFIG');
 
 export type PresignPostInput = {
   key: string;

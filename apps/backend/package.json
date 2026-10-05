@@ -24,6 +24,7 @@
     "seed:run": "sequelize-cli db:seed:all",
     "seed:undo": "sequelize-cli db:seed:undo:all",
     "smoke": "node scripts/smoke.js",
+    "media:sweep": "node --env-file-if-exists=../../.env -r ts-node/register src/cli/sweep-orphan-media.ts",
     "storage:init-local": "node --env-file-if-exists=../../.env -r ts-node/register scripts/storage-init-local.ts"
   },
   "dependencies": {

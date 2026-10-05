@@ -1,5 +1,13 @@
 import { Module } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { SequelizeModule } from '@nestjs/sequelize';
+import type { StorageConfig } from '../../config/storage.config';
+import { AdminMediaController } from './media/admin-media.controller';
+import { InternalMediaController } from './media/internal-media.controller';
+import { MediaCallbackSignatureGuard } from './media/media-callback-signature.guard';
+import { MediaService } from './media/media.service';
+import { MEDIA_STORAGE_CONFIG, OBJECT_STORAGE } from './media/object-storage';
+import { S3ObjectStorage } from './media/s3-object-storage.service';
 import { UnitOfMeasure } from './models/unit-of-measure.model';
 import { HsnCode } from './models/hsn-code.model';
 import { Brand } from './models/brand.model';
@@ -120,8 +128,25 @@ import { StockService } from './stock.service';
     CatalogReviewQueueController,
     AdminCatalogController,
     AdminCitiesController,
+    AdminMediaController,
+    InternalMediaController,
   ],
   providers: [
+    // Product media (decision 0033). The S3 client is created lazily by the
+    // SDK, so these are safe to build even when no bucket is configured: the
+    // service then answers 503 instead of the app failing to boot.
+    {
+      provide: MEDIA_STORAGE_CONFIG,
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => config.get<StorageConfig>('storage')!,
+    },
+    {
+      provide: OBJECT_STORAGE,
+      inject: [MEDIA_STORAGE_CONFIG],
+      useFactory: (config: StorageConfig) => new S3ObjectStorage(config),
+    },
+    MediaService,
+    MediaCallbackSignatureGuard,
     CatalogAttributeResolverService,
     CatalogImportTemplateService,
     CatalogImportUploadService,
