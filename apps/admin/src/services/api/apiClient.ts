@@ -66,6 +66,11 @@ export async function putRequest<TResponse, TBody>(url: string, body: TBody): Pr
   return response.data.data;
 }
 
+// For endpoints that answer 204 with no body.
+export async function deleteRequest(url: string): Promise<void> {
+  await apiClient.delete(url);
+}
+
 /**
  * Multipart upload. Deliberately does NOT set Content-Type — the browser must
  * generate it so the multipart boundary is correct; overriding it with the

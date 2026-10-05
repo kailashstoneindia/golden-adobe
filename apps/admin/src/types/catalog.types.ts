@@ -71,6 +71,40 @@ export type ProductAttributeValue = {
   isVariantDefining: boolean;
 };
 
+// Product images (decision 0033). 'processing' means the original is stored but
+// its WebP variants are still being made; 'failed' includes an image that has
+// been processing for too long, which the API reports as failed.
+export type MediaStatus = 'processing' | 'ready' | 'failed';
+
+export type MediaVariants = {
+  thumb: string;
+  medium: string;
+  large: string;
+};
+
+export type ProductMedia = {
+  id: string;
+  type: 'image' | 'spec_sheet_pdf' | 'certification_doc';
+  status: MediaStatus;
+  error: string | null;
+  isPrimary: boolean;
+  isRepresentative: boolean;
+  displayOrder: number;
+  contentType: string | null;
+  sizeBytes: number | null;
+  // Present once the image is usable.
+  variants: MediaVariants | null;
+  createdAt: string;
+};
+
+// Step 1 of an upload: where and how the browser sends the file straight to S3.
+export type MediaUploadTicket = {
+  mediaId: string;
+  upload: { url: string; fields: Record<string, string> };
+  expiresAt: string;
+  maxBytes: number;
+};
+
 export type ProductDetail = {
   id: string;
   productCode: string;
@@ -91,6 +125,7 @@ export type ProductDetail = {
   createdAt: string;
   updatedAt: string;
   attributeValues: ProductAttributeValue[];
+  media: ProductMedia[];
 };
 
 export type ListProductsQuery = {

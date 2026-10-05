@@ -1,5 +1,6 @@
 import { isEmpty } from 'lodash';
 
+import { ProductMediaPanel } from '@/components/catalog/media/ProductMediaPanel';
 import { useProductQuery } from '@/queries/useCatalogQueries';
 import styles from '@/styles/shared.module.css';
 import catalogStyles from '@/styles/catalog.module.css';
@@ -105,6 +106,8 @@ export function ProductDetailModal({
                   ))}
                 </ul>
               )}
+
+              <ProductMediaPanel productId={product.id} />
             </div>
 
             <div className={styles.actions}>
