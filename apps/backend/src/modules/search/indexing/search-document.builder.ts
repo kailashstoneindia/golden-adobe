@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/sequelize';
 import { QueryTypes } from 'sequelize';
 import {
@@ -9,6 +10,7 @@ import {
 } from '@golden-abode/types';
 
 import { MasterProduct } from '../../catalog/models/master-product.model';
+import { RawPrimaryImage, primaryImageSubquery, toPrimaryImage } from '../primary-image';
 
 // Phase 6f (decision 0021, search-system-design.md sections 3 and 5).
 //
@@ -42,6 +44,7 @@ export class SearchDocumentBuilder {
   constructor(
     @InjectModel(MasterProduct)
     private readonly masterProductModel: typeof MasterProduct,
+    private readonly config: ConfigService,
   ) {}
 
   private get sequelize() {
@@ -66,6 +69,7 @@ export class SearchDocumentBuilder {
       price: string;
       cheapest_vendor_listing_id: string;
       vendor_count: string;
+      primary_image: RawPrimaryImage;
       updated_at: Date;
     }>(
       `
@@ -83,6 +87,7 @@ export class SearchDocumentBuilder {
           cat.path AS category_path,
           b.name   AS brand,
           mp.attributes_flat AS attributes,
+          ${primaryImageSubquery('mp.id')} AS primary_image,
           mp.updated_at
         FROM candidate cand
         JOIN master_product mp ON mp.id = cand.master_product_id AND mp.status = 'live'
@@ -97,6 +102,7 @@ export class SearchDocumentBuilder {
         live.category_path,
         live.brand,
         live.attributes,
+        live.primary_image,
         live.updated_at,
         agg.price,
         agg.vendor_count,
@@ -126,6 +132,7 @@ export class SearchDocumentBuilder {
 
     const present = new Set<string>();
     const documents: SearchDocumentRecord[] = [];
+    const publicBaseUrl = this.config.get<string>('storage.publicBaseUrl') ?? '';
 
     for (const row of rows) {
       const id = buildSearchDocumentId(row.master_product_id, row.city_id);
@@ -143,6 +150,7 @@ export class SearchDocumentBuilder {
         cheapestVendorListingId: row.cheapest_vendor_listing_id,
         vendorCount: Number(row.vendor_count),
         inStock: true,
+        primaryImage: toPrimaryImage(publicBaseUrl, row.primary_image),
         updatedAt: row.updated_at.toISOString(),
       };
       documents.push(toSearchDocumentRecord(doc));
