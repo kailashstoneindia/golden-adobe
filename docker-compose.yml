@@ -58,7 +58,28 @@ services:
       timeout: 5s
       retries: 5
 
+  # Local stand-in for S3 (decision 0033). Chainguard build because MinIO's own
+  # Docker Hub images were discontinued. The image has no shell or curl, so it
+  # has no compose healthcheck and buckets are created by
+  # `pnpm --filter @golden-abode/backend storage:init-local`, not a sidecar.
+  minio:
+    image: cgr.dev/chainguard/minio:latest
+    container_name: golden-abode-minio
+    restart: unless-stopped
+    command: ['server', '/data', '--console-address', ':9001']
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-golden_dev}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-golden_dev_secret}
+      # Browser uploads from the admin dev server go straight to MinIO.
+      MINIO_API_CORS_ALLOW_ORIGIN: http://localhost:5173
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    volumes:
+      - minio_data:/data
+
 volumes:
   postgres_data:
   redis_data:
   meili_data:
+  minio_data:
