@@ -127,7 +127,7 @@ jobs:
           docker run -d --name minio --user root -p 9000:9000 \
             -e MINIO_ROOT_USER=golden_dev -e MINIO_ROOT_PASSWORD=golden_dev_secret \
             cgr.dev/chainguard/minio:latest server /data
-          for i in $(seq 1 30); do
+          for _ in $(seq 1 30); do
             curl -sf http://localhost:9000/minio/health/live && exit 0
             sleep 1
           done
