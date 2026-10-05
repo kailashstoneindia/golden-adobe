@@ -1,4 +1,5 @@
 import { resolveDatabaseConfig, resolveRedisConfig } from './connection-url';
+import { loadStorageConfig } from './storage.config';
 
 export default () => ({
   env: process.env.NODE_ENV || 'development',
@@ -27,6 +28,8 @@ export default () => ({
     otpVerifyLimit: parseInt(process.env.THROTTLE_OTP_VERIFY_LIMIT || '5', 10),
     otpVerifyTtl: parseInt(process.env.THROTTLE_OTP_VERIFY_TTL || '600', 10),
   },
+  // Product media (decision 0033). Disabled, not broken, when no bucket is set.
+  storage: loadStorageConfig(),
   // Phase 6 search runtime (decision 0021). Host and keys are configuration
   // ONLY — moving from the local Docker container to Railway must be an env
   // var change, never a code edit.

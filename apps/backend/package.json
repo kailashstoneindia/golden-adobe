@@ -23,9 +23,12 @@
     "seed:generate": "sequelize-cli seed:generate --name",
     "seed:run": "sequelize-cli db:seed:all",
     "seed:undo": "sequelize-cli db:seed:undo:all",
-    "smoke": "node scripts/smoke.js"
+    "smoke": "node scripts/smoke.js",
+    "storage:init-local": "node --env-file-if-exists=../../.env -r ts-node/register scripts/storage-init-local.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1146.0",
+    "@aws-sdk/s3-presigned-post": "^3.1146.0",
     "@golden-abode/types": "workspace:*",
     "@nestjs/bullmq": "^12.0.0",
     "@nestjs/common": "^10.0.0",
