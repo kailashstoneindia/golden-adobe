@@ -72,6 +72,16 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-golden_dev_secret}
       # Browser uploads from the admin dev server go straight to MinIO.
       MINIO_API_CORS_ALLOW_ORIGIN: http://localhost:5173
+      # Stands in for "S3 triggers the Lambda": upload events are POSTed to the
+      # local Lambda server (`pnpm --filter @golden-abode/media-lambda dev`) on
+      # the host. MinIO starts fine while that server is not running; events
+      # are simply dropped until it is. Buckets opt in to it through the ARN
+      # arn:minio:sqs::LAMBDA:webhook (see storage:init-local).
+      MINIO_NOTIFY_WEBHOOK_ENABLE_LAMBDA: 'on'
+      MINIO_NOTIFY_WEBHOOK_ENDPOINT_LAMBDA: http://host.docker.internal:3100/events
+    extra_hosts:
+      # Makes host.docker.internal resolve on Linux too (Docker Desktop has it).
+      - 'host.docker.internal:host-gateway'
     ports:
       - '9000:9000'
       - '9001:9001'

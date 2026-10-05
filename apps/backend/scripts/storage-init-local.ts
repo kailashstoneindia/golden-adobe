@@ -5,7 +5,10 @@
 // create or change a bucket on real AWS. Values not set in the environment fall
 // back to the docker-compose MinIO defaults.
 import { loadStorageConfig } from '../src/config/storage.config';
-import { ensureLocalBucket } from '../src/modules/catalog/media/local-bucket';
+import {
+  LOCAL_LAMBDA_WEBHOOK_ARN,
+  ensureLocalBucket,
+} from '../src/modules/catalog/media/local-bucket';
 import { createS3Client } from '../src/modules/catalog/media/s3-object-storage.service';
 
 async function main(): Promise<void> {
@@ -22,8 +25,13 @@ async function main(): Promise<void> {
     throw new Error('storage:init-local is for MinIO only: S3_ENDPOINT is not set');
   }
 
-  await ensureLocalBucket(createS3Client(config), config.bucket);
-  console.log(`bucket "${config.bucket}" ready at ${config.endpoint} (variants/* public)`);
+  await ensureLocalBucket(createS3Client(config), config.bucket, {
+    notifyWebhookArn: LOCAL_LAMBDA_WEBHOOK_ARN,
+  });
+  console.log(
+    `bucket "${config.bucket}" ready at ${config.endpoint} ` +
+      '(variants/* public, original/ uploads notify the local Lambda)',
+  );
 }
 
 main().catch((error) => {
