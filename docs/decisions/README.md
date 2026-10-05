@@ -35,11 +35,13 @@ valid when circumstances change.
 | [0021](0021-search-runtime-build-plan.md)                    | Search runtime: local-first build, and the 6c–6h sequence                             | 2026-09-01 | Accepted                            |
 | [0022](0022-inventory-write-model.md)                        | Inventory write model: stock, status, and what a blank cell means                     | 2026-09-14 | Accepted                            |
 | [0023](0023-single-product-create-edit.md)                   | Single-product create/edit: the last Product Management gap                           | 2026-09-15 | Accepted                            |
-| [0024](0024-product-images-gcs.md)                           | Product images: Google Cloud Storage as the backing store                             | 2026-09-16 | Accepted (see 0025)                 |
+| [0024](0024-product-images-gcs.md)                           | Product images: Google Cloud Storage as the backing store                             | 2026-09-16 | Superseded by 0033                  |
 | [0025](0025-full-aws-migration.md)                           | Full AWS migration: target architecture and cost                                      | 2026-09-18 | Proposed — awaiting client go-ahead |
 | [0026](0026-pearl-precision-brand-onboarding.md)             | Onboarding Pearl Precision (Sparsh Pearl): brand + catalog seeding strategy           | 2026-09-24 | Accepted                            |
 | [0027](0027-lavish-ceramics-brand-onboarding.md)             | Onboarding Lavish Ceramics: brand + catalog seeding strategy                          | 2026-09-25 | Accepted                            |
 | [0031](0031-local-data-to-production.md)                     | Moving the local catalog, vendor and inventory data to production                     | 2026-10-02 | Accepted                            |
+| [0032](0032-aws-cost-minimized-single-box.md)                | AWS cost minimization: reopening the compute question from 0025                       | 2026-10-05 | Proposed — awaiting client go-ahead |
+| [0033](0033-product-media-s3-presigned.md)                   | Product media: S3 presigned upload, private originals, Lambda WebP variants           | 2026-10-05 | Accepted                            |
 
 ## Adding a record
 
