@@ -1,7 +1,7 @@
 # 0032 — AWS cost minimization: reopening the compute question from 0025
 
 - **Date:** 2026-10-05
-- **Status:** Proposed
+- **Status:** Accepted (2026-10-06): the project owner chose the single small box over the heavier setup. Open item: name who owns the instance (patching, alerts, restores).
 - **Supersedes / Superseded by:** Reopens Question 1 (compute target) from [0025](0025-full-aws-migration.md); does not touch its Question 2 (environment count) or Question 3 (data migration)
 
 ## Context
