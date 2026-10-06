@@ -1,0 +1,12 @@
+[Unit]
+Description=Golden Abode orphaned media sweep
+Wants=docker.service
+After=docker.service network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/golden-abode
+# A dry run unless MEDIA_SWEEP_ARGS in .env contains --apply. The sweep exits
+# non-zero if it finds an alarming number of orphans, which fails this unit.
+ExecStart=/opt/golden-abode/compose.sh --profile sweep run --rm sweep
+TimeoutStartSec=30min

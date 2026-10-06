@@ -28,6 +28,16 @@ export const API_ENDPOINTS = {
     unpublishProduct: (productId: string) => `/admin/catalog/products/${productId}/unpublish`,
     bulkPublish: '/admin/catalog/products/bulk-publish',
   },
+  // Product images (decision 0033).
+  media: {
+    list: (productId: string) => `/admin/catalog/products/${productId}/media`,
+    uploads: (productId: string) => `/admin/catalog/products/${productId}/media/uploads`,
+    order: (productId: string) => `/admin/catalog/products/${productId}/media/order`,
+    byId: (productId: string, mediaId: string) =>
+      `/admin/catalog/products/${productId}/media/${mediaId}`,
+    reprocess: (productId: string, mediaId: string) =>
+      `/admin/catalog/products/${productId}/media/${mediaId}/reprocess`,
+  },
   catalogImport: {
     template: (categoryId: string) => `/admin/catalog-import/template/${categoryId}`,
     upload: (categoryId: string) => `/admin/catalog-import/${categoryId}`,

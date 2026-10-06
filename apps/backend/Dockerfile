@@ -1,4 +1,4 @@
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
@@ -23,7 +23,7 @@ RUN pnpm deploy --filter=@golden-abode/backend --prod /prod/backend
 RUN cp -r /app/packages/types/dist /prod/backend/node_modules/@golden-abode/types/dist
 
 # ==========================================
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 
 WORKDIR /app
 

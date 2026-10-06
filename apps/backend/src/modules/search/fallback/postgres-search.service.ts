@@ -1,9 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/sequelize';
 import { QueryTypes } from 'sequelize';
 import { SearchDocument, buildSearchDocumentId } from '@golden-abode/types';
 
 import { MasterProduct } from '../../catalog/models/master-product.model';
+import { RawPrimaryImage, primaryImageSubquery, toPrimaryImage } from '../primary-image';
 
 // Phase 6c (decision 0021, search-system-design.md section 8 "fallback/").
 //
@@ -86,6 +88,7 @@ export class PostgresSearchService {
   constructor(
     @InjectModel(MasterProduct)
     private readonly masterProductModel: typeof MasterProduct,
+    private readonly config: ConfigService,
   ) {}
 
   private get sequelize() {
@@ -172,6 +175,7 @@ export class PostgresSearchService {
         mp.attributes_flat           AS attributes,
         MIN(vl.price)                AS min_price,
         COUNT(DISTINCT vl.vendor_id) AS vendor_count,
+        ${primaryImageSubquery('mp.id')} AS primary_image,
         mp.updated_at                AS updated_at,
         (
           SELECT vl2.id FROM vendor_listing vl2
@@ -203,9 +207,12 @@ export class PostgresSearchService {
       attributes: Record<string, string | number | boolean>;
       min_price: string;
       vendor_count: string;
+      primary_image: RawPrimaryImage;
       updated_at: Date;
       cheapest_vendor_listing_id: string;
     }>(sql, { type: QueryTypes.SELECT, replacements });
+
+    const publicBaseUrl = this.config.get<string>('storage.publicBaseUrl') ?? '';
 
     return rows.map((row) => ({
       id: buildSearchDocumentId(row.master_product_id, input.cityId),
@@ -221,6 +228,7 @@ export class PostgresSearchService {
       // A row only reaches here by joining an ACTIVE listing, so anything
       // returned is in stock by construction.
       inStock: true,
+      primaryImage: toPrimaryImage(publicBaseUrl, row.primary_image),
       updatedAt: row.updated_at.toISOString(),
     }));
   }

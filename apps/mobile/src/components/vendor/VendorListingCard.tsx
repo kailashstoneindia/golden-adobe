@@ -1,4 +1,4 @@
-import type { VendorListingStockDto } from '@golden-abode/types';
+import type { VendorListingStatus, VendorListingStockDto } from '@golden-abode/types';
 import { memo, useCallback } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 

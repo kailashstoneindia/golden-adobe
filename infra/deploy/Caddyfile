@@ -1,0 +1,28 @@
+{
+	# Let's Encrypt contact address. Falls back to a placeholder so Caddy still starts.
+	email {$ACME_EMAIL:ops@localhost}
+}
+
+# TLS is automatic: Caddy gets and renews the certificate for this name itself.
+# For "localhost" (the local rehearsal) it uses its own internal CA instead.
+{$API_DOMAIN} {
+	encode zstd gzip
+
+	# Catalog xlsx imports still go through the API, so allow a normal upload.
+	# Image uploads never do: they go straight from the browser to S3.
+	request_body {
+		max_size 25MB
+	}
+
+	header -Server
+
+	reverse_proxy api:3000 {
+		health_uri /health
+		health_interval 10s
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}

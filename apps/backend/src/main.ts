@@ -10,6 +10,9 @@ import helmet from 'helmet';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     logger: ['error', 'warn', 'log', 'debug', 'verbose'],
+    // The media Lambda's callback is HMAC-signed over the exact bytes it sent
+    // (decision 0033), so the guard needs req.rawBody, not the parsed object.
+    rawBody: true,
   });
 
   // Global Prefix — keep /health at root for Railway/load balancer probes

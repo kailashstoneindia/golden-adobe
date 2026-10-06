@@ -1,8 +1,8 @@
 # 0024 — Product images: Google Cloud Storage as the backing store
 
 - **Date:** 2026-09-16
-- **Status:** Accepted
-- **Supersedes / Superseded by:** —
+- **Status:** Superseded by [0033](0033-product-media-s3-presigned.md)
+- **Supersedes / Superseded by:** Superseded by 0033 (S3 + CloudFront, presigned direct upload). The bucket was never provisioned and no GCS code was ever written.
 
 ## Context
 
