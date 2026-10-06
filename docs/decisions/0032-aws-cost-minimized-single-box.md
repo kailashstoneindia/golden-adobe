@@ -224,3 +224,10 @@ Rough, `ap-south-1`, on-demand pricing — **not a quote**. All figures monthly.
 This brings AWS cost below 0025's own estimate of likely Railway cost at current scale
 (0025: "likely well under $50/mo"), reversing the conclusion that AWS necessarily costs more
 than staying on Railway — provided the ops trade-off in Consequences is accepted.
+
+**Correction (2026-10-05, while writing the runbook):** the table above left out the
+**public IPv4 address**. AWS has charged $0.005 per hour for every public IPv4 address since
+February 2024, which is about **$3.65 per month** for the box's Elastic IP. The Option B
+floor is therefore about **$22–30 per month**, still inside the range above and still far
+below Option A, and still fully covered by the free credits for the six-month window. The
+runbook ([infra/deploy/README.md](../../infra/deploy/README.md)) carries the corrected table.

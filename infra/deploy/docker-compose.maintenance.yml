@@ -1,0 +1,16 @@
+# Temporary override for maintenance that needs a database connection from outside
+# the box, such as loading the demo images (README.md, "After the first deploy").
+#
+# It publishes Postgres on the instance's LOOPBACK address only, so it is reachable
+# through an SSM port-forward and never through the security group or the network.
+# Apply it for the length of the job, then put the normal stack back:
+#
+#   COMPOSE_FILES="docker-compose.prod.yml docker-compose.maintenance.yml" ./compose.sh up -d postgres
+#   ...do the work...
+#   ./compose.sh up -d postgres
+#
+# Each of those restarts Postgres for a few seconds, and the API reconnects.
+services:
+  postgres:
+    ports:
+      - '127.0.0.1:5432:5432'

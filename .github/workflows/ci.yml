@@ -154,6 +154,24 @@ jobs:
           find . -name node_modules -prune -o -name '*.sh' -print0 \
             | xargs -0 -r shellcheck
 
+      - name: 🔍 Production compose file is valid
+        # Placeholders stand in for the values SSM supplies on the box. The empty
+        # .env only has to exist: the compose file reads it for the api container.
+        env:
+          API_IMAGE: placeholder
+          API_DOMAIN: api.example.com
+          DB_PASS: placeholder
+          MEILI_MASTER_KEY: placeholder_placeholder
+          BACKUP_BUCKET: placeholder
+        run: |
+          touch infra/deploy/.env
+          docker compose -f infra/deploy/docker-compose.prod.yml --profile backup --profile sweep config -q
+          docker compose -f infra/deploy/docker-compose.prod.yml \
+            -f infra/deploy/docker-compose.rehearsal.override.yml \
+            --profile backup --profile sweep config -q
+          docker compose -f infra/deploy/docker-compose.prod.yml \
+            -f infra/deploy/docker-compose.maintenance.yml config -q
+
   docker-build:
     name: Backend image builds
     runs-on: ubuntu-latest

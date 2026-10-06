@@ -4,6 +4,37 @@ Media pipeline · WebP Lambda · backups · production box · CI/CD, all built a
 
 ---
 
+## As built: where the build differs from this plan
+
+The plan below is what was approved. Building it surfaced things the plan got wrong or did not
+know. The code follows this list where the two disagree.
+
+| Plan said                                                                     | What was built, and why                                                                                                                                                                                                                 |
+| ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `minio-init` sidecar creates buckets                                          | A Node script, `pnpm storage:init-local`. The Chainguard MinIO client image has no shell, so a sidecar cannot run a script.                                                                                                             |
+| `media-lambda-local` container, MinIO `depends_on` it                         | The local Lambda server runs on the host (`pnpm --filter @golden-abode/media-lambda dev`). MinIO starts fine while the webhook target is down, so no ordering is needed.                                                                |
+| Storage config fails fast at boot in production                               | It fails fast only **when a bucket is set**. With no `S3_MEDIA_BUCKET` the app boots with media disabled (uploads answer 503), because the Railway demo runs as `NODE_ENV=production` with no bucket and must keep booting.             |
+| Remove `@google-cloud/storage`; use `file-type`                               | Neither was on `main` (they were only in uncommitted local changes). Image type is detected by a small magic-byte check instead of the ESM-only `file-type`.                                                                            |
+| Orphan sweep script under `scripts/`                                          | Under `src/cli/` so it compiles into `dist/` and runs from the production image (`node dist/cli/sweep-orphan-media.js`); the image has no `ts-node`.                                                                                    |
+| Lambda tested with Vitest 5                                                   | Vitest 3. Vitest 5 needs a newer Vite than the admin app's Vite 5.                                                                                                                                                                      |
+| CI starts MinIO with `docker run ... server /data`                            | Needs `--user root`: the image's non-root user cannot create `/data` and MinIO exits with "file access denied".                                                                                                                         |
+| Compose project `golden-abode` for production                                 | `golden-abode-prod`. `golden-abode` is the dev compose project's name; sharing it meant a `down -v --remove-orphans` could have deleted the dev stack and its data. Caught before it ran; the rehearsal has its own name too.           |
+| Deploy files delivered from git                                               | Delivered as a bundle through S3 (`deploy-bundles/<sha>.tgz` in the backup bucket), which the box fetches over SSM. No deploy key on the box, and the config is versioned with the code.                                                |
+| Demo image counts: "122 + 118, about 28 Lavish and 170 Pearl without a photo" | 122 Lavish exact; Pearl 106 exact plus 30 via base code (the cistern photos cover `C-001/IV`-style variants); **70 Lavish and 157 Pearl products have no photo**. Eight Lavish files named `.jpg` are really WebP, handled by sniffing. |
+| Local Lambda processes every event at once                                    | A bounded pool (default 4), like the deployed function's reserved concurrency. Unbounded, a bulk load of 258 images took 3+ minutes and 741 callback retries; bounded it takes 19 seconds with none.                                    |
+| Cost about $20–35 per month                                                   | About $22–30. The plan missed the **$3.65 per month public IPv4 charge** (corrected in 0032).                                                                                                                                           |
+
+Not in the plan, found along the way:
+
+- **`apps/mobile` fails `type-check` on `main`** (`VendorListingStatus` used without an import in
+  `VendorListingCard.tsx`, and two axios params-serializer errors in
+  `vendor-catalog-import.service.ts`). Unrelated to this work and not fixed here, but CI's
+  type-check step fails because of it, which would stop the deploy pipeline's gate from ever going green.
+- **Docker needs a metadata hop limit of 2** on the instance, or containers cannot use its IAM role.
+- A new account's Lambda quota is often 10, which makes **reserved concurrency of 5 impossible** until it is raised.
+
+---
+
 ## 0. Context
 
 Decision [0032](docs/decisions/0032-aws-cost-minimized-single-box.md) (Proposed) moves Golden Abode to one EC2 box in ap-south-1. The box runs Caddy, the API/worker, Postgres, Redis and Meilisearch as containers, with media on S3 + CloudFront, all paid from AWS Free Plan credits. **The goal is to build and test everything locally first**, so that going live only means provisioning resources and setting env vars.

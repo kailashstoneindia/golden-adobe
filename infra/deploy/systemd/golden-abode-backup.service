@@ -1,0 +1,12 @@
+[Unit]
+Description=Golden Abode Postgres backup to S3
+Wants=docker.service
+After=docker.service network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/golden-abode
+# compose.sh fills in the image, so the compose file loads. A non-zero exit marks
+# the unit failed, which is visible in `systemctl status` and the journal.
+ExecStart=/opt/golden-abode/compose.sh --profile backup run --rm backup
+TimeoutStartSec=30min
