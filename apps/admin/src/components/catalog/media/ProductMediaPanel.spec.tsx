@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { mediaService } from '@/services/api/mediaService';
 import { server } from '@/test/server';
 import type { MediaUploadTicket, ProductMedia } from '@/types/catalog.types';
 
@@ -320,14 +321,13 @@ describe('ProductMediaPanel', () => {
 
     it('uploads a picked image and then lists it as processing', async () => {
       const calls: string[] = [];
+      vi.spyOn(mediaService, 'uploadFile').mockImplementation(async () => {
+        calls.push('s3');
+      });
       server.use(
         http.post(`${BASE}/uploads`, async ({ request }) => {
           calls.push(`ticket ${JSON.stringify(await request.json())}`);
           return HttpResponse.json({ success: true, data: ticket(A) }, { status: 201 });
-        }),
-        http.post(S3_URL, () => {
-          calls.push('s3');
-          return new HttpResponse(null, { status: 204 });
         }),
         http.post(BASE, async ({ request }) => {
           calls.push(`confirm ${JSON.stringify(await request.json())}`);
@@ -379,12 +379,12 @@ describe('ProductMediaPanel', () => {
 
     it('shows why a file failed and never confirms it when S3 refuses it', async () => {
       let confirmed = 0;
+      vi.spyOn(mediaService, 'uploadFile').mockRejectedValue(
+        new Error('The file is larger than the allowed size'),
+      );
       server.use(
         http.post(`${BASE}/uploads`, () =>
           HttpResponse.json({ success: true, data: ticket(A) }, { status: 201 }),
-        ),
-        http.post(S3_URL, () =>
-          HttpResponse.text('<Error><Code>EntityTooLarge</Code></Error>', { status: 400 }),
         ),
         http.post(BASE, () => {
           confirmed++;
@@ -423,6 +423,7 @@ describe('ProductMediaPanel', () => {
 
     it('uploads several files and lets one fail without stopping the others', async () => {
       let next = 0;
+      vi.spyOn(mediaService, 'uploadFile').mockResolvedValue(undefined);
       server.use(
         http.post(`${BASE}/uploads`, async ({ request }) => {
           const body = (await request.json()) as { sizeBytes: number };
@@ -438,7 +439,6 @@ describe('ProductMediaPanel', () => {
             { status: 201 },
           );
         }),
-        http.post(S3_URL, () => new HttpResponse(null, { status: 204 })),
         http.post(BASE, async ({ request }) => {
           const { mediaId } = (await request.json()) as { mediaId: string };
           items = [

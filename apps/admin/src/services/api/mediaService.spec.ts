@@ -152,6 +152,8 @@ describe('uploadToS3', () => {
 });
 
 describe('mediaService (against a mock API)', () => {
+  afterEach(() => vi.restoreAllMocks());
+
   it('lists, and unwraps the response envelope', async () => {
     server.use(http.get(BASE, () => HttpResponse.json({ success: true, data: [item()] })));
 
@@ -223,16 +225,15 @@ describe('mediaService (against a mock API)', () => {
 
   it('runs the whole upload in order: ticket, then S3, then confirm', async () => {
     const order: string[] = [];
+    // The S3 step is replaced (see mediaService.uploadFile): the real transport is
+    // covered by the uploadToS3 tests above and by a real-browser run.
+    const upload = vi.spyOn(mediaService, 'uploadFile').mockImplementation(async () => {
+      order.push('s3');
+    });
     server.use(
       http.post(`${BASE}/uploads`, () => {
         order.push('ticket');
         return HttpResponse.json({ success: true, data: ticket }, { status: 201 });
-      }),
-      // The body is not parsed here: jsdom's XHR gives the mock no multipart
-      // content type to parse. Field order is asserted in the uploadToS3 tests.
-      http.post(ticket.upload.url, () => {
-        order.push('s3');
-        return new HttpResponse(null, { status: 204 });
       }),
       http.post(BASE, () => {
         order.push('confirm');
@@ -244,16 +245,18 @@ describe('mediaService (against a mock API)', () => {
 
     expect(order).toEqual(['ticket', 's3', 'confirm']);
     expect(result.id).toBe(MEDIA);
+    // It is handed the ticket's own form, and the file.
+    expect(upload).toHaveBeenCalledWith(ticket.upload, expect.any(File), undefined);
   });
 
   it('does not confirm when S3 refuses the file', async () => {
     let confirmed = false;
+    vi.spyOn(mediaService, 'uploadFile').mockRejectedValue(
+      new Error('The file is larger than the allowed size'),
+    );
     server.use(
       http.post(`${BASE}/uploads`, () =>
         HttpResponse.json({ success: true, data: ticket }, { status: 201 }),
-      ),
-      http.post(ticket.upload.url, () =>
-        HttpResponse.text('<Error><Code>EntityTooLarge</Code></Error>', { status: 400 }),
       ),
       http.post(BASE, () => {
         confirmed = true;

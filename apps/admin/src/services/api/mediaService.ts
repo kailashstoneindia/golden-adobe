@@ -113,6 +113,12 @@ export const mediaService = {
     );
   },
 
+  // The browser-to-S3 transport, a property so a test can replace it. jsdom with a
+  // mock server cannot reliably carry a multipart body across Node versions (CI,
+  // on Node 22, failed where Node 24 passed), so tests that are about everything
+  // else swap this out. uploadToS3 itself is tested with a fake XMLHttpRequest.
+  uploadFile: uploadToS3,
+
   // The whole flow for one file: ticket, then S3, then confirm.
   async uploadImage(
     productId: string,
@@ -120,7 +126,7 @@ export const mediaService = {
     onProgress?: UploadProgress,
   ): Promise<ProductMedia> {
     const ticket = await this.requestUpload(productId, file);
-    await uploadToS3(ticket.upload, file, onProgress);
+    await this.uploadFile(ticket.upload, file, onProgress);
     return this.confirmUpload(productId, ticket.mediaId);
   },
 };
