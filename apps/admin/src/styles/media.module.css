@@ -43,11 +43,11 @@
 
 .uploadList {
   list-style: none;
-  margin: 0;
+  margin: 10px 0 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .uploadRow {
@@ -154,6 +154,12 @@
 
 .tileActions {
   display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.actionRow {
+  display: flex;
   flex-wrap: wrap;
   gap: 4px;
 }
@@ -183,5 +189,10 @@
 }
 
 .tileActions .deleteButton {
+  margin-left: auto;
   color: var(--color-brick);
+}
+
+.clearList {
+  margin-top: 8px;
 }

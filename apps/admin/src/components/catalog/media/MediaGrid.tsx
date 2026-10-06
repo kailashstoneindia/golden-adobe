@@ -80,65 +80,71 @@ export function MediaGrid({ productId, items }: MediaGridProps) {
               ) : null}
 
               <div className={mediaStyles.tileActions}>
-                {item.status === 'failed' ? (
+                {/* Two fixed rows, so every tile lays out the same way. */}
+                <div className={mediaStyles.actionRow}>
+                  {item.status === 'failed' ? (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => reprocess.mutate(item.id)}
+                      aria-label={`Retry image ${position}`}
+                    >
+                      Retry
+                    </button>
+                  ) : null}
+                  {/* A failed image has nothing to show, so it cannot be the primary one. */}
+                  {!item.isPrimary && item.status !== 'failed' ? (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => update.mutate({ mediaId: item.id, body: { isPrimary: true } })}
+                      aria-label={`Make image ${position} primary`}
+                    >
+                      Make primary
+                    </button>
+                  ) : null}
                   <button
                     type="button"
+                    aria-pressed={item.isRepresentative}
                     disabled={busy}
-                    onClick={() => reprocess.mutate(item.id)}
-                    aria-label={`Retry image ${position}`}
+                    onClick={() =>
+                      update.mutate({
+                        mediaId: item.id,
+                        body: { isRepresentative: !item.isRepresentative },
+                      })
+                    }
+                    aria-label={`Mark image ${position} as representative`}
                   >
-                    Retry
+                    Representative
                   </button>
-                ) : null}
-                {!item.isPrimary ? (
+                </div>
+                <div className={mediaStyles.actionRow}>
                   <button
                     type="button"
-                    disabled={busy}
-                    onClick={() => update.mutate({ mediaId: item.id, body: { isPrimary: true } })}
-                    aria-label={`Make image ${position} primary`}
+                    disabled={busy || index === 0}
+                    onClick={() => move(index, -1)}
+                    aria-label={`Move image ${position} left`}
                   >
-                    Make primary
+                    ←
                   </button>
-                ) : null}
-                <button
-                  type="button"
-                  aria-pressed={item.isRepresentative}
-                  disabled={busy}
-                  onClick={() =>
-                    update.mutate({
-                      mediaId: item.id,
-                      body: { isRepresentative: !item.isRepresentative },
-                    })
-                  }
-                  aria-label={`Mark image ${position} as representative`}
-                >
-                  Representative
-                </button>
-                <button
-                  type="button"
-                  disabled={busy || index === 0}
-                  onClick={() => move(index, -1)}
-                  aria-label={`Move image ${position} left`}
-                >
-                  ←
-                </button>
-                <button
-                  type="button"
-                  disabled={busy || index === items.length - 1}
-                  onClick={() => move(index, 1)}
-                  aria-label={`Move image ${position} right`}
-                >
-                  →
-                </button>
-                <button
-                  type="button"
-                  className={mediaStyles.deleteButton}
-                  disabled={busy}
-                  onClick={() => confirmDelete(item, position)}
-                  aria-label={`Delete image ${position}`}
-                >
-                  Delete
-                </button>
+                  <button
+                    type="button"
+                    disabled={busy || index === items.length - 1}
+                    onClick={() => move(index, 1)}
+                    aria-label={`Move image ${position} right`}
+                  >
+                    →
+                  </button>
+                  <button
+                    type="button"
+                    className={mediaStyles.deleteButton}
+                    disabled={busy}
+                    onClick={() => confirmDelete(item, position)}
+                    aria-label={`Delete image ${position}`}
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             </li>
           );

@@ -108,6 +108,8 @@ describe('ProductMediaPanel', () => {
       expect(within(third).getByText('Failed')).toBeInTheDocument();
       expect(within(third).getByText(/could not be read/)).toBeInTheDocument();
       expect(within(third).getByRole('button', { name: 'Retry image 3' })).toBeInTheDocument();
+      // A failed image has nothing to show, so it cannot be made primary.
+      expect(within(third).queryByRole('button', { name: /Make image 3 primary/ })).toBeNull();
       expect(within(first).queryByRole('button', { name: /Retry/ })).not.toBeInTheDocument();
     });
 

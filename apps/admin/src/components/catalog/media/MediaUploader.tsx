@@ -141,7 +141,11 @@ export function MediaUploader({ productId }: MediaUploaderProps) {
             ))}
           </ul>
           {finished.length === items.length ? (
-            <button type="button" className={sharedStyles.buttonGhost} onClick={() => setItems([])}>
+            <button
+              type="button"
+              className={`${sharedStyles.buttonGhost} ${mediaStyles.clearList}`}
+              onClick={() => setItems([])}
+            >
               Clear list
             </button>
           ) : null}
