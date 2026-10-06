@@ -29,7 +29,11 @@ function buildExportQueryParams(scope: VendorCatalogExportScope): ExportQueryPar
   return params;
 }
 
-function serializeExportParams(params: ExportQueryParams): string {
+// axios types a custom serializer as taking any params object, so it cannot be
+// declared as taking only ExportQueryParams. The object it receives is always the
+// one buildExportQueryParams made, so the narrowing below is safe.
+function serializeExportParams(rawParams: Record<string, unknown>): string {
+  const params = rawParams as ExportQueryParams;
   const searchParams = new URLSearchParams();
   params.leafCategoryIds.forEach((categoryId) => {
     searchParams.append('leafCategoryIds', categoryId);
