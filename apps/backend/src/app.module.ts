@@ -8,6 +8,7 @@ import { VendorsModule } from './modules/vendors/vendors.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { CatalogModule } from './modules/catalog/catalog.module';
 import { SearchModule } from './modules/search/search.module';
+import { CustomersModule } from './modules/customers/customers.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { SearchModule } from './modules/search/search.module';
     AdminModule,
     CatalogModule,
     SearchModule,
+    CustomersModule,
   ],
 })
 export class AppModule {}

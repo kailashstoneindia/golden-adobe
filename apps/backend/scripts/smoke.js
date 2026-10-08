@@ -49,6 +49,13 @@ const REQUIRED_ROUTES = [
   { method: 'PATCH', path: '/api/vendor/listings/:id/stock' },
   { method: 'PATCH', path: '/api/vendor/listings/:id/status' },
   { method: 'POST', path: '/api/vendor/listings/stock/bulk' },
+  // Phase 3 — customers + customer_addresses (Task 1)
+  { method: 'GET', path: '/api/customers/me' },
+  { method: 'PATCH', path: '/api/customers/me' },
+  { method: 'GET', path: '/api/customers/me/addresses' },
+  { method: 'POST', path: '/api/customers/me/addresses' },
+  { method: 'PATCH', path: '/api/customers/me/addresses/:id' },
+  { method: 'DELETE', path: '/api/customers/me/addresses/:id' },
 ];
 
 async function main() {
