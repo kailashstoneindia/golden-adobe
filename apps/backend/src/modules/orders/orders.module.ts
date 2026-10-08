@@ -6,9 +6,11 @@ import { OrderItem } from './models/order-item.model';
 import { CustomerAddress } from '../customers/models/customer-address.model';
 import { CheckoutService } from './checkout.service';
 import { OrdersController } from './orders.controller';
+import { WebhooksController } from './webhooks.controller';
 import { CartModule } from '../cart/cart.module';
 import { CustomersModule } from '../customers/customers.module';
 import { PaymentsModule } from '../payments/payments.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -16,8 +18,9 @@ import { PaymentsModule } from '../payments/payments.module';
     CartModule,
     CustomersModule,
     PaymentsModule,
+    NotificationsModule,
   ],
-  controllers: [OrdersController],
+  controllers: [OrdersController, WebhooksController],
   providers: [CheckoutService],
   exports: [CheckoutService],
 })

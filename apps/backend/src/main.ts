@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { RequestMethod } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { ValidationPipe, Logger } from '@nestjs/common';
@@ -8,8 +9,14 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 import helmet from 'helmet';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
+  // rawBody: true registers req.rawBody via Express's body-parser verify
+  // hook (confirmed against the installed @nestjs/platform-express@10.4.22
+  // source, not assumed) — needed by the Razorpay webhook (decision 0032
+  // rule 3), which must verify its HMAC signature against the exact raw
+  // bytes Razorpay sent, not a re-serialized JSON.parse of them.
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: ['error', 'warn', 'log', 'debug', 'verbose'],
+    rawBody: true,
   });
 
   // Global Prefix — keep /health at root for Railway/load balancer probes

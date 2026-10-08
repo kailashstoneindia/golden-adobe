@@ -63,6 +63,8 @@ const REQUIRED_ROUTES = [
   { method: 'DELETE', path: '/api/cart/items/:id' },
   // Phase 3 — checkout transaction (Task 4)
   { method: 'POST', path: '/api/checkout' },
+  // Phase 3 — Razorpay webhook (Task 5)
+  { method: 'POST', path: '/api/webhooks/razorpay' },
 ];
 
 async function main() {
