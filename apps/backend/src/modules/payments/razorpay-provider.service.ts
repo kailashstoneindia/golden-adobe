@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Razorpay from 'razorpay';
 import { CreateProviderOrderResult, PaymentProviderService } from './payment-provider.interface';
@@ -7,30 +7,50 @@ import { CreateProviderOrderResult, PaymentProviderService } from './payment-pro
 // (decision 0033, rules 8-9). This implementation is written and
 // unit-testable (next task) against the SDK's documented behavior, but has
 // never been run against a live account. RAZORPAY_KEY_ID/KEY_SECRET/
-// WEBHOOK_SECRET are read from config and may be empty strings in dev —
-// createOrder will fail loudly against Razorpay's API in that case, which
-// is correct: it should not pretend to succeed.
+// WEBHOOK_SECRET are read from config and may be empty strings in dev.
+//
+// The SDK's own constructor throws synchronously when key_id is empty
+// ("`key_id` or `oauthToken` is mandatory") — found by actually booting the
+// app with no credentials configured, which is exactly the case this
+// abstraction boundary exists to support. Constructing the client eagerly
+// in this service's own constructor would therefore crash the whole app
+// at boot, not just the one checkout call that needs a real key. The
+// client is built lazily instead, on the first createOrder call, so
+// everything else in the app works with no Razorpay credentials at all,
+// and only an actual checkout attempt fails — loudly, which is correct.
 //
 // Signature verification uses Razorpay.validateWebhookSignature, the SDK's
-// own documented helper (HMAC-SHA256, the webhook secret as key, the raw
-// body as message) — not hand-rolled crypto. The SDK maintains this; a
-// bespoke reimplementation would only risk a timing or encoding mismatch
-// the SDK has already solved.
+// own documented static helper (HMAC-SHA256, the webhook secret as key,
+// the raw body as message) — not hand-rolled crypto, and it needs no
+// client instance at all.
 @Injectable()
 export class RazorpayProviderService implements PaymentProviderService {
   private readonly logger = new Logger(RazorpayProviderService.name);
-  private readonly client: Razorpay;
+  private readonly keyId: string;
+  private readonly keySecret: string;
   private readonly webhookSecret: string;
+  private client: Razorpay | null = null;
 
   constructor(private readonly configService: ConfigService) {
-    const keyId = this.configService.get<string>('RAZORPAY_KEY_ID') ?? '';
-    const keySecret = this.configService.get<string>('RAZORPAY_KEY_SECRET') ?? '';
+    this.keyId = this.configService.get<string>('RAZORPAY_KEY_ID') ?? '';
+    this.keySecret = this.configService.get<string>('RAZORPAY_KEY_SECRET') ?? '';
     this.webhookSecret = this.configService.get<string>('RAZORPAY_WEBHOOK_SECRET') ?? '';
-    this.client = new Razorpay({ key_id: keyId, key_secret: keySecret });
+  }
+
+  private getClient(): Razorpay {
+    if (!this.keyId) {
+      throw new InternalServerErrorException(
+        'Razorpay is not configured (RAZORPAY_KEY_ID is empty) — cannot create a payment order',
+      );
+    }
+    if (!this.client) {
+      this.client = new Razorpay({ key_id: this.keyId, key_secret: this.keySecret });
+    }
+    return this.client;
   }
 
   async createOrder(amountPaise: number, receiptId: string): Promise<CreateProviderOrderResult> {
-    const order = await this.client.orders.create({
+    const order = await this.getClient().orders.create({
       amount: amountPaise,
       currency: 'INR',
       receipt: receiptId,
