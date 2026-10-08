@@ -56,6 +56,11 @@ const REQUIRED_ROUTES = [
   { method: 'POST', path: '/api/customers/me/addresses' },
   { method: 'PATCH', path: '/api/customers/me/addresses/:id' },
   { method: 'DELETE', path: '/api/customers/me/addresses/:id' },
+  // Phase 3 — cart + cart_item (Task 2)
+  { method: 'GET', path: '/api/cart' },
+  { method: 'POST', path: '/api/cart/items' },
+  { method: 'PATCH', path: '/api/cart/items/:id' },
+  { method: 'DELETE', path: '/api/cart/items/:id' },
 ];
 
 async function main() {
