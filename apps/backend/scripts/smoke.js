@@ -65,6 +65,15 @@ const REQUIRED_ROUTES = [
   { method: 'POST', path: '/api/checkout' },
   // Phase 3 — Razorpay webhook (Task 5)
   { method: 'POST', path: '/api/webhooks/razorpay' },
+  // Phase 3 — order reads/cancel, vendor order-group discovery/status, admin reads (Task 6)
+  { method: 'GET', path: '/api/orders' },
+  { method: 'GET', path: '/api/orders/:id' },
+  { method: 'PATCH', path: '/api/orders/:id/cancel' },
+  { method: 'GET', path: '/api/vendors/order-groups' },
+  { method: 'GET', path: '/api/vendors/order-groups/:id' },
+  { method: 'PATCH', path: '/api/vendors/order-groups/:id/status' },
+  { method: 'GET', path: '/api/admin/orders' },
+  { method: 'GET', path: '/api/admin/orders/:id' },
 ];
 
 async function main() {
