@@ -158,6 +158,15 @@ export class PostgresSearchService {
       having.push('MIN(vl.price) <= :maxPrice');
       replacements.maxPrice = input.maxPrice;
     }
+    // Decision 0032 rule 6 / Consequences: inStockOnly was declared on
+    // PostgresSearchInput and never read anywhere in this method — a real,
+    // live gap, not a hypothetical one. HAVING, not WHERE, for the same
+    // reason as the price filters: this is a per-PRODUCT aggregate
+    // ("does ANY active listing in this city have it"), computed after
+    // grouping, not a per-row filter.
+    if (input.inStockOnly) {
+      having.push('BOOL_OR(in_stock_check.is_in_stock) = true');
+    }
 
     const orderBy = input.query
       ? 'ORDER BY word_similarity(:query, mp.name) DESC, min_price ASC'
@@ -173,6 +182,12 @@ export class PostgresSearchService {
         MIN(vl.price)                AS min_price,
         COUNT(DISTINCT vl.vendor_id) AS vendor_count,
         mp.updated_at                AS updated_at,
+        -- Decision 0032 rules 4-6: true if ANY active listing for this
+        -- product in this city is actually available — paint by status
+        -- alone, everything else net of quantity_reserved. This was
+        -- hardcoded true below; fixed here instead, since the aggregate
+        -- has to be computed in this same GROUP BY.
+        BOOL_OR(in_stock_check.is_in_stock) AS in_stock,
         (
           SELECT vl2.id FROM vendor_listing vl2
           JOIN vendors v2 ON v2.id = vl2.vendor_id
@@ -188,6 +203,14 @@ export class PostgresSearchService {
       JOIN city c            ON c.id = v.city_id
       JOIN category cat      ON cat.id = mp.category_id
       LEFT JOIN brand b      ON b.id = mp.brand_id
+      LEFT JOIN inventory inv ON inv.vendor_listing_id = vl.id AND inv.warehouse_id IS NULL
+      CROSS JOIN LATERAL (
+        SELECT
+          mp.sale_unit_type = 'tinted_to_order'
+          OR (inv.quantity_available IS NOT NULL
+              AND (inv.quantity_available - COALESCE(inv.quantity_reserved, 0)) > 0)
+          AS is_in_stock
+      ) in_stock_check
       WHERE ${where.join(' AND ')}
       GROUP BY mp.id, mp.name, cat.path, b.name, mp.attributes_flat, mp.updated_at
       ${having.length > 0 ? `HAVING ${having.join(' AND ')}` : ''}
@@ -205,6 +228,7 @@ export class PostgresSearchService {
       vendor_count: string;
       updated_at: Date;
       cheapest_vendor_listing_id: string;
+      in_stock: boolean;
     }>(sql, { type: QueryTypes.SELECT, replacements });
 
     return rows.map((row) => ({
@@ -218,9 +242,7 @@ export class PostgresSearchService {
       price: Number(row.min_price),
       cheapestVendorListingId: row.cheapest_vendor_listing_id,
       vendorCount: Number(row.vendor_count),
-      // A row only reaches here by joining an ACTIVE listing, so anything
-      // returned is in stock by construction.
-      inStock: true,
+      inStock: row.in_stock,
       updatedAt: row.updated_at.toISOString(),
     }));
   }
@@ -320,7 +342,9 @@ export class PostgresSearchService {
       price: string;
       mrp: string | null;
       stated_grade: string | null;
+      sale_unit_type: string;
       quantity_available: string | null;
+      quantity_reserved: string | null;
     }>(
       `SELECT
          vl.id AS vendor_listing_id,
@@ -329,7 +353,9 @@ export class PostgresSearchService {
          vl.price,
          vl.mrp,
          vl.stated_grade,
-         inv.quantity_available
+         mp.sale_unit_type,
+         inv.quantity_available,
+         inv.quantity_reserved
        FROM vendor_listing vl
        JOIN vendors v ON v.id = vl.vendor_id
        JOIN master_product mp ON mp.id = vl.master_product_id
@@ -343,19 +369,26 @@ export class PostgresSearchService {
       { type: QueryTypes.SELECT, replacements: { masterProductId, cityId } },
     );
 
-    return rows.map((row) => ({
-      vendorListingId: row.vendor_listing_id,
-      vendorId: row.vendor_id,
-      shopName: row.shop_name,
-      price: Number(row.price),
-      mrp: row.mrp === null ? null : Number(row.mrp),
-      statedGrade: row.stated_grade,
-      quantityAvailable: row.quantity_available === null ? null : Number(row.quantity_available),
-      // Paint listings carry no inventory row by design (no per-unit stock
-      // concept), so null quantity_available means "not applicable", not
-      // "out of stock" — mirrors the same null-vs-zero distinction
-      // stock.service.ts's listForVendor already makes.
-      inStock: row.quantity_available === null || Number(row.quantity_available) > 0,
-    }));
+    return rows.map((row) => {
+      // Decision 0032 rules 4-5, fixed here (previously missing both the
+      // reservation netting and the sale_unit_type check — a non-paint
+      // listing that was simply never given an inventory row used to read
+      // as in stock, the exact negative case rule 5 calls out).
+      const isPaint = row.sale_unit_type === 'tinted_to_order';
+      const inStock = isPaint
+        ? true
+        : row.quantity_available !== null &&
+          Number(row.quantity_available) - Number(row.quantity_reserved ?? 0) > 0;
+      return {
+        vendorListingId: row.vendor_listing_id,
+        vendorId: row.vendor_id,
+        shopName: row.shop_name,
+        price: Number(row.price),
+        mrp: row.mrp === null ? null : Number(row.mrp),
+        statedGrade: row.stated_grade,
+        quantityAvailable: row.quantity_available === null ? null : Number(row.quantity_available),
+        inStock,
+      };
+    });
   }
 }

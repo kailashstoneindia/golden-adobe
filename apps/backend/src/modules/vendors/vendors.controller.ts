@@ -3,6 +3,7 @@ import {
   Post,
   Patch,
   Get,
+  Param,
   Body,
   UseGuards,
   Req,
@@ -10,8 +11,11 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { IsEnum } from 'class-validator';
 import { VendorsService } from './vendors.service';
 import { VendorCategoriesService } from '../catalog/vendor-categories.service';
+import { OrdersService } from '../orders/orders.service';
+import { OrderVendorGroupStatus } from '../orders/models/order-vendor-group.model';
 import { OnboardVendorDto } from './dto/onboard-vendor.dto';
 import { UpdateVendorProfileDto } from './dto/update-vendor-profile.dto';
 import { UpdateAccountDetailsDto } from './dto/update-account-details.dto';
@@ -20,6 +24,11 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '@golden-abode/types';
+
+class UpdateOrderGroupStatusDto {
+  @IsEnum(OrderVendorGroupStatus)
+  status: OrderVendorGroupStatus;
+}
 
 // Guards at class level — the newer convention in this codebase (see
 // VendorCatalogImportController). Every route here is vendor-only, so
@@ -34,6 +43,7 @@ export class VendorsController {
   constructor(
     private readonly vendorsService: VendorsService,
     private readonly vendorCategoriesService: VendorCategoriesService,
+    private readonly ordersService: OrdersService,
   ) {}
 
   @Post('onboard')
@@ -106,5 +116,41 @@ export class VendorsController {
     const userId = req.user.sub;
     await this.vendorsService.updateOnboardingProgress(userId, dto.onboardingStage);
     return { success: true };
+  }
+
+  @Get('order-groups')
+  @ApiOperation({
+    summary: 'Orders assigned to you',
+    description:
+      'The reliable source of truth for "do I have an order" — independent of whether a push notification arrived. Each group is one vendor\'s slice of a (possibly multi-vendor) customer order: your items and subtotal only, never the other vendor(s) sharing the same cart/payment or the order\'s grand total.',
+  })
+  @ApiResponse({ status: 200, description: 'Your order groups, newest first' })
+  async listOrderGroups(@Req() req: any) {
+    const vendor = await this.vendorsService.resolveVendorByUserId(req.user.sub);
+    return this.ordersService.listForVendor(vendor.id);
+  }
+
+  @Get('order-groups/:id')
+  @ApiResponse({ status: 200, description: 'One order group' })
+  @ApiResponse({ status: 404, description: 'Not found, or belongs to another vendor' })
+  async getOrderGroup(@Req() req: any, @Param('id') id: string) {
+    const vendor = await this.vendorsService.resolveVendorByUserId(req.user.sub);
+    return this.ordersService.getForVendor(vendor.id, id);
+  }
+
+  @Patch('order-groups/:id/status')
+  @ApiOperation({
+    summary: 'Advance your fulfilment status for this order group',
+    description: 'Forward-only: pending -> confirmed -> shipped -> delivered, or cancel from pending/confirmed.',
+  })
+  @ApiResponse({ status: 200, description: 'Status updated' })
+  @ApiResponse({ status: 400, description: 'Invalid transition from the current status' })
+  async updateOrderGroupStatus(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() dto: UpdateOrderGroupStatusDto,
+  ) {
+    const vendor = await this.vendorsService.resolveVendorByUserId(req.user.sub);
+    return this.ordersService.updateVendorGroupStatus(vendor.id, id, dto.status);
   }
 }

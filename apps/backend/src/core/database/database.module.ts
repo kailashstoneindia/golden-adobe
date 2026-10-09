@@ -6,6 +6,8 @@ import { RefreshToken } from '../../modules/users/models/refresh-token.model';
 import { Vendor } from '../../modules/vendors/models/vendor.model';
 import { VendorAccountDetails } from '../../modules/vendors/models/vendor-account-details.model';
 import { City } from '../../modules/catalog/models/city.model';
+import { Customer } from '../../modules/customers/models/customer.model';
+import { CustomerAddress } from '../../modules/customers/models/customer-address.model';
 
 @Module({
   imports: [
@@ -28,7 +30,7 @@ import { City } from '../../modules/catalog/models/city.model';
           // "City has not been defined", retrying forever. The Jest suites
           // never caught this because test-db.ts registers every model in one
           // explicit list.
-          models: [User, RefreshToken, Vendor, VendorAccountDetails, City],
+          models: [User, RefreshToken, Vendor, VendorAccountDetails, City, Customer, CustomerAddress],
           autoLoadModels: true,
           synchronize: false, // Managed by migrations
           logging: false,
