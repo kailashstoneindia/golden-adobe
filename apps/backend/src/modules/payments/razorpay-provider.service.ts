@@ -49,12 +49,30 @@ export class RazorpayProviderService implements PaymentProviderService {
     return this.client;
   }
 
+  // Final review finding #7 (the HTTP-timeout half — the other half,
+  // moving this call outside the checkout transaction so a slow response
+  // can no longer hold DB locks/connections, is fixed in
+  // CheckoutService.checkout): the Razorpay SDK's own IOption type has no
+  // timeout field anywhere in its .d.ts, confirmed by reading it rather
+  // than assuming. A hung HTTP call here would otherwise wait
+  // indefinitely. Race it against a timer instead of trusting the SDK to
+  // bound it.
+  private static readonly CREATE_ORDER_TIMEOUT_MS = 15_000;
+
   async createOrder(amountPaise: number, receiptId: string): Promise<CreateProviderOrderResult> {
-    const order = await this.getClient().orders.create({
-      amount: amountPaise,
-      currency: 'INR',
-      receipt: receiptId,
-    });
+    const order = await Promise.race([
+      this.getClient().orders.create({
+        amount: amountPaise,
+        currency: 'INR',
+        receipt: receiptId,
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error(`Razorpay createOrder timed out after ${RazorpayProviderService.CREATE_ORDER_TIMEOUT_MS}ms`)),
+          RazorpayProviderService.CREATE_ORDER_TIMEOUT_MS,
+        ),
+      ),
+    ]);
     return { providerOrderId: order.id };
   }
 

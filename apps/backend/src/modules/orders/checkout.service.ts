@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { Sequelize } from 'sequelize-typescript';
 import { QueryTypes } from 'sequelize';
@@ -34,6 +34,8 @@ interface CheckoutRejection {
 
 @Injectable()
 export class CheckoutService {
+  private readonly logger = new Logger(CheckoutService.name);
+
   constructor(
     @InjectModel(Order) private readonly orderModel: typeof Order,
     @InjectModel(OrderVendorGroup) private readonly groupModel: typeof OrderVendorGroup,
@@ -57,124 +59,168 @@ export class CheckoutService {
 
     const cart = await this.cartService.getOrCreateCart(customer.id);
 
-    // One query joins cart_item -> vendor_listing -> inventory -> vendors ->
-    // master_product, reading everything checkout needs to validate in one
-    // round trip. Matches decision 0033's Consequences: "checkout
-    // validation is a single query, not a loop."
-    const lines = await this.sequelize.query<CartLineForCheckout>(
-      `
-      SELECT
-        ci.id AS cart_item_id,
-        ci.vendor_listing_id,
-        vl.master_product_id,
-        vl.vendor_id,
-        ci.quantity,
-        vl.price,
-        vl.min_order_qty,
-        vl.status AS listing_status,
-        mp.sale_unit_type,
-        u.is_active AS vendor_is_active,
-        inv.quantity_available,
-        inv.quantity_reserved
-      FROM cart_item ci
-      JOIN vendor_listing vl ON vl.id = ci.vendor_listing_id
-      JOIN master_product mp ON mp.id = vl.master_product_id
-      JOIN vendors v ON v.id = vl.vendor_id
-      JOIN users u ON u.id = v.user_id
-      LEFT JOIN inventory inv ON inv.vendor_listing_id = vl.id AND inv.warehouse_id IS NULL
-      WHERE ci.cart_id = :cartId
-      `,
-      { replacements: { cartId: cart.id }, type: QueryTypes.SELECT },
-    );
+    // Phase 1: validate, reserve, snapshot, and create the order rows, all
+    // inside one transaction that starts by locking the cart row itself.
+    //
+    // Final review finding #5: the original code read cart_item OUTSIDE
+    // any transaction, so a double-submitted checkout (double-tap, two
+    // tabs) had both requests read the same lines before either took any
+    // lock — both could pass validation and both create an order, a
+    // second reservation, and a second Razorpay order from the same cart.
+    // A paint-only cart had NO lock anywhere (the inventory FOR UPDATE
+    // below only covers non-paint lines), so two such requests ran fully
+    // in parallel. Locking the cart row first serializes the whole method
+    // per cart: a second concurrent call blocks here until the first
+    // commits (and has already deleted the cart_item rows) or rolls back
+    // (and the rows are still there to re-validate).
+    //
+    // Final review finding #7: the Razorpay HTTP call used to run INSIDE
+    // this transaction, while the inventory FOR UPDATE locks below were
+    // still held and a pooled DB connection was checked out for the whole
+    // round trip — the SDK sets no HTTP timeout, and this project's
+    // connection pool defaults to 5. A slow Razorpay response under
+    // concurrent checkouts on a popular listing could exhaust the pool and
+    // stall every other request, including the webhook. createOrder now
+    // runs in Phase 2, after this transaction has committed and released
+    // every lock.
+    const order = await this.sequelize.transaction(async (t) => {
+      await this.sequelize.query(`SELECT id FROM cart WHERE id = :cartId FOR UPDATE`, {
+        replacements: { cartId: cart.id },
+        type: QueryTypes.SELECT,
+        transaction: t,
+      });
 
-    if (lines.length === 0) {
-      throw new BadRequestException('cart is empty');
-    }
+      // One query joins cart_item -> vendor_listing -> inventory -> vendors
+      // -> master_product, reading everything checkout needs to validate
+      // in one round trip (decision 0033's Consequences: "checkout
+      // validation is a single query, not a loop"). Runs INSIDE the cart
+      // lock, so this is current state, not a pre-lock snapshot.
+      const lines = await this.sequelize.query<CartLineForCheckout>(
+        `
+        SELECT
+          ci.id AS cart_item_id,
+          ci.vendor_listing_id,
+          vl.master_product_id,
+          vl.vendor_id,
+          ci.quantity,
+          vl.price,
+          vl.min_order_qty,
+          vl.status AS listing_status,
+          mp.sale_unit_type,
+          u.is_active AS vendor_is_active,
+          inv.quantity_available,
+          inv.quantity_reserved
+        FROM cart_item ci
+        JOIN vendor_listing vl ON vl.id = ci.vendor_listing_id
+        JOIN master_product mp ON mp.id = vl.master_product_id
+        JOIN vendors v ON v.id = vl.vendor_id
+        JOIN users u ON u.id = v.user_id
+        LEFT JOIN inventory inv ON inv.vendor_listing_id = vl.id AND inv.warehouse_id IS NULL
+        WHERE ci.cart_id = :cartId
+        `,
+        { replacements: { cartId: cart.id }, type: QueryTypes.SELECT, transaction: t },
+      );
 
-    const rejections: CheckoutRejection[] = [];
-    for (const line of lines) {
-      if (line.listing_status !== VendorListingStatus.ACTIVE) {
-        rejections.push({ vendorListingId: line.vendor_listing_id, reason: 'listing is not active' });
-        continue;
+      if (lines.length === 0) {
+        // Correct both for a genuinely empty cart, and for a
+        // double-submit's second call: by the time it acquires the cart
+        // lock, the first call has already committed and deleted every
+        // cart_item row.
+        throw new BadRequestException('cart is empty');
       }
-      if (!line.vendor_is_active) {
-        rejections.push({ vendorListingId: line.vendor_listing_id, reason: 'vendor is paused' });
-        continue;
-      }
-      const requested = Number(line.quantity);
-      const isPaint = line.sale_unit_type === SaleUnitType.TINTED_TO_ORDER;
-      if (isPaint) {
-        // Decision 0032 rule 5 — paint has no inventory row by design;
-        // ACTIVE status alone means available. Nothing more to check.
-        continue;
-      }
-      if (line.quantity_available === null) {
-        // No inventory row and not paint: stock was never set. Decision
-        // 0032 rule 5's negative case.
-        rejections.push({ vendorListingId: line.vendor_listing_id, reason: 'no stock on record' });
-        continue;
-      }
-      const available = Number(line.quantity_available) - Number(line.quantity_reserved ?? 0);
-      if (available < requested) {
-        rejections.push({
-          vendorListingId: line.vendor_listing_id,
-          reason: `only ${available} available, ${requested} requested`,
-        });
-      }
-    }
 
-    // min_order_qty enforced per listing within each vendor group (decision
-    // 0033 rule 3; min_order_qty is a per-listing column, not a per-vendor
-    // minimum), against lines that passed the checks above only.
-    const byVendor = new Map<string, CartLineForCheckout[]>();
-    for (const line of lines) {
-      if (rejections.some((r) => r.vendorListingId === line.vendor_listing_id)) continue;
-      const group = byVendor.get(line.vendor_id) ?? [];
-      group.push(line);
-      byVendor.set(line.vendor_id, group);
-    }
-    for (const [vendorId, groupLines] of byVendor) {
-      for (const line of groupLines) {
-        if (Number(line.quantity) < Number(line.min_order_qty)) {
+      const rejections: CheckoutRejection[] = [];
+      for (const line of lines) {
+        if (line.listing_status !== VendorListingStatus.ACTIVE) {
+          rejections.push({ vendorListingId: line.vendor_listing_id, reason: 'listing is not active' });
+          continue;
+        }
+        if (!line.vendor_is_active) {
+          rejections.push({ vendorListingId: line.vendor_listing_id, reason: 'vendor is paused' });
+          continue;
+        }
+        const requested = Number(line.quantity);
+        const isPaint = line.sale_unit_type === SaleUnitType.TINTED_TO_ORDER;
+        if (isPaint) {
+          // Final review finding #3: checkout treats every line
+          // uniformly, snapshotting vendor_listing.price regardless of
+          // which colour family was actually chosen — but a paint cart
+          // line carries no colour/shade at all (cart_item and
+          // order_items have no such column), and vendor_listing.price is
+          // documented as the "untinted price" (vendor-listing.model.ts).
+          // That means a paint order would be charged an arbitrary price
+          // and recorded with no colour for the vendor to fulfil against.
+          // Decision 0007's colour-family pricing was never wired into
+          // the cart/checkout layer at all, in this plan or before it —
+          // building that is new scope (a colour/shade selection UX and a
+          // schema column), not a fix. Until it exists, refuse the line
+          // explicitly rather than silently mis-price and mis-record it.
           rejections.push({
             vendorListingId: line.vendor_listing_id,
-            reason: `below minimum order quantity of ${line.min_order_qty} for vendor ${vendorId}`,
+            reason: 'paint ordering is not yet supported — colour selection has no path to checkout',
+          });
+          continue;
+        }
+        if (line.quantity_available === null) {
+          // No inventory row and not paint: stock was never set. Decision
+          // 0032 rule 5's negative case.
+          rejections.push({ vendorListingId: line.vendor_listing_id, reason: 'no stock on record' });
+          continue;
+        }
+        const available = Number(line.quantity_available) - Number(line.quantity_reserved ?? 0);
+        if (available < requested) {
+          rejections.push({
+            vendorListingId: line.vendor_listing_id,
+            reason: `only ${available} available, ${requested} requested`,
           });
         }
       }
-    }
 
-    if (rejections.length > 0) {
-      // Matches this codebase's own convention for "reject naming the
-      // offenders" (see StockService.setStock/bulkSetStock): the error
-      // envelope (GlobalExceptionFilter) only carries a plain string
-      // message, not a structured body — an object thrown here would have
-      // any field besides `message`/`error` silently dropped. Interpolate
-      // every offending line into one readable string instead.
-      const detail = rejections
-        .map((r) => `listing ${r.vendorListingId}: ${r.reason}`)
-        .join('; ');
-      throw new BadRequestException(`checkout rejected — ${rejections.length} line(s): ${detail}`);
-    }
+      // min_order_qty enforced per listing within each vendor group
+      // (decision 0033 rule 3; min_order_qty is a per-listing column, not
+      // a per-vendor minimum), against lines that passed the checks above
+      // only.
+      const byVendor = new Map<string, CartLineForCheckout[]>();
+      for (const line of lines) {
+        if (rejections.some((r) => r.vendorListingId === line.vendor_listing_id)) continue;
+        const group = byVendor.get(line.vendor_id) ?? [];
+        group.push(line);
+        byVendor.set(line.vendor_id, group);
+      }
+      for (const [vendorId, groupLines] of byVendor) {
+        for (const line of groupLines) {
+          if (Number(line.quantity) < Number(line.min_order_qty)) {
+            rejections.push({
+              vendorListingId: line.vendor_listing_id,
+              reason: `below minimum order quantity of ${line.min_order_qty} for vendor ${vendorId}`,
+            });
+          }
+        }
+      }
 
-    // Everything passed. Reserve, snapshot, and create the order rows in
-    // one transaction (decision 0033 rule 5: reservations across all
-    // vendors succeed or fail together).
-    return this.sequelize.transaction(async (t) => {
-      // The validation above ran OUTSIDE this transaction, against a plain
-      // SELECT with no lock — confirmed live (two real concurrent
-      // connections both reading quantity_available=1, both proceeding to
-      // reserve, final quantity_reserved=2 against quantity_available=1)
-      // that without a lock here, two concurrent checkouts for the same
-      // last unit can both pass validation and both reserve: a genuine
-      // oversell, not a theoretical one. SELECT ... FOR UPDATE re-reads and
-      // locks every non-paint line's inventory row for the rest of this
-      // transaction, so a second concurrent checkout touching the same row
-      // blocks until this one commits or rolls back, then sees the
-      // now-current (post-reservation) numbers. Re-check availability
-      // against this locked, fresh read — not the pre-transaction one —
-      // and abort the whole checkout if anything changed, naming the
-      // listing, exactly like the earlier rejection path.
+      if (rejections.length > 0) {
+        // Matches this codebase's own convention for "reject naming the
+        // offenders" (see StockService.setStock/bulkSetStock): the error
+        // envelope (GlobalExceptionFilter) only carries a plain string
+        // message, not a structured body — an object thrown here would
+        // have any field besides `message`/`error` silently dropped.
+        // Interpolate every offending line into one readable string
+        // instead.
+        const detail = rejections
+          .map((r) => `listing ${r.vendorListingId}: ${r.reason}`)
+          .join('; ');
+        throw new BadRequestException(`checkout rejected — ${rejections.length} line(s): ${detail}`);
+      }
+
+      // Everything passed. SELECT ... FOR UPDATE re-reads and locks every
+      // non-paint line's inventory row for the rest of this transaction,
+      // so a second concurrent checkout touching the same row (from a
+      // DIFFERENT cart — the cart lock above already serializes same-cart
+      // double-submits) blocks until this one commits or rolls back, then
+      // sees the now-current numbers. Confirmed live that without this
+      // lock, two real concurrent connections both reading
+      // quantity_available=1 can both proceed to reserve: a genuine
+      // oversell, not a theoretical one.
       const stockLines = lines.filter((l) => l.sale_unit_type !== SaleUnitType.TINTED_TO_ORDER);
       const listingIds = stockLines.map((l) => l.vendor_listing_id);
 
@@ -183,9 +229,7 @@ export class CheckoutService {
         // (see search-document.builder.ts's comment on the exact same
         // bug): replacements expands an array into comma-separated bare
         // text for an IN/ANY clause, so CAST(... AS uuid[]) fails with
-        // "malformed array literal". Confirmed live: the first version of
-        // this query used `:listingIds` via replacements and threw exactly
-        // that error on both sides of the concurrent-checkout test below.
+        // "malformed array literal".
         const lockedRows = await this.sequelize.query<{
           vendor_listing_id: string;
           quantity_available: string;
@@ -226,7 +270,7 @@ export class CheckoutService {
         // Single statement reserving every (non-paint) line at once, not a
         // loop, per decision 0033's Consequences ("a loop of N
         // reservations enqueues N reindex rows where one statement
-        // enqueues one"). Safe now: the FOR UPDATE lock above still holds
+        // enqueues one"). Safe: the FOR UPDATE lock above still holds
         // these rows for the rest of this transaction.
         const quantities = stockLines.map((l) => l.quantity);
         await this.sequelize.query(
@@ -249,7 +293,7 @@ export class CheckoutService {
 
       const grandTotal = lines.reduce((sum, l) => sum + Number(l.price) * Number(l.quantity), 0);
 
-      const order = await this.orderModel.create(
+      const createdOrder = await this.orderModel.create(
         {
           customerId: customer.id,
           deliveryAddressId: address.id,
@@ -266,7 +310,7 @@ export class CheckoutService {
         );
         const group = await this.groupModel.create(
           {
-            orderId: order.id,
+            orderId: createdOrder.id,
             vendorId,
             subtotal,
             status: OrderVendorGroupStatus.PENDING,
@@ -287,25 +331,82 @@ export class CheckoutService {
         }
       }
 
-      const providerOrder = await this.paymentProvider.createOrder(
-        Math.round(grandTotal * 100),
-        order.id,
-      );
-      order.razorpayOrderId = providerOrder.providerOrderId;
-      await order.save({ transaction: t });
-
-      // Cart is cleared only after everything else commits — if
-      // createOrder throws, the whole transaction rolls back and the cart
-      // is untouched, matching decision 0033 rule 4's "leaves the database
-      // exactly as it found it" for ANY failure, not just the validation
-      // ones above.
+      // Cart is cleared here, inside the same transaction as the
+      // reservation and the order rows — if anything above this point
+      // throws, the whole transaction rolls back and the cart is
+      // untouched, matching decision 0033 rule 4's "leaves the database
+      // exactly as it found it."
       await this.sequelize.query(`DELETE FROM cart_item WHERE cart_id = :cartId`, {
         replacements: { cartId: cart.id },
         type: QueryTypes.DELETE,
         transaction: t,
       });
 
-      return order;
+      return createdOrder;
     });
+
+    // Phase 2: create the Razorpay order, outside the transaction and its
+    // locks (finding #7). If this fails, the reservation and order rows
+    // from Phase 1 already committed — compensate by cancelling the order
+    // and releasing the reservation, in a second, short transaction,
+    // rather than leaving a razorpay_order_id-less order stuck
+    // pending_payment forever with no way for the customer to pay it.
+    try {
+      const providerOrder = await this.paymentProvider.createOrder(
+        Math.round(Number(order.grandTotal) * 100),
+        order.id,
+      );
+      order.razorpayOrderId = providerOrder.providerOrderId;
+      await order.save();
+      return order;
+    } catch (err) {
+      this.logger.error(
+        `order ${order.id}: Razorpay createOrder failed after reservation committed — releasing and cancelling: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+      await this.sequelize.transaction(async (t) => {
+        const items = await this.sequelize.query<{ vendor_listing_id: string; quantity: string }>(
+          `
+          SELECT oi.vendor_listing_id, oi.quantity
+          FROM order_items oi
+          JOIN order_vendor_group ovg ON ovg.id = oi.order_vendor_group_id
+          WHERE ovg.order_id = :orderId
+          `,
+          { replacements: { orderId: order.id }, type: QueryTypes.SELECT, transaction: t },
+        );
+        for (const item of items) {
+          await this.sequelize.query(
+            `
+            UPDATE inventory
+            SET quantity_reserved = quantity_reserved - :qty
+            WHERE vendor_listing_id = :listingId AND warehouse_id IS NULL
+            `,
+            {
+              replacements: { listingId: item.vendor_listing_id, qty: item.quantity },
+              type: QueryTypes.UPDATE,
+              transaction: t,
+            },
+          );
+        }
+        await this.sequelize.query(
+          `UPDATE orders SET status = :cancelled WHERE id = :orderId AND status = :pending`,
+          {
+            replacements: {
+              orderId: order.id,
+              cancelled: OrderStatus.CANCELLED,
+              pending: OrderStatus.PENDING_PAYMENT,
+            },
+            type: QueryTypes.UPDATE,
+            transaction: t,
+          },
+        );
+        await this.groupModel.update(
+          { status: OrderVendorGroupStatus.CANCELLED },
+          { where: { orderId: order.id, status: OrderVendorGroupStatus.PENDING }, transaction: t },
+        );
+      });
+      throw err;
+    }
   }
 }

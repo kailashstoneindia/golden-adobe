@@ -210,8 +210,20 @@ truthful will be tempted to use it as the cart's stock gate.
   reservation semantic.
 - **How long a reservation may be held before it is swept.** Rule 2 bounds it by "the
   payment," but nothing yet defines the timeout, the sweeper, or whether an expired
-  reservation notifies anyone. Nothing increments `quantity_reserved` until checkout is built,
-  so this is not yet reachable.
+  reservation notifies anyone.
+  > [!NOTE]
+  > **No longer "not yet reachable."** The checkout transaction and Razorpay webhook now exist
+  > (implementation plan `docs/superpowers/plans/docs-superpowers-specs-2026-10-07-phase-quiet-sunrise.md`),
+  > and the final branch review for that plan confirmed this gap is now real: a customer who
+  > reaches the Razorpay payment sheet and abandons it without completing or failing the
+  > payment leaves `quantity_reserved` raised indefinitely — Razorpay sends no webhook for a
+  > checkout that was simply never finished, so nothing in this codebase ever releases that
+  > reservation. The webhook's `payment.failed` handler does NOT release it either (by design,
+  > per that same review — a failed attempt still leaves the order payable for a retry; see
+  > that plan's fix for finding #1). A `pending_payment` order older than some threshold with
+  > no further webhook activity needs a sweep that releases its reservations and cancels it —
+  > unbuilt, flagged here explicitly rather than left to decay silently, which is exactly what
+  > rule 2's own reasoning above argues against.
 - **Whether `inStock` should become a search facet.** It is filterable already; a facet count
   ("412 in stock") is free to add and was not argued.
 - **Multi-warehouse inventory**, unchanged from 0022 — the `warehouse_id IS NULL` join
