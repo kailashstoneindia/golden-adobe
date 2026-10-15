@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { Sequelize } from 'sequelize-typescript';
 import { Op, QueryTypes } from 'sequelize';
@@ -12,6 +12,8 @@ import { PAYMENT_PROVIDER, PaymentProviderService } from '../payments/payment-pr
 
 @Injectable()
 export class OrdersService {
+  private readonly logger = new Logger(OrdersService.name);
+
   constructor(
     @InjectModel(Order) private readonly orderModel: typeof Order,
     @InjectModel(OrderVendorGroup) private readonly groupModel: typeof OrderVendorGroup,
@@ -361,5 +363,38 @@ export class OrdersService {
       where: { orderId },
       order: [['createdAt', 'ASC']],
     });
+  }
+
+  // Deliberately bypasses the forward-only validNextStatuses table that
+  // guards the vendor-facing updateVendorGroupStatus above — an admin
+  // override exists specifically for the case where the normal transition
+  // rule is blocking a legitimate correction (a vendor who went dark, a
+  // status set in error). The bypass is never silent: reason is required
+  // and logged, so there is always a human-readable trail for why a group
+  // ended up somewhere the normal state machine would have refused.
+  async adminOverrideVendorGroupStatus(
+    groupId: string,
+    status: OrderVendorGroupStatus,
+    reason: string,
+  ): Promise<OrderVendorGroup> {
+    if (!reason || reason.trim().length === 0) {
+      throw new BadRequestException('a reason is required for an admin status override');
+    }
+    const group = await this.groupModel.findByPk(groupId);
+    if (!group) {
+      throw new NotFoundException('order group not found');
+    }
+
+    this.logger.warn(
+      `admin override: order_vendor_group ${groupId} forced from ${group.status} to ${status} — reason: ${reason}`,
+    );
+    group.status = status;
+    await group.save();
+
+    const order = await this.orderModel.findByPk(group.orderId);
+    if (order) {
+      await this.notifications.sendOrderStatusChanged(order.customerId, order.id, status);
+    }
+    return group;
   }
 }

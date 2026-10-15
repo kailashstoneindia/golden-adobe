@@ -3,7 +3,7 @@ import { getModelToken } from '@nestjs/sequelize';
 import { Sequelize } from 'sequelize-typescript';
 import { OrdersService } from '../orders.service';
 import { Order, OrderStatus } from '../models/order.model';
-import { OrderVendorGroup } from '../models/order-vendor-group.model';
+import { OrderVendorGroup, OrderVendorGroupStatus } from '../models/order-vendor-group.model';
 import { PaymentEvent } from '../models/payment-event.model';
 import { CustomersService } from '../../customers/customers.service';
 import { NOTIFICATION_SERVICE } from '../../notifications/notification.interface';
@@ -12,7 +12,7 @@ import { PAYMENT_PROVIDER } from '../../payments/payment-provider.interface';
 describe('OrdersService', () => {
   let service: OrdersService;
   let orderModelMock: { findByPk: jest.Mock };
-  let groupModelMock: { update: jest.Mock };
+  let groupModelMock: { update: jest.Mock; findByPk: jest.Mock };
   let paymentEventModelMock: { findAll: jest.Mock };
   let sequelizeMock: { transaction: jest.Mock; query: jest.Mock };
   let paymentProviderMock: { refundPayment: jest.Mock };
@@ -21,7 +21,7 @@ describe('OrdersService', () => {
 
   beforeEach(async () => {
     orderModelMock = { findByPk: jest.fn() };
-    groupModelMock = { update: jest.fn() };
+    groupModelMock = { update: jest.fn(), findByPk: jest.fn() };
     paymentEventModelMock = { findAll: jest.fn() };
     sequelizeMock = { transaction: jest.fn(), query: jest.fn() };
     paymentProviderMock = { refundPayment: jest.fn() };
@@ -144,6 +144,41 @@ describe('OrdersService', () => {
     it('404s for an order that does not exist', async () => {
       orderModelMock.findByPk.mockResolvedValue(null);
       await expect(service.getPaymentEvents('missing')).rejects.toThrow('order not found');
+    });
+  });
+
+  describe('adminOverrideVendorGroupStatus', () => {
+    it('sets any status regardless of the current one, logging the reason', async () => {
+      const group = {
+        id: 'group-1',
+        status: OrderVendorGroupStatus.PENDING,
+        orderId: 'order-1',
+        save: jest.fn(),
+      };
+      groupModelMock.findByPk.mockResolvedValue(group);
+      orderModelMock.findByPk.mockResolvedValue({ id: 'order-1', customerId: 'cust-1' });
+
+      const result = await service.adminOverrideVendorGroupStatus(
+        'group-1',
+        OrderVendorGroupStatus.CANCELLED,
+        'vendor unresponsive for 5 days',
+      );
+
+      expect(result.status).toBe(OrderVendorGroupStatus.CANCELLED);
+      expect(group.save).toHaveBeenCalled();
+    });
+
+    it('rejects an empty reason', async () => {
+      await expect(
+        service.adminOverrideVendorGroupStatus('group-1', OrderVendorGroupStatus.CANCELLED, ''),
+      ).rejects.toThrow('a reason is required');
+    });
+
+    it('404s for a group that does not exist', async () => {
+      groupModelMock.findByPk.mockResolvedValue(null);
+      await expect(
+        service.adminOverrideVendorGroupStatus('missing', OrderVendorGroupStatus.CANCELLED, 'reason'),
+      ).rejects.toThrow('order group not found');
     });
   });
 });
