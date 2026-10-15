@@ -40,12 +40,12 @@ export class OrdersService {
   }
 
   // Cancellation authorization (who, until when) is an explicit open
-  // question in decision 0033 — this allocates the simplest rule that does
+  // question in decision 0036 — this allocates the simplest rule that does
   // not foreclose a stricter one later: a customer may cancel their own
   // order only while it is still PENDING_PAYMENT (i.e. before the webhook
   // has confirmed payment). Once CONFIRMED, cancellation is not exposed to
   // the customer here — full post-confirmation cancellation semantics are
-  // decision 0033's own named "likely next ADR," not settled here.
+  // decision 0036's own named "likely next ADR," not settled here.
   async cancel(userId: string, orderId: string): Promise<Order> {
     const customer = await this.customersService.resolveCustomerByUserId(userId);
     const order = await this.orderModel.findOne({

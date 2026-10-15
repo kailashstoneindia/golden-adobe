@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { NotificationService } from './notification.interface';
 
 // Default implementation. No Firebase project exists in this project as of
-// 2026-10-09 (decision 0033, rule 9) — this ships now so order placement
+// 2026-10-09 (decision 0036, rule 9) — this ships now so order placement
 // and status transitions are correct and observable immediately, and swaps
 // for a Firebase Admin SDK implementation later as a provider change only.
 @Injectable()

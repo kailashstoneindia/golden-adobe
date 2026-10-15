@@ -46,7 +46,7 @@ export class CartService {
     if (!listing) {
       throw new NotFoundException('listing not found');
     }
-    // Deliberately NOT checking stock or min_order_qty here (decision 0033:
+    // Deliberately NOT checking stock or min_order_qty here (decision 0036:
     // "the cart is deliberately not self-healing" — checkout is the gate,
     // rule 4). The cart only confirms the listing exists.
     const cart = await this.getOrCreateCart(customer.id);

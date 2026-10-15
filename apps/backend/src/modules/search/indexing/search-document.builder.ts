@@ -112,7 +112,7 @@ export class SearchDocumentBuilder {
           MIN(vl.price)                             AS price,
           COUNT(DISTINCT vl.vendor_id)              AS vendor_count,
           (ARRAY_AGG(vl.id ORDER BY vl.price ASC, vl.id ASC))[1] AS cheapest_vendor_listing_id,
-          -- Decision 0032 rules 4-6: in_stock is true if ANY active listing
+          -- Decision 0035 rules 4-6: in_stock is true if ANY active listing
           -- for this product in this city is actually available —
           -- "somebody in this city has it" is the right aggregate answer
           -- for a search result, distinct from whether one specific

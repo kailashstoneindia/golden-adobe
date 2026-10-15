@@ -1,4 +1,4 @@
-# 0033 — Cart and order structure: what an item points at, and how one payment becomes many vendors' work
+# 0036 — Cart and order structure: what an item points at, and how one payment becomes many vendors' work
 
 - **Date:** 2026-10-07
 - **Status:** Accepted
@@ -6,7 +6,7 @@
 
 ## Context
 
-[0032](0032-cart-owner-reservation-and-real-instock.md) settled who owns a cart, when stock is
+[0035](0035-cart-owner-reservation-and-real-instock.md) settled who owns a cart, when stock is
 reserved, and what `inStock` means. It deliberately did not settle what a cart *item* is, and
 that omission hides the question this record exists to answer: **a Golden Abode cart spans
 vendors by construction.**
@@ -52,7 +52,7 @@ they do not exist.
 - **Pro:** Matches what the customer thinks they are adding ("Kota stone"), and defers the
   vendor choice.
 - **Con:** Nothing to reserve — `quantity_reserved` lives on `inventory`, which is keyed by
-  listing. The reservation rule from 0032 becomes unimplementable.
+  listing. The reservation rule from 0035 becomes unimplementable.
 - **Con:** The price shown in the cart would be a per-city aggregate that can change when any
   vendor edits a listing, so a cart total would move for reasons the customer cannot see.
 
@@ -132,7 +132,7 @@ they do not exist.
 
 ## Why
 
-**On rule 1.** This is forced, not chosen. 0032 rule 2 reserves stock by incrementing
+**On rule 1.** This is forced, not chosen. 0035 rule 2 reserves stock by incrementing
 `inventory.quantity_reserved`, and `inventory` is keyed by `vendor_listing_id`. An item that
 names only a product has nothing to reserve against. Everything else in this record follows
 from that one constraint.
@@ -149,7 +149,7 @@ table in three months and migrating every order into it.
 **On rule 4 and the "no order row" clause.** A failed checkout that leaves behind a
 `PENDING_PAYMENT` order the customer never completes creates a category of row that must then
 be swept, reported on, and excluded from every order history query. Writing nothing means
-failure needs no cleanup. This also composes with 0032 rule 2: reservations are taken *after*
+failure needs no cleanup. This also composes with 0035 rule 2: reservations are taken *after*
 validation passes, so a rejected checkout never touched `inventory` either.
 
 **On rule 6.** Vendors edit prices; carts are long-lived. If an order re-read prices from
@@ -240,9 +240,9 @@ to accommodate them, and a later reader needs to know the attachment points were
 
 - **Which vendor a search-result add-to-cart should default to.** `cheapestVendorListingId` is
   the obvious answer and the only one the search document supports today, but "cheapest" and
-  "in stock" can disagree, and the document's aggregate `inStock` cannot tell them apart (0032
+  "in stock" can disagree, and the document's aggregate `inStock` cannot tell them apart (0035
   rule 6). Whether the UI offers a vendor picker is a product question, not settled here.
-- **What happens to a cart item whose vendor is paused.** Carried forward from 0032 — the
+- **What happens to a cart item whose vendor is paused.** Carried forward from 0035 — the
   pause lives on `users.is_active`, and rule 4 rejects such an item at checkout, but whether
   the cart should *show* it as unavailable before then is undecided.
 - **Whether an order is cancellable after placement, and by whom.** "Order Management" and

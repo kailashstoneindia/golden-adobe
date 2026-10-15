@@ -253,7 +253,7 @@ export class SearchService {
     if (req.minPrice !== undefined) filters.push(`price >= ${req.minPrice}`);
     if (req.maxPrice !== undefined) filters.push(`price <= ${req.maxPrice}`);
     // in_stock is already a filterableAttribute (meili.indexes.ts) — it was
-    // just never read here. Decision 0032 rule 6.
+    // just never read here. Decision 0035 rule 6.
     if (req.inStockOnly) filters.push('in_stock = true');
 
     for (const [key, value] of Object.entries(req.attributes ?? {})) {
@@ -274,7 +274,7 @@ export class SearchService {
       attrs: Object.entries(req.attributes ?? {}).sort(),
       min: req.minPrice ?? null,
       max: req.maxPrice ?? null,
-      // Decision 0032's own Consequences, confirmed live and previously
+      // Decision 0035's own Consequences, confirmed live and previously
       // true: without this, a filtered and an unfiltered request with
       // otherwise identical parameters collided on the same cached
       // response for up to CACHE_TTL_SECONDS.

@@ -92,7 +92,7 @@ export class CheckoutService {
 
       // One query joins cart_item -> vendor_listing -> inventory -> vendors
       // -> master_product, reading everything checkout needs to validate
-      // in one round trip (decision 0033's Consequences: "checkout
+      // in one round trip (decision 0036's Consequences: "checkout
       // validation is a single query, not a loop"). Runs INSIDE the cart
       // lock, so this is current state, not a pre-lock snapshot.
       const lines = await this.sequelize.query<CartLineForCheckout>(
@@ -163,7 +163,7 @@ export class CheckoutService {
         }
         if (line.quantity_available === null) {
           // No inventory row and not paint: stock was never set. Decision
-          // 0032 rule 5's negative case.
+          // 0035 rule 5's negative case.
           rejections.push({ vendorListingId: line.vendor_listing_id, reason: 'no stock on record' });
           continue;
         }
@@ -177,7 +177,7 @@ export class CheckoutService {
       }
 
       // min_order_qty enforced per listing within each vendor group
-      // (decision 0033 rule 3; min_order_qty is a per-listing column, not
+      // (decision 0036 rule 3; min_order_qty is a per-listing column, not
       // a per-vendor minimum), against lines that passed the checks above
       // only.
       const byVendor = new Map<string, CartLineForCheckout[]>();
@@ -268,7 +268,7 @@ export class CheckoutService {
         }
 
         // Single statement reserving every (non-paint) line at once, not a
-        // loop, per decision 0033's Consequences ("a loop of N
+        // loop, per decision 0036's Consequences ("a loop of N
         // reservations enqueues N reindex rows where one statement
         // enqueues one"). Safe: the FOR UPDATE lock above still holds
         // these rows for the rest of this transaction.
@@ -334,7 +334,7 @@ export class CheckoutService {
       // Cart is cleared here, inside the same transaction as the
       // reservation and the order rows — if anything above this point
       // throws, the whole transaction rolls back and the cart is
-      // untouched, matching decision 0033 rule 4's "leaves the database
+      // untouched, matching decision 0036 rule 4's "leaves the database
       // exactly as it found it."
       await this.sequelize.query(`DELETE FROM cart_item WHERE cart_id = :cartId`, {
         replacements: { cartId: cart.id },

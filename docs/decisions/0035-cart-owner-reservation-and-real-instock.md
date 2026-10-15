@@ -1,4 +1,4 @@
-# 0032 — Cart ownership, when stock is reserved, and making `inStock` mean something
+# 0035 — Cart ownership, when stock is reserved, and making `inStock` mean something
 
 - **Date:** 2026-10-07
 - **Status:** Accepted
@@ -11,7 +11,7 @@ domain does not exist at all — no `cart`, no `orders`, no `payment` table, and
 beyond `auth`, `users`, `vendors`, `catalog`, `search`, `admin`, `health`. This record settles
 the three questions that block everything downstream of "add to cart." The cart *structure*
 itself — what a cart item points at, and how a multi-vendor cart becomes an order — is
-[0033](0033-cart-and-order-structure.md).
+[0036](0036-cart-and-order-structure.md).
 
 Three things force these questions now:
 
@@ -197,7 +197,7 @@ truthful will be tempted to use it as the cart's stock gate.
   listing-level check at checkout is what makes that safe.
 - No payment provider is chosen or integrated here. Rule 3 constrains *what* confirms a
   payment, not which gateway or how its signature is verified — see
-  [0033](0033-cart-and-order-structure.md) and the implementation plan for the
+  [0036](0036-cart-and-order-structure.md) and the implementation plan for the
   `PaymentProviderService` abstraction.
 
 ## Open questions

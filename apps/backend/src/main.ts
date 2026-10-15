@@ -11,7 +11,7 @@ import helmet from 'helmet';
 async function bootstrap() {
   // rawBody: true registers req.rawBody via Express's body-parser verify
   // hook (confirmed against the installed @nestjs/platform-express@10.4.22
-  // source, not assumed) — needed by the Razorpay webhook (decision 0032
+  // source, not assumed) — needed by the Razorpay webhook (decision 0035
   // rule 3), which must verify its HMAC signature against the exact raw
   // bytes Razorpay sent, not a re-serialized JSON.parse of them.
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {

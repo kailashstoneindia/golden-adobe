@@ -158,7 +158,7 @@ export class PostgresSearchService {
       having.push('MIN(vl.price) <= :maxPrice');
       replacements.maxPrice = input.maxPrice;
     }
-    // Decision 0032 rule 6 / Consequences: inStockOnly was declared on
+    // Decision 0035 rule 6 / Consequences: inStockOnly was declared on
     // PostgresSearchInput and never read anywhere in this method — a real,
     // live gap, not a hypothetical one. HAVING, not WHERE, for the same
     // reason as the price filters: this is a per-PRODUCT aggregate
@@ -182,7 +182,7 @@ export class PostgresSearchService {
         MIN(vl.price)                AS min_price,
         COUNT(DISTINCT vl.vendor_id) AS vendor_count,
         mp.updated_at                AS updated_at,
-        -- Decision 0032 rules 4-6: true if ANY active listing for this
+        -- Decision 0035 rules 4-6: true if ANY active listing for this
         -- product in this city is actually available — paint by status
         -- alone, everything else net of quantity_reserved. This was
         -- hardcoded true below; fixed here instead, since the aggregate
@@ -370,7 +370,7 @@ export class PostgresSearchService {
     );
 
     return rows.map((row) => {
-      // Decision 0032 rules 4-5, fixed here (previously missing both the
+      // Decision 0035 rules 4-5, fixed here (previously missing both the
       // reservation netting and the sale_unit_type check — a non-paint
       // listing that was simply never given an inventory row used to read
       // as in stock, the exact negative case rule 5 calls out).

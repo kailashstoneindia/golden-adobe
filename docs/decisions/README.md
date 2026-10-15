@@ -39,6 +39,8 @@ valid when circumstances change.
 | [0025](0025-full-aws-migration.md)                           | Full AWS migration: target architecture and cost                                      | 2026-09-18 | Proposed — awaiting client go-ahead |
 | [0026](0026-pearl-precision-brand-onboarding.md)             | Onboarding Pearl Precision (Sparsh Pearl): brand + catalog seeding strategy           | 2026-09-24 | Accepted                            |
 | [0027](0027-lavish-ceramics-brand-onboarding.md)             | Onboarding Lavish Ceramics: brand + catalog seeding strategy                          | 2026-09-25 | Accepted                            |
+| [0035](0035-cart-owner-reservation-and-real-instock.md)      | Cart ownership, when stock is reserved, and making `inStock` mean something           | 2026-10-07 | Accepted                            |
+| [0036](0036-cart-and-order-structure.md)                     | Cart and order structure: what an item points at, and how one payment becomes many vendors' work | 2026-10-07 | Accepted                            |
 
 ## Adding a record
 
