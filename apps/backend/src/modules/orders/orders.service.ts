@@ -7,6 +7,7 @@ import { OrderVendorGroup, OrderVendorGroupStatus } from './models/order-vendor-
 import { OrderItem } from './models/order-item.model';
 import { CustomersService } from '../customers/customers.service';
 import { NOTIFICATION_SERVICE, NotificationService } from '../notifications/notification.interface';
+import { PAYMENT_PROVIDER, PaymentProviderService } from '../payments/payment-provider.interface';
 
 @Injectable()
 export class OrdersService {
@@ -16,6 +17,7 @@ export class OrdersService {
     private readonly sequelize: Sequelize,
     private readonly customersService: CustomersService,
     @Inject(NOTIFICATION_SERVICE) private readonly notifications: NotificationService,
+    @Inject(PAYMENT_PROVIDER) private readonly paymentProvider: PaymentProviderService,
   ) {}
 
   async listForCustomer(userId: string): Promise<Order[]> {
@@ -246,6 +248,32 @@ export class OrdersService {
     if (!order) {
       throw new NotFoundException('order not found');
     }
+    return order;
+  }
+
+  // Full refund only — partial per-line refunds are named as an open
+  // question in decision 0034 and not built here. Only a CONFIRMED order
+  // has a captured payment to refund; PENDING_PAYMENT was never charged,
+  // CANCELLED/REFUNDED already resolved one way or the other. Guarding on
+  // both status AND the presence of razorpayPaymentId catches an order
+  // that reached CONFIRMED through some future code path that forgot to
+  // persist the payment id — fail loudly rather than refund nothing while
+  // reporting success.
+  async adminRefund(orderId: string): Promise<Order> {
+    const order = await this.orderModel.findByPk(orderId);
+    if (!order) {
+      throw new NotFoundException('order not found');
+    }
+    if (order.status !== OrderStatus.CONFIRMED || !order.razorpayPaymentId) {
+      throw new BadRequestException('order has no captured payment to refund');
+    }
+
+    const amountPaise = Math.round(Number(order.grandTotal) * 100);
+    await this.paymentProvider.refundPayment(order.razorpayPaymentId, amountPaise);
+
+    order.status = OrderStatus.REFUNDED;
+    await order.save();
+    await this.notifications.sendOrderStatusChanged(order.customerId, order.id, OrderStatus.REFUNDED);
     return order;
   }
 }

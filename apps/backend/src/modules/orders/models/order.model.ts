@@ -7,6 +7,7 @@ export enum OrderStatus {
   PENDING_PAYMENT = 'pending_payment',
   CONFIRMED = 'confirmed',
   CANCELLED = 'cancelled',
+  REFUNDED = 'refunded',
 }
 
 @Table({ tableName: 'orders', timestamps: true, underscored: true })
