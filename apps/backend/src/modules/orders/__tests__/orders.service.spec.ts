@@ -4,6 +4,7 @@ import { Sequelize } from 'sequelize-typescript';
 import { OrdersService } from '../orders.service';
 import { Order, OrderStatus } from '../models/order.model';
 import { OrderVendorGroup } from '../models/order-vendor-group.model';
+import { PaymentEvent } from '../models/payment-event.model';
 import { CustomersService } from '../../customers/customers.service';
 import { NOTIFICATION_SERVICE } from '../../notifications/notification.interface';
 import { PAYMENT_PROVIDER } from '../../payments/payment-provider.interface';
@@ -12,6 +13,7 @@ describe('OrdersService', () => {
   let service: OrdersService;
   let orderModelMock: { findByPk: jest.Mock };
   let groupModelMock: { update: jest.Mock };
+  let paymentEventModelMock: { findAll: jest.Mock };
   let sequelizeMock: { transaction: jest.Mock; query: jest.Mock };
   let paymentProviderMock: { refundPayment: jest.Mock };
   let notificationsMock: { sendOrderStatusChanged: jest.Mock };
@@ -20,6 +22,7 @@ describe('OrdersService', () => {
   beforeEach(async () => {
     orderModelMock = { findByPk: jest.fn() };
     groupModelMock = { update: jest.fn() };
+    paymentEventModelMock = { findAll: jest.fn() };
     sequelizeMock = { transaction: jest.fn(), query: jest.fn() };
     paymentProviderMock = { refundPayment: jest.fn() };
     notificationsMock = { sendOrderStatusChanged: jest.fn() };
@@ -29,6 +32,7 @@ describe('OrdersService', () => {
         OrdersService,
         { provide: getModelToken(Order), useValue: orderModelMock },
         { provide: getModelToken(OrderVendorGroup), useValue: groupModelMock },
+        { provide: getModelToken(PaymentEvent), useValue: paymentEventModelMock },
         { provide: Sequelize, useValue: sequelizeMock },
         { provide: CustomersService, useValue: {} },
         { provide: NOTIFICATION_SERVICE, useValue: notificationsMock },
@@ -120,6 +124,26 @@ describe('OrdersService', () => {
       const result = await service.adminCancel('order-1');
 
       expect(result.status).toBe(OrderStatus.CANCELLED);
+    });
+  });
+
+  describe('getPaymentEvents', () => {
+    it('returns events for an order in chronological order', async () => {
+      orderModelMock.findByPk.mockResolvedValue({ id: 'order-1' });
+      paymentEventModelMock.findAll.mockResolvedValue([{ eventType: 'payment.captured' }]);
+
+      const result = await service.getPaymentEvents('order-1');
+
+      expect(paymentEventModelMock.findAll).toHaveBeenCalledWith({
+        where: { orderId: 'order-1' },
+        order: [['createdAt', 'ASC']],
+      });
+      expect(result).toHaveLength(1);
+    });
+
+    it('404s for an order that does not exist', async () => {
+      orderModelMock.findByPk.mockResolvedValue(null);
+      await expect(service.getPaymentEvents('missing')).rejects.toThrow('order not found');
     });
   });
 });

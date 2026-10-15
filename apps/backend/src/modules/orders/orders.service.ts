@@ -5,6 +5,7 @@ import { Op, QueryTypes } from 'sequelize';
 import { Order, OrderStatus } from './models/order.model';
 import { OrderVendorGroup, OrderVendorGroupStatus } from './models/order-vendor-group.model';
 import { OrderItem } from './models/order-item.model';
+import { PaymentEvent } from './models/payment-event.model';
 import { CustomersService } from '../customers/customers.service';
 import { NOTIFICATION_SERVICE, NotificationService } from '../notifications/notification.interface';
 import { PAYMENT_PROVIDER, PaymentProviderService } from '../payments/payment-provider.interface';
@@ -14,6 +15,7 @@ export class OrdersService {
   constructor(
     @InjectModel(Order) private readonly orderModel: typeof Order,
     @InjectModel(OrderVendorGroup) private readonly groupModel: typeof OrderVendorGroup,
+    @InjectModel(PaymentEvent) private readonly paymentEventModel: typeof PaymentEvent,
     private readonly sequelize: Sequelize,
     private readonly customersService: CustomersService,
     @Inject(NOTIFICATION_SERVICE) private readonly notifications: NotificationService,
@@ -348,5 +350,16 @@ export class OrdersService {
     order.status = OrderStatus.CANCELLED;
     await this.notifications.sendOrderStatusChanged(order.customerId, order.id, OrderStatus.CANCELLED);
     return order;
+  }
+
+  async getPaymentEvents(orderId: string): Promise<PaymentEvent[]> {
+    const order = await this.orderModel.findByPk(orderId);
+    if (!order) {
+      throw new NotFoundException('order not found');
+    }
+    return this.paymentEventModel.findAll({
+      where: { orderId },
+      order: [['createdAt', 'ASC']],
+    });
   }
 }

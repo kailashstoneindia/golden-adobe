@@ -6,6 +6,7 @@ import { Sequelize } from 'sequelize-typescript';
 import { QueryTypes } from 'sequelize';
 import { Order, OrderStatus } from './models/order.model';
 import { OrderVendorGroup, OrderVendorGroupStatus } from './models/order-vendor-group.model';
+import { PaymentEvent } from './models/payment-event.model';
 import { PAYMENT_PROVIDER, PaymentProviderService } from '../payments/payment-provider.interface';
 import { NOTIFICATION_SERVICE, NotificationService } from '../notifications/notification.interface';
 
@@ -19,6 +20,7 @@ export class WebhooksController {
   constructor(
     @InjectModel(Order) private readonly orderModel: typeof Order,
     @InjectModel(OrderVendorGroup) private readonly groupModel: typeof OrderVendorGroup,
+    @InjectModel(PaymentEvent) private readonly paymentEventModel: typeof PaymentEvent,
     private readonly sequelize: Sequelize,
     @Inject(PAYMENT_PROVIDER) private readonly paymentProvider: PaymentProviderService,
     @Inject(NOTIFICATION_SERVICE) private readonly notifications: NotificationService,
@@ -48,6 +50,12 @@ export class WebhooksController {
       this.logger.warn(`webhook referenced unknown razorpay_order_id ${providerOrderId}`);
       return { received: true };
     }
+
+    await this.paymentEventModel.create({
+      orderId: order.id,
+      eventType,
+      rawPayload: payload,
+    } as any);
 
     if (eventType === 'payment.captured') {
       const providerPaymentId = payload.payload?.payment?.entity?.id ?? null;
