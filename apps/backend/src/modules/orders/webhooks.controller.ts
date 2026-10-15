@@ -50,7 +50,8 @@ export class WebhooksController {
     }
 
     if (eventType === 'payment.captured') {
-      const confirmedGroups = await this.confirmOrder(order.id);
+      const providerPaymentId = payload.payload?.payment?.entity?.id ?? null;
+      const confirmedGroups = await this.confirmOrder(order.id, providerPaymentId);
       if (confirmedGroups === null) {
         // Final review finding #6: the old code read order.status here,
         // outside any lock, then wrote unconditionally — two concurrent
@@ -105,7 +106,10 @@ export class WebhooksController {
   // on the UPDATE is the only guard — no separate read-then-check, so two
   // concurrent calls cannot both pass a check that is stale by the time
   // either writes (final review finding #6).
-  private async confirmOrder(orderId: string): Promise<OrderVendorGroup[] | null> {
+  private async confirmOrder(
+    orderId: string,
+    providerPaymentId: string | null,
+  ): Promise<OrderVendorGroup[] | null> {
     return this.sequelize.transaction(async (t) => {
       // Sequelize's QueryTypes.UPDATE return shape for Postgres is
       // [results, affectedRowCount] — results is always an empty array,
@@ -117,12 +121,13 @@ export class WebhooksController {
       // twice during the fix pass's own verification and seeing inventory
       // drop a second time.
       const [, updatedCount] = await this.sequelize.query(
-        `UPDATE orders SET status = :confirmed WHERE id = :orderId AND status = :pending`,
+        `UPDATE orders SET status = :confirmed, razorpay_payment_id = :paymentId WHERE id = :orderId AND status = :pending`,
         {
           replacements: {
             orderId,
             confirmed: OrderStatus.CONFIRMED,
             pending: OrderStatus.PENDING_PAYMENT,
+            paymentId: providerPaymentId,
           },
           type: QueryTypes.UPDATE,
           transaction: t,

@@ -35,6 +35,9 @@ export class Order extends Model<Order> {
   @Column({ type: DataType.STRING(128), allowNull: true, field: 'razorpay_order_id' })
   declare razorpayOrderId: string | null;
 
+  @Column({ type: DataType.STRING(128), allowNull: true, field: 'razorpay_payment_id' })
+  declare razorpayPaymentId: string | null;
+
   @BelongsTo(() => Customer)
   declare customer: Customer;
 
