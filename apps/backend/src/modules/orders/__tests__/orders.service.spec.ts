@@ -11,11 +11,16 @@ import { PAYMENT_PROVIDER } from '../../payments/payment-provider.interface';
 describe('OrdersService', () => {
   let service: OrdersService;
   let orderModelMock: { findByPk: jest.Mock };
+  let groupModelMock: { update: jest.Mock };
+  let sequelizeMock: { transaction: jest.Mock; query: jest.Mock };
   let paymentProviderMock: { refundPayment: jest.Mock };
   let notificationsMock: { sendOrderStatusChanged: jest.Mock };
+  const mockTransaction = {};
 
   beforeEach(async () => {
     orderModelMock = { findByPk: jest.fn() };
+    groupModelMock = { update: jest.fn() };
+    sequelizeMock = { transaction: jest.fn(), query: jest.fn() };
     paymentProviderMock = { refundPayment: jest.fn() };
     notificationsMock = { sendOrderStatusChanged: jest.fn() };
 
@@ -23,8 +28,8 @@ describe('OrdersService', () => {
       providers: [
         OrdersService,
         { provide: getModelToken(Order), useValue: orderModelMock },
-        { provide: getModelToken(OrderVendorGroup), useValue: {} },
-        { provide: Sequelize, useValue: {} },
+        { provide: getModelToken(OrderVendorGroup), useValue: groupModelMock },
+        { provide: Sequelize, useValue: sequelizeMock },
         { provide: CustomersService, useValue: {} },
         { provide: NOTIFICATION_SERVICE, useValue: notificationsMock },
         { provide: PAYMENT_PROVIDER, useValue: paymentProviderMock },
@@ -74,6 +79,47 @@ describe('OrdersService', () => {
       await expect(service.adminRefund('order-1')).rejects.toThrow(
         'order has no captured payment to refund',
       );
+    });
+  });
+
+  describe('adminCancel', () => {
+    it('cancels a pending_payment order directly, releasing reservations', async () => {
+      orderModelMock.findByPk.mockResolvedValue({
+        id: 'order-1',
+        status: OrderStatus.PENDING_PAYMENT,
+      });
+      sequelizeMock.transaction.mockImplementation(async (cb: any) => cb(mockTransaction));
+      sequelizeMock.query.mockResolvedValueOnce([[], 1]).mockResolvedValueOnce([
+        { vendor_listing_id: 'vl-1', quantity: '2' },
+      ]);
+
+      const result = await service.adminCancel('order-1');
+
+      expect(result.status).toBe(OrderStatus.CANCELLED);
+    });
+
+    it('rejects cancelling a confirmed order that has not been refunded', async () => {
+      orderModelMock.findByPk.mockResolvedValue({
+        id: 'order-1',
+        status: OrderStatus.CONFIRMED,
+      });
+
+      await expect(service.adminCancel('order-1')).rejects.toThrow(
+        'a confirmed order must be refunded before it can be cancelled',
+      );
+    });
+
+    it('cancels a refunded order', async () => {
+      orderModelMock.findByPk.mockResolvedValue({
+        id: 'order-1',
+        status: OrderStatus.REFUNDED,
+      });
+      sequelizeMock.transaction.mockImplementation(async (cb: any) => cb(mockTransaction));
+      sequelizeMock.query.mockResolvedValueOnce([[], 1]).mockResolvedValueOnce([]);
+
+      const result = await service.adminCancel('order-1');
+
+      expect(result.status).toBe(OrderStatus.CANCELLED);
     });
   });
 });

@@ -276,4 +276,77 @@ export class OrdersService {
     await this.notifications.sendOrderStatusChanged(order.customerId, order.id, OrderStatus.REFUNDED);
     return order;
   }
+
+  // Admin may cancel from pending_payment (nothing was ever charged — same
+  // as the customer-facing path) or from refunded (the money is already
+  // back with the customer, so cancelling now is just bookkeeping). A
+  // confirmed order must be refunded FIRST via adminRefund — cancelling a
+  // captured payment without refunding it would release the customer's
+  // reserved stock while keeping their money, which is strictly worse
+  // than doing nothing.
+  async adminCancel(orderId: string): Promise<Order> {
+    const order = await this.orderModel.findByPk(orderId);
+    if (!order) {
+      throw new NotFoundException('order not found');
+    }
+    if (order.status === OrderStatus.CONFIRMED) {
+      throw new BadRequestException('a confirmed order must be refunded before it can be cancelled');
+    }
+    if (order.status === OrderStatus.CANCELLED) {
+      throw new BadRequestException('order is already cancelled');
+    }
+
+    await this.sequelize.transaction(async (t) => {
+      const [, updatedCount] = await this.sequelize.query(
+        `UPDATE orders SET status = :cancelled WHERE id = :orderId AND status != :cancelled`,
+        {
+          replacements: { orderId: order.id, cancelled: OrderStatus.CANCELLED },
+          type: QueryTypes.UPDATE,
+          transaction: t,
+        },
+      );
+      if (updatedCount === 0) {
+        return;
+      }
+
+      const items = await this.sequelize.query<{ vendor_listing_id: string; quantity: string }>(
+        `
+        SELECT oi.vendor_listing_id, oi.quantity
+        FROM order_items oi
+        JOIN order_vendor_group ovg ON ovg.id = oi.order_vendor_group_id
+        WHERE ovg.order_id = :orderId
+        `,
+        { replacements: { orderId: order.id }, type: QueryTypes.SELECT, transaction: t },
+      );
+      for (const item of items) {
+        await this.sequelize.query(
+          `
+          UPDATE inventory
+          SET quantity_reserved = GREATEST(quantity_reserved - :qty, 0)
+          WHERE vendor_listing_id = :listingId AND warehouse_id IS NULL
+          `,
+          {
+            replacements: { listingId: item.vendor_listing_id, qty: item.quantity },
+            type: QueryTypes.UPDATE,
+            transaction: t,
+          },
+        );
+      }
+
+      await this.groupModel.update(
+        { status: OrderVendorGroupStatus.CANCELLED },
+        {
+          where: {
+            orderId: order.id,
+            status: { [Op.ne]: OrderVendorGroupStatus.CANCELLED },
+          },
+          transaction: t,
+        },
+      );
+    });
+
+    order.status = OrderStatus.CANCELLED;
+    await this.notifications.sendOrderStatusChanged(order.customerId, order.id, OrderStatus.CANCELLED);
+    return order;
+  }
 }
