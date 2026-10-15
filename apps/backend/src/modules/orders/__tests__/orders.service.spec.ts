@@ -12,7 +12,7 @@ import { PAYMENT_PROVIDER } from '../../payments/payment-provider.interface';
 describe('OrdersService', () => {
   let service: OrdersService;
   let orderModelMock: { findByPk: jest.Mock };
-  let groupModelMock: { update: jest.Mock; findByPk: jest.Mock };
+  let groupModelMock: { update: jest.Mock; findByPk: jest.Mock; findOne: jest.Mock };
   let paymentEventModelMock: { findAll: jest.Mock };
   let sequelizeMock: { transaction: jest.Mock; query: jest.Mock };
   let paymentProviderMock: { refundPayment: jest.Mock };
@@ -21,7 +21,7 @@ describe('OrdersService', () => {
 
   beforeEach(async () => {
     orderModelMock = { findByPk: jest.fn() };
-    groupModelMock = { update: jest.fn(), findByPk: jest.fn() };
+    groupModelMock = { update: jest.fn(), findByPk: jest.fn(), findOne: jest.fn() };
     paymentEventModelMock = { findAll: jest.fn() };
     sequelizeMock = { transaction: jest.fn(), query: jest.fn() };
     paymentProviderMock = { refundPayment: jest.fn() };
@@ -53,6 +53,8 @@ describe('OrdersService', () => {
         save: jest.fn(),
       };
       orderModelMock.findByPk.mockResolvedValue(order);
+      // The claim-first UPDATE: 1 row updated means the claim succeeded.
+      sequelizeMock.query.mockResolvedValueOnce([[], 1]);
       paymentProviderMock.refundPayment.mockResolvedValue({ refundId: 'rfnd_1' });
 
       const result = await service.adminRefund('order-1');
@@ -84,6 +86,53 @@ describe('OrdersService', () => {
         'order has no captured payment to refund',
       );
     });
+
+    it('rejects a concurrent double-refund: the claim UPDATE matches zero rows the second time (closes finding 3)', async () => {
+      // Simulates two concurrent adminRefund calls on the same order: both
+      // pass the advisory findByPk check, but only one claim UPDATE can
+      // win (WHERE status = 'confirmed' — the other call already flipped
+      // it to 'refunded'). Without the claim, both calls would call
+      // Razorpay's refund API, and the second would either double-refund
+      // or surface a raw, unhandled Razorpay error.
+      orderModelMock.findByPk.mockResolvedValue({
+        id: 'order-1',
+        status: OrderStatus.CONFIRMED,
+        razorpayPaymentId: 'pay_abc',
+        grandTotal: 1500,
+        save: jest.fn(),
+      });
+      sequelizeMock.query.mockResolvedValueOnce([[], 0]);
+
+      await expect(service.adminRefund('order-1')).rejects.toThrow(
+        'order could not be refunded — its status just changed',
+      );
+      expect(paymentProviderMock.refundPayment).not.toHaveBeenCalled();
+    });
+
+    it('reverts the claimed status back to confirmed if the Razorpay call fails, so the order is refundable on retry', async () => {
+      // Without the revert, a Razorpay failure (network error, Razorpay
+      // outage) leaves the order stuck REFUNDED with no money actually
+      // refunded yet — adminCancel refuses REFUNDED→anything-but-cancel
+      // semantics aside, and nothing else can move a REFUNDED order that
+      // was never actually paid back by Razorpay.
+      orderModelMock.findByPk.mockResolvedValue({
+        id: 'order-1',
+        status: OrderStatus.CONFIRMED,
+        razorpayPaymentId: 'pay_abc',
+        grandTotal: 1500,
+        save: jest.fn(),
+      });
+      sequelizeMock.query
+        .mockResolvedValueOnce([[], 1]) // claim succeeds
+        .mockResolvedValueOnce([[], 1]); // revert succeeds
+      paymentProviderMock.refundPayment.mockRejectedValue(new Error('razorpay unreachable'));
+
+      await expect(service.adminRefund('order-1')).rejects.toThrow('razorpay unreachable');
+
+      expect(sequelizeMock.query).toHaveBeenCalledTimes(2);
+      const revertCall = sequelizeMock.query.mock.calls[1];
+      expect(revertCall[0]).toContain('SET status = :confirmed');
+    });
   });
 
   describe('adminCancel', () => {
@@ -93,13 +142,21 @@ describe('OrdersService', () => {
         status: OrderStatus.PENDING_PAYMENT,
       });
       sequelizeMock.transaction.mockImplementation(async (cb: any) => cb(mockTransaction));
-      sequelizeMock.query.mockResolvedValueOnce([[], 1]).mockResolvedValueOnce([
-        { vendor_listing_id: 'vl-1', quantity: '2' },
-      ]);
+      sequelizeMock.query
+        // 1: SELECT ... FOR UPDATE locks the row and reads its real status
+        .mockResolvedValueOnce([{ status: OrderStatus.PENDING_PAYMENT }])
+        // 2: UPDATE orders SET status = cancelled
+        .mockResolvedValueOnce([[], 1])
+        // 3: SELECT order_items for the inventory release (only runs because
+        // the locked status was pending_payment)
+        .mockResolvedValueOnce([{ vendor_listing_id: 'vl-1', quantity: '2' }]);
 
       const result = await service.adminCancel('order-1');
 
       expect(result.status).toBe(OrderStatus.CANCELLED);
+      // The 4th call is the per-item inventory UPDATE — confirms the
+      // release loop actually ran for a pending_payment cancellation.
+      expect(sequelizeMock.query).toHaveBeenCalledTimes(4);
     });
 
     it('rejects cancelling a confirmed order that has not been refunded', async () => {
@@ -113,17 +170,151 @@ describe('OrdersService', () => {
       );
     });
 
-    it('cancels a refunded order', async () => {
+    it('cancels a refunded order WITHOUT releasing inventory (the reservation was already consumed at confirm time)', async () => {
       orderModelMock.findByPk.mockResolvedValue({
         id: 'order-1',
         status: OrderStatus.REFUNDED,
       });
       sequelizeMock.transaction.mockImplementation(async (cb: any) => cb(mockTransaction));
-      sequelizeMock.query.mockResolvedValueOnce([[], 1]).mockResolvedValueOnce([]);
+      // Only the lock-read and the status UPDATE should run — no SELECT of
+      // order_items, no inventory UPDATE. If the fix regresses,
+      // sequelizeMock.query gets a third call this test never configured a
+      // resolution for, which surfaces as an unhandled rejection.
+      sequelizeMock.query
+        .mockResolvedValueOnce([{ status: OrderStatus.REFUNDED }])
+        .mockResolvedValueOnce([[], 1]);
 
       const result = await service.adminCancel('order-1');
 
       expect(result.status).toBe(OrderStatus.CANCELLED);
+      expect(sequelizeMock.query).toHaveBeenCalledTimes(2);
+    });
+
+    it('rejects cancelling an order whose status changed to confirmed between the advisory read and the row lock', async () => {
+      // Simulates: advisory read above sees pending_payment, but a
+      // concurrent webhook confirms the order before this transaction's
+      // SELECT ... FOR UPDATE acquires the row's lock. The lock-read must
+      // see the REAL current status and refuse — if it doesn't (the
+      // pre-fix bug), a paid order gets silently cancelled with no refund
+      // path back.
+      orderModelMock.findByPk.mockResolvedValue({
+        id: 'order-1',
+        status: OrderStatus.PENDING_PAYMENT,
+      });
+      sequelizeMock.transaction.mockImplementation(async (cb: any) => cb(mockTransaction));
+      // The lock-read itself returns the REAL status: confirmed by a
+      // concurrent webhook after the advisory read above but before this
+      // transaction started.
+      sequelizeMock.query.mockResolvedValueOnce([{ status: OrderStatus.CONFIRMED }]);
+
+      await expect(service.adminCancel('order-1')).rejects.toThrow(
+        'order could not be cancelled — its status just changed',
+      );
+      // Only the lock-read should run — the UPDATE must never be reached.
+      expect(sequelizeMock.query).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('updateVendorGroupStatus', () => {
+    it('allows a valid forward transition when the parent order is confirmed', async () => {
+      const group = {
+        id: 'group-1',
+        vendorId: 'vendor-1',
+        status: OrderVendorGroupStatus.CONFIRMED,
+        orderId: 'order-1',
+        order: { status: OrderStatus.CONFIRMED },
+        save: jest.fn(),
+      };
+      groupModelMock.findOne.mockResolvedValue(group);
+      orderModelMock.findByPk.mockResolvedValue({ id: 'order-1', customerId: 'cust-1' });
+
+      const result = await service.updateVendorGroupStatus(
+        'vendor-1',
+        'group-1',
+        OrderVendorGroupStatus.SHIPPED,
+      );
+
+      expect(result.status).toBe(OrderVendorGroupStatus.SHIPPED);
+    });
+
+    it('refuses to advance a group whose parent order has been refunded (closes finding 4)', async () => {
+      // adminRefund never touches order_vendor_group rows, so a group can
+      // sit at CONFIRMED (or SHIPPED) while its parent order is REFUNDED.
+      // The vendor-visibility filter (Op.ne PENDING_PAYMENT) still shows
+      // it. Without this guard a vendor could ship/deliver goods for an
+      // order that was already refunded.
+      const group = {
+        id: 'group-1',
+        vendorId: 'vendor-1',
+        status: OrderVendorGroupStatus.CONFIRMED,
+        orderId: 'order-1',
+        order: { status: OrderStatus.REFUNDED },
+        save: jest.fn(),
+      };
+      groupModelMock.findOne.mockResolvedValue(group);
+
+      await expect(
+        service.updateVendorGroupStatus('vendor-1', 'group-1', OrderVendorGroupStatus.SHIPPED),
+      ).rejects.toThrow('order has been refunded or cancelled and its groups can no longer be updated');
+      expect(group.save).not.toHaveBeenCalled();
+    });
+
+    it('refuses to advance a group whose parent order has been cancelled', async () => {
+      const group = {
+        id: 'group-1',
+        vendorId: 'vendor-1',
+        status: OrderVendorGroupStatus.CONFIRMED,
+        orderId: 'order-1',
+        order: { status: OrderStatus.CANCELLED },
+        save: jest.fn(),
+      };
+      groupModelMock.findOne.mockResolvedValue(group);
+
+      await expect(
+        service.updateVendorGroupStatus('vendor-1', 'group-1', OrderVendorGroupStatus.SHIPPED),
+      ).rejects.toThrow('order has been refunded or cancelled and its groups can no longer be updated');
+      expect(group.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('adminOverrideVendorGroupStatus — parent order guard', () => {
+    it('refuses to override a group whose parent order has been refunded (closes finding 5)', async () => {
+      const group = {
+        id: 'group-1',
+        status: OrderVendorGroupStatus.CONFIRMED,
+        orderId: 'order-1',
+        save: jest.fn(),
+      };
+      groupModelMock.findByPk.mockResolvedValue(group);
+      orderModelMock.findByPk.mockResolvedValue({ id: 'order-1', status: OrderStatus.REFUNDED });
+
+      await expect(
+        service.adminOverrideVendorGroupStatus(
+          'group-1',
+          OrderVendorGroupStatus.SHIPPED,
+          'trying to bring back a refunded order',
+        ),
+      ).rejects.toThrow('cannot override a group whose parent order is refunded or cancelled');
+      expect(group.save).not.toHaveBeenCalled();
+    });
+
+    it('still allows cancelling a group under a refunded order (the one safe target)', async () => {
+      const group = {
+        id: 'group-1',
+        status: OrderVendorGroupStatus.CONFIRMED,
+        orderId: 'order-1',
+        save: jest.fn(),
+      };
+      groupModelMock.findByPk.mockResolvedValue(group);
+      orderModelMock.findByPk.mockResolvedValue({ id: 'order-1', customerId: 'cust-1', status: OrderStatus.REFUNDED });
+
+      const result = await service.adminOverrideVendorGroupStatus(
+        'group-1',
+        OrderVendorGroupStatus.CANCELLED,
+        'cleanup after refund',
+      );
+
+      expect(result.status).toBe(OrderVendorGroupStatus.CANCELLED);
     });
   });
 
