@@ -1,7 +1,7 @@
 import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Razorpay from 'razorpay';
-import { CreateProviderOrderResult, PaymentProviderService } from './payment-provider.interface';
+import { CreateProviderOrderResult, PaymentProviderService, RefundResult } from './payment-provider.interface';
 
 // No real Razorpay merchant account exists in this project as of 2026-10-09
 // (decision 0036, rules 8-9). This implementation is written and
@@ -90,5 +90,12 @@ export class RazorpayProviderService implements PaymentProviderService {
     // Not calling out to Razorpay again here — the webhook signature
     // verification is the authority, per decision 0035 rule 3.
     this.logger.log(`order ${providerOrderId} payment ${providerPaymentId} marked captured`);
+  }
+
+  async refundPayment(providerPaymentId: string, amountPaise: number): Promise<RefundResult> {
+    const refund = await this.getClient().payments.refund(providerPaymentId, {
+      amount: amountPaise,
+    });
+    return { refundId: refund.id };
   }
 }
