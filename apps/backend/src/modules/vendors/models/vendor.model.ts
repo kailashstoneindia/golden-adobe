@@ -105,6 +105,16 @@ export class Vendor extends Model<Vendor> {
   })
   declare citySource: VendorCitySource | null;
 
+  // Whether this vendor has their own loading/unloading crew for heavy items
+  // (tiles, stone). NULL = not asked/answered yet — distinct from `false`.
+  // Client request 2026-10-18, see docs/decisions/0036. Ported from main.
+  @Column({
+    type: DataType.BOOLEAN,
+    allowNull: true,
+    field: 'has_loading_unloading_team',
+  })
+  declare hasLoadingUnloadingTeam: boolean | null;
+
   @BelongsTo(() => User)
   declare user: User;
 

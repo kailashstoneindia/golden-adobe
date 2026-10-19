@@ -25,6 +25,26 @@ interface CartLineForCheckout {
   vendor_is_active: boolean;
   quantity_available: string | null;
   quantity_reserved: string | null;
+  category_path: string;
+  has_loading_unloading_team: boolean | null;
+}
+
+// Decision 0036 (per-sqft addendum). Global rate, not per-category — the
+// client said "price per sq ft," singular. Placeholder until the client
+// gives a real number (0036's open questions); 0 means the charge exists
+// in the schema and computation but has no effect until set.
+const LOADING_UNLOADING_RATE_PER_SQFT = 0;
+
+// Category path prefixes this charge applies to (tiles, stone — client's
+// own framing in the 2026-10-18 request). Matches this codebase's existing
+// subtree-prefix convention for "is this in category X" (category.path,
+// idx_category_path, text_pattern_ops — see category.model.ts).
+const LOADING_UNLOADING_ELIGIBLE_CATEGORY_PREFIXES = ['tiles/', 'stone/'];
+
+function isLoadingUnloadingEligible(categoryPath: string): boolean {
+  return LOADING_UNLOADING_ELIGIBLE_CATEGORY_PREFIXES.some((prefix) =>
+    categoryPath.startsWith(prefix),
+  );
 }
 
 interface CheckoutRejection {
@@ -109,10 +129,13 @@ export class CheckoutService {
           mp.sale_unit_type,
           u.is_active AS vendor_is_active,
           inv.quantity_available,
-          inv.quantity_reserved
+          inv.quantity_reserved,
+          cat.path AS category_path,
+          v.has_loading_unloading_team
         FROM cart_item ci
         JOIN vendor_listing vl ON vl.id = ci.vendor_listing_id
         JOIN master_product mp ON mp.id = vl.master_product_id
+        JOIN category cat ON cat.id = mp.category_id
         JOIN vendors v ON v.id = vl.vendor_id
         JOIN users u ON u.id = v.user_id
         LEFT JOIN inventory inv ON inv.vendor_listing_id = vl.id AND inv.warehouse_id IS NULL
@@ -291,7 +314,28 @@ export class CheckoutService {
         );
       }
 
-      const grandTotal = lines.reduce((sum, l) => sum + Number(l.price) * Number(l.quantity), 0);
+      // Decision 0036 (per-sqft addendum): a tiles/stone line owes this fee
+      // when its vendor has NO loading/unloading crew of their own.
+      // has_loading_unloading_team is NULL for every vendor who hasn't been
+      // asked yet (pre-dates the field, or skipped it at onboarding) —
+      // treated the same as `false` here, charging defensively until the
+      // vendor answers, per 0036's open-questions note: failing toward the
+      // platform doing the work costs the vendor nothing extra (the fee is
+      // customer-facing, rolled into grandTotal, not deducted from the
+      // vendor's subtotal) and avoids silently under-charging for labor
+      // that may in fact be needed.
+      const loadingUnloadingFeeForLine = (line: CartLineForCheckout): number => {
+        if (line.has_loading_unloading_team === true) return 0;
+        if (!isLoadingUnloadingEligible(line.category_path)) return 0;
+        return Number(line.quantity) * LOADING_UNLOADING_RATE_PER_SQFT;
+      };
+
+      const itemsTotal = lines.reduce((sum, l) => sum + Number(l.price) * Number(l.quantity), 0);
+      const totalLoadingUnloadingFee = lines.reduce(
+        (sum, l) => sum + loadingUnloadingFeeForLine(l),
+        0,
+      );
+      const grandTotal = itemsTotal + totalLoadingUnloadingFee;
 
       const createdOrder = await this.orderModel.create(
         {
@@ -308,11 +352,16 @@ export class CheckoutService {
           (sum, l) => sum + Number(l.price) * Number(l.quantity),
           0,
         );
+        const loadingUnloadingFee = groupLines.reduce(
+          (sum, l) => sum + loadingUnloadingFeeForLine(l),
+          0,
+        );
         const group = await this.groupModel.create(
           {
             orderId: createdOrder.id,
             vendorId,
             subtotal,
+            loadingUnloadingFee,
             status: OrderVendorGroupStatus.PENDING,
           } as any,
           { transaction: t },

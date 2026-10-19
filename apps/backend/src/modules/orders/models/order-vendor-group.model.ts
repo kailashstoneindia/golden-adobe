@@ -27,6 +27,18 @@ export class OrderVendorGroup extends Model<OrderVendorGroup> {
   @Column({ type: DataType.DECIMAL(12, 2), allowNull: false })
   declare subtotal: number;
 
+  // Per-sqft loading/unloading charge for this vendor-group's tiles/stone
+  // lines, computed at checkout when the vendor lacks their own crew
+  // (vendors.has_loading_unloading_team). Decision 0036. Defaults to 0 —
+  // always explicitly set by checkout, never left ambiguous.
+  @Column({
+    type: DataType.DECIMAL(12, 2),
+    allowNull: false,
+    defaultValue: 0,
+    field: 'loading_unloading_fee',
+  })
+  declare loadingUnloadingFee: number;
+
   @Column({
     type: DataType.STRING(32),
     allowNull: false,
