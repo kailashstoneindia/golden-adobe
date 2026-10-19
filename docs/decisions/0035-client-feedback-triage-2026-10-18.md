@@ -11,21 +11,26 @@ requested changes and two questions. None of it was scoped against the signed pr
 (`Golden Abode – Home Finishing Marketplace Platform.pdf`) before reaching engineering. This
 record sorts each point against the proposal's five phases so none of it is silently absorbed
 into whichever phase happens to be open (`main` = Phase 2 merged, the unmerged worktree branch
-`worktree-phase-3-ordering-domain` = Phase 3 in flight), following the same reasoning that
-worktree's own decision record **0034 — "Phase 3 ordering domain: merge plan, admin-API gap,
-client-decision dependencies"** used for its admin-API gap: new information discovered mid-phase
-gets scoped explicitly, not folded wholesale into whatever phase is most convenient.
+`worktree-phase-3-ordering-domain` = Phase 3 in flight), following the same reasoning this
+project's own **`0034-phase-3-ordering-domain-completion.md`** used for its admin-API gap: new
+information discovered mid-phase gets scoped explicitly, not folded wholesale into whatever
+phase is most convenient.
 
-**Numbering note:** that record is numbered `0034` on the Phase 3 worktree, where 0032/0033 are
-already taken by that branch's own cart/order-structure records. On `origin/main` as of this
-branch, `0032` and `0033` are unrelated, already-accepted records (AWS cost minimization; S3
-product media), and no `0034` exists at all yet — the worktree's 0034 has not been ported
-forward. This record is **not** renumbering anything; it just flags that any link to "0034" in
-this family of records (this file, 0036, 0037) means the worktree's record, reachable today
-only by checking out `worktree-phase-3-ordering-domain`, not a file in this branch's
-`docs/decisions/`. Whoever merges the Phase 3 worktree should follow 0034's own closing note
-and renumber its ported 0032/0033-equivalents (and itself) around whatever is free on `main` at
-that time — likely 0038+ given this branch's own 0035–0037.
+**Numbering note (corrected 2026-10-19 — see also 0036's own correction):** `0034` is a record
+on `main` itself (`docs/decisions/0034-phase-3-ordering-domain-completion.md`), written to plan
+that worktree's merge — it was never ported into the worktree's own `docs/decisions/`, so it
+does not exist there under any name. Separately, the worktree's own cart/order-structure records
+are numbered **0035** (`cart-owner-reservation-and-real-instock.md`) and **0036**
+(`cart-and-order-structure.md`) on that branch — not 0032/0033 as an earlier draft of this
+record and of 0036 incorrectly stated, based on a secondhand research summary that got the
+numbers wrong. Confirmed directly against the worktree's own `docs/decisions/` listing
+2026-10-19. On `origin/main` as of this branch, `0032`–`0037` are this project's own records
+(0032 = AWS cost minimization, 0033 = S3 product media, 0034 = the admin-API-gap record just
+named, 0035–0037 = this file and its siblings) — entirely unrelated to the worktree's own
+0035/0036, which are different documents that happen to share two of the same numbers on a
+different branch. Whoever merges the Phase 3 worktree needs to renumber its 0035/0036 (and any
+other worktree-local record) around whatever is free on `main` at that time, per 0034's own
+closing note.
 
 The signed proposal's phases:
 
@@ -33,7 +38,7 @@ The signed proposal's phases:
   Catalog, Categories, Search, Inventory Management. **Status: merged to `main`.**
 - **Phase 3 – Cart, Orders & Payments** (Week 6–8): Cart Management, Checkout Flow, Razorpay,
   Order Management, Notifications. **Status: built and reviewed in the unmerged worktree
-  `worktree-phase-3-ordering-domain`**, per that worktree's own 0034 (see numbering note above).
+  `worktree-phase-3-ordering-domain`**, per `main`'s own 0034 (see numbering note above).
 - **Phase 4 – Artisan Rewards & Admin Panel** (Week 9–10): Artisan Module, Reward Tracking,
   Admin Dashboard, User Management, Product Moderation. **Status: not started.**
 - **Phase 5 – QA, Deployment & Launch** (Week 11–12).
@@ -71,9 +76,9 @@ The signed proposal's phases:
 Phase boundaries in the signed proposal are tied to milestone payments (₹40,000 each). Treating
 Phase 4 features as if they were small Phase 2/3 additions — because they arrived in the same
 WhatsApp message as a one-line category rename — would quietly expand Phase 2/3's delivery
-without the client having agreed to re-scope those milestones. The same risk the Phase 3
-worktree's 0034 flagged for the admin-API gap applies here in the other direction: undercounting
-new scope by assuming it fits inside work already priced and underway.
+without the client having agreed to re-scope those milestones. The same risk 0034 flagged for
+the admin-API gap applies here in the other direction: undercounting new scope by assuming it
+fits inside work already priced and underway.
 
 ## Consequences
 

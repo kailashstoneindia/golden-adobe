@@ -89,10 +89,11 @@ work-item list so Phase 2 has one place that says what's left and in what order 
 >    state lives affects what Phase 4 builds against). Flagging now so Phase 4 doesn't have to
 >    re-discover this; not building it in Phase 2.
 >
-> **Batch 4 — loading/unloading checkout charge (cross-phase, sequenced behind the Phase 3
-> merge per the Phase 3 worktree's own 0034 and this project's 0036):** not Phase 2 work, listed
-> here only so this record is a complete map of everything that traces back to the 2026-10-18
-> feedback. Tracked in 0036, not duplicated here.
+> **Batch 4 — loading/unloading checkout charge (cross-phase; no longer sequenced behind the
+> Phase 3 merge, per 0036's 2026-10-19 update):** not Phase 2 work, listed here only so this
+> record is a complete map of everything that traces back to the 2026-10-18 feedback. Built
+> directly inside `worktree-phase-3-ordering-domain` rather than as a `main` fast-follow — see
+> 0036 for what changed and why. Tracked in 0036, not duplicated here.
 
 ## Why
 
@@ -104,16 +105,16 @@ with a small catalog). Batch 3 is sequenced last because both its items are inve
 that benefits from being decided deliberately rather than rushed alongside the other three,
 which are already fully specified.
 
-Keeping Batch 4 named-but-not-duplicated here follows the same discipline the Phase 3 worktree's
-0034 and this project's 0036 already established: a record should say where related work is
-tracked rather than re-stating it, so there's exactly one place to update when that tracked
-item's status changes.
+Keeping Batch 4 named-but-not-duplicated here follows the same discipline 0034 and this
+project's 0036 already established: a record should say where related work is tracked rather
+than re-stating it, so there's exactly one place to update when that tracked item's status
+changes.
 
 ## Consequences
 
 - Four small, independently shippable PRs against `origin/main`/current branch, not one large
-  one — matches this project's existing PR-granularity pattern (the Phase 3 worktree's 0034
-  two-PR split, this project's 0036 two-PR split).
+  one — matches this project's existing PR-granularity pattern (0034's two-PR split; 0036's
+  original two-PR split, since revised — see 0036's Consequences).
 - Batch 1 item 1's possible taxonomy split (1b) and Batch 3 item 5 (approval status field) are
   both named as open decisions elsewhere (0035, this record) rather than guessed at here.
 - The Sept-28 `catalog-implementation-status.md` "What's next" section is now superseded by

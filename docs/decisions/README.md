@@ -42,15 +42,21 @@ valid when circumstances change.
 | [0031](0031-local-data-to-production.md)                     | Moving the local catalog, vendor and inventory data to production                     | 2026-10-02 | Accepted                     |
 | [0032](0032-aws-cost-minimized-single-box.md)                | AWS cost minimization: reopening the compute question from 0025                       | 2026-10-05 | Accepted                     |
 | [0033](0033-product-media-s3-presigned.md)                   | Product media: S3 presigned upload, private originals, Lambda WebP variants           | 2026-10-05 | Accepted                     |
+| [0034](0034-phase-3-ordering-domain-completion.md)            | Phase 3 ordering domain: merge plan, admin-API gap, client-decision dependencies       | 2026-10-15 | Accepted                     |
 | [0035](0035-client-feedback-triage-2026-10-18.md)             | Client feedback (2026-10-18): phase triage and out-of-scope items                     | 2026-10-19 | Accepted                     |
-| [0036](0036-vendor-loading-unloading-capability.md)           | Vendor loading/unloading capability and checkout charge                              | 2026-10-19 | Accepted (vendor field); rate still open |
+| [0036](0036-vendor-loading-unloading-capability.md)           | Vendor loading/unloading capability and checkout charge                              | 2026-10-19 | Accepted and built (see record for what's merged vs. pending) |
 | [0037](0037-phase-2-remaining-work-plan.md)                   | Phase 2 remaining work: end-to-end plan                                              | 2026-10-19 | Proposed — ready to execute  |
 
-**Numbering note:** 0035–0037 reference a "0034" from the unmerged Phase 3 worktree
-(`worktree-phase-3-ordering-domain`), which is not a file in this branch's `docs/decisions/` —
-see 0035's own numbering note. `0034` is free on `origin/main` as of this writing; whoever
-merges that worktree should claim it (or whatever is free then) rather than assuming it's
-already taken by these records.
+**Numbering note (corrected 2026-10-19):** 0034 was written 2026-10-15 but existed only as an
+uncommitted file until recovered and committed here alongside 0035–0037 — it was never missing
+from the project, only from version control. Its own internal references to the Phase 3
+worktree's "0032/0033-equivalent" records are placeholder phrasing it used deliberately, written
+before that worktree's records were finalized; they resolved to **0035** and **0036** on the
+worktree's own branch (confirmed directly against that branch's `docs/decisions/` listing), which
+are different files from this branch's own 0035–0037 despite the shared numbers — see 0034's own
+updated note and 0035's numbering note for the full account. Whoever merges the Phase 3 worktree
+will need to renumber its 0035/0036 (and anything else worktree-local) around whatever is free on
+`main` at that time.
 
 ## Adding a record
 

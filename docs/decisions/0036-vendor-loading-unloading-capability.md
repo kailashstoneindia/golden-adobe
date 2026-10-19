@@ -1,8 +1,10 @@
 # 0036 — Vendor loading/unloading capability and checkout charge
 
 - **Date:** 2026-10-19 (charge model corrected 2026-10-19 per client clarification — see
-  Addendum)
-- **Status:** Accepted (vendor-field half); checkout half still needs exact per-sq-ft rate
+  Addendum; checkout-half sequencing updated 2026-10-19 — see Consequences)
+- **Status:** Accepted and built (vendor field merged in `main` PR #21; checkout charge built
+  directly in `worktree-phase-3-ordering-domain`, pending that worktree's own merge). Only the
+  real per-sqft rate is still open.
 - **Supersedes / Superseded by:** —
 
 ## Addendum (2026-10-19) — charge model corrected to price-per-sqft, category-scoped
@@ -56,13 +58,17 @@ Everything else in this record (vendor-field independence from Phase 3, the
 worktree-vs-`main` merge-sequencing constraint, no-split-settlement via `grand_total`) is
 unchanged by this correction.
 
-**Numbering note:** this record cites "0033" and "0034" throughout for the Phase 3 worktree's
-own cart/order-structure and merge-plan records. Those numbers belong to different,
-already-accepted records on `origin/main` (0032 = AWS cost minimization, 0033 = S3 product
-media) — see [0035](0035-client-feedback-triage-2026-10-18.md)'s numbering note for the full
-explanation. Every "0033"/"0034" reference below means the worktree's record, not a file
-present in this branch's `docs/decisions/`, until the worktree merges and those records are
-renumbered and ported forward.
+**Numbering note (corrected 2026-10-19):** this record originally cited "0033" and "0034" for
+the Phase 3 worktree's cart/order-structure and merge-plan records — both wrong, based on a
+secondhand research summary. Confirmed directly against the worktree's own `docs/decisions/`
+listing: the worktree's cart/order-structure record is actually **0036**
+(`cart-and-order-structure.md`), and the merge-plan/admin-API-gap record is **0034**, but that
+one lives only on `main` (`docs/decisions/0034-phase-3-ordering-domain-completion.md`) — it was
+never ported into the worktree at all. Every "worktree's 0036" reference below means that
+worktree-local file (not present in this branch's `docs/decisions/` until ported and
+renumbered); every bare "0034" reference means this project's own `main`-branch record, cited
+normally. See [0035](0035-client-feedback-triage-2026-10-18.md)'s numbering note for the full
+explanation.
 
 ## Context
 
@@ -86,19 +92,18 @@ This splits across two phases that are in different states of completeness:
 - **Checkout charge line item** — Phase 3, Checkout Flow. **This is the harder constraint:**
   the entire orders/cart/checkout module does not exist on `main` yet. It lives only in the
   unmerged worktree branch `worktree-phase-3-ordering-domain`
-  (`Z:\workspace\golden-abode\.claude\worktrees\phase-3-ordering-domain\...`), which per that
-  worktree's own 0034 is reviewed, tested, and planned to merge as-is before any fast-follow
-  work lands on top of it.
+  (`Z:\workspace\golden-abode\.claude\worktrees\phase-3-ordering-domain\...`), which per 0034 is
+  reviewed, tested, and planned to merge as-is before any fast-follow work lands on top of it.
   In that worktree, `checkout.service.ts` computes `grandTotal` as a pure sum of
   `price × quantity` across lines (line ~294), with no fee/tax/delivery-charge concept anywhere.
   `order_vendor_group` (migration `20261008090003-create-orders-domain.js`) has exactly five
-  columns: `id, order_id, vendor_id, subtotal, status` — no charge column. The worktree's 0033
-  (cart-and-order-structure)'s deferred-work table (lines 229-234) already names
+  columns: `id, order_id, vendor_id, subtotal, status` — no charge column. The worktree's own
+  0036 (cart-and-order-structure)'s deferred-work table (lines 229-234) already names
   `order_vendor_group` as the attachment point for two other deferred per-vendor-group fields
   (delivery OTP, open-box photo) — this is the same shape of problem and the same table is the
   right place to extend.
 
-The worktree's 0033 also establishes there is **no split settlement**:
+The worktree's own 0036 also establishes there is **no split settlement**:
 the platform collects one `grand_total` from the customer, and `order_vendor_group.subtotal`
 today exists only for reconciliation, computed in lockstep with `grand_total`, not as an
 independent payment instrument. A new charge has to decide, explicitly, whether it changes what
@@ -165,13 +170,20 @@ platform-set flat fee (amount TBD by client) to that group's charge and roll it 
 > ~306-332): read the vendor's `has_loading_unloading_team`; if `false`, set the fee to a
 > platform-config constant; if `true` or `null`, leave it `0`. Roll every group's fee into
 > `grandTotal` alongside its subtotal, so the customer pays one number that already includes it
-> — consistent with the worktree's 0033 no-split-settlement model.
+> — consistent with the worktree's own 0036 no-split-settlement model.
 >
-> **3. This does NOT get built against `main` directly.** Per the worktree's 0034, the ordering
-> domain merges from the worktree first; this checkout-side change lands as a small fast-follow
-> PR against `main` post-merge, the same way that record structured the admin-API gap — not as a
-> change inside the worktree, which risks reopening a branch that already passed its review
-> pass.
+> **3. This does NOT get built against `main` directly.** Per 0034, the ordering domain merges
+> from the worktree first; this checkout-side change lands as a small fast-follow PR against
+> `main` post-merge, the same way that record structured the admin-API gap — not as a change
+> inside the worktree, which risks reopening a branch that already passed its review pass.
+>
+> **Update 2026-10-19 — the checkout half is now built, directly in the worktree, not as a
+> `main` fast-follow.** The user explicitly asked for this sequencing: build the vendor-side
+> field in `main`'s PR (done, see Consequences), and build the checkout-charge logic directly
+> inside `worktree-phase-3-ordering-domain` so it lands in the same PR as the rest of Phase 3
+> when that worktree merges, rather than as a separate fast-follow afterward. This supersedes
+> rule 3 above — kept for the record of what was originally planned, not followed. See
+> Consequences for what was actually built and where.
 >
 > **4. The vendor-field half (`vendors` table) can be built and merged into `main` right now,
 > independent of the checkout half** — it has no dependency on the ordering domain merging
@@ -189,29 +201,51 @@ The boolean-over-enum choice follows this project's own stated preference agains
 speculative future requirements: the client asked a yes/no question, so the schema answers a
 yes/no question.
 
-The flat-fee-into-`grand_total` design follows the worktree's 0033 existing no-split-settlement
-model rather than introducing a second kind of money (a vendor-facing-only charge) that the
-payment and refund code (already reviewed and stable per the worktree's 0034) doesn't know how
+The flat-fee-into-`grand_total` design follows the worktree's own 0036 existing
+no-split-settlement model rather than introducing a second kind of money (a vendor-facing-only
+charge) that the payment and refund code (already reviewed and stable per 0034) doesn't know how
 to reason about. Keeping the fee inside `grand_total` means Razorpay capture, refund, and the
-admin-API audit work in that record's PR 2 all keep working unmodified — the fee is just more
-subtotal, not a new financial concept.
+admin-API audit work in 0034's PR 2 all keep working unmodified — the fee is just more subtotal,
+not a new financial concept.
 
 ## Consequences
 
-- **Two separate, independently mergeable pieces of work:**
-  - PR A (now, against `main`): `vendors.has_loading_unloading_team` column + migration + DTO
-    fields + onboarding/update wiring. No dependency on anything else in flight.
-  - PR B (after the Phase 3 worktree merges): `order_vendor_group.loading_unloading_fee` column
-    + migration + checkout-service fee computation + config value for the flat fee amount.
-- **A client decision blocks PR B's fee amount, not its schema.** The schema and wiring can be
-  built with a placeholder `0` and turned on once the client gives a number — same pattern the
-  worktree's 0034 used for the reservation-sweep timeout (build the mechanism, gate the
+**As actually built (2026-10-19), superseding the original PR-split plan:**
+
+- **PR A — merged into `main`'s PR #21** (`phase-2/vendor-loading-unloading-and-category-rename`):
+  `vendors.has_loading_unloading_team` column + migration
+  (`20261019090000-add-loading-unloading-capability-to-vendors.js`) + DTO fields
+  (`OnboardVendorDto`, `UpdateVendorProfileDto`) + service/mapper wiring + the shared
+  `@golden-abode/types` contracts. Verified against real Postgres (migration up/down/up, full
+  app boot, routes mapped) before pushing.
+- **PR B — built directly inside `worktree-phase-3-ordering-domain`**, not as a `main`
+  fast-follow as originally planned. Two migrations ported/added there:
+  `20261019090000-add-loading-unloading-capability-to-vendors.js` (the same vendor field,
+  ported so the worktree is self-contained and doesn't depend on `main`'s PR #21 landing first)
+  and `20261019090001-add-loading-unloading-fee-to-order-vendor-group.js` (the new
+  `order_vendor_group.loading_unloading_fee` column, `DECIMAL(12,2) NOT NULL DEFAULT 0`, `CHECK
+  >= 0`). `checkout.service.ts` extended: the cart-line query now joins `category` (for
+  `cat.path`) and reads `v.has_loading_unloading_team`; a `loadingUnloadingFeeForLine` helper
+  charges `quantity × LOADING_UNLOADING_RATE_PER_SQFT` for any tiles/stone line whose vendor's
+  flag is not `true` (NULL treated as `false` — charge defensively until the vendor answers);
+  the total is rolled into both `grandTotal` (what the customer pays) and each group's new
+  `loadingUnloadingFee` column. `LOADING_UNLOADING_RATE_PER_SQFT` is a placeholder constant
+  (`0`) until the client gives a real rate. Verified against real Postgres in the worktree
+  (migration up/down/up, the new `category`/`vendors` join tested directly against live data,
+  full app boot with `/api/checkout` mapped).
+- **A client decision blocks the fee amount, not its schema or wiring.** Both are built and
+  will compute correctly the moment `LOADING_UNLOADING_RATE_PER_SQFT` is set to a real number —
+  same pattern 0034 used for the reservation-sweep timeout (build the mechanism, gate the
   dangerous unknown behind a config value that isn't guessed at).
 - **Existing vendors have `has_loading_unloading_team = null` until asked or backfilled** — this
   is a real gap (no fee applies to any existing vendor's orders until that vendor's flag is
-  set), named here so it isn't discovered as a surprise later.
+  set, though the NULL-treated-as-`false` default means the fee still charges defensively for
+  eligible lines), named here so it isn't discovered as a surprise later.
 - **Admin's bulk vendor list/edit screens should surface this flag** once Phase 4's Admin
   Dashboard work starts, but that's Phase 4 scope per 0035 and not part of either PR here.
+- **The worktree's own PR, when it merges, carries this fee logic with it** — there is no
+  separate fast-follow PR to track for the checkout half anymore; what's left is only setting
+  the real rate constant once the client gives one.
 
 ## Open questions
 
@@ -244,8 +278,9 @@ subtotal, not a new financial concept.
   `apps/backend/src/modules/orders/checkout.service.ts` (~:294, ~:306-332, ~:356),
   `apps/backend/database/migrations/20261008090003-create-orders-domain.js`,
   `models/order-vendor-group.model.ts`
-- Phase 3 worktree's own `0033-cart-and-order-structure.md` (not present in this branch's
+- Phase 3 worktree's own `0036-cart-and-order-structure.md` (not present in this branch's
   `docs/decisions/` — see numbering note above) — deferred-field table, no-split-settlement
   consequence
-- Phase 3 worktree's own `0034-phase-3-ordering-domain-completion.md` (same caveat) —
-  merge-first-fast-follow-second pattern this record reuses
+- `0034-phase-3-ordering-domain-completion.md` (this project's own, on `main`) —
+  merge-first-fast-follow-second pattern this record originally reused, before the Update
+  above changed the checkout half to be built directly in the worktree instead
