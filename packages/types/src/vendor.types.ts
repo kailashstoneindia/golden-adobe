@@ -39,6 +39,10 @@ export interface VendorProfileDto {
   // the column stay null until the backfill runs.
   cityId: string | null;
   city: VendorCityDto | null;
+  // Whether this vendor has their own loading/unloading crew for heavy
+  // items (tiles, stone). Null = not asked/answered yet, distinct from
+  // false. Client request 2026-10-18 — see docs/decisions/0036.
+  hasLoadingUnloadingTeam: boolean | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -51,6 +55,7 @@ export interface UpdateVendorProfileDto {
   upiId?: string;
   bankDetails?: string;
   gstin?: string;
+  hasLoadingUnloadingTeam?: boolean;
 }
 
 export interface VendorCategoryDto {
@@ -69,6 +74,7 @@ export interface VendorOnboardDto {
   bankDetails?: string;
   accountDetails: VendorAccountDetailsInputDto;
   gstin?: string;
+  hasLoadingUnloadingTeam?: boolean;
 }
 
 export interface UpdateVendorOnboardingProgressDto {

@@ -62,6 +62,7 @@ export function toVendorProfileDto(vendor?: Vendor | null): VendorProfileDto | u
     bankDetails: vendor.bankDetails,
     accountDetails: toAccountDetailsDto(vendor.accountDetails),
     gstin: vendor.gstin,
+    hasLoadingUnloadingTeam: vendor.hasLoadingUnloadingTeam,
     cityId: vendor.cityId,
     // Only populated when the caller included City. A vendor with a
     // cityId but no include gets `city: null` and a non-null cityId —

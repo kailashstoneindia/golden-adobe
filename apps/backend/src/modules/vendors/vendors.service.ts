@@ -76,6 +76,7 @@ export class VendorsService {
           gstin: dto.gstin,
           cityId,
           citySource: cityId ? 'gps' : null,
+          hasLoadingUnloadingTeam: dto.hasLoadingUnloadingTeam ?? null,
         } as any,
         { transaction },
       );
@@ -124,6 +125,9 @@ export class VendorsService {
     if (dto.upiId !== undefined) updates.upiId = dto.upiId;
     if (dto.bankDetails !== undefined) updates.bankDetails = dto.bankDetails;
     if (dto.gstin !== undefined) updates.gstin = dto.gstin;
+    if (dto.hasLoadingUnloadingTeam !== undefined) {
+      updates.hasLoadingUnloadingTeam = dto.hasLoadingUnloadingTeam;
+    }
 
     // Coordinates arrive as a pair (the DTO enforces it), so testing
     // latitude alone is enough to know the position moved.
