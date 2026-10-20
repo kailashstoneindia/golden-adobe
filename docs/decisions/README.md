@@ -46,6 +46,8 @@ valid when circumstances change.
 | [0035](0035-client-feedback-triage-2026-10-18.md)             | Client feedback (2026-10-18): phase triage and out-of-scope items                     | 2026-10-19 | Accepted                     |
 | [0036](0036-vendor-loading-unloading-capability.md)           | Vendor loading/unloading capability and checkout charge                              | 2026-10-19 | Accepted and built (see record for what's merged vs. pending) |
 | [0037](0037-phase-2-remaining-work-plan.md)                   | Phase 2 remaining work: end-to-end plan                                              | 2026-10-19 | Proposed — ready to execute  |
+| [0038](0038-admin-panel-incremental-delivery.md)              | Admin panel: incremental delivery, not gated to Phase 4                              | 2026-10-20 | Accepted                     |
+| [0039](0039-last-login-timestamp.md)                          | Last-login timestamp on users                                                        | 2026-10-20 | Accepted and built           |
 
 **Numbering note (corrected 2026-10-19):** 0034 was written 2026-10-15 but existed only as an
 uncommitted file until recovered and committed here alongside 0035–0037 — it was never missing

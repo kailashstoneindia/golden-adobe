@@ -134,6 +134,7 @@ export class AuthService {
     if (existingUser) {
       // Existing user → generate tokens and return login response
       const tokens = await this.generateTokenPair(existingUser);
+      await this.usersService.recordLogin(existingUser.id);
       return {
         isNewUser: false,
         accessToken: tokens.accessToken,
@@ -192,6 +193,7 @@ export class AuthService {
 
     // Generate tokens
     const tokens = await this.generateTokenPair(user);
+    await this.usersService.recordLogin(user.id);
 
     return {
       isNewUser: false,
@@ -221,6 +223,7 @@ export class AuthService {
 
     this.logger.log(`Admin registered: ${normalizedEmail}`);
     const tokens = await this.generateTokenPair(user);
+    await this.usersService.recordLogin(user.id);
     return {
       isNewUser: false as const,
       accessToken: tokens.accessToken,
@@ -247,6 +250,7 @@ export class AuthService {
     }
 
     const tokens = await this.generateTokenPair(user);
+    await this.usersService.recordLogin(user.id);
     return {
       isNewUser: false as const,
       accessToken: tokens.accessToken,

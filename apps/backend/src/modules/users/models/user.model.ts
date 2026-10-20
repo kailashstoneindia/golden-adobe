@@ -91,6 +91,16 @@ export class User extends Model<User> {
   })
   declare onboardingStage: VendorOnboardingStage | null;
 
+  // Set on real authentication only (verifyOtp, register, registerAdmin,
+  // loginAdmin) — deliberately NOT written on token refresh. See decision
+  // 0039. NULL means never logged in since this column existed.
+  @Column({
+    type: DataType.DATE,
+    allowNull: true,
+    field: 'last_login_at',
+  })
+  declare lastLoginAt: Date | null;
+
   @HasMany(() => RefreshToken)
   declare refreshTokens: RefreshToken[];
 
