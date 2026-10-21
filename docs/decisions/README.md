@@ -48,6 +48,7 @@ valid when circumstances change.
 | [0037](0037-phase-2-remaining-work-plan.md)                   | Phase 2 remaining work: end-to-end plan                                              | 2026-10-19 | Proposed — ready to execute  |
 | [0038](0038-admin-panel-incremental-delivery.md)              | Admin panel: incremental delivery, not gated to Phase 4                              | 2026-10-20 | Accepted                     |
 | [0039](0039-last-login-timestamp.md)                          | Last-login timestamp on users                                                        | 2026-10-20 | Accepted and built           |
+| [0040](0040-admin-panel-no-field-editing-investigation.md)    | "Why can't I edit anything?" investigation — not a bug, a missing feature             | 2026-10-21 | Accepted — no fix proposed   |
 
 **Numbering note (corrected 2026-10-19):** 0034 was written 2026-10-15 but existed only as an
 uncommitted file until recovered and committed here alongside 0035–0037 — it was never missing
