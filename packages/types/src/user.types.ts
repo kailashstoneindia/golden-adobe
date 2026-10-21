@@ -28,6 +28,9 @@ export interface UserDto {
   onboardingCompletedAt: string | null;
   onboardingStage: VendorOnboardingStage | null;
   vendorProfile?: VendorProfileDto;
+  // Null means never logged in since this column existed (0039). Set only
+  // on real authentication, never on token refresh.
+  lastLoginAt: string | null;
   createdAt: string;
   updatedAt: string;
 }

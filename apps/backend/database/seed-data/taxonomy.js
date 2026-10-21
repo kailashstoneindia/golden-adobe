@@ -643,7 +643,11 @@ const TREE = [
   },
 
   {
-    name: 'Sanitaryware & Bath',
+    // Renamed from 'Sanitaryware & Bath' per client request (2026-10-18, see
+    // docs/decisions/0035). slug stays 'sanitaryware' — the seeder keys on
+    // category.path (slug-derived), not name, so this is a display-only
+    // change and re-running the taxonomy seeder updates the existing row.
+    name: 'Bath and Sanitaryware',
     slug: 'sanitaryware',
     uom: 'NOS',
     attrs: [

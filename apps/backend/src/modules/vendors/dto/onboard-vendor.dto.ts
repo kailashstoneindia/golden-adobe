@@ -2,6 +2,7 @@ import {
   IsString,
   IsNumber,
   IsOptional,
+  IsBoolean,
   Length,
   IsNotEmpty,
   Min,
@@ -99,4 +100,12 @@ export class OnboardVendorDto implements VendorOnboardDto {
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @Length(15, 15)
   gstin?: string;
+
+  @ApiPropertyOptional({
+    example: true,
+    description: 'Whether the vendor has their own loading/unloading crew for heavy items',
+  })
+  @IsBoolean()
+  @IsOptional()
+  hasLoadingUnloadingTeam?: boolean;
 }

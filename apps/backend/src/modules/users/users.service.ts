@@ -62,6 +62,13 @@ export class UsersService {
     await this.userModel.update({ isApproved: true }, { where: { id: userId } });
   }
 
+  // Called only from AuthService's real-authentication paths (verifyOtp,
+  // register, registerAdmin, loginAdmin) — deliberately NOT from token
+  // refresh. See decision 0039.
+  async recordLogin(userId: string): Promise<void> {
+    await this.userModel.update({ lastLoginAt: new Date() }, { where: { id: userId } });
+  }
+
   async updateVendorOnboardingProgress(
     userId: string,
     onboardingStage: VendorOnboardingStage,

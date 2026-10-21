@@ -150,6 +150,7 @@ export class AdminService {
         (user.onboardingStage as UserDto['onboardingStage']) ??
         (user.vendorProfile ? VENDOR_ONBOARDING_STAGES.completed : null),
       vendorProfile: toVendorProfileDto(user.vendorProfile),
+      lastLoginAt: formatTimestamp(user.get('lastLoginAt')) || null,
       createdAt: formatTimestamp(user.get('createdAt')),
       updatedAt: formatTimestamp(user.get('updatedAt')),
     };

@@ -58,6 +58,7 @@ export function UsersPage() {
                 <th>Phone</th>
                 <th>Approved</th>
                 <th>Joined</th>
+                <th>Last login</th>
               </tr>
             </thead>
             <tbody>
@@ -72,6 +73,7 @@ export function UsersPage() {
                   <td>{formatPhoneDisplay(user.phone)}</td>
                   <td>{user.isApproved ? 'Yes' : 'No'}</td>
                   <td>{formatDateTime(user.createdAt)}</td>
+                  <td>{user.lastLoginAt ? formatDateTime(user.lastLoginAt) : 'Never'}</td>
                 </tr>
               ))}
             </tbody>

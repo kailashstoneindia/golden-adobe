@@ -138,10 +138,25 @@ module.exports = {
         const path = parentPath ? `${parentPath}/${node.slug}` : node.slug;
         const isLeaf = !node.children || node.children.length === 0;
 
-        const existing = await q(`SELECT id FROM category WHERE path = :path`, { path });
+        const existing = await q(`SELECT id, name FROM category WHERE path = :path`, { path });
         let categoryId;
         if (existing.length > 0) {
           categoryId = existing[0].id;
+          // name is intentionally re-synced on every run — unlike attribute's
+          // category_id/code (see insertAttribute above), a category's name is
+          // just a display label with no downstream identity meaning, so this
+          // taxonomy file stays the single source of truth for it (e.g. the
+          // 2026-10-18 'Sanitaryware & Bath' -> 'Bath and Sanitaryware' rename).
+          if (existing[0].name !== node.name) {
+            // RETURNING id, not because the result is used, but because q()
+            // always runs as QueryTypes.SELECT (see its definition above) —
+            // matches the INSERT ... RETURNING pattern used throughout this
+            // file rather than introducing a second query helper.
+            await q(`UPDATE category SET name = :name WHERE id = :categoryId RETURNING id`, {
+              name: node.name,
+              categoryId,
+            });
+          }
         } else {
           const [row] = await q(
             `INSERT INTO category

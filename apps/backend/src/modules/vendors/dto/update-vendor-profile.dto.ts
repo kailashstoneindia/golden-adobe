@@ -2,6 +2,7 @@ import {
   IsString,
   IsNumber,
   IsOptional,
+  IsBoolean,
   IsNotEmpty,
   Length,
   Min,
@@ -67,4 +68,12 @@ export class UpdateVendorProfileDto implements UpdateVendorProfileContract {
   @Length(15, 15)
   @Transform(({ value }) => (typeof value === 'string' ? value.trim().toUpperCase() : value))
   gstin?: string;
+
+  @ApiPropertyOptional({
+    example: true,
+    description: 'Whether the vendor has their own loading/unloading crew for heavy items',
+  })
+  @IsOptional()
+  @IsBoolean()
+  hasLoadingUnloadingTeam?: boolean;
 }
