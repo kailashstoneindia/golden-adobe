@@ -51,6 +51,7 @@ valid when circumstances change.
 | [0040](0040-admin-panel-no-field-editing-investigation.md)   | "Why can't I edit anything?" investigation — not a bug, a missing feature                        | 2026-10-21 | Accepted — no fix proposed                                    |
 | [0041](0041-cart-owner-reservation-and-real-instock.md)      | Cart ownership, when stock is reserved, and making `inStock` mean something                      | 2026-10-07 | Accepted                                                      |
 | [0042](0042-cart-and-order-structure.md)                     | Cart and order structure: what an item points at, and how one payment becomes many vendors' work | 2026-10-07 | Accepted                                                      |
+| [0043](0043-minimum-order-value-per-vendor.md)               | Minimum order value per vendor, replacing per-listing minimum order quantity at checkout         | 2026-10-21 | Accepted and built                                            |
 
 **Numbering note (corrected 2026-10-19):** 0034 was written 2026-10-15 but existed only as an
 uncommitted file until recovered and committed here alongside 0035–0037 — it was never missing

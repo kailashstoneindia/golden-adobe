@@ -19,7 +19,6 @@ interface CartLineForCheckout {
   vendor_id: string;
   quantity: string;
   price: string;
-  min_order_qty: string;
   listing_status: string;
   sale_unit_type: string;
   vendor_is_active: boolean;
@@ -27,6 +26,7 @@ interface CartLineForCheckout {
   quantity_reserved: string | null;
   category_path: string;
   has_loading_unloading_team: boolean | null;
+  min_order_value: string | null;
 }
 
 // Decision 0042 (per-sqft addendum). Global rate, not per-category — the
@@ -124,14 +124,14 @@ export class CheckoutService {
           vl.vendor_id,
           ci.quantity,
           vl.price,
-          vl.min_order_qty,
           vl.status AS listing_status,
           mp.sale_unit_type,
           u.is_active AS vendor_is_active,
           inv.quantity_available,
           inv.quantity_reserved,
           cat.path AS category_path,
-          v.has_loading_unloading_team
+          v.has_loading_unloading_team,
+          v.min_order_value
         FROM cart_item ci
         JOIN vendor_listing vl ON vl.id = ci.vendor_listing_id
         JOIN master_product mp ON mp.id = vl.master_product_id
@@ -206,10 +206,17 @@ export class CheckoutService {
         }
       }
 
-      // min_order_qty enforced per listing within each vendor group
-      // (decision 0042 rule 3; min_order_qty is a per-listing column, not
-      // a per-vendor minimum), against lines that passed the checks above
-      // only.
+      // Minimum order VALUE enforced per vendor group (decision 0043,
+      // replacing the old per-listing min_order_qty quantity check): a
+      // vendor's whole subtotal of valid lines in this checkout must clear
+      // their own min_order_value, not any one line's quantity against a
+      // per-listing number. vendor_listing.min_order_qty itself is
+      // untouched elsewhere (still round-trips through the vendor Excel
+      // import/export template) — this is the only place that stopped
+      // reading it.
+      //
+      // Grouped against lines that passed the checks above only, same as
+      // the old logic.
       const byVendor = new Map<string, CartLineForCheckout[]>();
       for (const line of lines) {
         if (rejections.some((r) => r.vendorListingId === line.vendor_listing_id)) continue;
@@ -218,11 +225,21 @@ export class CheckoutService {
         byVendor.set(line.vendor_id, group);
       }
       for (const [vendorId, groupLines] of byVendor) {
-        for (const line of groupLines) {
-          if (Number(line.quantity) < Number(line.min_order_qty)) {
+        // NULL min_order_value means "no minimum set" — treated as 0 (no
+        // minimum enforced), not as a block. Forcing a minimum before the
+        // vendor sets one would silently reject every order from a vendor
+        // who never answered.
+        const minOrderValue = Number(groupLines[0].min_order_value ?? 0);
+        if (minOrderValue <= 0) continue;
+        const groupSubtotal = groupLines.reduce(
+          (sum, l) => sum + Number(l.price) * Number(l.quantity),
+          0,
+        );
+        if (groupSubtotal < minOrderValue) {
+          for (const line of groupLines) {
             rejections.push({
               vendorListingId: line.vendor_listing_id,
-              reason: `below minimum order quantity of ${line.min_order_qty} for vendor ${vendorId}`,
+              reason: `vendor ${vendorId}'s subtotal of ${groupSubtotal} is below their minimum order value of ${minOrderValue}`,
             });
           }
         }

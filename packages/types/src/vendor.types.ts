@@ -43,6 +43,13 @@ export interface VendorProfileDto {
   // items (tiles, stone). Null = not asked/answered yet, distinct from
   // false. Client request 2026-10-18 — see docs/decisions/0036.
   hasLoadingUnloadingTeam: boolean | null;
+  // Minimum cart subtotal (with this vendor) checkout will accept. Null =
+  // no minimum set, which checkout treats as no minimum enforced, not as a
+  // block. Client request 2026-10-21 — see docs/decisions/0043. Replaces
+  // the old per-listing min_order_qty check at checkout; that column still
+  // exists on vendor_listing and still round-trips through the Excel
+  // import/export template, just unrelated to this field.
+  minOrderValue: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -56,6 +63,7 @@ export interface UpdateVendorProfileDto {
   bankDetails?: string;
   gstin?: string;
   hasLoadingUnloadingTeam?: boolean;
+  minOrderValue?: number;
 }
 
 export interface VendorCategoryDto {
@@ -75,6 +83,7 @@ export interface VendorOnboardDto {
   accountDetails: VendorAccountDetailsInputDto;
   gstin?: string;
   hasLoadingUnloadingTeam?: boolean;
+  minOrderValue?: number;
 }
 
 export interface UpdateVendorOnboardingProgressDto {

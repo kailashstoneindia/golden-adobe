@@ -77,6 +77,7 @@ export class VendorsService {
           cityId,
           citySource: cityId ? 'gps' : null,
           hasLoadingUnloadingTeam: dto.hasLoadingUnloadingTeam ?? null,
+          minOrderValue: dto.minOrderValue ?? null,
         } as any,
         { transaction },
       );
@@ -127,6 +128,9 @@ export class VendorsService {
     if (dto.gstin !== undefined) updates.gstin = dto.gstin;
     if (dto.hasLoadingUnloadingTeam !== undefined) {
       updates.hasLoadingUnloadingTeam = dto.hasLoadingUnloadingTeam;
+    }
+    if (dto.minOrderValue !== undefined) {
+      updates.minOrderValue = dto.minOrderValue;
     }
 
     // Coordinates arrive as a pair (the DTO enforces it), so testing

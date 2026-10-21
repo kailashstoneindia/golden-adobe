@@ -110,9 +110,12 @@ they do not exist.
 > (one customer, one payment, one grand total) containing one `order_vendor_group` per
 > distinct vendor, each containing its own `order_items`.
 >
-> **3. `min_order_qty` is enforced per vendor group, never against the cart total.** A group
-> failing its vendor's minimum fails checkout for the whole order, naming the vendor and the
-> shortfall.
+> **3. ~~`min_order_qty` is enforced per vendor group, never against the cart total.~~
+> Superseded by [0043](0043-minimum-order-value-per-vendor.md):** checkout no longer enforces
+> `vendor_listing.min_order_qty` at all. In its place, each vendor group's subtotal is checked
+> against that vendor's own `min_order_value` (nullable, set per vendor, not per listing). A
+> group failing its vendor's minimum still fails checkout for the whole order, naming the
+> vendor and the shortfall — only the quantity-vs-value basis of the check changed.
 >
 > **4. Checkout is all-or-nothing.** Any item unavailable, below minimum, belonging to a paused
 > vendor, or no longer ACTIVE rejects the entire checkout with a 400 naming every offending
