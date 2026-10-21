@@ -13,6 +13,7 @@ import * as crypto from 'crypto';
 
 import { Role, JwtPayload, VENDOR_ONBOARDING_STAGES } from '@golden-abode/types';
 import { UsersService } from '../users/users.service';
+import { CustomersService } from '../customers/customers.service';
 import { RedisService } from '../../core/redis/redis.service';
 import { RefreshToken } from '../users/models/refresh-token.model';
 import { User } from '../users/models/user.model';
@@ -40,6 +41,7 @@ export class AuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
     private usersService: UsersService,
+    private customersService: CustomersService,
     private redisService: RedisService,
     @InjectModel(RefreshToken)
     private refreshTokenModel: typeof RefreshToken,
@@ -190,6 +192,15 @@ export class AuthService {
       phone: payload.phone,
       role,
     });
+
+    // CUSTOMER has no separate onboarding step (unlike VENDOR, which
+    // collects shop/address/GPS data afterward via POST /vendors/onboard) —
+    // every cart/order service resolves a customers row by user id and 404s
+    // without one, so it must exist the moment registration completes.
+    // Decision 0041's own named gap: no code path created this row until now.
+    if (role === Role.CUSTOMER) {
+      await this.customersService.createForUser(user.id, name);
+    }
 
     // Generate tokens
     const tokens = await this.generateTokenPair(user);

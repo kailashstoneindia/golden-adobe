@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { RequestMethod } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { ValidationPipe, Logger } from '@nestjs/common';
@@ -8,10 +9,14 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 import helmet from 'helmet';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
+  // rawBody: true registers req.rawBody via Express's body-parser verify
+  // hook (confirmed against the installed @nestjs/platform-express@10.4.22
+  // source, not assumed) — needed by both the media Lambda's callback
+  // (decision 0033) and the Razorpay webhook (decision 0041 rule 3), each
+  // of which verifies an HMAC signature against the exact raw bytes sent,
+  // not a re-serialized JSON.parse of them.
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: ['error', 'warn', 'log', 'debug', 'verbose'],
-    // The media Lambda's callback is HMAC-signed over the exact bytes it sent
-    // (decision 0033), so the guard needs req.rawBody, not the parsed object.
     rawBody: true,
   });
 

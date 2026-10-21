@@ -69,6 +69,7 @@ export class SearchDocumentBuilder {
       price: string;
       cheapest_vendor_listing_id: string;
       vendor_count: string;
+      in_stock: boolean;
       primary_image: RawPrimaryImage;
       updated_at: Date;
     }>(
@@ -106,7 +107,8 @@ export class SearchDocumentBuilder {
         live.updated_at,
         agg.price,
         agg.vendor_count,
-        agg.cheapest_vendor_listing_id
+        agg.cheapest_vendor_listing_id,
+        agg.in_stock
       FROM live
       -- LATERAL, not a correlated subquery per column: the cheapest listing's
       -- id and its price must come from the SAME row, or a tie could report
@@ -115,9 +117,28 @@ export class SearchDocumentBuilder {
         SELECT
           MIN(vl.price)                             AS price,
           COUNT(DISTINCT vl.vendor_id)              AS vendor_count,
-          (ARRAY_AGG(vl.id ORDER BY vl.price ASC, vl.id ASC))[1] AS cheapest_vendor_listing_id
+          (ARRAY_AGG(vl.id ORDER BY vl.price ASC, vl.id ASC))[1] AS cheapest_vendor_listing_id,
+          -- Decision 0041 rules 4-6: in_stock is true if ANY active listing
+          -- for this product in this city is actually available —
+          -- "somebody in this city has it" is the right aggregate answer
+          -- for a search result, distinct from whether one specific
+          -- listing (checked again at checkout, rule 6) is in stock.
+          -- Paint (tinted_to_order) carries no inventory row by design
+          -- (0007/0022) and is in stock by status alone; everything else
+          -- nets quantity_reserved against quantity_available.
+          BOOL_OR(
+            mp.sale_unit_type = 'tinted_to_order'
+            OR (inv.quantity_available IS NOT NULL
+                AND (inv.quantity_available - COALESCE(inv.quantity_reserved, 0)) > 0)
+          ) AS in_stock
         FROM vendor_listing vl
         JOIN vendors v ON v.id = vl.vendor_id
+        -- mp is NOT the outer CTE's mp — that one is out of scope inside a
+        -- LATERAL subquery's own FROM clause. Joined fresh here on
+        -- vl.master_product_id, which the WHERE below already pins equal
+        -- to live.master_product_id, so this is the same product either way.
+        JOIN master_product mp ON mp.id = vl.master_product_id
+        LEFT JOIN inventory inv ON inv.vendor_listing_id = vl.id AND inv.warehouse_id IS NULL
         WHERE vl.master_product_id = live.master_product_id
           AND v.city_id = live.city_id
           AND vl.status = 'active'
@@ -149,7 +170,7 @@ export class SearchDocumentBuilder {
         price: Number(row.price),
         cheapestVendorListingId: row.cheapest_vendor_listing_id,
         vendorCount: Number(row.vendor_count),
-        inStock: true,
+        inStock: row.in_stock,
         primaryImage: toPrimaryImage(publicBaseUrl, row.primary_image),
         updatedAt: row.updated_at.toISOString(),
       };

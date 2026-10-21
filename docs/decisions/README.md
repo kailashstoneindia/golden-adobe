@@ -10,45 +10,47 @@ valid when circumstances change.
 
 ## Index
 
-| #                                                            | Title                                                                                 | Date       | Status                                                        |
-| ------------------------------------------------------------ | ------------------------------------------------------------------------------------- | ---------- | ------------------------------------------------------------- |
-| [0001](0001-category-tree-and-attributes.md)                 | Category tree shape, attribute inheritance, taxonomy vs. browse                       | 2026-08-02 | Accepted                                                      |
-| [0002](0002-paint-shade-and-tinting.md)                      | Paint shade, bases, and tinted-to-order products                                      | 2026-08-02 | Partially superseded by 0007                                  |
-| [0003](0003-stone-natural-material.md)                       | Stone as a natural, lot-varying material                                              | 2026-08-02 | Partially superseded by 0009                                  |
-| [0004](0004-filter-character-by-category.md)                 | Filter character differs by category; no schema support needed                        | 2026-08-02 | Accepted                                                      |
-| [0005](0005-attribute-storage-and-identity-columns.md)       | Global attribute scope, identity columns, and attribute value storage                 | 2026-08-02 | Accepted                                                      |
-| [0006](0006-constraint-and-cache-invalidation-mechanisms.md) | Leaf-only enforcement and `attributes_flat` invalidation                              | 2026-08-02 | Accepted                                                      |
-| [0007](0007-colour-family-pricing.md)                        | Colour-family pricing; base leaves the paint SKU                                      | 2026-08-02 | Accepted                                                      |
-| [0008](0008-stone-bundle-tier.md)                            | Stone bundles, and a unified vendor pricing mode                                      | 2026-08-02 | Superseded by 0009                                            |
-| [0009](0009-stone-price-list-model.md)                       | Stone as a price list, not a bundle inventory                                         | 2026-08-02 | Accepted                                                      |
-| [0010](0010-indian-compliance-fields.md)                     | Legal Metrology fields, and GST at the right level                                    | 2026-08-02 | Accepted                                                      |
-| [0011](0011-product-code-and-vendor-export.md)               | Product codes, pre-filled vendor export, and match integrity                          | 2026-08-02 | Accepted                                                      |
-| [0012](0012-product-identity-and-deduplication.md)           | Product identity and catalog deduplication                                            | 2026-08-02 | Accepted                                                      |
-| [0013](0013-identity-hash-for-unbranded-products.md)         | Identity hash for products with no brand or MPN                                       | 2026-08-02 | Accepted                                                      |
-| [0014](0014-batch-resolutions.md)                            | Batch resolution of open questions                                                    | 2026-08-02 | Accepted                                                      |
-| [0015](0015-per-vendor-colour-delta.md)                      | Colour pricing as a per-vendor delta                                                  | 2026-08-02 | Superseded by 0016                                            |
-| [0016](0016-colour-price-per-listing.md)                     | Absolute colour price per listing                                                     | 2026-08-02 | Accepted                                                      |
-| [0017](0017-search-engine-choice.md)                         | Search engine choice: Meilisearch                                                     | 2026-08-16 | Accepted                                                      |
-| [0018](0018-city-scoped-search.md)                           | City-scoped search: one document per (product, city)                                  | 2026-08-17 | Accepted                                                      |
-| [0019](0019-search-followups.md)                             | Search follow-ups: combined location resolution, admin search, autocomplete, synonyms | 2026-08-17 | Accepted                                                      |
-| [0020](0020-ncr-launch-cities.md)                            | Launch scope: Delhi NCR as five separate cities                                       | 2026-08-17 | Accepted                                                      |
-| [0021](0021-search-runtime-build-plan.md)                    | Search runtime: local-first build, and the 6c–6h sequence                             | 2026-09-01 | Accepted                                                      |
-| [0022](0022-inventory-write-model.md)                        | Inventory write model: stock, status, and what a blank cell means                     | 2026-09-14 | Accepted                                                      |
-| [0023](0023-single-product-create-edit.md)                   | Single-product create/edit: the last Product Management gap                           | 2026-09-15 | Accepted                                                      |
-| [0024](0024-product-images-gcs.md)                           | Product images: Google Cloud Storage as the backing store                             | 2026-09-16 | Superseded by 0033                                            |
-| [0025](0025-full-aws-migration.md)                           | Full AWS migration: target architecture and cost                                      | 2026-09-18 | Superseded by 0032 (compute)                                  |
-| [0026](0026-pearl-precision-brand-onboarding.md)             | Onboarding Pearl Precision (Sparsh Pearl): brand + catalog seeding strategy           | 2026-09-24 | Accepted                                                      |
-| [0027](0027-lavish-ceramics-brand-onboarding.md)             | Onboarding Lavish Ceramics: brand + catalog seeding strategy                          | 2026-09-25 | Accepted                                                      |
-| [0031](0031-local-data-to-production.md)                     | Moving the local catalog, vendor and inventory data to production                     | 2026-10-02 | Accepted                                                      |
-| [0032](0032-aws-cost-minimized-single-box.md)                | AWS cost minimization: reopening the compute question from 0025                       | 2026-10-05 | Accepted                                                      |
-| [0033](0033-product-media-s3-presigned.md)                   | Product media: S3 presigned upload, private originals, Lambda WebP variants           | 2026-10-05 | Accepted                                                      |
-| [0034](0034-phase-3-ordering-domain-completion.md)           | Phase 3 ordering domain: merge plan, admin-API gap, client-decision dependencies      | 2026-10-15 | Accepted                                                      |
-| [0035](0035-client-feedback-triage-2026-10-18.md)            | Client feedback (2026-10-18): phase triage and out-of-scope items                     | 2026-10-19 | Accepted                                                      |
-| [0036](0036-vendor-loading-unloading-capability.md)          | Vendor loading/unloading capability and checkout charge                               | 2026-10-19 | Accepted and built (see record for what's merged vs. pending) |
-| [0037](0037-phase-2-remaining-work-plan.md)                  | Phase 2 remaining work: end-to-end plan                                               | 2026-10-19 | Proposed — ready to execute                                   |
-| [0038](0038-admin-panel-incremental-delivery.md)             | Admin panel: incremental delivery, not gated to Phase 4                               | 2026-10-20 | Accepted                                                      |
-| [0039](0039-last-login-timestamp.md)                         | Last-login timestamp on users                                                         | 2026-10-20 | Accepted and built                                            |
-| [0040](0040-admin-panel-no-field-editing-investigation.md)   | "Why can't I edit anything?" investigation — not a bug, a missing feature             | 2026-10-21 | Accepted — no fix proposed                                    |
+| #                                                            | Title                                                                                            | Date       | Status                                                        |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ | ---------- | ------------------------------------------------------------- |
+| [0001](0001-category-tree-and-attributes.md)                 | Category tree shape, attribute inheritance, taxonomy vs. browse                                  | 2026-08-02 | Accepted                                                      |
+| [0002](0002-paint-shade-and-tinting.md)                      | Paint shade, bases, and tinted-to-order products                                                 | 2026-08-02 | Partially superseded by 0007                                  |
+| [0003](0003-stone-natural-material.md)                       | Stone as a natural, lot-varying material                                                         | 2026-08-02 | Partially superseded by 0009                                  |
+| [0004](0004-filter-character-by-category.md)                 | Filter character differs by category; no schema support needed                                   | 2026-08-02 | Accepted                                                      |
+| [0005](0005-attribute-storage-and-identity-columns.md)       | Global attribute scope, identity columns, and attribute value storage                            | 2026-08-02 | Accepted                                                      |
+| [0006](0006-constraint-and-cache-invalidation-mechanisms.md) | Leaf-only enforcement and `attributes_flat` invalidation                                         | 2026-08-02 | Accepted                                                      |
+| [0007](0007-colour-family-pricing.md)                        | Colour-family pricing; base leaves the paint SKU                                                 | 2026-08-02 | Accepted                                                      |
+| [0008](0008-stone-bundle-tier.md)                            | Stone bundles, and a unified vendor pricing mode                                                 | 2026-08-02 | Superseded by 0009                                            |
+| [0009](0009-stone-price-list-model.md)                       | Stone as a price list, not a bundle inventory                                                    | 2026-08-02 | Accepted                                                      |
+| [0010](0010-indian-compliance-fields.md)                     | Legal Metrology fields, and GST at the right level                                               | 2026-08-02 | Accepted                                                      |
+| [0011](0011-product-code-and-vendor-export.md)               | Product codes, pre-filled vendor export, and match integrity                                     | 2026-08-02 | Accepted                                                      |
+| [0012](0012-product-identity-and-deduplication.md)           | Product identity and catalog deduplication                                                       | 2026-08-02 | Accepted                                                      |
+| [0013](0013-identity-hash-for-unbranded-products.md)         | Identity hash for products with no brand or MPN                                                  | 2026-08-02 | Accepted                                                      |
+| [0014](0014-batch-resolutions.md)                            | Batch resolution of open questions                                                               | 2026-08-02 | Accepted                                                      |
+| [0015](0015-per-vendor-colour-delta.md)                      | Colour pricing as a per-vendor delta                                                             | 2026-08-02 | Superseded by 0016                                            |
+| [0016](0016-colour-price-per-listing.md)                     | Absolute colour price per listing                                                                | 2026-08-02 | Accepted                                                      |
+| [0017](0017-search-engine-choice.md)                         | Search engine choice: Meilisearch                                                                | 2026-08-16 | Accepted                                                      |
+| [0018](0018-city-scoped-search.md)                           | City-scoped search: one document per (product, city)                                             | 2026-08-17 | Accepted                                                      |
+| [0019](0019-search-followups.md)                             | Search follow-ups: combined location resolution, admin search, autocomplete, synonyms            | 2026-08-17 | Accepted                                                      |
+| [0020](0020-ncr-launch-cities.md)                            | Launch scope: Delhi NCR as five separate cities                                                  | 2026-08-17 | Accepted                                                      |
+| [0021](0021-search-runtime-build-plan.md)                    | Search runtime: local-first build, and the 6c–6h sequence                                        | 2026-09-01 | Accepted                                                      |
+| [0022](0022-inventory-write-model.md)                        | Inventory write model: stock, status, and what a blank cell means                                | 2026-09-14 | Accepted                                                      |
+| [0023](0023-single-product-create-edit.md)                   | Single-product create/edit: the last Product Management gap                                      | 2026-09-15 | Accepted                                                      |
+| [0024](0024-product-images-gcs.md)                           | Product images: Google Cloud Storage as the backing store                                        | 2026-09-16 | Superseded by 0033                                            |
+| [0025](0025-full-aws-migration.md)                           | Full AWS migration: target architecture and cost                                                 | 2026-09-18 | Superseded by 0032 (compute)                                  |
+| [0026](0026-pearl-precision-brand-onboarding.md)             | Onboarding Pearl Precision (Sparsh Pearl): brand + catalog seeding strategy                      | 2026-09-24 | Accepted                                                      |
+| [0027](0027-lavish-ceramics-brand-onboarding.md)             | Onboarding Lavish Ceramics: brand + catalog seeding strategy                                     | 2026-09-25 | Accepted                                                      |
+| [0031](0031-local-data-to-production.md)                     | Moving the local catalog, vendor and inventory data to production                                | 2026-10-02 | Accepted                                                      |
+| [0032](0032-aws-cost-minimized-single-box.md)                | AWS cost minimization: reopening the compute question from 0025                                  | 2026-10-05 | Accepted                                                      |
+| [0033](0033-product-media-s3-presigned.md)                   | Product media: S3 presigned upload, private originals, Lambda WebP variants                      | 2026-10-05 | Accepted                                                      |
+| [0034](0034-phase-3-ordering-domain-completion.md)           | Phase 3 ordering domain: merge plan, admin-API gap, client-decision dependencies                 | 2026-10-15 | Accepted                                                      |
+| [0035](0035-client-feedback-triage-2026-10-18.md)            | Client feedback (2026-10-18): phase triage and out-of-scope items                                | 2026-10-19 | Accepted                                                      |
+| [0036](0036-vendor-loading-unloading-capability.md)          | Vendor loading/unloading capability and checkout charge                                          | 2026-10-19 | Accepted and built (see record for what's merged vs. pending) |
+| [0037](0037-phase-2-remaining-work-plan.md)                  | Phase 2 remaining work: end-to-end plan                                                          | 2026-10-19 | Proposed — ready to execute                                   |
+| [0038](0038-admin-panel-incremental-delivery.md)             | Admin panel: incremental delivery, not gated to Phase 4                                          | 2026-10-20 | Accepted                                                      |
+| [0039](0039-last-login-timestamp.md)                         | Last-login timestamp on users                                                                    | 2026-10-20 | Accepted and built                                            |
+| [0040](0040-admin-panel-no-field-editing-investigation.md)   | "Why can't I edit anything?" investigation — not a bug, a missing feature                        | 2026-10-21 | Accepted — no fix proposed                                    |
+| [0041](0041-cart-owner-reservation-and-real-instock.md)      | Cart ownership, when stock is reserved, and making `inStock` mean something                      | 2026-10-07 | Accepted                                                      |
+| [0042](0042-cart-and-order-structure.md)                     | Cart and order structure: what an item points at, and how one payment becomes many vendors' work | 2026-10-07 | Accepted                                                      |
 
 **Numbering note (corrected 2026-10-19):** 0034 was written 2026-10-15 but existed only as an
 uncommitted file until recovered and committed here alongside 0035–0037 — it was never missing
@@ -57,9 +59,13 @@ worktree's "0032/0033-equivalent" records are placeholder phrasing it used delib
 before that worktree's records were finalized; they resolved to **0035** and **0036** on the
 worktree's own branch (confirmed directly against that branch's `docs/decisions/` listing), which
 are different files from this branch's own 0035–0037 despite the shared numbers — see 0034's own
-updated note and 0035's numbering note for the full account. Whoever merges the Phase 3 worktree
-will need to renumber its 0035/0036 (and anything else worktree-local) around whatever is free on
-`main` at that time.
+updated note and 0035's numbering note for the full account.
+
+**Renumbering done (2026-10-21):** per the note above, the Phase 3 worktree's own 0035 and 0036
+collided with this branch's independently-numbered 0035 (client feedback triage) and 0036 (vendor
+loading/unloading capability) when the worktree merged. Renumbered to **0041**
+(`0041-cart-owner-reservation-and-real-instock.md`) and **0042**
+(`0042-cart-and-order-structure.md`) — see each file's own updated Supersedes/Superseded-by line.
 
 ## Adding a record
 

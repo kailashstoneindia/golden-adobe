@@ -8,6 +8,9 @@ import { VendorsModule } from './modules/vendors/vendors.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { CatalogModule } from './modules/catalog/catalog.module';
 import { SearchModule } from './modules/search/search.module';
+import { CustomersModule } from './modules/customers/customers.module';
+import { CartModule } from './modules/cart/cart.module';
+import { OrdersModule } from './modules/orders/orders.module';
 
 @Module({
   imports: [
@@ -22,6 +25,9 @@ import { SearchModule } from './modules/search/search.module';
     AdminModule,
     CatalogModule,
     SearchModule,
+    CustomersModule,
+    CartModule,
+    OrdersModule,
   ],
 })
 export class AppModule {}

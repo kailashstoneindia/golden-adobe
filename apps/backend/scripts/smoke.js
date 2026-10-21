@@ -49,6 +49,31 @@ const REQUIRED_ROUTES = [
   { method: 'PATCH', path: '/api/vendor/listings/:id/stock' },
   { method: 'PATCH', path: '/api/vendor/listings/:id/status' },
   { method: 'POST', path: '/api/vendor/listings/stock/bulk' },
+  // Phase 3 — customers + customer_addresses (Task 1)
+  { method: 'GET', path: '/api/customers/me' },
+  { method: 'PATCH', path: '/api/customers/me' },
+  { method: 'GET', path: '/api/customers/me/addresses' },
+  { method: 'POST', path: '/api/customers/me/addresses' },
+  { method: 'PATCH', path: '/api/customers/me/addresses/:id' },
+  { method: 'DELETE', path: '/api/customers/me/addresses/:id' },
+  // Phase 3 — cart + cart_item (Task 2)
+  { method: 'GET', path: '/api/cart' },
+  { method: 'POST', path: '/api/cart/items' },
+  { method: 'PATCH', path: '/api/cart/items/:id' },
+  { method: 'DELETE', path: '/api/cart/items/:id' },
+  // Phase 3 — checkout transaction (Task 4)
+  { method: 'POST', path: '/api/checkout' },
+  // Phase 3 — Razorpay webhook (Task 5)
+  { method: 'POST', path: '/api/webhooks/razorpay' },
+  // Phase 3 — order reads/cancel, vendor order-group discovery/status, admin reads (Task 6)
+  { method: 'GET', path: '/api/orders' },
+  { method: 'GET', path: '/api/orders/:id' },
+  { method: 'PATCH', path: '/api/orders/:id/cancel' },
+  { method: 'GET', path: '/api/vendors/order-groups' },
+  { method: 'GET', path: '/api/vendors/order-groups/:id' },
+  { method: 'PATCH', path: '/api/vendors/order-groups/:id/status' },
+  { method: 'GET', path: '/api/admin/orders' },
+  { method: 'GET', path: '/api/admin/orders/:id' },
 ];
 
 async function main() {

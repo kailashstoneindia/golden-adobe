@@ -11,6 +11,9 @@
 // vendor onboarded before this migration lands in that state and needs
 // either a future onboarding prompt or an admin backfill before the
 // eventual checkout charge (0036) can correctly apply to their listings.
+// This worktree's checkout.service.ts treats NULL the same as `false`
+// (charge defensively until the vendor answers) — see that file's comment
+// at the fee computation for the reasoning.
 module.exports = {
   up: async (queryInterface, Sequelize) => {
     await queryInterface.addColumn('vendors', 'has_loading_unloading_team', {
