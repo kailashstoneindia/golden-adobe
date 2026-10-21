@@ -20,11 +20,11 @@ back them.
 
 **What actually has write capability today:**
 
-| Area | Mutations that exist | What they do |
-|---|---|---|
-| Users/Approvals | `useApproveUserMutation`, `useRejectUserMutation` → `PATCH /admin/users/:id/approve`, `PATCH /admin/users/:id/reject` | Workflow state transitions only |
-| Vendors | `useSetVendorCityMutation`, `useSetVendorCategoriesMutation` → `PATCH /admin/vendors/:id/city`, `PUT /admin/vendors/:id/categories` | Two specific admin-owned fields |
-| Catalog | `usePublishProductMutation`, `useUnpublishProductMutation`, `useBulkPublishProductsMutation`, `useUploadImportMutation`, `useLinkReviewRowMutation`, `useRejectReviewRowMutation` | Status transitions and bulk import, not field edits |
+| Area            | Mutations that exist                                                                                                                                                              | What they do                                        |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| Users/Approvals | `useApproveUserMutation`, `useRejectUserMutation` → `PATCH /admin/users/:id/approve`, `PATCH /admin/users/:id/reject`                                                             | Workflow state transitions only                     |
+| Vendors         | `useSetVendorCityMutation`, `useSetVendorCategoriesMutation` → `PATCH /admin/vendors/:id/city`, `PUT /admin/vendors/:id/categories`                                               | Two specific admin-owned fields                     |
+| Catalog         | `usePublishProductMutation`, `useUnpublishProductMutation`, `useBulkPublishProductsMutation`, `useUploadImportMutation`, `useLinkReviewRowMutation`, `useRejectReviewRowMutation` | Status transitions and bulk import, not field edits |
 
 **What does not exist anywhere, frontend or backend:** a general "edit this record's fields"
 capability. Confirmed directly:
@@ -37,9 +37,9 @@ capability. Confirmed directly:
 - `admin.controller.ts` exposes exactly `PATCH users/:id/approve` and `PATCH users/:id/reject`
   for users — no `PATCH /admin/users/:id` for general field edits.
 - Catalog's lack of single-product edit is already documented as a known, deliberate gap in
-  `catalog-implementation-status.md`: *"Deliberately not built: product create/edit... a
+  `catalog-implementation-status.md`: _"Deliberately not built: product create/edit... a
   single-product form is a useful later addition for corrections rather than a prerequisite for
-  operating the catalog."*
+  operating the catalog."_
 - Ruled out a permissions bug: the only `disabled` states in `VendorDetailModal.tsx` are
   ordinary `isSubmitting`/loading guards, and `admin.controller.ts`'s `@Roles(Role.ADMIN)` is a
   blanket class-level guard applied equally to every endpoint — nothing selectively blocks one
@@ -54,8 +54,8 @@ capability. Confirmed directly:
 > backend, for almost any entity.
 >
 > **No fix is proposed or applied by this record.** Per [0038](0038-admin-panel-incremental-delivery.md),
-> small admin asks can be built incrementally now rather than waiting for Phase 4 — but *which*
-> fields need to become editable, for *which* entities, is a scoping question for the client, not
+> small admin asks can be built incrementally now rather than waiting for Phase 4 — but _which_
+> fields need to become editable, for _which_ entities, is a scoping question for the client, not
 > an engineering guess. Building a generic editor for every field on every screen would be
 > speculative scope this project's own conventions already warn against.
 

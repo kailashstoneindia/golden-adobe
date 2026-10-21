@@ -49,7 +49,7 @@ blanket "Phase 4, wait" framing to contradict what the codebase already shows.
 > alongside whatever Phase 2/3 work is current, the same way this project already treats small
 > fixes in other modules.
 >
-> **2. Phase 4's milestone remains the checkpoint for the admin panel's *substantial* scope** —
+> **2. Phase 4's milestone remains the checkpoint for the admin panel's _substantial_ scope** —
 > the Artisan/Ustaad Module (approval workflow, document repository, police verification,
 > service-area, bank details — [0035](0035-client-feedback-triage-2026-10-18.md) item #2) and
 > Reward Tracking. These are large enough, and distinct enough from "admin panel" as a UI

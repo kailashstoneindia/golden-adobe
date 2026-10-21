@@ -20,7 +20,7 @@ image carry-through, bulk-publish have all landed since) found:
 
 - **Vendor onboarding + approval is fully built**, contradicting the Sept-28 doc's claim of
   "zero vendor rows." `POST vendors/onboard`, `PATCH vendors/me`, `PATCH
-  vendors/me/account-details`, `PATCH vendors/onboarding-progress` all exist and work.
+vendors/me/account-details`, `PATCH vendors/onboarding-progress` all exist and work.
   Approval is implemented as a generic `User.is_approved` flag + `PATCH users/:id/approve`
   (`users.controller.ts:22-38`), not a vendor-specific status field — functional, but worth
   flagging as a design choice (see Decision item 4).
@@ -62,6 +62,7 @@ work-item list so Phase 2 has one place that says what's left and in what order 
 > **Work proceeds in four batches, in this order:**
 >
 > **Batch 1 — client-visible, ship first (no dependency on anything below):**
+>
 > 1. Category rename: "Sanitaryware & Bath" → "Bath and Sanitaryware". One-line data change in
 >    the taxonomy seed (`apps/backend/database/seed-data/taxonomy.js`) + idempotent re-run of
 >    `20260901100000-seed-taxonomy.js`, per the existing idempotent-reseed pattern documented in
@@ -71,23 +72,21 @@ work-item list so Phase 2 has one place that says what's left and in what order 
 > 2. Vendor `has_loading_unloading_team` field, per [0036](0036-vendor-loading-unloading-capability.md):
 >    migration + model column + `OnboardVendorDto`/`UpdateVendorProfileDto` wiring.
 >
-> **Batch 2 — close the single-listing creation gap:**
-> 3. Add `POST vendor/listings` (or equivalent) to `vendor-listings.controller.ts` for a vendor
->    to create one `vendor_listing` (price, MRP, MOQ, initial stock) against an existing
->    `master_product`, without requiring a full sheet upload. This is the one path explicitly
->    missing per the ground-truth check — a vendor who wants to list a single new product today
->    has no way to do it outside the bulk-import flow.
+> **Batch 2 — close the single-listing creation gap:** 3. Add `POST vendor/listings` (or equivalent) to `vendor-listings.controller.ts` for a vendor
+> to create one `vendor_listing` (price, MRP, MOQ, initial stock) against an existing
+> `master_product`, without requiring a full sheet upload. This is the one path explicitly
+> missing per the ground-truth check — a vendor who wants to list a single new product today
+> has no way to do it outside the bulk-import flow.
 >
-> **Batch 3 — platform-gap cleanup:**
-> 4. Investigate and resolve the `vendor-categories.service.ts:92` TODO (`vendor_category`
->    backfill for all live [...]`) — read the full comment and surrounding code first; this is
->    not yet scoped beyond "flagged, not investigated."
-> 5. Decide whether vendor approval deserves its own status field (`vendors.status`:
->    pending/approved/rejected) separate from the generic `User.is_approved`, now that two
->    separate approval-adjacent asks exist (this gap, plus the client's #5 "pending approvals on
->    dashboard" — which is Phase 4 scope per 0035, but the schema decision of *where* approval
->    state lives affects what Phase 4 builds against). Flagging now so Phase 4 doesn't have to
->    re-discover this; not building it in Phase 2.
+> **Batch 3 — platform-gap cleanup:** 4. Investigate and resolve the `vendor-categories.service.ts:92` TODO (`vendor_category`
+> backfill for all live [...]`) — read the full comment and surrounding code first; this is
+   not yet scoped beyond "flagged, not investigated."
+5. Decide whether vendor approval deserves its own status field (`vendors.status`:
+   pending/approved/rejected) separate from the generic `User.is*approved`, now that two
+> separate approval-adjacent asks exist (this gap, plus the client's #5 "pending approvals on
+> dashboard" — which is Phase 4 scope per 0035, but the schema decision of \_where* approval
+> state lives affects what Phase 4 builds against). Flagging now so Phase 4 doesn't have to
+> re-discover this; not building it in Phase 2.
 >
 > **Batch 4 — loading/unloading checkout charge (cross-phase; no longer sequenced behind the
 > Phase 3 merge, per 0036's 2026-10-19 update):** not Phase 2 work, listed here only so this

@@ -44,7 +44,7 @@ decision records) is tracked as real scope rather than assumed into Phase 4's UI
   own timeout and compensating release.
 - Razorpay webhook: capture confirms and decrements; failure leaves the order payable for retry
   (not cancelled) per the review's fix #1; idempotent against replay via `UPDATE ... WHERE
-  status = 'pending_payment'`.
+status = 'pending_payment'`.
 - Customer read/cancel, vendor list/status (gated to confirmed-or-later orders), admin
   list/get — all built.
 - `PaymentProviderService` / `NotificationService` interfaces with Razorpay and log
@@ -69,7 +69,7 @@ None of this needs re-litigating. The options-considered analysis lives in the b
 
 #### Option B — Scope and build the minimum admin API now, as Phase 3 work
 
-- **Pro:** The gap exists *because* Phase 3 shipped a payment/reservation system with no manual
+- **Pro:** The gap exists _because_ Phase 3 shipped a payment/reservation system with no manual
   override path. `admin/orders` today is read-only (`list`, `get` — see
   `apps/backend/src/modules/orders/admin-orders.controller.ts`). Without a cancel/refund/audit
   path, the only way to unstick a stuck reservation or process a refund is direct database or
@@ -97,7 +97,7 @@ None of this needs re-litigating. The options-considered analysis lives in the b
 **Option B on Question 1, Option A on Question 2.**
 
 > **1. The admin-API gap is Phase 3 scope, not deferred to Phase 4.** Phase 4 remains the admin
-> *UI*. The backend endpoints an admin needs to operate the ordering domain — cancel, refund
+> _UI_. The backend endpoints an admin needs to operate the ordering domain — cancel, refund
 > trigger, payment-event audit view, vendor-group status override — are built now, against
 > `admin/orders`, with no UI attached. This matches the user's own framing: "we will build
 > backend api required for phase 3 in phase 3. We can refine admin later, in phase 4."
@@ -114,15 +114,15 @@ None of this needs re-litigating. The options-considered analysis lives in the b
 > dependency for specific pieces of code, not for the merge itself.** The merge does not wait
 > on these answers. Each answer unblocks one specific follow-up:
 >
-> | Decision | Blocks |
-> |---|---|
-> | Cancellation policy (who, until when) | Admin cancel endpoint's authorization rule; customer-facing cancel window |
-> | Cart TTL | A cart-expiry job (not yet built, not yet scoped as code) |
-> | Reservation-sweep timeout | The sweep job that releases abandoned `pending_payment` reservations (0032-equivalent open question, still open) |
-> | Vendor-pause-mid-checkout | Whether checkout validation gets a new rejection rule |
-> | Paint/custom-order MVP inclusion | Whether the current checkout rejection for `tinted_to_order` lines is final or needs real support before launch |
-> | Razorpay/Firebase credential ownership | When live payment capture / push notifications can be verified end-to-end, as opposed to against mocks |
-> | Multi-vendor order reference display | Whether `order_vendor_group` needs a customer-visible identifier (open question already named in the branch's 0033-equivalent record) |
+> | Decision                               | Blocks                                                                                                                                |
+> | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+> | Cancellation policy (who, until when)  | Admin cancel endpoint's authorization rule; customer-facing cancel window                                                             |
+> | Cart TTL                               | A cart-expiry job (not yet built, not yet scoped as code)                                                                             |
+> | Reservation-sweep timeout              | The sweep job that releases abandoned `pending_payment` reservations (0032-equivalent open question, still open)                      |
+> | Vendor-pause-mid-checkout              | Whether checkout validation gets a new rejection rule                                                                                 |
+> | Paint/custom-order MVP inclusion       | Whether the current checkout rejection for `tinted_to_order` lines is final or needs real support before launch                       |
+> | Razorpay/Firebase credential ownership | When live payment capture / push notifications can be verified end-to-end, as opposed to against mocks                                |
+> | Multi-vendor order reference display   | Whether `order_vendor_group` needs a customer-visible identifier (open question already named in the branch's 0033-equivalent record) |
 
 ## Why
 
@@ -142,7 +142,7 @@ verified live against Postgres.
 **On rule 3.** Several of these decisions gate code that has not been designed yet (the sweep
 job, a cart-expiry job) — writing that code before the client answers would mean guessing at
 parameters (a TTL, a timeout) that are product decisions, not technical ones, and re-doing the
-work if the guess is wrong. Decisions that gate *existing* code paths (cancellation policy
+work if the guess is wrong. Decisions that gate _existing_ code paths (cancellation policy
 gating the cancel endpoint's auth rule) are listed so the admin-API build in rule 1 is not
 accidentally finished with a guessed-at policy baked in.
 

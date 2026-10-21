@@ -33,8 +33,8 @@ already exists:
 Revised design:
 
 - **Still accept the vendor capability field as designed below** (`has_loading_unloading_team`
-  boolean on `vendors`) — that part of the client's ask is unchanged: it still gates *whether*
-  the fee applies to a given vendor's lines, only the *amount* changes from flat-per-group to
+  boolean on `vendors`) — that part of the client's ask is unchanged: it still gates _whether_
+  the fee applies to a given vendor's lines, only the _amount_ changes from flat-per-group to
   per-sqft.
 - **Replace `order_vendor_group.loading_unloading_fee` (flat) with a computed sum, not a single
   config constant.** At checkout, for each `order_item` whose listing's category is tiles or
@@ -82,7 +82,7 @@ This splits across two phases that are in different states of completeness:
 - **Vendor capability field** — Phase 2, Vendor Module, **merged to `main`**.
   `apps/backend/src/modules/vendors/models/vendor.model.ts` is the target. Current columns:
   `id, userId, shopName, address, latitude, longitude, upiId, bankDetails, gstin, cityId,
-  citySource` (confirmed current against `main`). No capability/logistics field of any kind
+citySource` (confirmed current against `main`). No capability/logistics field of any kind
   exists today. The nearest precedent for adding a nullable column to this already-production
   table is `city_id`/`city_source`
   (`apps/backend/database/migrations/20260828090002-add-city-id-to-vendors.js`,
@@ -224,15 +224,13 @@ not a new financial concept.
   ported so the worktree is self-contained and doesn't depend on `main`'s PR #21 landing first)
   and `20261019090001-add-loading-unloading-fee-to-order-vendor-group.js` (the new
   `order_vendor_group.loading_unloading_fee` column, `DECIMAL(12,2) NOT NULL DEFAULT 0`, `CHECK
-  >= 0`). `checkout.service.ts` extended: the cart-line query now joins `category` (for
-  `cat.path`) and reads `v.has_loading_unloading_team`; a `loadingUnloadingFeeForLine` helper
-  charges `quantity × LOADING_UNLOADING_RATE_PER_SQFT` for any tiles/stone line whose vendor's
-  flag is not `true` (NULL treated as `false` — charge defensively until the vendor answers);
-  the total is rolled into both `grandTotal` (what the customer pays) and each group's new
-  `loadingUnloadingFee` column. `LOADING_UNLOADING_RATE_PER_SQFT` is a placeholder constant
-  (`0`) until the client gives a real rate. Verified against real Postgres in the worktree
-  (migration up/down/up, the new `category`/`vendors` join tested directly against live data,
-  full app boot with `/api/checkout` mapped).
+  > = 0`). `checkout.service.ts`extended: the cart-line query now joins`category`(for`cat.path`) and reads `v.has_loading_unloading_team`; a `loadingUnloadingFeeForLine`helper
+charges`quantity × LOADING_UNLOADING_RATE_PER_SQFT`for any tiles/stone line whose vendor's
+flag is not`true`(NULL treated as`false`— charge defensively until the vendor answers);
+the total is rolled into both`grandTotal`(what the customer pays) and each group's new`loadingUnloadingFee`column.`LOADING_UNLOADING_RATE_PER_SQFT` is a placeholder constant
+(`0`) until the client gives a real rate. Verified against real Postgres in the worktree
+(migration up/down/up, the new `category`/`vendors`join tested directly against live data,
+full app boot with`/api/checkout` mapped).
 - **A client decision blocks the fee amount, not its schema or wiring.** Both are built and
   will compute correctly the moment `LOADING_UNLOADING_RATE_PER_SQFT` is set to a real number —
   same pattern 0034 used for the reservation-sweep timeout (build the mechanism, gate the
