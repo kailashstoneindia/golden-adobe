@@ -1,5 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsOptional, IsBoolean, IsLatitude, IsLongitude, MinLength } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsBoolean,
+  IsLatitude,
+  IsLongitude,
+  MinLength,
+} from 'class-validator';
 
 export class UpsertCustomerAddressDto {
   @ApiProperty({ example: 'Home' })

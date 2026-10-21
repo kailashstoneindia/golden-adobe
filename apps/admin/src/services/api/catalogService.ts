@@ -6,6 +6,8 @@ import type {
   ProductDetail,
   ProductListResponse,
   ReviewQueueRow,
+  BulkPublishRequest,
+  BulkPublishResult,
 } from '@/types/catalog.types';
 
 import { API_ENDPOINTS } from '@/constants/apiEndpoints';
@@ -56,6 +58,13 @@ export const catalogService = {
   unpublishProduct(productId: string): Promise<ProductDetail> {
     return patchRequest<ProductDetail, undefined>(
       API_ENDPOINTS.catalog.unpublishProduct(productId),
+    );
+  },
+
+  bulkPublishProducts(body: BulkPublishRequest): Promise<BulkPublishResult> {
+    return patchRequest<BulkPublishResult, BulkPublishRequest>(
+      API_ENDPOINTS.catalog.bulkPublish,
+      body,
     );
   },
 

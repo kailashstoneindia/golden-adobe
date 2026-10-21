@@ -1,0 +1,23 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadUploadedOriginals",
+      "Effect": "Allow",
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::<MEDIA_BUCKET>/original/*"
+    },
+    {
+      "Sid": "WriteVariantsOnly",
+      "Effect": "Allow",
+      "Action": "s3:PutObject",
+      "Resource": "arn:aws:s3:::<MEDIA_BUCKET>/variants/*"
+    },
+    {
+      "Sid": "ParkFailedEventsInTheDeadLetterQueue",
+      "Effect": "Allow",
+      "Action": "sqs:SendMessage",
+      "Resource": "arn:aws:sqs:<REGION>:<ACCOUNT_ID>:<DLQ_NAME>"
+    }
+  ]
+}

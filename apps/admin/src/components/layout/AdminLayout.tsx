@@ -69,6 +69,14 @@ export function AdminLayout() {
             All users
           </NavLink>
           <NavLink
+            to={ROUTES.vendors}
+            className={({ isActive }) =>
+              `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`
+            }
+          >
+            Vendors
+          </NavLink>
+          <NavLink
             to={ROUTES.catalogProducts}
             className={({ isActive }) =>
               `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`

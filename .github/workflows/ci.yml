@@ -77,7 +77,7 @@ jobs:
         id: pnpm-cache
         shell: bash
         run: |
-          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+          echo "STORE_PATH=$(pnpm store path)" >> "$GITHUB_OUTPUT"
 
       - name: 💾 Cache pnpm store
         uses: actions/cache@v4
@@ -118,8 +118,66 @@ jobs:
         # Apply Sequelize migrations to the ephemeral Postgres service
         run: pnpm --filter @golden-abode/backend run migration:run
 
-      - name: 🧪 Run Unit & E2E Tests
-        # Run tests (silently pass if no tests are configured yet)
+      - name: 🪣 Start MinIO (S3 stand-in for media tests)
+        # A step, not a service container, because the image needs a `server` command.
+        # Credentials match the defaults the media specs use (decision 0033).
+        # --user root: the image runs as a non-root user that cannot create /data
+        # (it does not exist), and MinIO then exits with "file access denied".
         run: |
-          pnpm run test || true
-          pnpm --filter @golden-abode/backend run test:e2e || true
+          docker run -d --name minio --user root -p 9000:9000 \
+            -e MINIO_ROOT_USER=golden_dev -e MINIO_ROOT_PASSWORD=golden_dev_secret \
+            cgr.dev/chainguard/minio:latest server /data
+          for _ in $(seq 1 30); do
+            curl -sf http://localhost:9000/minio/health/live && exit 0
+            sleep 1
+          done
+          docker logs minio
+          exit 1
+
+      - name: 🧪 Run Tests
+        # Blocking: the deploy workflow ships whatever this workflow passed.
+        # Backend specs are integration tests against the Postgres and MinIO above.
+        run: pnpm run test
+
+  lint-infra:
+    name: Lint workflows & shell scripts
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📦 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🔍 actionlint
+        run: docker run --rm -v "$PWD:/repo" --workdir /repo rhysd/actionlint:1.7.7 -color
+
+      - name: 🔍 shellcheck
+        run: |
+          find . -name node_modules -prune -o -name '*.sh' -print0 \
+            | xargs -0 -r shellcheck
+
+      - name: 🔍 Production compose file is valid
+        # Placeholders stand in for the values SSM supplies on the box. The empty
+        # .env only has to exist: the compose file reads it for the api container.
+        env:
+          API_IMAGE: placeholder
+          API_DOMAIN: api.example.com
+          DB_PASS: placeholder
+          MEILI_MASTER_KEY: placeholder_placeholder
+          BACKUP_BUCKET: placeholder
+        run: |
+          touch infra/deploy/.env
+          docker compose -f infra/deploy/docker-compose.prod.yml --profile backup --profile sweep config -q
+          docker compose -f infra/deploy/docker-compose.prod.yml \
+            -f infra/deploy/docker-compose.rehearsal.override.yml \
+            --profile backup --profile sweep config -q
+          docker compose -f infra/deploy/docker-compose.prod.yml \
+            -f infra/deploy/docker-compose.maintenance.yml config -q
+
+  docker-build:
+    name: Backend image builds
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📦 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🐳 Build backend image (no push)
+        run: docker build -f apps/backend/Dockerfile -t golden-abode-backend:ci .

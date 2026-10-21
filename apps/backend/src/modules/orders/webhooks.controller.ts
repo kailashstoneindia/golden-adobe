@@ -1,4 +1,12 @@
-import { BadRequestException, Controller, Headers, Inject, Logger, Post, Req } from '@nestjs/common';
+import {
+  BadRequestException,
+  Controller,
+  Headers,
+  Inject,
+  Logger,
+  Post,
+  Req,
+} from '@nestjs/common';
 import { ApiExcludeController } from '@nestjs/swagger';
 import { Request } from 'express';
 import { InjectModel } from '@nestjs/sequelize';
@@ -11,7 +19,7 @@ import { PAYMENT_PROVIDER, PaymentProviderService } from '../payments/payment-pr
 import { NOTIFICATION_SERVICE, NotificationService } from '../notifications/notification.interface';
 
 // Not behind JwtAuthGuard — Razorpay calls this directly, server to server.
-// Signature verification (decision 0035 rule 3) IS the authentication.
+// Signature verification (decision 0041 rule 3) IS the authentication.
 @ApiExcludeController()
 @Controller('webhooks')
 export class WebhooksController {
@@ -97,10 +105,10 @@ export class WebhooksController {
       // The correct behaviour is to do nothing to the order or the
       // reservation on a failed attempt — leave it pending-payment, able
       // to accept a retry's eventual capture. This reintroduces decision
-      // 0035's own open question ("how long a reservation may be held
+      // 0041's own open question ("how long a reservation may be held
       // before it is swept") as now REACHABLE rather than hypothetical;
-      // recorded as such in decision 0035 rather than silently left as a
-      // TODO (see docs/decisions/0035-cart-owner-reservation-and-real-instock.md).
+      // recorded as such in decision 0041 rather than silently left as a
+      // TODO (see docs/decisions/0041-cart-owner-reservation-and-real-instock.md).
       this.logger.log(
         `order ${order.id}: payment.failed received — leaving pending_payment for a possible retry, no reservation change`,
       );
@@ -156,7 +164,7 @@ export class WebhooksController {
       );
 
       // Converts reservation to a real decrement — the server-to-server
-      // signal, never the client SDK (decision 0035 rule 3).
+      // signal, never the client SDK (decision 0041 rule 3).
       //
       // Final review finding #2: StockService.setStock/bulkSetStock (the
       // vendor's own stock-write path, outside this plan's scope — a

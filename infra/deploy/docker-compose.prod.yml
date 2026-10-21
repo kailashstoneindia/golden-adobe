@@ -1,0 +1,192 @@
+# Production stack for the single EC2 box (decisions 0032 and 0033). Lives at
+# /opt/golden-abode on the instance, next to the .env that render-env.sh writes
+# from SSM Parameter Store.
+#
+# Only Caddy publishes ports. Postgres, Redis and Meilisearch are reachable only
+# from the other containers, so a security-group mistake cannot expose them.
+#
+# Every service has a memory cap sized to fit a 2 GB t4g.small together (about
+# 1.95 GB in all, plus the swap file bootstrap-host.sh adds as a safety net). If
+# the box swaps regularly, move to t4g.medium instead of raising these.
+#
+# The project name is "golden-abode-prod", NOT "golden-abode": that is what the
+# development compose file at the repo root is called, and two stacks sharing a
+# project name share containers and volumes. A `down -v` or `--remove-orphans` on
+# one would then delete the other's data.
+name: golden-abode-prod
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: '10m'
+    max-file: '3'
+
+services:
+  caddy:
+    image: caddy:2.8-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    environment:
+      API_DOMAIN: ${API_DOMAIN:?API_DOMAIN is required}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Certificates live here. Losing this volume means re-issuing them, and
+      # Let's Encrypt rate-limits that.
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+    mem_limit: 64m
+    logging: *logging
+
+  api:
+    image: ${API_IMAGE:?API_IMAGE is required (deploy.sh sets it)}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Wiring between containers is fixed here, not in SSM, so it cannot drift.
+      NODE_ENV: production
+      PORT: '3000'
+      DB_HOST: postgres
+      DB_PORT: '5432'
+      DB_SSL: 'false'
+      REDIS_HOST: redis
+      MEILI_HOST: http://meilisearch:7700
+      # One process serves HTTP and drains the search outbox (WORKER_MODE=worker
+      # is not a separate process today).
+      WORKER_MODE: all
+      NODE_OPTIONS: --max-old-space-size=448
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:3000/health >/dev/null || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      # Migrations run before the server starts (docker-entrypoint.sh).
+      start_period: 90s
+    mem_limit: 640m
+    logging: *logging
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-golden_abode}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASS:?DB_PASS is required}
+    command:
+      - postgres
+      - -c
+      - shared_buffers=128MB
+      - -c
+      - max_connections=40
+      - -c
+      - effective_cache_size=320MB
+      - -c
+      - work_mem=4MB
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    shm_size: 128mb
+    mem_limit: 448m
+    logging: *logging
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # noeviction is required: the search drain runs on BullMQ, which breaks if
+    # Redis ever evicts its keys.
+    command: ['redis-server', '--appendonly', 'yes', '--maxmemory', '64mb', '--maxmemory-policy', 'noeviction']
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    mem_limit: 96m
+    logging: *logging
+
+  meilisearch:
+    # Pinned exactly, as in docker-compose.yml: typoTolerance.disableOnNumbers
+    # does not exist in older releases and is load-bearing for part numbers.
+    image: getmeili/meilisearch:v1.53.1
+    restart: unless-stopped
+    environment:
+      MEILI_ENV: production
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?MEILI_MASTER_KEY is required}
+      MEILI_NO_ANALYTICS: 'true'
+      MEILI_MAX_INDEXING_MEMORY: 256MiB
+    # Meilisearch memory-maps its database, so this volume must be local disk and
+    # never network storage (decision 0021). A Docker volume on the instance's own
+    # EBS volume is local block storage.
+    volumes:
+      - meili_data:/meili_data
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:7700/health']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    mem_limit: 448m
+    logging: *logging
+
+  # Run on demand by deploy.sh and the nightly timer, never kept running:
+  #   docker compose --profile backup run --rm backup
+  backup:
+    profiles: ['backup']
+    build: ./backup
+    image: golden-abode-backup:local
+    env_file: .env
+    environment:
+      PGHOST: postgres
+      PGPORT: '5432'
+      PGUSER: ${DB_USER:-postgres}
+      PGPASSWORD: ${DB_PASS:?DB_PASS is required}
+      PGDATABASE: ${DB_NAME:-golden_abode}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    mem_limit: 256m
+    logging: *logging
+
+  # Removes media objects no database row refers to (decision 0033). The image's
+  # entrypoint would start the server, so it is replaced. Dry run unless
+  # MEDIA_SWEEP_ARGS contains --apply:
+  #   docker compose --profile sweep run --rm sweep
+  sweep:
+    profiles: ['sweep']
+    image: ${API_IMAGE:?API_IMAGE is required (deploy.sh sets it)}
+    entrypoint: ['node', 'dist/cli/sweep-orphan-media.js']
+    command: ${MEDIA_SWEEP_ARGS:-}
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      DB_HOST: postgres
+      DB_PORT: '5432'
+      DB_SSL: 'false'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    mem_limit: 256m
+    logging: *logging
+
+volumes:
+  postgres_data:
+  redis_data:
+  meili_data:
+  caddy_data:
+  caddy_config:

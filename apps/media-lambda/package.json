@@ -1,0 +1,27 @@
+{
+  "name": "@golden-abode/media-lambda",
+  "version": "0.0.1",
+  "private": true,
+  "description": "AWS Lambda that turns an uploaded product image into WebP variants (decision 0033)",
+  "scripts": {
+    "build": "node scripts/bundle.mjs",
+    "package": "node scripts/package.mjs",
+    "dev": "node --env-file-if-exists=../../.env --import tsx src/local/server.ts",
+    "test": "vitest run",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint . --ext .ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1146.0",
+    "sharp": "0.35.5"
+  },
+  "devDependencies": {
+    "@types/archiver": "^8.0.0",
+    "@types/node": "^20.3.1",
+    "archiver": "^8.0.0",
+    "esbuild": "^0.28.2",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7"
+  }
+}

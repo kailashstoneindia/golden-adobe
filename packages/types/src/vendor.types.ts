@@ -39,6 +39,10 @@ export interface VendorProfileDto {
   // the column stay null until the backfill runs.
   cityId: string | null;
   city: VendorCityDto | null;
+  // Whether this vendor has their own loading/unloading crew for heavy
+  // items (tiles, stone). Null = not asked/answered yet, distinct from
+  // false. Client request 2026-10-18 — see docs/decisions/0036.
+  hasLoadingUnloadingTeam: boolean | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -51,6 +55,7 @@ export interface UpdateVendorProfileDto {
   upiId?: string;
   bankDetails?: string;
   gstin?: string;
+  hasLoadingUnloadingTeam?: boolean;
 }
 
 export interface VendorCategoryDto {
@@ -69,6 +74,7 @@ export interface VendorOnboardDto {
   bankDetails?: string;
   accountDetails: VendorAccountDetailsInputDto;
   gstin?: string;
+  hasLoadingUnloadingTeam?: boolean;
 }
 
 export interface UpdateVendorOnboardingProgressDto {
@@ -118,4 +124,34 @@ export type BulkStockItem = {
 
 export type BulkStockResult = {
   updatedCount: number;
+};
+
+export type VendorListingStatus = VendorListingStockDto['status'];
+
+export type ListVendorListingsQuery = {
+  status?: VendorListingStatus;
+  page?: number;
+  limit?: number;
+};
+
+export type SetVendorStockRequest = {
+  quantityAvailable: number;
+};
+
+export type SetVendorListingStatusRequest = {
+  status: VendorListingStatus;
+};
+
+export type VendorCatalogExportScope = {
+  leafCategoryIds: string[];
+  brandIds?: string[];
+  sinceDate?: string;
+};
+
+export type VendorCatalogExportCount = {
+  rowCount: number;
+};
+
+export type ChoosePendingCandidateRequest = {
+  masterProductId: string;
 };

@@ -1,4 +1,12 @@
-import { Table, Column, Model, DataType, ForeignKey, BelongsTo, HasMany } from 'sequelize-typescript';
+import {
+  Table,
+  Column,
+  Model,
+  DataType,
+  ForeignKey,
+  BelongsTo,
+  HasMany,
+} from 'sequelize-typescript';
 import { Customer } from '../../customers/models/customer.model';
 import { CustomerAddress } from '../../customers/models/customer-address.model';
 import { OrderVendorGroup } from './order-vendor-group.model';

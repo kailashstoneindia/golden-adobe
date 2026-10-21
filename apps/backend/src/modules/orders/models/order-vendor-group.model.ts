@@ -1,4 +1,12 @@
-import { Table, Column, Model, DataType, ForeignKey, BelongsTo, HasMany } from 'sequelize-typescript';
+import {
+  Table,
+  Column,
+  Model,
+  DataType,
+  ForeignKey,
+  BelongsTo,
+  HasMany,
+} from 'sequelize-typescript';
 import { Order } from './order.model';
 import { Vendor } from '../../vendors/models/vendor.model';
 import { OrderItem } from './order-item.model';
@@ -29,7 +37,7 @@ export class OrderVendorGroup extends Model<OrderVendorGroup> {
 
   // Per-sqft loading/unloading charge for this vendor-group's tiles/stone
   // lines, computed at checkout when the vendor lacks their own crew
-  // (vendors.has_loading_unloading_team). Decision 0036. Defaults to 0 —
+  // (vendors.has_loading_unloading_team). Decision 0042. Defaults to 0 —
   // always explicitly set by checkout, never left ambiguous.
   @Column({
     type: DataType.DECIMAL(12, 2),

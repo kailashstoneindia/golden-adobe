@@ -1,0 +1,281 @@
+name: Deploy to AWS
+
+# Ships what CI tested to the single EC2 box, the media Lambda and the admin
+# bucket (decisions 0032 and 0033). INERT until the repository variable
+# AWS_DEPLOY_ENABLED is "true": until AWS has been provisioned (see
+# infra/deploy/README.md) every job here is skipped, so merging this changes nothing.
+#
+# No AWS keys are stored anywhere. Each job assumes AWS_DEPLOY_ROLE_ARN through
+# GitHub's OIDC token, and the role's trust policy only accepts this repository's
+# "production" environment (infra/aws/iam/github-deploy-trust.json).
+
+on:
+  workflow_run:
+    workflows: ['CI/CD Pipeline']
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+# One deploy at a time, and a running deploy is never cancelled halfway.
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-south-1
+  NODE_VERSION: '22'
+  # The commit CI tested, not whatever main has become since.
+  SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+jobs:
+  gate:
+    name: Deploy enabled?
+    runs-on: ubuntu-latest
+    outputs:
+      enabled: ${{ steps.check.outputs.enabled }}
+    steps:
+      - id: check
+        env:
+          ENABLED: ${{ vars.AWS_DEPLOY_ENABLED }}
+          EVENT: ${{ github.event_name }}
+          CI_RESULT: ${{ github.event.workflow_run.conclusion }}
+        run: |
+          if [ "$ENABLED" = "true" ] && { [ "$EVENT" = "workflow_dispatch" ] || [ "$CI_RESULT" = "success" ]; }; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping: AWS_DEPLOY_ENABLED=$ENABLED, event=$EVENT, CI result=$CI_RESULT"
+          fi
+
+  build-backend:
+    name: Build and push the backend image
+    needs: gate
+    if: needs.gate.outputs.enabled == 'true'
+    # The box is arm64 (Graviton). Set the ARM_RUNNER variable to a native arm
+    # runner label to build natively; without it the image is built under QEMU,
+    # which is slower but works on any runner.
+    runs-on: ${{ vars.ARM_RUNNER || 'ubuntu-latest' }}
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SHA }}
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - if: vars.ARM_RUNNER == ''
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/backend/Dockerfile
+          platforms: linux/arm64
+          push: true
+          tags: ${{ steps.ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}:${{ env.SHA }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  build-lambda:
+    name: Build the media Lambda
+    needs: gate
+    if: needs.gate.outputs.enabled == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SHA }}
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: pnpm install --frozen-lockfile
+      # package.mjs installs sharp for linux/arm64 and refuses to zip if the wrong
+      # binary ended up in it.
+      - run: pnpm --filter @golden-abode/media-lambda package
+      - uses: actions/upload-artifact@v4
+        with:
+          name: media-lambda
+          path: apps/media-lambda/dist/function.zip
+          if-no-files-found: error
+
+  build-admin:
+    name: Build the admin app
+    needs: gate
+    if: needs.gate.outputs.enabled == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SHA }}
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: pnpm install --frozen-lockfile
+      # VITE_API_BASE_URL is deliberately unset: the admin calls a relative /api,
+      # which its CloudFront distribution forwards to the box.
+      - run: pnpm turbo build --filter=@golden-abode/admin
+      - uses: actions/upload-artifact@v4
+        with:
+          name: admin-dist
+          path: apps/admin/dist
+          if-no-files-found: error
+
+  deploy-backend:
+    name: Deploy the backend to the box
+    needs: [build-backend]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SHA }}
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # The compose file, Caddyfile and scripts travel with the code, so they are
+      # versioned with it and deployed atomically. The box fetches this bundle.
+      - name: Upload the deploy bundle
+        env:
+          BUCKET: ${{ vars.BACKUP_BUCKET }}
+        run: |
+          tar czf deploy-bundle.tgz \
+            --exclude=.rehearsal --exclude=rehearse.sh --exclude='*.rehearsal.override.yml' \
+            -C infra deploy
+          aws s3 cp deploy-bundle.tgz "s3://$BUCKET/deploy-bundles/$SHA.tgz"
+
+      - name: Deploy through SSM
+        env:
+          BUCKET: ${{ vars.BACKUP_BUCKET }}
+        run: |
+          command_id="$(aws ssm send-command \
+            --document-name AWS-RunShellScript \
+            --targets "Key=tag:Role,Values=golden-abode-app" \
+            --comment "deploy $SHA" \
+            --timeout-seconds 900 \
+            --parameters "commands=[
+              \"set -euo pipefail\",
+              \"mkdir -p /opt/golden-abode\",
+              \"aws s3 cp s3://$BUCKET/deploy-bundles/$SHA.tgz /tmp/deploy-bundle.tgz --region $AWS_REGION\",
+              \"tar -xzf /tmp/deploy-bundle.tgz -C /opt/golden-abode --strip-components=1\",
+              \"/opt/golden-abode/deploy.sh $SHA\"
+            ]" \
+            --query 'Command.CommandId' --output text)"
+          echo "SSM command $command_id"
+
+          instance_id="$(aws ssm list-command-invocations --command-id "$command_id" \
+            --query 'CommandInvocations[0].InstanceId' --output text)"
+          if [ -z "$instance_id" ] || [ "$instance_id" = "None" ]; then
+            echo "No instance with the tag Role=golden-abode-app received the command" >&2
+            exit 1
+          fi
+
+          deadline=$((SECONDS + 960))
+          while [ "$SECONDS" -lt "$deadline" ]; do
+            status="$(aws ssm get-command-invocation --command-id "$command_id" \
+              --instance-id "$instance_id" --query Status --output text)"
+            case "$status" in
+              Success) break ;;
+              Pending | InProgress | Delayed) sleep 10 ;;
+              *) break ;;
+            esac
+          done
+
+          aws ssm get-command-invocation --command-id "$command_id" --instance-id "$instance_id" \
+            --query '[StandardOutputContent, StandardErrorContent]' --output text
+          [ "$status" = "Success" ] || { echo "deploy ended with status $status" >&2; exit 1; }
+
+  deploy-lambda:
+    name: Deploy the media Lambda
+    needs: [deploy-backend, build-lambda]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: media-lambda
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # The S3 trigger points at the "live" alias, not at $LATEST, so a deploy is
+      # "publish a version, move the alias", and a rollback is moving it back.
+      - name: Publish and activate
+        env:
+          FUNCTION: ${{ vars.LAMBDA_FUNCTION_NAME }}
+        run: |
+          aws lambda update-function-code --function-name "$FUNCTION" --zip-file fileb://function.zip >/dev/null
+          aws lambda wait function-updated --function-name "$FUNCTION"
+          version="$(aws lambda publish-version --function-name "$FUNCTION" --query Version --output text)"
+          aws lambda update-alias --function-name "$FUNCTION" --name live --function-version "$version" >/dev/null
+          echo "live alias now points at version $version"
+
+  deploy-admin:
+    name: Deploy the admin app
+    needs: [deploy-backend, build-admin]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: admin-dist
+          path: dist
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Upload and invalidate
+        env:
+          BUCKET: ${{ vars.ADMIN_BUCKET }}
+          DISTRIBUTION: ${{ vars.ADMIN_DISTRIBUTION_ID }}
+        run: |
+          # Hashed asset files never change, so they may be cached for a year.
+          aws s3 sync dist "s3://$BUCKET" --delete --exclude index.html \
+            --cache-control "public,max-age=31536000,immutable"
+          # index.html is what points at them, so it must always be re-checked.
+          aws s3 cp dist/index.html "s3://$BUCKET/index.html" \
+            --cache-control "no-cache" --content-type "text/html"
+          aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION" --paths "/index.html" >/dev/null
+
+  smoke:
+    name: Smoke test
+    needs: [deploy-backend, deploy-lambda, deploy-admin]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the live system
+        env:
+          API_DOMAIN: ${{ vars.API_DOMAIN }}
+          ADMIN_DOMAIN: ${{ vars.ADMIN_DOMAIN }}
+          MEDIA_DOMAIN: ${{ vars.MEDIA_DOMAIN }}
+        run: |
+          curl -fsS "https://$API_DOMAIN/health"
+          echo
+          curl -fsS -o /dev/null -w "admin: %{http_code}\n" "https://$ADMIN_DOMAIN/"
+          # Originals are private: the CDN must refuse them. 403 is what S3 answers
+          # for a key the bucket policy does not expose; 404 is acceptable too.
+          code="$(curl -s -o /dev/null -w '%{http_code}' \
+            "https://$MEDIA_DOMAIN/original/products/00000000-0000-4000-8000-000000000000/00000000-0000-4000-8000-000000000000.jpg")"
+          echo "original through the CDN: $code"
+          case "$code" in 403 | 404) ;; *) echo "originals must not be public" >&2; exit 1 ;; esac

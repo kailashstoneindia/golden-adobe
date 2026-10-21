@@ -46,12 +46,12 @@ export class OrdersService {
   }
 
   // Cancellation authorization (who, until when) is an explicit open
-  // question in decision 0036 — this allocates the simplest rule that does
+  // question in decision 0042 — this allocates the simplest rule that does
   // not foreclose a stricter one later: a customer may cancel their own
   // order only while it is still PENDING_PAYMENT (i.e. before the webhook
   // has confirmed payment). Once CONFIRMED, cancellation is not exposed to
   // the customer here — full post-confirmation cancellation semantics are
-  // decision 0036's own named "likely next ADR," not settled here.
+  // decision 0042's own named "likely next ADR," not settled here.
   async cancel(userId: string, orderId: string): Promise<Order> {
     const customer = await this.customersService.resolveCustomerByUserId(userId);
     const order = await this.orderModel.findOne({
@@ -167,7 +167,11 @@ export class OrdersService {
       where: { vendorId },
       include: [
         OrderItem,
-        { model: Order, attributes: [], where: { status: { [Op.ne]: OrderStatus.PENDING_PAYMENT } } },
+        {
+          model: Order,
+          attributes: [],
+          where: { status: { [Op.ne]: OrderStatus.PENDING_PAYMENT } },
+        },
       ],
       order: [['createdAt', 'DESC']],
     });
@@ -178,7 +182,11 @@ export class OrdersService {
       where: { id: groupId, vendorId },
       include: [
         OrderItem,
-        { model: Order, attributes: [], where: { status: { [Op.ne]: OrderStatus.PENDING_PAYMENT } } },
+        {
+          model: Order,
+          attributes: [],
+          where: { status: { [Op.ne]: OrderStatus.PENDING_PAYMENT } },
+        },
       ],
     });
     if (!group) {
@@ -195,7 +203,11 @@ export class OrdersService {
     const group = await this.groupModel.findOne({
       where: { id: groupId, vendorId },
       include: [
-        { model: Order, attributes: ['status'], where: { status: { [Op.ne]: OrderStatus.PENDING_PAYMENT } } },
+        {
+          model: Order,
+          attributes: ['status'],
+          where: { status: { [Op.ne]: OrderStatus.PENDING_PAYMENT } },
+        },
       ],
     });
     if (!group) {
@@ -213,7 +225,10 @@ export class OrdersService {
     // separately, CANCELLED by adminCancel after a refund). Without this
     // guard a vendor could still ship or deliver goods for an order that
     // was already refunded or cancelled.
-    if (group.order.status === OrderStatus.REFUNDED || group.order.status === OrderStatus.CANCELLED) {
+    if (
+      group.order.status === OrderStatus.REFUNDED ||
+      group.order.status === OrderStatus.CANCELLED
+    ) {
       throw new BadRequestException(
         'order has been refunded or cancelled and its groups can no longer be updated',
       );
@@ -239,7 +254,9 @@ export class OrdersService {
       [OrderVendorGroupStatus.CANCELLED]: [],
     };
     if (!validNextStatuses[group.status].includes(status)) {
-      throw new BadRequestException(`cannot transition order group from ${group.status} to ${status}`);
+      throw new BadRequestException(
+        `cannot transition order group from ${group.status} to ${status}`,
+      );
     }
     group.status = status;
     await group.save();
@@ -334,7 +351,11 @@ export class OrdersService {
     }
 
     order.status = OrderStatus.REFUNDED;
-    await this.notifications.sendOrderStatusChanged(order.customerId, order.id, OrderStatus.REFUNDED);
+    await this.notifications.sendOrderStatusChanged(
+      order.customerId,
+      order.id,
+      OrderStatus.REFUNDED,
+    );
     return order;
   }
 
@@ -377,7 +398,9 @@ export class OrdersService {
       throw new NotFoundException('order not found');
     }
     if (order.status === OrderStatus.CONFIRMED) {
-      throw new BadRequestException('a confirmed order must be refunded before it can be cancelled');
+      throw new BadRequestException(
+        'a confirmed order must be refunded before it can be cancelled',
+      );
     }
     if (order.status === OrderStatus.CANCELLED) {
       throw new BadRequestException('order is already cancelled');
@@ -450,7 +473,11 @@ export class OrdersService {
     }
 
     order.status = OrderStatus.CANCELLED;
-    await this.notifications.sendOrderStatusChanged(order.customerId, order.id, OrderStatus.CANCELLED);
+    await this.notifications.sendOrderStatusChanged(
+      order.customerId,
+      order.id,
+      OrderStatus.CANCELLED,
+    );
     return order;
   }
 
@@ -494,9 +521,12 @@ export class OrdersService {
     // order is cleanup in the safe direction, not a resurrection of a
     // dead order, so it is still allowed.
     const order = await this.orderModel.findByPk(group.orderId);
-    const parentIsClosed = order?.status === OrderStatus.REFUNDED || order?.status === OrderStatus.CANCELLED;
+    const parentIsClosed =
+      order?.status === OrderStatus.REFUNDED || order?.status === OrderStatus.CANCELLED;
     if (parentIsClosed && status !== OrderVendorGroupStatus.CANCELLED) {
-      throw new BadRequestException('cannot override a group whose parent order is refunded or cancelled');
+      throw new BadRequestException(
+        'cannot override a group whose parent order is refunded or cancelled',
+      );
     }
 
     this.logger.warn(

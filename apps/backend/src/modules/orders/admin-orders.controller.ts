@@ -1,4 +1,14 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Role } from '@golden-abode/types';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -49,10 +59,7 @@ export class AdminOrdersController {
 
   @Patch('vendor-group/:groupId/override-status')
   @HttpCode(HttpStatus.OK)
-  overrideGroupStatus(
-    @Param('groupId') groupId: string,
-    @Body() dto: AdminOverrideGroupStatusDto,
-  ) {
+  overrideGroupStatus(@Param('groupId') groupId: string, @Body() dto: AdminOverrideGroupStatusDto) {
     return this.ordersService.adminOverrideVendorGroupStatus(groupId, dto.status, dto.reason);
   }
 }

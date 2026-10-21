@@ -3,7 +3,7 @@
 **Date:** 2026-10-07
 **Status:** Approved by user, section-by-section, during brainstorming on this date.
 **Scope:** Backend only — API and schema. Mobile screens are a named dependency for later work,
-not part of this plan (decision [0036](../../decisions/0036-cart-and-order-structure.md),
+not part of this plan (decision [0042](../../decisions/0042-cart-and-order-structure.md),
 Consequences).
 
 ## Why this document exists
@@ -16,27 +16,27 @@ commits behind `main` with overlapping, non-additive edits across ~156 files in 
 catalog/search/vendor modules — a plain rebase would conflict throughout. Per the user's
 decision, this plan **re-derives the work on current `main`** rather than rebasing: the prior
 branch's decisions are ported forward as new ADRs (re-validated, re-cited against current code,
-not re-argued — see [0035](../../decisions/0035-cart-owner-reservation-and-real-instock.md) and
-[0036](../../decisions/0036-cart-and-order-structure.md)), and only the small, clean
+not re-argued — see [0041](../../decisions/0041-cart-owner-reservation-and-real-instock.md) and
+[0042](../../decisions/0042-cart-and-order-structure.md)), and only the small, clean
 `customers` table/model are carried over directly. Everything else is planned fresh against
 `main` as it exists today.
 
 ## What Phase 3 is, per the signed proposal
 
-| Deliverable | Covered by this plan |
-|---|---|
-| Cart Management | Yes |
-| Checkout Flow | Yes |
+| Deliverable          | Covered by this plan                                                                                                    |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Cart Management      | Yes                                                                                                                     |
+| Checkout Flow        | Yes                                                                                                                     |
 | Razorpay Integration | Interface + Razorpay implementation, built to the integration boundary. No real merchant account exists; see Non-goals. |
-| Order Management | Yes — placement, read, status transitions, cancellation hook. |
-| Notifications | Interface + no-op/log implementation, built to the integration boundary. No Firebase project exists; see Non-goals. |
+| Order Management     | Yes — placement, read, status transitions, cancellation hook.                                                           |
+| Notifications        | Interface + no-op/log implementation, built to the integration boundary. No Firebase project exists; see Non-goals.     |
 
 Customer-contracted capabilities this plan's API must support: Add Products To Cart, Checkout,
 Place Orders, Track Orders, View Order History (from the proposal's User Roles section).
 
 ## Non-goals (explicit)
 
-- **Mobile UI.** `apps/mobile`'s cart/checkout/order screens are not touched. Decision 0036
+- **Mobile UI.** `apps/mobile`'s cart/checkout/order screens are not touched. Decision 0042
   names them as needing a rewrite once this API exists; that rewrite is someone else's task.
 - **Real Razorpay transactions.** No merchant account or API keys exist in this project. The
   `PaymentProviderService` interface and `RazorpayProviderService` implementation are built and
@@ -45,7 +45,7 @@ Place Orders, Track Orders, View Order History (from the proposal's User Roles s
 - **Real Firebase push delivery.** Same shape: interface built, no-op default ships, Firebase
   Admin SDK implementation is written but cannot be verified live without a project.
 - **Delivery fulfilment**: OTP, open-box photo, artisan validation, project association,
-  customer report path. All deferred per decision 0036's table, with attachment points
+  customer report path. All deferred per decision 0042's table, with attachment points
   reserved, not built.
 - **Admin panel UI.** Admin order endpoints are plain API; no new admin-panel screens.
 - **Growing the frozen 25-test Jest suite.** New verification is manual/throwaway against live
@@ -74,21 +74,21 @@ users ──1:1── customers ──1:N── customer_addresses
                 grand_total
 ```
 
-| Table | Key columns | Notes |
-|---|---|---|
-| `customers` | `id`, `user_id` (FK→users, unique), `full_name` | Carried over directly from the uncommitted branch work — already matches `main`'s `Vendor` precedent exactly. No changes. |
-| `customer_addresses` | `id`, `customer_id` (FK), `label`, address lines, `lat`, `lng`, `is_default` | New in this plan. 1:N — a customer may have several delivery addresses. |
-| `cart` | `id`, `customer_id` (FK, unique) | One open cart per customer — unique constraint enforces it. |
-| `cart_item` | `id`, `cart_id` (FK), `vendor_listing_id` (FK), `quantity` | References the listing per decision 0036 rule 1, never the product. |
-| `orders` | `id`, `customer_id` (FK), `delivery_address_id` (FK), `grand_total`, `status`, `razorpay_order_id` | One row per checkout/payment. |
-| `order_vendor_group` | `id`, `order_id` (FK), `vendor_id` (FK), `subtotal`, `status` | Per-vendor fulfilment unit. Attachment point for Phase 4's delivery OTP/photo (deferred, not built). |
-| `order_items` | `id`, `order_vendor_group_id` (FK), `vendor_listing_id` (FK), `master_product_id` (FK), `quantity`, `unit_price_snapshot` | Price frozen at order time (0036 rule 6). `master_product_id` kept for risk-4 traceability (0036 rule 7). |
+| Table                | Key columns                                                                                                               | Notes                                                                                                                     |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `customers`          | `id`, `user_id` (FK→users, unique), `full_name`                                                                           | Carried over directly from the uncommitted branch work — already matches `main`'s `Vendor` precedent exactly. No changes. |
+| `customer_addresses` | `id`, `customer_id` (FK), `label`, address lines, `lat`, `lng`, `is_default`                                              | New in this plan. 1:N — a customer may have several delivery addresses.                                                   |
+| `cart`               | `id`, `customer_id` (FK, unique)                                                                                          | One open cart per customer — unique constraint enforces it.                                                               |
+| `cart_item`          | `id`, `cart_id` (FK), `vendor_listing_id` (FK), `quantity`                                                                | References the listing per decision 0042 rule 1, never the product.                                                       |
+| `orders`             | `id`, `customer_id` (FK), `delivery_address_id` (FK), `grand_total`, `status`, `razorpay_order_id`                        | One row per checkout/payment.                                                                                             |
+| `order_vendor_group` | `id`, `order_id` (FK), `vendor_id` (FK), `subtotal`, `status`                                                             | Per-vendor fulfilment unit. Attachment point for Phase 4's delivery OTP/photo (deferred, not built).                      |
+| `order_items`        | `id`, `order_vendor_group_id` (FK), `vendor_listing_id` (FK), `master_product_id` (FK), `quantity`, `unit_price_snapshot` | Price frozen at order time (0042 rule 6). `master_product_id` kept for risk-4 traceability (0042 rule 7).                 |
 
 **No catalog-side migration needed.** `inventory.quantity_reserved`, `inventory.quantity_available`,
 and `vendor_listing.min_order_qty` already exist on `main` from Phase 2 — this plan gives them
 their first real readers/writers, not new columns.
 
-### Abstraction boundaries (decision 0036, rules 8-9)
+### Abstraction boundaries (decision 0042, rules 8-9)
 
 Both follow the same shape as the existing `StorageService` interface (decision
 `0024-product-images-gcs.md`): an interface the ordering domain depends on, one concrete
@@ -114,13 +114,13 @@ interface NotificationService {
 
 ### Modules
 
-| Module | Endpoints | Depends on |
-|---|---|---|
-| `CustomersModule` | `GET/PATCH /customers/me`; `GET/POST/PATCH/DELETE /customers/me/addresses[/:id]` | `UsersModule` |
-| `CartModule` | `GET /cart`; `POST /cart/items`; `PATCH /cart/items/:id`; `DELETE /cart/items/:id` | `CustomersModule`, `CatalogModule` (listing lookups) |
-| `PaymentsModule` | Internal only — `PaymentProviderService` + `RazorpayProviderService` | None (leaf module) |
-| `NotificationsModule` | Internal only — `NotificationService` + log/no-op + (written, unverified) Firebase impl | None (leaf module) |
-| `OrdersModule` | `POST /checkout`; `POST /webhooks/razorpay`; `GET /orders`; `GET /orders/:id`; `PATCH /orders/:id/cancel` | `CartModule`, `PaymentsModule`, `NotificationsModule` |
+| Module                | Endpoints                                                                                                 | Depends on                                            |
+| --------------------- | --------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `CustomersModule`     | `GET/PATCH /customers/me`; `GET/POST/PATCH/DELETE /customers/me/addresses[/:id]`                          | `UsersModule`                                         |
+| `CartModule`          | `GET /cart`; `POST /cart/items`; `PATCH /cart/items/:id`; `DELETE /cart/items/:id`                        | `CustomersModule`, `CatalogModule` (listing lookups)  |
+| `PaymentsModule`      | Internal only — `PaymentProviderService` + `RazorpayProviderService`                                      | None (leaf module)                                    |
+| `NotificationsModule` | Internal only — `NotificationService` + log/no-op + (written, unverified) Firebase impl                   | None (leaf module)                                    |
+| `OrdersModule`        | `POST /checkout`; `POST /webhooks/razorpay`; `GET /orders`; `GET /orders/:id`; `PATCH /orders/:id/cancel` | `CartModule`, `PaymentsModule`, `NotificationsModule` |
 
 **Added to existing modules** (not new modules, following the project's convention of extending
 `vendors`/`admin` rather than fragmenting):
@@ -130,7 +130,7 @@ interface NotificationService {
 - `admin` module: `GET /admin/orders`, `GET /admin/orders/:id` — read-only oversight.
 
 Order/group status enum, Phase 3 scope only: `pending` → `confirmed` → `shipped` → `delivered`
-/ `cancelled`. No OTP or photo fields — those are reserved table slots per decision 0036, not
+/ `cancelled`. No OTP or photo fields — those are reserved table slots per decision 0042, not
 enum values here.
 
 ### Ownership pattern
@@ -139,12 +139,12 @@ Every service follows the existing convention exactly:
 `resolveCustomerByUserId(userId)` → `Customer`, mirroring
 `VendorsService.resolveVendorByUserId` (`apps/backend/src/modules/vendors/vendors.service.ts:37`).
 Ownership is always resolved server-side from the JWT; a customer requesting another
-customer's cart or order gets **404, not 403** (matches decision 0035 rule 1, and the existing
+customer's cart or order gets **404, not 403** (matches decision 0041 rule 1, and the existing
 vendor-scoping convention noted in `vendor-listings.controller.ts`).
 
 ### Checkout transaction (the core of the plan)
 
-One DB transaction, in this order, matching decision 0036 rules 4-5:
+One DB transaction, in this order, matching decision 0042 rules 4-5:
 
 1. Load the cart's items, joined to current `vendor_listing` (price, status, `min_order_qty`)
    and `inventory` (`quantity_available`, `quantity_reserved`).
@@ -165,10 +165,10 @@ Webhook (`POST /webhooks/razorpay`): verifies signature via
 reservation to a real decrement (`quantity_available -= quantity, quantity_reserved -= quantity`)
 and calls `NotificationService.sendOrderPlaced()`. On a failure/expiry event, releases the
 reservation (`quantity_reserved -= quantity`) and leaves `quantity_available` untouched. This is
-rule 3 in decision 0035: only the webhook moves a reservation to a decrement or a release — the
+rule 3 in decision 0041: only the webhook moves a reservation to a decrement or a release — the
 client SDK callback does neither.
 
-### `inStock` fix (decision 0035, rules 4-6)
+### `inStock` fix (decision 0041, rules 4-6)
 
 Deferred to the last build step because it only becomes observable once `quantity_reserved` has
 a writer. Fixes the confirmed-live disagreement between
@@ -202,7 +202,7 @@ Dependency-ordered; nothing here needs to happen out of order.
 6. Order read/status endpoints
    — customer GET /orders, /orders/:id; vendor PATCH order-group status;
      admin GET /admin/orders
-7. inStock fix (decision 0035 rules 4-6)
+7. inStock fix (decision 0041 rules 4-6)
    — now meaningful: quantity_reserved has a real writer from step 4
 ```
 
@@ -236,7 +236,7 @@ Matches the project's standing practice (`docs/catalog-implementation-status.md`
 
 ## Risks / open items carried into implementation
 
-From decisions 0035 and 0036's own Open Questions sections — not resolved here, surfaced so the
+From decisions 0041 and 0042's own Open Questions sections — not resolved here, surfaced so the
 implementation plan can flag them rather than silently assume an answer:
 
 - Whether a paused vendor's existing reservations/cart items should self-resolve, or wait for
@@ -253,7 +253,7 @@ implementation plan can flag them rather than silently assume an answer:
 - Placeholder scan: no TBD/TODO markers left in this document.
 - Internal consistency: table count (7) now matches the schema diagram and the two ADRs it
   cites; the original branch's miscount (5, omitting `customer_addresses`) is corrected and
-  called out in decision 0036's Consequences section.
+  called out in decision 0042's Consequences section.
 - Scope check: single plan, backend-only, matches Phase 3's proposal deliverables one-to-one
   with two named exceptions (Razorpay, Notifications truncated at the integration boundary).
   Appropriately sized for one implementation plan — not decomposed further.

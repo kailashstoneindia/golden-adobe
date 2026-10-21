@@ -1,0 +1,22 @@
+{
+  "Rules": [
+    {
+      "ID": "ExpireDatabaseBackupsAfter35Days",
+      "Status": "Enabled",
+      "Filter": { "Prefix": "postgres/" },
+      "Expiration": { "Days": 35 }
+    },
+    {
+      "ID": "ExpireDeployBundlesAfter30Days",
+      "Status": "Enabled",
+      "Filter": { "Prefix": "deploy-bundles/" },
+      "Expiration": { "Days": 30 }
+    },
+    {
+      "ID": "AbortStalledUploads",
+      "Status": "Enabled",
+      "Filter": { "Prefix": "" },
+      "AbortIncompleteMultipartUpload": { "DaysAfterInitiation": 1 }
+    }
+  ]
+}

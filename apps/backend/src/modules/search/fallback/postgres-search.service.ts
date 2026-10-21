@@ -1,9 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/sequelize';
 import { QueryTypes } from 'sequelize';
 import { SearchDocument, buildSearchDocumentId } from '@golden-abode/types';
 
 import { MasterProduct } from '../../catalog/models/master-product.model';
+import { RawPrimaryImage, primaryImageSubquery, toPrimaryImage } from '../primary-image';
 
 // Phase 6c (decision 0021, search-system-design.md section 8 "fallback/").
 //
@@ -86,6 +88,7 @@ export class PostgresSearchService {
   constructor(
     @InjectModel(MasterProduct)
     private readonly masterProductModel: typeof MasterProduct,
+    private readonly config: ConfigService,
   ) {}
 
   private get sequelize() {
@@ -158,7 +161,7 @@ export class PostgresSearchService {
       having.push('MIN(vl.price) <= :maxPrice');
       replacements.maxPrice = input.maxPrice;
     }
-    // Decision 0035 rule 6 / Consequences: inStockOnly was declared on
+    // Decision 0041 rule 6 / Consequences: inStockOnly was declared on
     // PostgresSearchInput and never read anywhere in this method — a real,
     // live gap, not a hypothetical one. HAVING, not WHERE, for the same
     // reason as the price filters: this is a per-PRODUCT aggregate
@@ -181,8 +184,9 @@ export class PostgresSearchService {
         mp.attributes_flat           AS attributes,
         MIN(vl.price)                AS min_price,
         COUNT(DISTINCT vl.vendor_id) AS vendor_count,
+        ${primaryImageSubquery('mp.id')} AS primary_image,
         mp.updated_at                AS updated_at,
-        -- Decision 0035 rules 4-6: true if ANY active listing for this
+        -- Decision 0041 rules 4-6: true if ANY active listing for this
         -- product in this city is actually available — paint by status
         -- alone, everything else net of quantity_reserved. This was
         -- hardcoded true below; fixed here instead, since the aggregate
@@ -226,10 +230,13 @@ export class PostgresSearchService {
       attributes: Record<string, string | number | boolean>;
       min_price: string;
       vendor_count: string;
+      primary_image: RawPrimaryImage;
       updated_at: Date;
       cheapest_vendor_listing_id: string;
       in_stock: boolean;
     }>(sql, { type: QueryTypes.SELECT, replacements });
+
+    const publicBaseUrl = this.config.get<string>('storage.publicBaseUrl') ?? '';
 
     return rows.map((row) => ({
       id: buildSearchDocumentId(row.master_product_id, input.cityId),
@@ -243,6 +250,7 @@ export class PostgresSearchService {
       cheapestVendorListingId: row.cheapest_vendor_listing_id,
       vendorCount: Number(row.vendor_count),
       inStock: row.in_stock,
+      primaryImage: toPrimaryImage(publicBaseUrl, row.primary_image),
       updatedAt: row.updated_at.toISOString(),
     }));
   }
@@ -370,7 +378,7 @@ export class PostgresSearchService {
     );
 
     return rows.map((row) => {
-      // Decision 0035 rules 4-5, fixed here (previously missing both the
+      // Decision 0041 rules 4-5, fixed here (previously missing both the
       // reservation netting and the sale_unit_type check — a non-paint
       // listing that was simply never given an inventory row used to read
       // as in stock, the exact negative case rule 5 calls out).

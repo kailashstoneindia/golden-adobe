@@ -8,6 +8,7 @@ import { Attribute, AttributeDataType } from './models/attribute.model';
 import { MasterProduct, MasterProductStatus } from './models/master-product.model';
 import { MasterProductAttributeValue } from './models/master-product-attribute-value.model';
 import { CatalogAttributeResolverService } from './catalog-attribute-resolver.service';
+import { MediaService } from './media/media.service';
 import { ListProductsQueryDto } from './dto/list-products-query.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -45,6 +46,7 @@ export class AdminCatalogService {
     @InjectModel(MasterProductAttributeValue)
     private readonly attributeValueModel: typeof MasterProductAttributeValue,
     private readonly attributeResolver: CatalogAttributeResolverService,
+    private readonly media: MediaService,
   ) {}
 
   private get sequelize() {
@@ -306,6 +308,7 @@ export class AdminCatalogService {
        ORDER BY a.is_variant_defining DESC, a.display_order, a.name`,
       { type: QueryTypes.SELECT, replacements: { productId } },
     );
+    const media = await this.media.listForProduct(productId);
 
     return {
       id: product.id,
@@ -333,6 +336,7 @@ export class AdminCatalogService {
         value: v.value,
         isVariantDefining: v.is_variant_defining,
       })),
+      media,
     };
   }
 

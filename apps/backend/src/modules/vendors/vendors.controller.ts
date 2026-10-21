@@ -141,7 +141,8 @@ export class VendorsController {
   @Patch('order-groups/:id/status')
   @ApiOperation({
     summary: 'Advance your fulfilment status for this order group',
-    description: 'Forward-only: pending -> confirmed -> shipped -> delivered, or cancel from pending/confirmed.',
+    description:
+      'Forward-only: pending -> confirmed -> shipped -> delivered, or cancel from pending/confirmed.',
   })
   @ApiResponse({ status: 200, description: 'Status updated' })
   @ApiResponse({ status: 400, description: 'Invalid transition from the current status' })

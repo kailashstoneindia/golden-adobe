@@ -1,0 +1,11 @@
+# Copy to /opt/golden-abode/deploy.conf on the instance and fill in. Plain shell
+# variables, read by deploy.sh, compose.sh and the systemd timers. Not secret.
+
+AWS_REGION=ap-south-1
+
+# ECR repository the backend image is pushed to (CI builds and pushes it).
+ECR_REGISTRY=123456789012.dkr.ecr.ap-south-1.amazonaws.com
+ECR_REPO_URI=123456789012.dkr.ecr.ap-south-1.amazonaws.com/golden-abode-backend
+
+# Where deploy.sh reads the secrets from. Leave unset to keep a hand-written .env.
+SSM_PREFIX=/golden-abode/prod/

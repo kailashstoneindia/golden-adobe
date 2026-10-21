@@ -29,9 +29,9 @@ interface CartLineForCheckout {
   has_loading_unloading_team: boolean | null;
 }
 
-// Decision 0036 (per-sqft addendum). Global rate, not per-category — the
+// Decision 0042 (per-sqft addendum). Global rate, not per-category — the
 // client said "price per sq ft," singular. Placeholder until the client
-// gives a real number (0036's open questions); 0 means the charge exists
+// gives a real number (0042's open questions); 0 means the charge exists
 // in the schema and computation but has no effect until set.
 const LOADING_UNLOADING_RATE_PER_SQFT = 0;
 
@@ -112,7 +112,7 @@ export class CheckoutService {
 
       // One query joins cart_item -> vendor_listing -> inventory -> vendors
       // -> master_product, reading everything checkout needs to validate
-      // in one round trip (decision 0036's Consequences: "checkout
+      // in one round trip (decision 0042's Consequences: "checkout
       // validation is a single query, not a loop"). Runs INSIDE the cart
       // lock, so this is current state, not a pre-lock snapshot.
       const lines = await this.sequelize.query<CartLineForCheckout>(
@@ -155,7 +155,10 @@ export class CheckoutService {
       const rejections: CheckoutRejection[] = [];
       for (const line of lines) {
         if (line.listing_status !== VendorListingStatus.ACTIVE) {
-          rejections.push({ vendorListingId: line.vendor_listing_id, reason: 'listing is not active' });
+          rejections.push({
+            vendorListingId: line.vendor_listing_id,
+            reason: 'listing is not active',
+          });
           continue;
         }
         if (!line.vendor_is_active) {
@@ -180,14 +183,18 @@ export class CheckoutService {
           // explicitly rather than silently mis-price and mis-record it.
           rejections.push({
             vendorListingId: line.vendor_listing_id,
-            reason: 'paint ordering is not yet supported — colour selection has no path to checkout',
+            reason:
+              'paint ordering is not yet supported — colour selection has no path to checkout',
           });
           continue;
         }
         if (line.quantity_available === null) {
           // No inventory row and not paint: stock was never set. Decision
-          // 0035 rule 5's negative case.
-          rejections.push({ vendorListingId: line.vendor_listing_id, reason: 'no stock on record' });
+          // 0041 rule 5's negative case.
+          rejections.push({
+            vendorListingId: line.vendor_listing_id,
+            reason: 'no stock on record',
+          });
           continue;
         }
         const available = Number(line.quantity_available) - Number(line.quantity_reserved ?? 0);
@@ -200,7 +207,7 @@ export class CheckoutService {
       }
 
       // min_order_qty enforced per listing within each vendor group
-      // (decision 0036 rule 3; min_order_qty is a per-listing column, not
+      // (decision 0042 rule 3; min_order_qty is a per-listing column, not
       // a per-vendor minimum), against lines that passed the checks above
       // only.
       const byVendor = new Map<string, CartLineForCheckout[]>();
@@ -232,7 +239,9 @@ export class CheckoutService {
         const detail = rejections
           .map((r) => `listing ${r.vendorListingId}: ${r.reason}`)
           .join('; ');
-        throw new BadRequestException(`checkout rejected — ${rejections.length} line(s): ${detail}`);
+        throw new BadRequestException(
+          `checkout rejected — ${rejections.length} line(s): ${detail}`,
+        );
       }
 
       // Everything passed. SELECT ... FOR UPDATE re-reads and locks every
@@ -291,7 +300,7 @@ export class CheckoutService {
         }
 
         // Single statement reserving every (non-paint) line at once, not a
-        // loop, per decision 0036's Consequences ("a loop of N
+        // loop, per decision 0042's Consequences ("a loop of N
         // reservations enqueues N reindex rows where one statement
         // enqueues one"). Safe: the FOR UPDATE lock above still holds
         // these rows for the rest of this transaction.
@@ -314,12 +323,12 @@ export class CheckoutService {
         );
       }
 
-      // Decision 0036 (per-sqft addendum): a tiles/stone line owes this fee
+      // Decision 0042 (per-sqft addendum): a tiles/stone line owes this fee
       // when its vendor has NO loading/unloading crew of their own.
       // has_loading_unloading_team is NULL for every vendor who hasn't been
       // asked yet (pre-dates the field, or skipped it at onboarding) —
       // treated the same as `false` here, charging defensively until the
-      // vendor answers, per 0036's open-questions note: failing toward the
+      // vendor answers, per 0042's open-questions note: failing toward the
       // platform doing the work costs the vendor nothing extra (the fee is
       // customer-facing, rolled into grandTotal, not deducted from the
       // vendor's subtotal) and avoids silently under-charging for labor
@@ -383,7 +392,7 @@ export class CheckoutService {
       // Cart is cleared here, inside the same transaction as the
       // reservation and the order rows — if anything above this point
       // throws, the whole transaction rolls back and the cart is
-      // untouched, matching decision 0036 rule 4's "leaves the database
+      // untouched, matching decision 0042 rule 4's "leaves the database
       // exactly as it found it."
       await this.sequelize.query(`DELETE FROM cart_item WHERE cart_id = :cartId`, {
         replacements: { cartId: cart.id },

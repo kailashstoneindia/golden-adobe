@@ -1,0 +1,11 @@
+[Unit]
+Description=Nightly Golden Abode Postgres backup
+
+[Timer]
+# Quiet hours in India (the launch cities), not the server's UTC.
+OnCalendar=*-*-* 02:30:00 Asia/Kolkata
+# If the box was off at 02:30, run as soon as it is back.
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -255,7 +255,9 @@ describe('OrdersService', () => {
 
       await expect(
         service.updateVendorGroupStatus('vendor-1', 'group-1', OrderVendorGroupStatus.SHIPPED),
-      ).rejects.toThrow('order has been refunded or cancelled and its groups can no longer be updated');
+      ).rejects.toThrow(
+        'order has been refunded or cancelled and its groups can no longer be updated',
+      );
       expect(group.save).not.toHaveBeenCalled();
     });
 
@@ -272,7 +274,9 @@ describe('OrdersService', () => {
 
       await expect(
         service.updateVendorGroupStatus('vendor-1', 'group-1', OrderVendorGroupStatus.SHIPPED),
-      ).rejects.toThrow('order has been refunded or cancelled and its groups can no longer be updated');
+      ).rejects.toThrow(
+        'order has been refunded or cancelled and its groups can no longer be updated',
+      );
       expect(group.save).not.toHaveBeenCalled();
     });
   });
@@ -306,7 +310,11 @@ describe('OrdersService', () => {
         save: jest.fn(),
       };
       groupModelMock.findByPk.mockResolvedValue(group);
-      orderModelMock.findByPk.mockResolvedValue({ id: 'order-1', customerId: 'cust-1', status: OrderStatus.REFUNDED });
+      orderModelMock.findByPk.mockResolvedValue({
+        id: 'order-1',
+        customerId: 'cust-1',
+        status: OrderStatus.REFUNDED,
+      });
 
       const result = await service.adminOverrideVendorGroupStatus(
         'group-1',
@@ -368,7 +376,11 @@ describe('OrdersService', () => {
     it('404s for a group that does not exist', async () => {
       groupModelMock.findByPk.mockResolvedValue(null);
       await expect(
-        service.adminOverrideVendorGroupStatus('missing', OrderVendorGroupStatus.CANCELLED, 'reason'),
+        service.adminOverrideVendorGroupStatus(
+          'missing',
+          OrderVendorGroupStatus.CANCELLED,
+          'reason',
+        ),
       ).rejects.toThrow('order group not found');
     });
   });

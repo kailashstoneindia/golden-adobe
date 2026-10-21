@@ -107,7 +107,7 @@ export class Vendor extends Model<Vendor> {
 
   // Whether this vendor has their own loading/unloading crew for heavy items
   // (tiles, stone). NULL = not asked/answered yet — distinct from `false`.
-  // Client request 2026-10-18, see docs/decisions/0036. Ported from main.
+  // Client request 2026-10-18, see docs/decisions/0036.
   @Column({
     type: DataType.BOOLEAN,
     allowNull: true,

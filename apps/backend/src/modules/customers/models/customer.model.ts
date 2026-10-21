@@ -1,8 +1,17 @@
-import { Table, Column, Model, DataType, ForeignKey, BelongsTo, HasMany, Index } from 'sequelize-typescript';
+import {
+  Table,
+  Column,
+  Model,
+  DataType,
+  ForeignKey,
+  BelongsTo,
+  HasMany,
+  Index,
+} from 'sequelize-typescript';
 import { User } from '../../users/models/user.model';
 import { CustomerAddress } from './customer-address.model';
 
-// Decision 0035 rule 1. Structural mirror of Vendor — same 1:1-with-users
+// Decision 0041 rule 1. Structural mirror of Vendor — same 1:1-with-users
 // shape, same resolve-by-user-id pattern its service method follows — minus
 // every vendor-specific column. A customer has no shop, no GPS, no payout
 // details; phone and email already live on users.

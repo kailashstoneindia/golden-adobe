@@ -79,7 +79,7 @@ export class SearchQueryDto {
 
   @ApiPropertyOptional({
     description:
-      'Only return products with at least one vendor in this city actually in stock (decision 0035 rules 4-6). Declared and plumbed through to both the Postgres fallback and Meilisearch; previously declared but silently dropped before reaching either.',
+      'Only return products with at least one vendor in this city actually in stock (decision 0041 rules 4-6). Declared and plumbed through to both the Postgres fallback and Meilisearch; previously declared but silently dropped before reaching either.',
   })
   @IsOptional()
   @Transform(({ value }) => value === 'true' || value === true)

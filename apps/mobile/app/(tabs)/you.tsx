@@ -4,9 +4,10 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { MenuRow } from '../../src/components/demo/MenuRow';
 import { Screen } from '../../src/components/layout/Screen';
 import { Badge, Text } from '../../src/components/ui';
-import { ROUTES } from '../../src/constants';
+import { ERROR_MESSAGES, ROUTES, TOAST_MESSAGES } from '../../src/constants';
 import { useAuth } from '../../src/hooks/auth';
 import { useLogout } from '../../src/hooks/auth/useLogout';
+import { useToast } from '../../src/hooks/useToast';
 import { Colors, Radius, Spacing } from '../../src/theme';
 import { formatRoleLabel, requiresAdminApproval } from '../../src/utils';
 
@@ -20,6 +21,7 @@ const MENU_ROUTES = [
 export default function YouTabScreen() {
   const { user } = useAuth();
   const logout = useLogout();
+  const { showSuccess, showError } = useToast();
 
   const initials = user?.name
     .split(' ')
@@ -29,8 +31,13 @@ export default function YouTabScreen() {
     .toUpperCase();
 
   const handleLogout = async () => {
-    await logout.mutateAsync();
-    router.replace(ROUTES.auth.login);
+    try {
+      await logout.mutateAsync();
+      showSuccess(TOAST_MESSAGES.logoutSuccess);
+      router.replace(ROUTES.auth.login);
+    } catch {
+      showError(ERROR_MESSAGES.generic);
+    }
   };
 
   return (

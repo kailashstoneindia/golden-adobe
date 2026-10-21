@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { isEmpty } from 'lodash';
 
 import { catalogService } from '@/services';
@@ -15,17 +15,45 @@ function leavesOf(nodes: CategoryNode[]): CategoryNode[] {
 
 export function CatalogImportPage() {
   const [categoryId, setCategoryId] = useState('');
+  const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const categoryPickerRef = useRef<HTMLDivElement>(null);
 
   const treeQuery = useCategoryTreeQuery();
   const uploadMutation = useUploadImportMutation();
 
   const leaves = useMemo(() => leavesOf(treeQuery.data ?? []), [treeQuery.data]);
   const selected = leaves.find((leaf) => leaf.id === categoryId) ?? null;
+
+  useEffect(() => {
+    if (!isCategoryMenuOpen) {
+      return undefined;
+    }
+
+    const handlePointerDown = (event: MouseEvent): void => {
+      const pickerElement = categoryPickerRef.current;
+      if (!pickerElement) {
+        return;
+      }
+      if (event.target instanceof Node && !pickerElement.contains(event.target)) {
+        setIsCategoryMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    return () => document.removeEventListener('mousedown', handlePointerDown);
+  }, [isCategoryMenuOpen]);
+
+  const handleCategorySelect = (nextCategoryId: string): void => {
+    setCategoryId(nextCategoryId);
+    setIsCategoryMenuOpen(false);
+    setResult(null);
+    setError(null);
+  };
 
   const handleDownload = async () => {
     if (!selected) return;
@@ -66,22 +94,45 @@ export function CatalogImportPage() {
       <div className={catalogStyles.stepCard}>
         <h3 className={catalogStyles.stepTitle}>1 · Choose a category</h3>
         <p className={styles.hint}>Leaf categories only — a product cannot belong to a group.</p>
-        <select
-          className={styles.input}
-          value={categoryId}
-          onChange={(event) => {
-            setCategoryId(event.target.value);
-            setResult(null);
-            setError(null);
-          }}
-        >
-          <option value="">Select a category…</option>
-          {leaves.map((leaf) => (
-            <option key={leaf.id} value={leaf.id}>
-              {leaf.path}
-            </option>
-          ))}
-        </select>
+        <div className={catalogStyles.categoryPicker} ref={categoryPickerRef}>
+          <button
+            type="button"
+            className={catalogStyles.categoryTrigger}
+            aria-haspopup="listbox"
+            aria-expanded={isCategoryMenuOpen}
+            onClick={() => setIsCategoryMenuOpen((isOpen) => !isOpen)}
+          >
+            <span className={catalogStyles.categoryTriggerLabel}>
+              {selected ? selected.path : 'Select a category…'}
+            </span>
+            <span className={catalogStyles.categoryTriggerChevron} aria-hidden>
+              {isCategoryMenuOpen ? '▴' : '▾'}
+            </span>
+          </button>
+          {isCategoryMenuOpen ? (
+            <ul className={catalogStyles.categoryMenu} role="listbox">
+              {leaves.map((leaf) => {
+                const isActive = leaf.id === categoryId;
+                return (
+                  <li key={leaf.id}>
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={isActive}
+                      className={`${catalogStyles.categoryOption} ${
+                        isActive ? catalogStyles.categoryOptionActive : ''
+                      }`}
+                      onClick={() => handleCategorySelect(leaf.id)}
+                    >
+                      <span className={catalogStyles.categoryOptionName}>{leaf.name}</span>
+                      <span className={catalogStyles.categoryOptionPath}>{leaf.path}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : null}
+        </div>
       </div>
 
       <div className={catalogStyles.stepCard}>

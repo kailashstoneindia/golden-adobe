@@ -3,6 +3,7 @@ import { isEmpty } from 'lodash';
 
 import { ProductDetailModal } from '@/components/catalog/ProductDetailModal';
 import {
+  useBulkPublishProductsMutation,
   useCategoryTreeQuery,
   useProductsQuery,
   usePublishProductMutation,
@@ -10,29 +11,23 @@ import {
 } from '@/queries/useCatalogQueries';
 import styles from '@/styles/shared.module.css';
 import catalogStyles from '@/styles/catalog.module.css';
-import type { CategoryNode, ProductStatus } from '@/types/catalog.types';
+import {
+  flattenCategoryOptions,
+  formatBulkPublishResult,
+  PRODUCT_STATUS_FILTERS,
+  toggleProductId,
+} from '@/utils/catalogProducts';
 import { formatDateTime } from '@/utils/date';
-
-const STATUS_FILTERS: Array<{ label: string; value: ProductStatus | 'all' }> = [
-  { label: 'All', value: 'all' },
-  { label: 'Draft', value: 'draft' },
-  { label: 'Live', value: 'live' },
-  { label: 'Deprecated', value: 'deprecated' },
-];
-
-// Flattened for the <select> — the tree shape matters on the Categories page,
-// but here it is just a filter, and an indented flat list is easier to scan.
-function flatten(nodes: CategoryNode[], depth = 0): Array<{ node: CategoryNode; depth: number }> {
-  return nodes.flatMap((node) => [{ node, depth }, ...flatten(node.children, depth + 1)]);
-}
 
 export function CatalogProductsPage() {
   const [search, setSearch] = useState('');
   const [submittedSearch, setSubmittedSearch] = useState('');
-  const [status, setStatus] = useState<ProductStatus | 'all'>('all');
+  const [status, setStatus] = useState<(typeof PRODUCT_STATUS_FILTERS)[number]['value']>('all');
   const [categoryId, setCategoryId] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [bulkMessage, setBulkMessage] = useState<string | null>(null);
 
   const treeQuery = useCategoryTreeQuery();
   const productsQuery = useProductsQuery({
@@ -43,28 +38,65 @@ export function CatalogProductsPage() {
   });
   const publishMutation = usePublishProductMutation();
   const unpublishMutation = useUnpublishProductMutation();
+  const bulkPublishMutation = useBulkPublishProductsMutation();
 
-  const categoryOptions = useMemo(() => flatten(treeQuery.data ?? []), [treeQuery.data]);
+  const categoryOptions = useMemo(
+    () => flattenCategoryOptions(treeQuery.data ?? []),
+    [treeQuery.data],
+  );
   const products = productsQuery.data?.items ?? [];
-  const isSubmitting = publishMutation.isPending || unpublishMutation.isPending;
+  const isSubmitting =
+    publishMutation.isPending || unpublishMutation.isPending || bulkPublishMutation.isPending;
+  const draftIdsOnPage = products
+    .filter((product) => product.status === 'draft')
+    .map((product) => product.id);
+  const selectedDraftIds = selectedProductIds.filter((productId) =>
+    draftIdsOnPage.includes(productId),
+  );
 
-  const handlePublish = async (productId: string) => {
+  const handlePublish = async (productId: string): Promise<void> => {
     setActionError(null);
+    setBulkMessage(null);
     try {
       await publishMutation.mutateAsync(productId);
     } catch (error) {
-      // The required-variant-attributes guard rejects a publish and names the
-      // missing attribute — surface that verbatim, it is the actionable part.
       setActionError(error instanceof Error ? error.message : 'Could not publish this product.');
     }
   };
 
-  const handleUnpublish = async (productId: string) => {
+  const handleUnpublish = async (productId: string): Promise<void> => {
     setActionError(null);
+    setBulkMessage(null);
     try {
       await unpublishMutation.mutateAsync(productId);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Could not withdraw this product.');
+    }
+  };
+
+  const handleBulkPublishSelected = async (): Promise<void> => {
+    if (isEmpty(selectedDraftIds)) return;
+    setActionError(null);
+    setBulkMessage(null);
+    try {
+      const result = await bulkPublishMutation.mutateAsync({ productIds: selectedDraftIds });
+      setBulkMessage(formatBulkPublishResult(result));
+      setSelectedProductIds([]);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Could not bulk-publish products.');
+    }
+  };
+
+  const handleBulkPublishCategory = async (): Promise<void> => {
+    if (!categoryId) return;
+    setActionError(null);
+    setBulkMessage(null);
+    try {
+      const result = await bulkPublishMutation.mutateAsync({ categoryId });
+      setBulkMessage(formatBulkPublishResult(result));
+      setSelectedProductIds([]);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Could not bulk-publish category.');
     }
   };
 
@@ -107,7 +139,7 @@ export function CatalogProductsPage() {
       </form>
 
       <div className={styles.tabs}>
-        {STATUS_FILTERS.map((filter) => (
+        {PRODUCT_STATUS_FILTERS.map((filter) => (
           <button
             key={filter.value}
             type="button"
@@ -119,7 +151,45 @@ export function CatalogProductsPage() {
         ))}
       </div>
 
+      <div className={styles.actions}>
+        <button
+          type="button"
+          className={`${styles.button} ${styles.buttonGhost}`}
+          disabled={isEmpty(draftIdsOnPage) || isSubmitting}
+          onClick={() => setSelectedProductIds(draftIdsOnPage)}
+        >
+          Select drafts on page
+        </button>
+        <button
+          type="button"
+          className={`${styles.button} ${styles.buttonGhost}`}
+          disabled={isEmpty(selectedProductIds) || isSubmitting}
+          onClick={() => setSelectedProductIds([])}
+        >
+          Clear selection
+        </button>
+        <button
+          type="button"
+          className={styles.buttonPrimary}
+          disabled={isEmpty(selectedDraftIds) || isSubmitting}
+          onClick={() => void handleBulkPublishSelected()}
+        >
+          Publish selected ({selectedDraftIds.length})
+        </button>
+        {categoryId ? (
+          <button
+            type="button"
+            className={styles.buttonPrimary}
+            disabled={isSubmitting}
+            onClick={() => void handleBulkPublishCategory()}
+          >
+            Publish all drafts in category
+          </button>
+        ) : null}
+      </div>
+
       {actionError ? <p className={styles.error}>{actionError}</p> : null}
+      {bulkMessage ? <p className={styles.hint}>{bulkMessage}</p> : null}
 
       {productsQuery.isLoading ? (
         <p className={styles.pageSubtitle}>Loading products…</p>
@@ -139,6 +209,7 @@ export function CatalogProductsPage() {
             <table className={styles.table}>
               <thead>
                 <tr>
+                  <th aria-label="Select" />
                   <th>Code</th>
                   <th>Name</th>
                   <th>Category</th>
@@ -150,24 +221,40 @@ export function CatalogProductsPage() {
               </thead>
               <tbody>
                 {products.map((product) => (
-                  <tr
-                    key={product.id}
-                    className={styles.clickableRow}
-                    onClick={() => setSelectedId(product.id)}
-                  >
-                    <td>
+                  <tr key={product.id} className={styles.clickableRow}>
+                    <td onClick={(event) => event.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        disabled={product.status !== 'draft' || isSubmitting}
+                        checked={selectedProductIds.includes(product.id)}
+                        onChange={() =>
+                          setSelectedProductIds((currentIds) =>
+                            toggleProductId(currentIds, product.id),
+                          )
+                        }
+                        aria-label={`Select ${product.productCode}`}
+                      />
+                    </td>
+                    <td onClick={() => setSelectedId(product.id)}>
                       <code>{product.productCode}</code>
                     </td>
-                    <td>{product.name}</td>
-                    <td className={catalogStyles.pathCell}>{product.categoryPath}</td>
-                    <td>{product.brand ?? '—'}</td>
-                    <td>
+                    <td onClick={() => setSelectedId(product.id)}>{product.name}</td>
+                    <td
+                      className={catalogStyles.pathCell}
+                      onClick={() => setSelectedId(product.id)}
+                    >
+                      {product.categoryPath}
+                    </td>
+                    <td onClick={() => setSelectedId(product.id)}>{product.brand ?? '—'}</td>
+                    <td onClick={() => setSelectedId(product.id)}>
                       <span className={catalogStyles[`status_${product.status}`]}>
                         {product.status}
                       </span>
                     </td>
-                    <td>{product.listingCount}</td>
-                    <td>{formatDateTime(product.updatedAt)}</td>
+                    <td onClick={() => setSelectedId(product.id)}>{product.listingCount}</td>
+                    <td onClick={() => setSelectedId(product.id)}>
+                      {formatDateTime(product.updatedAt)}
+                    </td>
                   </tr>
                 ))}
               </tbody>

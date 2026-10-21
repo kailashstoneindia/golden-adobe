@@ -30,7 +30,15 @@ import { CustomerAddress } from '../../modules/customers/models/customer-address
           // "City has not been defined", retrying forever. The Jest suites
           // never caught this because test-db.ts registers every model in one
           // explicit list.
-          models: [User, RefreshToken, Vendor, VendorAccountDetails, City, Customer, CustomerAddress],
+          models: [
+            User,
+            RefreshToken,
+            Vendor,
+            VendorAccountDetails,
+            City,
+            Customer,
+            CustomerAddress,
+          ],
           autoLoadModels: true,
           synchronize: false, // Managed by migrations
           logging: false,

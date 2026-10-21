@@ -1,0 +1,1 @@
+export { customerLocationStorage } from './customerLocationStorage';

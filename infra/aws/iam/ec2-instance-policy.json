@@ -1,0 +1,62 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "EcrLogin",
+      "Effect": "Allow",
+      "Action": "ecr:GetAuthorizationToken",
+      "Resource": "*"
+    },
+    {
+      "Sid": "EcrPullOneRepository",
+      "Effect": "Allow",
+      "Action": [
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:BatchGetImage",
+        "ecr:GetDownloadUrlForLayer"
+      ],
+      "Resource": "arn:aws:ecr:<REGION>:<ACCOUNT_ID>:repository/<ECR_REPOSITORY>"
+    },
+    {
+      "Sid": "ReadOwnSecrets",
+      "Effect": "Allow",
+      "Action": ["ssm:GetParameters", "ssm:GetParametersByPath"],
+      "Resource": "arn:aws:ssm:<REGION>:<ACCOUNT_ID>:parameter/golden-abode/prod/*"
+    },
+    {
+      "Sid": "MediaBucketObjects",
+      "Effect": "Allow",
+      "Action": ["s3:DeleteObject", "s3:GetObject", "s3:PutObject"],
+      "Resource": "arn:aws:s3:::<MEDIA_BUCKET>/*"
+    },
+    {
+      "Sid": "MediaBucketList",
+      "Effect": "Allow",
+      "Action": "s3:ListBucket",
+      "Resource": "arn:aws:s3:::<MEDIA_BUCKET>"
+    },
+    {
+      "Sid": "BackupBucketObjects",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:PutObject"],
+      "Resource": "arn:aws:s3:::<BACKUP_BUCKET>/*"
+    },
+    {
+      "Sid": "BackupBucketList",
+      "Effect": "Allow",
+      "Action": "s3:ListBucket",
+      "Resource": "arn:aws:s3:::<BACKUP_BUCKET>"
+    },
+    {
+      "Sid": "PublishBackupHeartbeat",
+      "Effect": "Allow",
+      "Action": "cloudwatch:PutMetricData",
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "cloudwatch:namespace": "GoldenAbode/Backup"
+        }
+      }
+    }
+  ]
+}

@@ -16,7 +16,12 @@ export class PaymentEvent extends Model<PaymentEvent> {
   @Column({ type: DataType.JSONB, allowNull: false, field: 'raw_payload' })
   declare rawPayload: Record<string, unknown>;
 
-  @Column({ type: DataType.DATE, allowNull: false, defaultValue: DataType.NOW, field: 'created_at' })
+  @Column({
+    type: DataType.DATE,
+    allowNull: false,
+    defaultValue: DataType.NOW,
+    field: 'created_at',
+  })
   declare createdAt: Date;
 
   @BelongsTo(() => Order)

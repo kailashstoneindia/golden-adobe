@@ -15,6 +15,29 @@ export const API_ENDPOINTS = {
   vendors: {
     onboard: '/vendors/onboard',
     onboardingProgress: '/vendors/onboarding-progress',
+    meCategories: '/vendors/me/categories',
+  },
+  search: {
+    products: '/search',
+    listings: (masterProductId: string) => `/search/${masterProductId}/listings`,
+  },
+  vendorListings: {
+    list: '/vendor/listings',
+    stock: (vendorListingId: string) => `/vendor/listings/${vendorListingId}/stock`,
+    status: (vendorListingId: string) => `/vendor/listings/${vendorListingId}/status`,
+    bulkStock: '/vendor/listings/stock/bulk',
+  },
+  vendorCatalogImport: {
+    exportCount: '/vendor/catalog-import/export/count',
+    export: '/vendor/catalog-import/export',
+    upload: '/vendor/catalog-import',
+    pendingConfirmations: '/vendor/catalog-import/pending-confirmations',
+    confirm: (vendorListingId: string) =>
+      `/vendor/catalog-import/pending-confirmations/${vendorListingId}/confirm`,
+    choose: (vendorListingId: string) =>
+      `/vendor/catalog-import/pending-confirmations/${vendorListingId}/choose`,
+    reject: (vendorListingId: string) =>
+      `/vendor/catalog-import/pending-confirmations/${vendorListingId}/reject`,
   },
 } as const;
 
@@ -24,4 +47,5 @@ export const AUTH_PUBLIC_ENDPOINTS = [
   API_ENDPOINTS.auth.verifyOtp,
   API_ENDPOINTS.auth.register,
   API_ENDPOINTS.auth.refresh,
+  API_ENDPOINTS.search.products,
 ] as const;

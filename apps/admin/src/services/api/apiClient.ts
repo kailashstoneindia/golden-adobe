@@ -61,6 +61,16 @@ export async function patchRequest<TResponse, TBody>(
   return response.data.data;
 }
 
+export async function putRequest<TResponse, TBody>(url: string, body: TBody): Promise<TResponse> {
+  const response = await apiClient.put<ApiSuccessResponse<TResponse>>(url, body);
+  return response.data.data;
+}
+
+// For endpoints that answer 204 with no body.
+export async function deleteRequest(url: string): Promise<void> {
+  await apiClient.delete(url);
+}
+
 /**
  * Multipart upload. Deliberately does NOT set Content-Type — the browser must
  * generate it so the multipart boundary is correct; overriding it with the

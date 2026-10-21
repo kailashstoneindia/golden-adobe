@@ -1,31 +1,31 @@
-# 0035 — Cart ownership, when stock is reserved, and making `inStock` mean something
+# 0041 — Cart ownership, when stock is reserved, and making `inStock` mean something
 
 - **Date:** 2026-10-07
 - **Status:** Accepted
-- **Supersedes / Superseded by:** Carries forward the decision made in `0024-cart-owner-reservation-and-real-instock.md` on branch `worktree-phase-3-cart-reservation` (2026-09-15), re-validated against `main` as of this date and re-filed under this project's current ADR numbering (0024 is already in use on `main` for product-images/GCS). The original record's reasoning is unchanged; this record exists so the decision lives where the rest of the project's history can find it, cites current file/line locations, and is not lost to an abandoned branch.
+- **Supersedes / Superseded by:** Carries forward the decision made in `0024-cart-owner-reservation-and-real-instock.md` on branch `worktree-phase-3-cart-reservation` (2026-09-15), re-validated against `main` as of this date and re-filed under this project's current ADR numbering (0024 is already in use on `main` for product-images/GCS). The original record's reasoning is unchanged; this record exists so the decision lives where the rest of the project's history can find it, cites current file/line locations, and is not lost to an abandoned branch. Renumbered from this branch's own 0035 to 0041 when merging into `main`, where 0035 was independently taken by `0035-client-feedback-triage-2026-10-18.md`.
 
 ## Context
 
 Phase 3 (Cart, Orders, Payments, Notifications) begins against a codebase where the ordering
 domain does not exist at all — no `cart`, no `orders`, no `payment` table, and no module
 beyond `auth`, `users`, `vendors`, `catalog`, `search`, `admin`, `health`. This record settles
-the three questions that block everything downstream of "add to cart." The cart *structure*
+the three questions that block everything downstream of "add to cart." The cart _structure_
 itself — what a cart item points at, and how a multi-vendor cart becomes an order — is
-[0036](0036-cart-and-order-structure.md).
+[0042](0042-cart-and-order-structure.md).
 
 Three things force these questions now:
 
 1. **A cart has no owner.** `CUSTOMER` is a real, working role — OTP registration, a JWT
    carrying `{sub, role}`, and `ApprovedGuard` explicitly exempting it
    (`apps/backend/src/common/guards/approved.guard.ts`) — but it is only a `role` column on the
-   shared `users` table. Every vendor-scoped service in this codebase takes a *resolved*
+   shared `users` table. Every vendor-scoped service in this codebase takes a _resolved_
    `vendor.id` from `VendorsService.resolveVendorByUserId`
    (`apps/backend/src/modules/vendors/vendors.service.ts:37`), never the raw user id. There is
    no `customers` table and therefore no `resolveCustomerByUserId` to mirror it.
 
 2. **`quantity_reserved` has stayed at 0 with no consumer**, exactly as
-   [0022](0022-inventory-write-model.md) left it: *"inventing a reservation semantic now would
-   likely be wrong."* Phase 3 is when that changes, and the column is already the right shape —
+   [0022](0022-inventory-write-model.md) left it: _"inventing a reservation semantic now would
+   likely be wrong."_ Phase 3 is when that changes, and the column is already the right shape —
    `DECIMAL(12,3)`, `NOT NULL DEFAULT 0`, CHECK `>= 0`.
 
 3. **Search lies about availability — partially.** Re-checked against `main` on 2026-10-07:
@@ -121,7 +121,7 @@ Three things force these questions now:
 > decrement, or release, only on the server-to-server signal.
 >
 > **4. `inStock` means `(quantity_available - quantity_reserved) > 0`, consistently, in every
-> code path that computes it.** Both the indexing builder and *every* branch of the Postgres
+> code path that computes it.** Both the indexing builder and _every_ branch of the Postgres
 > fallback derive it the same way; none hardcodes it, and none nets only one of the two
 > columns.
 >
@@ -168,7 +168,7 @@ the first time.
 
 Rule 5 is the trap in the whole change, and it is worth being explicit about. The obvious
 derivation — "an inventory row with stock above zero" — quietly removes every paint listing
-from search, because paint never has such a row *by design*. The absence of a row means two
+from search, because paint never has such a row _by design_. The absence of a row means two
 opposite things depending on the product, and only `sale_unit_type` distinguishes them.
 
 **On rule 6.** A search document is one row per `(product, city)`, aggregating every vendor
@@ -195,9 +195,9 @@ truthful will be tempted to use it as the cart's stock gate.
   This is not new — `price` has always had it — but it is now true of availability too, and a
   customer can reach checkout for something that sold out moments earlier. Rule 6's
   listing-level check at checkout is what makes that safe.
-- No payment provider is chosen or integrated here. Rule 3 constrains *what* confirms a
+- No payment provider is chosen or integrated here. Rule 3 constrains _what_ confirms a
   payment, not which gateway or how its signature is verified — see
-  [0036](0036-cart-and-order-structure.md) and the implementation plan for the
+  [0042](0042-cart-and-order-structure.md) and the implementation plan for the
   `PaymentProviderService` abstraction.
 
 ## Open questions

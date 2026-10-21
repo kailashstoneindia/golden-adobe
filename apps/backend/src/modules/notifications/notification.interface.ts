@@ -1,6 +1,6 @@
 export const NOTIFICATION_SERVICE = 'NOTIFICATION_SERVICE';
 
-// Decision 0036 rule 9. Called from the order status machine regardless of
+// Decision 0042 rule 9. Called from the order status machine regardless of
 // whether a real push provider is configured, so the call sites are
 // exercised and correct before the first real notification is ever sent.
 export interface NotificationService {

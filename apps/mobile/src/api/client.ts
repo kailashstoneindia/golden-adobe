@@ -109,9 +109,34 @@ export const apiClient = {
       .then((response) => response.data.data);
   },
 
+  /**
+   * Raw binary download (e.g. vendor catalog .xlsx).
+   * Does not unwrap the JSON envelope — those endpoints stream the file body.
+   */
+  getBinary(url: string, config?: AxiosRequestConfig): Promise<ArrayBuffer> {
+    return axiosInstance
+      .get<ArrayBuffer>(url, { ...config, responseType: 'arraybuffer' })
+      .then((response) => response.data);
+  },
+
   post<T>(url: string, body?: unknown, config?: AxiosRequestConfig): Promise<T> {
     return axiosInstance
       .post<ApiSuccessResponse<T>>(url, body, config)
+      .then((response) => response.data.data);
+  },
+
+  /**
+   * Multipart upload. Omits Content-Type so Axios sets the multipart boundary.
+   */
+  postFormData<T>(url: string, formData: FormData, config?: AxiosRequestConfig): Promise<T> {
+    return axiosInstance
+      .post<ApiSuccessResponse<T>>(url, formData, {
+        ...config,
+        headers: {
+          ...config?.headers,
+          'Content-Type': undefined,
+        },
+      })
       .then((response) => response.data.data);
   },
 

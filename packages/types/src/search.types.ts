@@ -3,6 +3,17 @@
 // nested data. Shared between the backend (search-document.builder.ts) and
 // the admin panel / mobile app, which both render search results and must
 // agree on the shape (search-system-design.md section 8).
+
+// A product's main image as three public WebP URLs (decision 0033): thumb is
+// 200px wide, medium 600px, large 1200px. Built from the media bucket's public
+// base URL when the document is indexed, so a CDN domain change needs one full
+// search rebuild.
+export type PrimaryImage = {
+  thumb: string;
+  medium: string;
+  large: string;
+};
+
 export type SearchDocument = {
   // `${masterProductId}__${cityId}` — deterministic, never generated.
   //
@@ -28,6 +39,9 @@ export type SearchDocument = {
   cheapestVendorListingId: string;
   vendorCount: number;
   inStock: boolean;
+  // The product's primary image once its variants are ready; null when it has
+  // none yet. Documents indexed before this field existed read back as null.
+  primaryImage: PrimaryImage | null;
   updatedAt: string;
 };
 
@@ -49,6 +63,7 @@ export type SearchDocumentRecord = {
   cheapest_vendor_listing_id: string;
   vendor_count: number;
   in_stock: boolean;
+  primary_image: PrimaryImage | null;
   updated_at: string;
 };
 
@@ -65,6 +80,7 @@ export function toSearchDocumentRecord(doc: SearchDocument): SearchDocumentRecor
     cheapest_vendor_listing_id: doc.cheapestVendorListingId,
     vendor_count: doc.vendorCount,
     in_stock: doc.inStock,
+    primary_image: doc.primaryImage,
     updated_at: doc.updatedAt,
   };
 }
@@ -82,6 +98,8 @@ export function fromSearchDocumentRecord(record: SearchDocumentRecord): SearchDo
     cheapestVendorListingId: record.cheapest_vendor_listing_id,
     vendorCount: record.vendor_count,
     inStock: record.in_stock,
+    // ?? null: a document indexed before the field existed has no such key.
+    primaryImage: record.primary_image ?? null,
     updatedAt: record.updated_at,
   };
 }
@@ -108,3 +126,59 @@ export function parseSearchDocumentId(
   if (parts.length !== 2 || !parts[0] || !parts[1]) return null;
   return { masterProductId: parts[0], cityId: parts[1] };
 }
+
+/** Query params for public `GET /search` (city is resolved server-side). */
+export type SearchQueryParams = {
+  q?: string;
+  pincode?: string;
+  lat?: number;
+  lng?: number;
+  category?: string;
+  brand?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  attr?: string[];
+  limit?: number;
+  offset?: number;
+};
+
+export type SearchResolvedVia = 'coordinates' | 'pincode' | 'none';
+
+export type SearchEngine = 'meilisearch' | 'postgres';
+
+/** Response from public `GET /search`. */
+export type SearchResponse = {
+  cityId: string | null;
+  resolvedVia: SearchResolvedVia;
+  engine: SearchEngine;
+  degraded: boolean;
+  total: number;
+  hits: SearchDocument[];
+  servedFromCache: boolean;
+  facets?: Record<string, Record<string, number>>;
+};
+
+/** Query params for public `GET /search/:masterProductId/listings`. */
+export type ProductListingsQueryParams = {
+  pincode?: string;
+  lat?: number;
+  lng?: number;
+};
+
+export type ProductListingRow = {
+  vendorListingId: string;
+  vendorId: string;
+  shopName: string;
+  price: number;
+  mrp: number | null;
+  statedGrade: string | null;
+  quantityAvailable: number | null;
+  inStock: boolean;
+};
+
+/** Response from public `GET /search/:masterProductId/listings`. */
+export type ProductListingsResponse = {
+  masterProductId: string;
+  cityId: string | null;
+  listings: ProductListingRow[];
+};

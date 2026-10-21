@@ -3,3 +3,6 @@ dist
 build
 coverage
 .turbo
+
+# Generated demo dataset, one row per line on purpose (decision 0031)
+apps/backend/database/demo-data

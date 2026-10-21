@@ -1,10 +1,14 @@
 import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Razorpay from 'razorpay';
-import { CreateProviderOrderResult, PaymentProviderService, RefundResult } from './payment-provider.interface';
+import {
+  CreateProviderOrderResult,
+  PaymentProviderService,
+  RefundResult,
+} from './payment-provider.interface';
 
 // No real Razorpay merchant account exists in this project as of 2026-10-09
-// (decision 0036, rules 8-9). This implementation is written and
+// (decision 0042, rules 8-9). This implementation is written and
 // unit-testable (next task) against the SDK's documented behavior, but has
 // never been run against a live account. RAZORPAY_KEY_ID/KEY_SECRET/
 // WEBHOOK_SECRET are read from config and may be empty strings in dev.
@@ -68,7 +72,12 @@ export class RazorpayProviderService implements PaymentProviderService {
       }),
       new Promise<never>((_, reject) =>
         setTimeout(
-          () => reject(new Error(`Razorpay createOrder timed out after ${RazorpayProviderService.CREATE_ORDER_TIMEOUT_MS}ms`)),
+          () =>
+            reject(
+              new Error(
+                `Razorpay createOrder timed out after ${RazorpayProviderService.CREATE_ORDER_TIMEOUT_MS}ms`,
+              ),
+            ),
           RazorpayProviderService.CREATE_ORDER_TIMEOUT_MS,
         ),
       ),
@@ -88,7 +97,7 @@ export class RazorpayProviderService implements PaymentProviderService {
     // exists for symmetry with the interface and as the place a future
     // reconciliation call (fetch payment by id to double-check) would go.
     // Not calling out to Razorpay again here — the webhook signature
-    // verification is the authority, per decision 0035 rule 3.
+    // verification is the authority, per decision 0041 rule 3.
     this.logger.log(`order ${providerOrderId} payment ${providerPaymentId} marked captured`);
   }
 

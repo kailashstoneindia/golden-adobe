@@ -6,3 +6,4 @@ export * from './pagination.types';
 export * from './admin.types';
 export * from './catalog-import.types';
 export * from './search.types';
+export * from './city.types';

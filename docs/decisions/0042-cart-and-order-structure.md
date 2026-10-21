@@ -1,19 +1,19 @@
-# 0036 — Cart and order structure: what an item points at, and how one payment becomes many vendors' work
+# 0042 — Cart and order structure: what an item points at, and how one payment becomes many vendors' work
 
 - **Date:** 2026-10-07
 - **Status:** Accepted
-- **Supersedes / Superseded by:** Carries forward the decision made in `0025-cart-and-order-structure.md` on branch `worktree-phase-3-cart-reservation` (2026-09-15), re-validated against `main` as of this date and re-filed under this project's current ADR numbering (0025 is already in use on `main` for the AWS migration). The original record's reasoning is unchanged; this record re-confirms its premises against today's schema and re-cites current file/line locations.
+- **Supersedes / Superseded by:** Carries forward the decision made in `0025-cart-and-order-structure.md` on branch `worktree-phase-3-cart-reservation` (2026-09-15), re-validated against `main` as of this date and re-filed under this project's current ADR numbering (0025 is already in use on `main` for the AWS migration). The original record's reasoning is unchanged; this record re-confirms its premises against today's schema and re-cites current file/line locations. Renumbered from this branch's own 0036 to 0042 when merging into `main`, where 0036 was independently taken by `0036-vendor-loading-unloading-capability.md`.
 
 ## Context
 
-[0035](0035-cart-owner-reservation-and-real-instock.md) settled who owns a cart, when stock is
-reserved, and what `inStock` means. It deliberately did not settle what a cart *item* is, and
+[0041](0041-cart-owner-reservation-and-real-instock.md) settled who owns a cart, when stock is
+reserved, and what `inStock` means. It deliberately did not settle what a cart _item_ is, and
 that omission hides the question this record exists to answer: **a Golden Abode cart spans
 vendors by construction.**
 
 It spans vendors because of how search works. A search result is one document per
 `(product, city)`, carrying `price` (the cheapest ACTIVE listing in that city),
-`cheapestVendorListingId`, and `vendorCount` — so a customer browses *products* while stock,
+`cheapestVendorListingId`, and `vendorCount` — so a customer browses _products_ while stock,
 price and `min_order_qty` all live on `vendor_listing`, one row per vendor. Three vendors
 selling the same Kota stone are three listings behind one search result.
 
@@ -52,7 +52,7 @@ they do not exist.
 - **Pro:** Matches what the customer thinks they are adding ("Kota stone"), and defers the
   vendor choice.
 - **Con:** Nothing to reserve — `quantity_reserved` lives on `inventory`, which is keyed by
-  listing. The reservation rule from 0035 becomes unimplementable.
+  listing. The reservation rule from 0041 becomes unimplementable.
 - **Con:** The price shown in the cart would be a per-city aggregate that can change when any
   vendor edits a listing, so a cart total would move for reasons the customer cannot see.
 
@@ -86,8 +86,8 @@ they do not exist.
 
 - **Pro:** The precedent is already set twice in this codebase: bulk stock writes reject the
   whole batch naming bad ids ([0022](0022-inventory-write-model.md) rule 3), and export scoping
-  rejects rather than silently narrowing, because *"a vendor who asked for five categories and
-  received three would have no way to tell that happened."*
+  rejects rather than silently narrowing, because _"a vendor who asked for five categories and
+  received three would have no way to tell that happened."_
 - **Pro:** No partially-paid state can exist, so no reconciliation path is needed.
 - **Con:** One sold-out item blocks a large order until the customer edits their cart.
 
@@ -132,7 +132,7 @@ they do not exist.
 
 ## Why
 
-**On rule 1.** This is forced, not chosen. 0035 rule 2 reserves stock by incrementing
+**On rule 1.** This is forced, not chosen. 0041 rule 2 reserves stock by incrementing
 `inventory.quantity_reserved`, and `inventory` is keyed by `vendor_listing_id`. An item that
 names only a product has nothing to reserve against. Everything else in this record follows
 from that one constraint.
@@ -142,14 +142,14 @@ genuinely two different cardinalities, and a schema that collapses them has to r
 distinction somewhere worse. The decisive argument is what is already specified and coming:
 the client's 22 June requirement (`docs/client-feedback-2026-06-22.md`) is a **six-digit
 delivery OTP generated per fulfilment**, with a driver entering it at the site and uploading an
-open-box photo to close the *sub-order*. That state — OTP, photo, closure — has exactly one
+open-box photo to close the _sub-order_. That state — OTP, photo, closure — has exactly one
 natural home, and it is the per-vendor group. Choosing Option C today would mean adding that
 table in three months and migrating every order into it.
 
 **On rule 4 and the "no order row" clause.** A failed checkout that leaves behind a
 `PENDING_PAYMENT` order the customer never completes creates a category of row that must then
 be swept, reported on, and excluded from every order history query. Writing nothing means
-failure needs no cleanup. This also composes with 0035 rule 2: reservations are taken *after*
+failure needs no cleanup. This also composes with 0041 rule 2: reservations are taken _after_
 validation passes, so a rejected checkout never touched `inventory` either.
 
 **On rule 6.** Vendors edit prices; carts are long-lived. If an order re-read prices from
@@ -159,11 +159,11 @@ number the customer agreed to, preserved independently of the catalog. This is t
 answer to the price-drift question — **the cart is live, the order is frozen.**
 
 **On rule 7.** [catalog-integrity-residual-risks.md](../catalog-integrity-residual-risks.md)
-risk 4 is explicit that a customer report *"should flag the `vendor_listing`, and invalidate
-the `vendor_product_map` entry that produced it"*, and warns it must be designed in *"from the
-start, not bolted on."* Risk 2's fix re-points `vendor_product_map` at whatever the vendor
+risk 4 is explicit that a customer report _"should flag the `vendor_listing`, and invalidate
+the `vendor_product_map` entry that produced it"_, and warns it must be designed in _"from the
+start, not bolted on."_ Risk 2's fix re-points `vendor_product_map` at whatever the vendor
 confirmed; if a customer receives the wrong item and only the order is flagged, the mapping
-survives and re-applies the same wrong listing on the vendor's next upload. The report *path*
+survives and re-applies the same wrong listing on the vendor's next upload. The report _path_
 is Phase 4 work, but the columns it will need cost nothing now and cannot be retrofitted onto
 orders already placed.
 
@@ -212,9 +212,9 @@ payloads without a live account.
 - **Mobile is out of scope for this plan** by explicit decision. The real cart/checkout/order
   screens on `apps/mobile` are a rewrite, not an adaptation, once this API exists — named here
   as a dependency for whoever picks up that work next, not addressed by it.
-- **Payouts are manual and this schema assumes it.** The proposal excludes *"wallet withdrawals
-  and advanced payout automation"* from the MVP, and the client asked for *"Bank Account
-  Details/UPI ID (for manual payout processing)"* — which shipped as `vendors.upi_id` and
+- **Payouts are manual and this schema assumes it.** The proposal excludes _"wallet withdrawals
+  and advanced payout automation"_ from the MVP, and the client asked for _"Bank Account
+  Details/UPI ID (for manual payout processing)"_ — which shipped as `vendors.upi_id` and
   `vendors.bank_details`. There is no split settlement: the platform collects the full amount
   once and settles with vendors out of band. `order_vendor_group` therefore carries a
   per-vendor total for reconciliation, not a payment instrument.
@@ -226,25 +226,25 @@ payloads without a live account.
 These are **not** Phase 3 work. They are recorded because the structure above is chosen partly
 to accommodate them, and a later reader needs to know the attachment points were deliberate.
 
-| Deferred | Attaches to | Why not now |
-|---|---|---|
-| Delivery OTP (6-digit, driver enters at site) | `order_vendor_group` | Fulfilment, not placement. Client-specified 22 June; the architecture must support it, which rule 2 ensures. |
-| Open-box delivery photo | `order_vendor_group` + media storage | Needs the media/storage work that is still unstarted in Phase 2 (decision 0024-product-images-gcs is accepted but unimplemented). |
-| Artisan order validation ("correct material, good quality") | `order_vendor_group` | The contracted artisan scope is Profile, Associate, Earn Points, View History — validation is Phase 4. |
-| Project association | `orders` | "Associate With Customer Projects" is Phase 4. The order owner is the customer; a nullable project reference is additive later. |
-| Customer report path (risk 4) | `order_items` | The path is Phase 4; rule 7 ensures the columns exist now. |
-| Dimension-based orders (custom stone cutting) | — | Explicitly post-MVP in the proposal. |
-| Real Razorpay capture / real Firebase push | `PaymentProviderService` / `NotificationService` | No credentials exist yet (rules 8-9). Interfaces are built and testable; live verification is blocked on account setup, which is not an engineering task. |
+| Deferred                                                    | Attaches to                                      | Why not now                                                                                                                                               |
+| ----------------------------------------------------------- | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Delivery OTP (6-digit, driver enters at site)               | `order_vendor_group`                             | Fulfilment, not placement. Client-specified 22 June; the architecture must support it, which rule 2 ensures.                                              |
+| Open-box delivery photo                                     | `order_vendor_group` + media storage             | Needs the media/storage work that is still unstarted in Phase 2 (decision 0024-product-images-gcs is accepted but unimplemented).                         |
+| Artisan order validation ("correct material, good quality") | `order_vendor_group`                             | The contracted artisan scope is Profile, Associate, Earn Points, View History — validation is Phase 4.                                                    |
+| Project association                                         | `orders`                                         | "Associate With Customer Projects" is Phase 4. The order owner is the customer; a nullable project reference is additive later.                           |
+| Customer report path (risk 4)                               | `order_items`                                    | The path is Phase 4; rule 7 ensures the columns exist now.                                                                                                |
+| Dimension-based orders (custom stone cutting)               | —                                                | Explicitly post-MVP in the proposal.                                                                                                                      |
+| Real Razorpay capture / real Firebase push                  | `PaymentProviderService` / `NotificationService` | No credentials exist yet (rules 8-9). Interfaces are built and testable; live verification is blocked on account setup, which is not an engineering task. |
 
 ## Open questions
 
 - **Which vendor a search-result add-to-cart should default to.** `cheapestVendorListingId` is
   the obvious answer and the only one the search document supports today, but "cheapest" and
-  "in stock" can disagree, and the document's aggregate `inStock` cannot tell them apart (0035
+  "in stock" can disagree, and the document's aggregate `inStock` cannot tell them apart (0041
   rule 6). Whether the UI offers a vendor picker is a product question, not settled here.
-- **What happens to a cart item whose vendor is paused.** Carried forward from 0035 — the
+- **What happens to a cart item whose vendor is paused.** Carried forward from 0041 — the
   pause lives on `users.is_active`, and rule 4 rejects such an item at checkout, but whether
-  the cart should *show* it as unavailable before then is undecided.
+  the cart should _show_ it as unavailable before then is undecided.
 - **Whether an order is cancellable after placement, and by whom.** "Order Management" and
   "Status Updates" are contracted, but cancellation semantics — who may cancel, until when,
   and what happens to a reservation or a captured payment — are not argued here. This is the

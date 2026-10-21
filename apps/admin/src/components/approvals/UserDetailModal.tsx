@@ -46,6 +46,10 @@ export function UserDetailModal({
             value={user.onboardingCompletedAt ? formatDateTime(user.onboardingCompletedAt) : '-'}
           />
           <DetailRow label="Joined" value={formatDateTime(user.createdAt)} />
+          <DetailRow
+            label="Last login"
+            value={user.lastLoginAt ? formatDateTime(user.lastLoginAt) : 'Never'}
+          />
 
           {vendorProfile ? <VendorProfileSections profile={vendorProfile} /> : null}
         </div>
