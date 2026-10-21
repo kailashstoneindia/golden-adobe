@@ -7,6 +7,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { UsersModule } from '../users/users.module';
+import { CustomersModule } from '../customers/customers.module';
 import { RefreshToken } from '../users/models/refresh-token.model';
 
 @Module({
@@ -24,6 +25,7 @@ import { RefreshToken } from '../users/models/refresh-token.model';
     }),
     SequelizeModule.forFeature([RefreshToken]),
     UsersModule,
+    CustomersModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],

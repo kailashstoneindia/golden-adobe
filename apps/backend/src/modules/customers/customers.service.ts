@@ -24,6 +24,17 @@ export class CustomersService {
     return customer;
   }
 
+  // Called once, from AuthService.register, for every user who registers as
+  // Role.CUSTOMER. Unlike a vendor (who completes a separate onboarding
+  // step with shop/address/GPS data not known at registration time), a
+  // customer has nothing left to collect — full_name is already on the
+  // register DTO — so the row is created immediately rather than deferred.
+  // Without this, resolveCustomerByUserId 404s on every cart/checkout call
+  // a real customer makes.
+  async createForUser(userId: string, fullName: string): Promise<Customer> {
+    return this.customerModel.create({ userId, fullName } as Customer);
+  }
+
   async getProfile(userId: string): Promise<Customer> {
     return this.resolveCustomerByUserId(userId);
   }
