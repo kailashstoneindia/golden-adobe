@@ -108,4 +108,14 @@ export class OnboardVendorDto implements VendorOnboardDto {
   @IsBoolean()
   @IsOptional()
   hasLoadingUnloadingTeam?: boolean;
+
+  @ApiPropertyOptional({
+    example: 1000,
+    description:
+      'Minimum cart subtotal (with this vendor) checkout will accept. Omit to leave unset (no minimum enforced).',
+  })
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  minOrderValue?: number;
 }

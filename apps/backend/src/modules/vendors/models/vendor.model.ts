@@ -115,6 +115,17 @@ export class Vendor extends Model<Vendor> {
   })
   declare hasLoadingUnloadingTeam: boolean | null;
 
+  // Minimum order value this vendor will accept, checked against a cart's
+  // per-vendor subtotal at checkout (decision 0043) — replaces the old
+  // per-listing min_order_qty quantity check there. NULL = no minimum set,
+  // which checkout treats as 0 (no minimum enforced), not as a block.
+  @Column({
+    type: DataType.DECIMAL(12, 2),
+    allowNull: true,
+    field: 'min_order_value',
+  })
+  declare minOrderValue: number | null;
+
   @BelongsTo(() => User)
   declare user: User;
 

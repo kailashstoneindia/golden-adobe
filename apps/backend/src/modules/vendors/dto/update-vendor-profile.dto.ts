@@ -76,4 +76,14 @@ export class UpdateVendorProfileDto implements UpdateVendorProfileContract {
   @IsOptional()
   @IsBoolean()
   hasLoadingUnloadingTeam?: boolean;
+
+  @ApiPropertyOptional({
+    example: 1000,
+    description:
+      'Minimum cart subtotal (with this vendor) checkout will accept. Send null-equivalent omission to leave unset.',
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  minOrderValue?: number;
 }
