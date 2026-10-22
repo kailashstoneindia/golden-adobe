@@ -11,4 +11,9 @@ export const ERROR_MESSAGES = {
   loadVendorsFailed: 'Could not load vendors.',
   loadStatsFailed: 'Could not load dashboard stats.',
   approvalFailed: 'Could not update approval status.',
+  loadOrdersFailed: 'Could not load orders.',
+  refundFailed: 'Could not refund this order.',
+  cancelFailed: 'Could not cancel this order.',
+  overrideStatusFailed: 'Could not override vendor group status.',
+  overrideReasonRequired: 'Enter a reason for the status override.',
 } as const;

@@ -1,11 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
+import type { CartDto } from '@golden-abode/types';
 import { Cart } from './models/cart.model';
 import { CartItem } from './models/cart-item.model';
 import { VendorListing } from '../catalog/models/vendor-listing.model';
 import { CustomersService } from '../customers/customers.service';
 import { AddCartItemDto } from './dto/add-cart-item.dto';
 import { UpdateCartItemDto } from './dto/update-cart-item.dto';
+import { CART_DISPLAY_INCLUDE } from './cart-display.include';
+import { toCartDto } from './cart-display.mapper';
 
 @Injectable()
 export class CartService {
@@ -30,17 +33,18 @@ export class CartService {
   // a missing row) — the null case cannot occur on these paths, so a
   // not-null assertion documents that invariant instead of threading an
   // impossible-in-practice null through every return type.
-  private async reloadCartWithItems(cartId: string): Promise<Cart> {
-    return (await this.cartModel.findByPk(cartId, { include: [CartItem] }))!;
+  private async reloadCartWithItems(cartId: string): Promise<CartDto> {
+    const cart = await this.cartModel.findByPk(cartId, { include: CART_DISPLAY_INCLUDE });
+    return toCartDto(cart!);
   }
 
-  async getCartForUser(userId: string): Promise<Cart> {
+  async getCartForUser(userId: string): Promise<CartDto> {
     const customer = await this.customersService.resolveCustomerByUserId(userId);
     const cart = await this.getOrCreateCart(customer.id);
     return this.reloadCartWithItems(cart.id);
   }
 
-  async addItem(userId: string, dto: AddCartItemDto): Promise<Cart> {
+  async addItem(userId: string, dto: AddCartItemDto): Promise<CartDto> {
     const customer = await this.customersService.resolveCustomerByUserId(userId);
     const listing = await this.vendorListingModel.findByPk(dto.vendorListingId);
     if (!listing) {
@@ -61,7 +65,7 @@ export class CartService {
     return this.reloadCartWithItems(cart.id);
   }
 
-  async updateItem(userId: string, itemId: string, dto: UpdateCartItemDto): Promise<Cart> {
+  async updateItem(userId: string, itemId: string, dto: UpdateCartItemDto): Promise<CartDto> {
     const customer = await this.customersService.resolveCustomerByUserId(userId);
     const cart = await this.getOrCreateCart(customer.id);
     const item = await this.cartItemModel.findOne({ where: { id: itemId, cartId: cart.id } });
@@ -73,7 +77,7 @@ export class CartService {
     return this.reloadCartWithItems(cart.id);
   }
 
-  async removeItem(userId: string, itemId: string): Promise<Cart> {
+  async removeItem(userId: string, itemId: string): Promise<CartDto> {
     const customer = await this.customersService.resolveCustomerByUserId(userId);
     const cart = await this.getOrCreateCart(customer.id);
     const deleted = await this.cartItemModel.destroy({ where: { id: itemId, cartId: cart.id } });

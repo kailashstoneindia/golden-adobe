@@ -1,9 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
+import type { CustomerAddressDto } from '@golden-abode/types';
 import { Customer } from './models/customer.model';
 import { CustomerAddress } from './models/customer-address.model';
 import { UpdateCustomerProfileDto } from './dto/update-customer-profile.dto';
 import { UpsertCustomerAddressDto } from './dto/upsert-customer-address.dto';
+import { toCustomerAddressDto } from './customer-address.mapper';
 
 @Injectable()
 export class CustomersService {
@@ -46,21 +48,26 @@ export class CustomersService {
     return customer;
   }
 
-  async listAddresses(userId: string): Promise<CustomerAddress[]> {
+  async listAddresses(userId: string): Promise<CustomerAddressDto[]> {
     const customer = await this.resolveCustomerByUserId(userId);
-    return this.addressModel.findAll({ where: { customerId: customer.id } });
+    const addresses = await this.addressModel.findAll({ where: { customerId: customer.id } });
+    return addresses.map(toCustomerAddressDto);
   }
 
-  async addAddress(userId: string, dto: UpsertCustomerAddressDto): Promise<CustomerAddress> {
+  async addAddress(userId: string, dto: UpsertCustomerAddressDto): Promise<CustomerAddressDto> {
     const customer = await this.resolveCustomerByUserId(userId);
-    return this.addressModel.create({ ...dto, customerId: customer.id } as CustomerAddress);
+    const address = await this.addressModel.create({
+      ...dto,
+      customerId: customer.id,
+    } as CustomerAddress);
+    return toCustomerAddressDto(address);
   }
 
   async updateAddress(
     userId: string,
     addressId: string,
     dto: UpsertCustomerAddressDto,
-  ): Promise<CustomerAddress> {
+  ): Promise<CustomerAddressDto> {
     const customer = await this.resolveCustomerByUserId(userId);
     const address = await this.addressModel.findOne({
       where: { id: addressId, customerId: customer.id },
@@ -80,7 +87,7 @@ export class CustomersService {
       }
     }
     await address.save();
-    return address;
+    return toCustomerAddressDto(address);
   }
 
   async deleteAddress(userId: string, addressId: string): Promise<void> {

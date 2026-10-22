@@ -1,4 +1,4 @@
-import { Role } from '@golden-abode/types';
+import { ORDER_VENDOR_GROUP_STATUSES, Role } from '@golden-abode/types';
 import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -6,16 +6,19 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CategoryGrid } from '../../src/components/customer/CategoryGrid';
 import { ProjectPill } from '../../src/components/customer/ProjectPill';
 import { SearchBar } from '../../src/components/customer/SearchBar';
+import { VendorGroupListRow } from '../../src/components/orders';
 import { Card, EmptyStateCard, Text } from '../../src/components/ui';
 import { EMPTY_STATE_MESSAGES, ROUTES, type LaunchCategory } from '../../src/constants';
 import { useAuth } from '../../src/hooks/auth';
+import { useVendorOrderGroupsQuery } from '../../src/hooks/orders';
 import { usePendingConfirmationsQuery, useVendorListingsQuery } from '../../src/hooks/vendor';
 import {
   selectHasSearchLocation,
   useLocationPreferenceStore,
 } from '../../src/stores/location-preference.store';
 import { Colors, Radius, Spacing } from '../../src/theme';
-import { navigateToCatalogSearch, navigateToLocationGate } from '../../src/utils';
+import type { PendingOrdersPreviewProps } from '../../src/types';
+import { navigateToCatalogSearch, navigateToLocationGate, navigateToOrderDetail } from '../../src/utils';
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -148,14 +151,37 @@ function VendorHome() {
           </Card>
         </Pressable>
 
-        <SectionHeader
-          title="Pending orders"
-          actionLabel="See all"
-          onActionPress={handleOrdersPress}
-        />
-        <EmptyStateCard message={EMPTY_STATE_MESSAGES.homePendingOrdersEmpty} />
+        <PendingOrdersPreview onSeeAllPress={handleOrdersPress} />
       </ScrollView>
     </View>
+  );
+}
+
+function PendingOrdersPreview({ onSeeAllPress }: PendingOrdersPreviewProps) {
+  const groupsQuery = useVendorOrderGroupsQuery(true);
+  const pendingGroups = (groupsQuery.data ?? [])
+    .filter(
+      (group) =>
+        group.status === ORDER_VENDOR_GROUP_STATUSES.PENDING ||
+        group.status === ORDER_VENDOR_GROUP_STATUSES.CONFIRMED,
+    )
+    .slice(0, 3);
+
+  return (
+    <>
+      <SectionHeader title="Pending orders" actionLabel="See all" onActionPress={onSeeAllPress} />
+      {pendingGroups.length === 0 ? (
+        <EmptyStateCard message={EMPTY_STATE_MESSAGES.homePendingOrdersEmpty} />
+      ) : (
+        pendingGroups.map((group) => (
+          <VendorGroupListRow
+            key={group.id}
+            group={group}
+            onPress={navigateToOrderDetail}
+          />
+        ))
+      )}
+    </>
   );
 }
 

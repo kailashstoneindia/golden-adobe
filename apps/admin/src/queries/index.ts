@@ -28,6 +28,16 @@ export {
 } from './useCatalogQueries';
 
 export {
+  ORDERS_QUERY_KEYS,
+  useCancelAdminOrderMutation,
+  useOrdersQuery,
+  useOrderQuery,
+  useOverrideVendorGroupStatusMutation,
+  usePaymentEventsQuery,
+  useRefundOrderMutation,
+} from './useOrdersQueries';
+
+export {
   VENDORS_QUERY_KEYS,
   useCitiesQuery,
   useSetVendorCategoriesMutation,

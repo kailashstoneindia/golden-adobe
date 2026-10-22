@@ -69,6 +69,7 @@ export type ProductListingRow = {
   statedGrade: string | null;
   quantityAvailable: number | null;
   inStock: boolean;
+  isPaint: boolean;
 };
 
 // word_similarity floor, compared inline in each query. Named here so the
@@ -396,6 +397,7 @@ export class PostgresSearchService {
         statedGrade: row.stated_grade,
         quantityAvailable: row.quantity_available === null ? null : Number(row.quantity_available),
         inStock,
+        isPaint,
       };
     });
   }

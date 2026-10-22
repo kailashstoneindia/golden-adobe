@@ -15,7 +15,27 @@ export const API_ENDPOINTS = {
   vendors: {
     onboard: '/vendors/onboard',
     onboardingProgress: '/vendors/onboarding-progress',
+    me: '/vendors/me',
     meCategories: '/vendors/me/categories',
+    orderGroups: '/vendors/order-groups',
+    orderGroupById: (groupId: string) => `/vendors/order-groups/${groupId}`,
+    orderGroupStatus: (groupId: string) => `/vendors/order-groups/${groupId}/status`,
+  },
+  cart: {
+    root: '/cart',
+    items: '/cart/items',
+    itemById: (itemId: string) => `/cart/items/${itemId}`,
+  },
+  checkout: '/checkout',
+  orders: {
+    list: '/orders',
+    byId: (orderId: string) => `/orders/${orderId}`,
+    cancel: (orderId: string) => `/orders/${orderId}/cancel`,
+  },
+  customers: {
+    me: '/customers/me',
+    addresses: '/customers/me/addresses',
+    addressById: (addressId: string) => `/customers/me/addresses/${addressId}`,
   },
   search: {
     products: '/search',

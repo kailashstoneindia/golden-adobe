@@ -4,8 +4,7 @@ export const EMPTY_STATE_MESSAGES = {
   ordersCustomerEmpty:
     'You don’t have any orders yet. Orders will appear here after you place one.',
   ordersVendorEmpty: 'No incoming orders yet. Customer orders for your shop will show up here.',
-  orderDetailUnavailable:
-    'Order details aren’t available yet. Orders will open here once ordering goes live.',
+  orderDetailUnavailable: 'This order could not be found.',
   orderHistoryEmpty: 'No past orders yet.',
   checkoutEmpty: 'Nothing to checkout. Add items to your cart first.',
   projectsEmpty: 'No projects yet. Add a site when project tracking goes live.',

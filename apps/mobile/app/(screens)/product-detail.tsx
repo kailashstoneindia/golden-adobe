@@ -1,19 +1,30 @@
+import type { ProductListingRow } from '@golden-abode/types';
+import { Role } from '@golden-abode/types';
 import { router } from 'expo-router';
-import { useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { OtherSellersList } from '../../src/components/catalog';
 import { Screen } from '../../src/components/layout/Screen';
 import { Button, Card, Text } from '../../src/components/ui';
+import { APP_CONSTANTS, ERROR_MESSAGES, ROUTES, TOAST_MESSAGES } from '../../src/constants';
+import { useAuth } from '../../src/hooks/auth';
+import { useAddCartItemMutation } from '../../src/hooks/cart';
 import { useProductListingsQuery } from '../../src/hooks/search';
+import { useToast } from '../../src/hooks/useToast';
 import {
   selectHasSearchLocation,
   useLocationPreferenceStore,
 } from '../../src/stores/location-preference.store';
 import { useSelectedSearchProductStore } from '../../src/stores/selected-search-product.store';
 import { Colors, Radius, Spacing } from '../../src/theme';
-import { formatCategoryPath, formatInr, navigateToLocationGate } from '../../src/utils';
+import {
+  formatCategoryPath,
+  formatInr,
+  getApiErrorMessage,
+  navigateToLocationGate,
+} from '../../src/utils';
 
 export default function ProductDetailScreen() {
   const insets = useSafeAreaInsets();
@@ -21,12 +32,55 @@ export default function ProductDetailScreen() {
   const preference = useLocationPreferenceStore((store) => store.preference);
   const hasSearchLocation = useLocationPreferenceStore(selectHasSearchLocation);
   const listingsQuery = useProductListingsQuery(selectedProduct?.masterProductId ?? null);
+  const { user } = useAuth();
+  const { showSuccess, showError } = useToast();
+  const addCartItem = useAddCartItemMutation();
+  const [selectedVendorListingId, setSelectedVendorListingId] = useState<string | null>(null);
   const footerPaddingBottom = Math.max(insets.bottom, Spacing.md);
+  const listings = listingsQuery.data?.listings ?? [];
+  const selectedListing = listings.find(
+    (listing) => listing.vendorListingId === selectedVendorListingId,
+  );
+  const isCustomer = user?.role === Role.CUSTOMER;
   const attributeRows = useMemo(
     () => buildAttributeRows(selectedProduct?.attributes ?? {}),
     [selectedProduct?.attributes],
   );
   const locationLabel = preference.pincode ?? (preference.latitude ? 'Near you' : 'Set area');
+
+  const handleSelectListing = useCallback((listing: ProductListingRow) => {
+    setSelectedVendorListingId(listing.vendorListingId);
+  }, []);
+
+  const handleAddToCart = useCallback(() => {
+    if (!isCustomer) {
+      showError(ERROR_MESSAGES.selectSellerToAdd);
+      return;
+    }
+    if (!selectedListing) {
+      showError(ERROR_MESSAGES.selectSellerToAdd);
+      return;
+    }
+    if (selectedListing.isPaint) {
+      showError(ERROR_MESSAGES.paintNotOrderable);
+      return;
+    }
+    addCartItem.mutate(
+      {
+        vendorListingId: selectedListing.vendorListingId,
+        quantity: APP_CONSTANTS.defaultCartQuantity,
+      },
+      {
+        onSuccess: () => {
+          showSuccess(TOAST_MESSAGES.addedToCart);
+          router.push(ROUTES.tabs.cart);
+        },
+        onError: (error) => {
+          showError(getApiErrorMessage(error, ERROR_MESSAGES.addToCartFailed));
+        },
+      },
+    );
+  }, [addCartItem, isCustomer, selectedListing, showError, showSuccess]);
 
   if (!selectedProduct) {
     return (
@@ -87,10 +141,12 @@ export default function ProductDetailScreen() {
           </Card>
 
           <OtherSellersList
-            listings={listingsQuery.data?.listings ?? []}
+            listings={listings}
             isLoading={listingsQuery.isLoading}
             isError={listingsQuery.isError}
             hasSearchLocation={hasSearchLocation}
+            selectedVendorListingId={selectedVendorListingId}
+            onSelectListing={handleSelectListing}
           />
 
           {attributeRows.length > 0 ? (
@@ -118,7 +174,12 @@ export default function ProductDetailScreen() {
         </ScrollView>
 
         <View style={[styles.footer, { paddingBottom: footerPaddingBottom }]}>
-          <Button title="Add to cart — coming soon" fullWidth disabled onPress={() => undefined} />
+          <Button
+            title={resolveAddToCartTitle(isCustomer, selectedListing, addCartItem.isPending)}
+            fullWidth
+            disabled={!canAddToCart(isCustomer, selectedListing, addCartItem.isPending)}
+            onPress={handleAddToCart}
+          />
           <Button
             title="Back to results"
             variant="secondary"
@@ -160,6 +221,37 @@ function formatVendorCount(vendorCount: number): string {
     return 'available from 1 vendor';
   }
   return `available from ${vendorCount} vendors`;
+}
+
+function canAddToCart(
+  isCustomer: boolean,
+  selectedListing: ProductListingRow | undefined,
+  isPending: boolean,
+): boolean {
+  if (!isCustomer || !selectedListing || isPending) {
+    return false;
+  }
+  return !selectedListing.isPaint;
+}
+
+function resolveAddToCartTitle(
+  isCustomer: boolean,
+  selectedListing: ProductListingRow | undefined,
+  isPending: boolean,
+): string {
+  if (isPending) {
+    return 'Adding…';
+  }
+  if (!isCustomer) {
+    return 'Sign in as a customer to add';
+  }
+  if (!selectedListing) {
+    return 'Select a seller';
+  }
+  if (selectedListing.isPaint) {
+    return 'Paint is not orderable';
+  }
+  return 'Add to cart';
 }
 
 const styles = StyleSheet.create({

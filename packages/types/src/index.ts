@@ -7,3 +7,4 @@ export * from './admin.types';
 export * from './catalog-import.types';
 export * from './search.types';
 export * from './city.types';
+export * from './order.types';

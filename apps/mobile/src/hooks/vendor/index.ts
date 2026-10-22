@@ -11,6 +11,7 @@ export {
   useSetVendorStockMutation,
 } from './useVendorListingMutations';
 export { useVendorCategoriesQuery } from './useVendorCategories';
+export { useUpdateVendorProfileMutation, useVendorProfileQuery } from './useVendorProfile';
 export {
   useChoosePendingCandidateMutation,
   useConfirmPendingListingMutation,

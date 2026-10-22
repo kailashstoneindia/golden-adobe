@@ -4,6 +4,7 @@ export { LoginPage } from './LoginPage';
 export { RegisterPage } from './RegisterPage';
 export { UsersPage } from './UsersPage';
 export { VendorsPage } from './VendorsPage';
+export { OrdersPage } from './OrdersPage';
 export { CatalogCategoriesPage } from './CatalogCategoriesPage';
 export { CatalogProductsPage } from './CatalogProductsPage';
 export { CatalogImportPage } from './CatalogImportPage';

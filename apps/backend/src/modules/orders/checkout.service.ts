@@ -11,6 +11,8 @@ import { CustomerAddress } from '../customers/models/customer-address.model';
 import { PAYMENT_PROVIDER, PaymentProviderService } from '../payments/payment-provider.interface';
 import { VendorListingStatus } from '../catalog/models/vendor-listing.model';
 import { SaleUnitType } from '../catalog/models/master-product.model';
+import type { OrderDto } from '@golden-abode/types';
+import { toOrderDto } from './order-display.mapper';
 
 interface CartLineForCheckout {
   cart_item_id: string;
@@ -67,7 +69,7 @@ export class CheckoutService {
     @Inject(PAYMENT_PROVIDER) private readonly paymentProvider: PaymentProviderService,
   ) {}
 
-  async checkout(userId: string, deliveryAddressId: string): Promise<Order> {
+  async checkout(userId: string, deliveryAddressId: string): Promise<OrderDto> {
     const customer = await this.customersService.resolveCustomerByUserId(userId);
 
     const address = await this.addressModel.findOne({
@@ -433,7 +435,7 @@ export class CheckoutService {
       );
       order.razorpayOrderId = providerOrder.providerOrderId;
       await order.save();
-      return order;
+      return toOrderDto(order, false);
     } catch (err) {
       this.logger.error(
         `order ${order.id}: Razorpay createOrder failed after reservation committed — releasing and cancelling: ${

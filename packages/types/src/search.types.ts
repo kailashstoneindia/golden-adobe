@@ -174,6 +174,7 @@ export type ProductListingRow = {
   statedGrade: string | null;
   quantityAvailable: number | null;
   inStock: boolean;
+  isPaint: boolean;
 };
 
 /** Response from public `GET /search/:masterProductId/listings`. */

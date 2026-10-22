@@ -14,3 +14,5 @@ export { TextInput } from './TextInput';
 export type { TextInputProps } from './TextInput';
 
 export { EmptyStateCard } from './EmptyStateCard';
+
+export { QtyStepper } from './QtyStepper';

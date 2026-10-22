@@ -11,6 +11,8 @@ export type VendorOnboardFormValues = {
   address: string;
   upiId: string;
   gstin: string;
+  hasLoadingUnloadingTeam: boolean | null;
+  minOrderValue: string;
   accountDetails: VendorAccountDetailsFormValues;
 };
 

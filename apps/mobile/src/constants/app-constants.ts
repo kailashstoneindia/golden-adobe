@@ -4,4 +4,12 @@ export const APP_CONSTANTS = {
   searchDefaultPageSize: 20,
   vendorListingsDefaultPageSize: 25,
   indianPincodeLength: 6,
+  defaultCartQuantity: 1,
+  cartStaleTimeMs: 15_000,
+  ordersStaleTimeMs: 15_000,
+  addressesStaleTimeMs: 60_000,
+  vendorProfileStaleTimeMs: 60_000,
+  orderPaymentPollIntervalMs: 2_000,
+  orderPaymentPollMaxAttempts: 30,
+  checkoutMerchantName: 'Kailash Stones',
 } as const;
