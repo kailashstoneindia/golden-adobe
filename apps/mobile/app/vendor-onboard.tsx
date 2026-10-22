@@ -222,6 +222,44 @@ export default function VendorOnboardScreen() {
                 onChangeText={(value) => vendorForm.updateField('address', value)}
                 multiline
               />
+              <TextInput
+                label="Minimum order value (optional)"
+                placeholder="1000"
+                value={vendorForm.formValues.minOrderValue}
+                onChangeText={(value) => vendorForm.updateField('minOrderValue', value)}
+                keyboardType="numeric"
+              />
+              <Text variant="caption" color={Colors.inkSoft}>
+                Do you have a loading / unloading team for tiles and stone?
+              </Text>
+              <View style={styles.bankOptionsWrap}>
+                <Pressable
+                  onPress={() => vendorForm.updateHasLoadingUnloadingTeam(true)}
+                  style={[
+                    styles.bankOption,
+                    vendorForm.formValues.hasLoadingUnloadingTeam === true
+                      ? styles.bankOptionSelected
+                      : null,
+                  ]}
+                >
+                  <Text variant="caption" color={Colors.navy}>
+                    Yes
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => vendorForm.updateHasLoadingUnloadingTeam(false)}
+                  style={[
+                    styles.bankOption,
+                    vendorForm.formValues.hasLoadingUnloadingTeam === false
+                      ? styles.bankOptionSelected
+                      : null,
+                  ]}
+                >
+                  <Text variant="caption" color={Colors.navy}>
+                    No
+                  </Text>
+                </Pressable>
+              </View>
             </>
           ) : null}
 

@@ -18,4 +18,13 @@ export const TOAST_MESSAGES = {
   locationSaved: 'Search location saved',
   locationSaveFailed: 'Could not save your location',
   logoutSuccess: 'Signed out successfully',
+  addedToCart: 'Added to cart',
+  itemRemovedFromCart: 'Item removed from cart',
+  addressSaved: 'Address saved',
+  addressDeleted: 'Address deleted',
+  paymentPending: 'Payment is still pending. Complete payment to confirm the order.',
+  paymentConfirmed: 'Payment confirmed',
+  orderCancelled: 'Order cancelled',
+  vendorGroupStatusUpdated: 'Order status updated',
+  shopProfileSaved: 'Shop profile saved',
 } as const;

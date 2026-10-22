@@ -14,6 +14,7 @@ import { CartModule } from '../cart/cart.module';
 import { CustomersModule } from '../customers/customers.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { CatalogModule } from '../catalog/catalog.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     CustomersModule,
     PaymentsModule,
     NotificationsModule,
+    CatalogModule,
   ],
   controllers: [OrdersController, WebhooksController, AdminOrdersController],
   providers: [CheckoutService, OrdersService],

@@ -1,5 +1,6 @@
 import type {
   UpdateVendorOnboardingProgressDto,
+  UpdateVendorProfileDto,
   VendorOnboardDto,
   VendorOnboardingStage,
   VendorProfileDto,
@@ -11,6 +12,12 @@ import { API_ENDPOINTS } from '../constants';
 export const vendorService = {
   onboard(dto: VendorOnboardDto): Promise<VendorProfileDto> {
     return apiClient.post<VendorProfileDto>(API_ENDPOINTS.vendors.onboard, dto);
+  },
+  fetchMe(): Promise<VendorProfileDto> {
+    return apiClient.get<VendorProfileDto>(API_ENDPOINTS.vendors.me);
+  },
+  updateMe(body: UpdateVendorProfileDto): Promise<VendorProfileDto> {
+    return apiClient.patch<VendorProfileDto>(API_ENDPOINTS.vendors.me, body);
   },
   updateOnboardingProgress(onboardingStage: VendorOnboardingStage): Promise<{ success: boolean }> {
     const requestBody: UpdateVendorOnboardingProgressDto = { onboardingStage };

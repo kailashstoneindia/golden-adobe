@@ -95,6 +95,13 @@ export function buildVendorOnboardPayload(
   if (gstin) {
     payload.gstin = gstin;
   }
+  if (formValues.hasLoadingUnloadingTeam !== null) {
+    payload.hasLoadingUnloadingTeam = formValues.hasLoadingUnloadingTeam;
+  }
+  const minOrderValue = Number(formValues.minOrderValue.trim());
+  if (formValues.minOrderValue.trim() && Number.isFinite(minOrderValue) && minOrderValue >= 0) {
+    payload.minOrderValue = minOrderValue;
+  }
 
   return payload;
 }

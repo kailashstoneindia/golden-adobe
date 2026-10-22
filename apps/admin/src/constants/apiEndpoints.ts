@@ -17,6 +17,13 @@ export const API_ENDPOINTS = {
     vendorCity: (vendorId: string) => `/admin/vendors/${vendorId}/city`,
     vendorCategories: (vendorId: string) => `/admin/vendors/${vendorId}/categories`,
     cities: '/admin/cities',
+    orders: '/admin/orders',
+    orderById: (orderId: string) => `/admin/orders/${orderId}`,
+    orderRefund: (orderId: string) => `/admin/orders/${orderId}/refund`,
+    orderCancel: (orderId: string) => `/admin/orders/${orderId}/cancel`,
+    orderPaymentEvents: (orderId: string) => `/admin/orders/${orderId}/payment-events`,
+    overrideVendorGroupStatus: (groupId: string) =>
+      `/admin/orders/vendor-group/${groupId}/override-status`,
   },
   catalog: {
     categories: '/admin/catalog/categories',

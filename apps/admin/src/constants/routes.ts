@@ -7,6 +7,7 @@ export const ROUTES = {
   approvalsArtisans: '/approvals/artisans',
   users: '/users',
   vendors: '/vendors',
+  orders: '/orders',
   catalogCategories: '/catalog/categories',
   catalogProducts: '/catalog/products',
   catalogImport: '/catalog/import',

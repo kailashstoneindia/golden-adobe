@@ -1,0 +1,1 @@
+export { CartVendorGroupCard } from './CartVendorGroupCard';

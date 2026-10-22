@@ -8,5 +8,6 @@ const DEFAULT_PROD_API_URL = 'https://golden-adobe-production.up.railway.app/api
 export const Env = {
   apiBaseUrl:
     process.env.EXPO_PUBLIC_API_URL ?? (__DEV__ ? DEFAULT_DEV_API_URL : DEFAULT_PROD_API_URL),
+  razorpayKeyId: process.env.EXPO_PUBLIC_RAZORPAY_KEY_ID ?? '',
   isDev: __DEV__,
 } as const;

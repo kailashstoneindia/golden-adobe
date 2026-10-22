@@ -2,13 +2,20 @@ import { BadRequestException, Inject, Injectable, Logger, NotFoundException } fr
 import { InjectModel } from '@nestjs/sequelize';
 import { Sequelize } from 'sequelize-typescript';
 import { Op, QueryTypes } from 'sequelize';
+import type { OrderDto, OrderVendorGroupDto, PaymentEventDto } from '@golden-abode/types';
 import { Order, OrderStatus } from './models/order.model';
 import { OrderVendorGroup, OrderVendorGroupStatus } from './models/order-vendor-group.model';
-import { OrderItem } from './models/order-item.model';
 import { PaymentEvent } from './models/payment-event.model';
 import { CustomersService } from '../customers/customers.service';
 import { NOTIFICATION_SERVICE, NotificationService } from '../notifications/notification.interface';
 import { PAYMENT_PROVIDER, PaymentProviderService } from '../payments/payment-provider.interface';
+import {
+  ADMIN_ORDER_DISPLAY_INCLUDE,
+  ORDER_GROUP_DISPLAY_INCLUDE,
+  customerOrderInclude,
+  vendorGroupInclude,
+} from './order-display.include';
+import { toOrderDto, toOrderVendorGroupDto, toPaymentEventDto } from './order-display.mapper';
 
 @Injectable()
 export class OrdersService {
@@ -24,25 +31,26 @@ export class OrdersService {
     @Inject(PAYMENT_PROVIDER) private readonly paymentProvider: PaymentProviderService,
   ) {}
 
-  async listForCustomer(userId: string): Promise<Order[]> {
+  async listForCustomer(userId: string): Promise<OrderDto[]> {
     const customer = await this.customersService.resolveCustomerByUserId(userId);
-    return this.orderModel.findAll({
+    const orders = await this.orderModel.findAll({
       where: { customerId: customer.id },
-      include: [{ model: OrderVendorGroup, include: [OrderItem] }],
+      include: customerOrderInclude(false),
       order: [['createdAt', 'DESC']],
     });
+    return orders.map((order) => toOrderDto(order, false));
   }
 
-  async getForCustomer(userId: string, orderId: string): Promise<Order> {
+  async getForCustomer(userId: string, orderId: string): Promise<OrderDto> {
     const customer = await this.customersService.resolveCustomerByUserId(userId);
     const order = await this.orderModel.findOne({
       where: { id: orderId, customerId: customer.id },
-      include: [{ model: OrderVendorGroup, include: [OrderItem] }],
+      include: customerOrderInclude(true),
     });
     if (!order) {
       throw new NotFoundException('order not found');
     }
-    return order;
+    return toOrderDto(order, true);
   }
 
   // Cancellation authorization (who, until when) is an explicit open
@@ -52,7 +60,7 @@ export class OrdersService {
   // has confirmed payment). Once CONFIRMED, cancellation is not exposed to
   // the customer here — full post-confirmation cancellation semantics are
   // decision 0042's own named "likely next ADR," not settled here.
-  async cancel(userId: string, orderId: string): Promise<Order> {
+  async cancel(userId: string, orderId: string): Promise<OrderDto> {
     const customer = await this.customersService.resolveCustomerByUserId(userId);
     const order = await this.orderModel.findOne({
       where: { id: orderId, customerId: customer.id },
@@ -143,7 +151,7 @@ export class OrdersService {
 
     order.status = OrderStatus.CANCELLED;
     await this.notifications.sendOrderStatusChanged(customer.id, order.id, OrderStatus.CANCELLED);
-    return order;
+    return this.getForCustomer(userId, orderId);
   }
 
   // The read half of the vendor order surface. Without this, a vendor has
@@ -162,44 +170,31 @@ export class OrdersService {
   // an order" answer this surface exists for: that answer is "once it's a
   // real, paid order," not "the moment a customer's cart becomes a
   // reservation."
-  async listForVendor(vendorId: string): Promise<OrderVendorGroup[]> {
-    return this.groupModel.findAll({
+  async listForVendor(vendorId: string): Promise<OrderVendorGroupDto[]> {
+    const groups = await this.groupModel.findAll({
       where: { vendorId },
-      include: [
-        OrderItem,
-        {
-          model: Order,
-          attributes: [],
-          where: { status: { [Op.ne]: OrderStatus.PENDING_PAYMENT } },
-        },
-      ],
+      include: vendorGroupInclude({ status: { [Op.ne]: OrderStatus.PENDING_PAYMENT } }),
       order: [['createdAt', 'DESC']],
     });
+    return groups.map(toOrderVendorGroupDto);
   }
 
-  async getForVendor(vendorId: string, groupId: string): Promise<OrderVendorGroup> {
+  async getForVendor(vendorId: string, groupId: string): Promise<OrderVendorGroupDto> {
     const group = await this.groupModel.findOne({
       where: { id: groupId, vendorId },
-      include: [
-        OrderItem,
-        {
-          model: Order,
-          attributes: [],
-          where: { status: { [Op.ne]: OrderStatus.PENDING_PAYMENT } },
-        },
-      ],
+      include: vendorGroupInclude({ status: { [Op.ne]: OrderStatus.PENDING_PAYMENT } }),
     });
     if (!group) {
       throw new NotFoundException('order group not found');
     }
-    return group;
+    return toOrderVendorGroupDto(group);
   }
 
   async updateVendorGroupStatus(
     vendorId: string,
     groupId: string,
     status: OrderVendorGroupStatus,
-  ): Promise<OrderVendorGroup> {
+  ): Promise<OrderVendorGroupDto> {
     const group = await this.groupModel.findOne({
       where: { id: groupId, vendorId },
       include: [
@@ -265,24 +260,25 @@ export class OrdersService {
     if (order) {
       await this.notifications.sendOrderStatusChanged(order.customerId, order.id, status);
     }
-    return group;
+    return this.getForVendor(vendorId, groupId);
   }
 
-  async listForAdmin(): Promise<Order[]> {
-    return this.orderModel.findAll({
-      include: [{ model: OrderVendorGroup, include: [OrderItem] }],
+  async listForAdmin(): Promise<OrderDto[]> {
+    const orders = await this.orderModel.findAll({
+      include: ADMIN_ORDER_DISPLAY_INCLUDE,
       order: [['createdAt', 'DESC']],
     });
+    return orders.map((order) => toOrderDto(order, true));
   }
 
-  async getForAdmin(orderId: string): Promise<Order> {
+  async getForAdmin(orderId: string): Promise<OrderDto> {
     const order = await this.orderModel.findByPk(orderId, {
-      include: [{ model: OrderVendorGroup, include: [OrderItem] }],
+      include: ADMIN_ORDER_DISPLAY_INCLUDE,
     });
     if (!order) {
       throw new NotFoundException('order not found');
     }
-    return order;
+    return toOrderDto(order, true);
   }
 
   // Full refund only — partial per-line refunds are named as an open
@@ -307,7 +303,7 @@ export class OrdersService {
   // can race, before any network call. If Razorpay's refund then fails,
   // the claim is reverted so the order is still refundable on retry rather
   // than stuck in a state no other code path can move it out of.
-  async adminRefund(orderId: string): Promise<Order> {
+  async adminRefund(orderId: string): Promise<OrderDto> {
     const order = await this.orderModel.findByPk(orderId);
     if (!order) {
       throw new NotFoundException('order not found');
@@ -356,7 +352,7 @@ export class OrdersService {
       order.id,
       OrderStatus.REFUNDED,
     );
-    return order;
+    return this.getForAdmin(orderId);
   }
 
   // Admin may cancel from pending_payment (nothing was ever charged — same
@@ -392,7 +388,7 @@ export class OrdersService {
   // all, so a concurrent webhook confirming the order between that read
   // and this transaction starting must still be caught — which only a
   // lock taken inside the transaction can do.
-  async adminCancel(orderId: string): Promise<Order> {
+  async adminCancel(orderId: string): Promise<OrderDto> {
     const order = await this.orderModel.findByPk(orderId);
     if (!order) {
       throw new NotFoundException('order not found');
@@ -478,18 +474,19 @@ export class OrdersService {
       order.id,
       OrderStatus.CANCELLED,
     );
-    return order;
+    return this.getForAdmin(orderId);
   }
 
-  async getPaymentEvents(orderId: string): Promise<PaymentEvent[]> {
+  async getPaymentEvents(orderId: string): Promise<PaymentEventDto[]> {
     const order = await this.orderModel.findByPk(orderId);
     if (!order) {
       throw new NotFoundException('order not found');
     }
-    return this.paymentEventModel.findAll({
+    const events = await this.paymentEventModel.findAll({
       where: { orderId },
       order: [['createdAt', 'ASC']],
     });
+    return events.map(toPaymentEventDto);
   }
 
   // Deliberately bypasses the forward-only validNextStatuses table that
@@ -503,7 +500,7 @@ export class OrdersService {
     groupId: string,
     status: OrderVendorGroupStatus,
     reason: string,
-  ): Promise<OrderVendorGroup> {
+  ): Promise<OrderVendorGroupDto> {
     if (!reason || reason.trim().length === 0) {
       throw new BadRequestException('a reason is required for an admin status override');
     }
@@ -538,6 +535,9 @@ export class OrdersService {
     if (order) {
       await this.notifications.sendOrderStatusChanged(order.customerId, order.id, status);
     }
-    return group;
+    const reloaded = await this.groupModel.findByPk(groupId, {
+      include: ORDER_GROUP_DISPLAY_INCLUDE,
+    });
+    return toOrderVendorGroupDto(reloaded!);
   }
 }

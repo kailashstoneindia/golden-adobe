@@ -24,7 +24,7 @@ export const ROUTES = {
     savedAddresses: '/(screens)/saved-addresses',
     helpSupport: '/(screens)/help-support',
     checkout: '/(screens)/checkout',
-    orderDetail: '/(screens)/order-detail',
+    orderDetail: '/(screens)/order-detail/[id]',
     productDetail: '/(screens)/product-detail',
     addProduct: '/(screens)/add-product',
     searchResults: '/(screens)/search-results',

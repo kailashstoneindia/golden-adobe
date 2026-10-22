@@ -6,4 +6,8 @@ export { customerLocationStorage } from './storage';
 export { vendorService } from './vendor.service';
 export { vendorListingsService } from './vendor-listings.service';
 export { vendorCatalogImportService } from './vendor-catalog-import.service';
+export { cartService } from './cart.service';
+export { ordersService } from './orders.service';
+export { customersService } from './customers.service';
+export { openRazorpayCheckout } from './razorpay.service';
 export { CatalogFileToolsError, pickCatalogWorkbook, saveAndShareCatalogExport } from './catalog';

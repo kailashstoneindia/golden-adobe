@@ -23,6 +23,7 @@
     "expo-sharing": "~56.0.18",
     "expo-splash-screen": "~56.0.10",
     "expo-status-bar": "~56.0.4",
+    "lodash": "^4.17.21",
     "react": "19.2.3",
     "react-hook-form": "^7.79.0",
     "react-native": "0.85.3",
@@ -33,6 +34,7 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@types/lodash": "^4.17.13",
     "@types/react": "~19.2.2",
     "cross-env": "^7.0.3",
     "eas-cli": "^16.28.0",

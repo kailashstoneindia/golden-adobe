@@ -29,4 +29,22 @@ export const QUERY_KEYS = {
     pendingConfirmations: () =>
       [...QUERY_KEYS.vendorCatalogImport.all, 'pendingConfirmations'] as const,
   },
+  cart: {
+    all: ['cart'] as const,
+    current: () => [...QUERY_KEYS.cart.all, 'current'] as const,
+  },
+  orders: {
+    all: ['orders'] as const,
+    list: () => [...QUERY_KEYS.orders.all, 'list'] as const,
+    detail: (orderId: string) => [...QUERY_KEYS.orders.all, 'detail', orderId] as const,
+  },
+  addresses: {
+    all: ['addresses'] as const,
+    list: () => [...QUERY_KEYS.addresses.all, 'list'] as const,
+  },
+  vendorOrderGroups: {
+    all: ['vendorOrderGroups'] as const,
+    list: () => [...QUERY_KEYS.vendorOrderGroups.all, 'list'] as const,
+    detail: (groupId: string) => [...QUERY_KEYS.vendorOrderGroups.all, 'detail', groupId] as const,
+  },
 } as const;

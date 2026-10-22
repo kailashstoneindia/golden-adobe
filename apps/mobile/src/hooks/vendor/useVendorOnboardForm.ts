@@ -14,6 +14,8 @@ const INITIAL_FORM_VALUES: VendorOnboardFormValues = {
   address: '',
   upiId: '',
   gstin: '',
+  hasLoadingUnloadingTeam: null,
+  minOrderValue: '',
   accountDetails: {
     accountHolderName: '',
     bankName: '',
@@ -27,7 +29,11 @@ type VendorOnboardFormState = {
   formValues: VendorOnboardFormValues;
   errorMessage: string | null;
   isSubmitting: boolean;
-  updateField: (field: 'shopName' | 'address' | 'upiId' | 'gstin', value: string) => void;
+  updateField: (
+    field: 'shopName' | 'address' | 'upiId' | 'gstin' | 'minOrderValue',
+    value: string,
+  ) => void;
+  updateHasLoadingUnloadingTeam: (value: boolean) => void;
   updateAccountDetailsField: (field: keyof VendorAccountDetailsFormValues, value: string) => void;
   handleSubmit: (coordinates: ShopCoordinates | null) => void;
 };
@@ -37,8 +43,16 @@ export function useVendorOnboardForm(): VendorOnboardFormState {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const vendorOnboard = useVendorOnboard();
 
-  const updateField = (field: 'shopName' | 'address' | 'upiId' | 'gstin', value: string): void => {
+  const updateField = (
+    field: 'shopName' | 'address' | 'upiId' | 'gstin' | 'minOrderValue',
+    value: string,
+  ): void => {
     setFormValues((currentValues) => ({ ...currentValues, [field]: value }));
+    setErrorMessage(null);
+  };
+
+  const updateHasLoadingUnloadingTeam = (value: boolean): void => {
+    setFormValues((currentValues) => ({ ...currentValues, hasLoadingUnloadingTeam: value }));
     setErrorMessage(null);
   };
 
@@ -76,6 +90,7 @@ export function useVendorOnboardForm(): VendorOnboardFormState {
     errorMessage,
     isSubmitting: vendorOnboard.isPending,
     updateField,
+    updateHasLoadingUnloadingTeam,
     updateAccountDetailsField,
     handleSubmit,
   };
