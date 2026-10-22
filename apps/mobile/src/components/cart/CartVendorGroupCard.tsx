@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Colors, Spacing } from '../../theme';
 import type { CartLineRowProps, CartVendorGroupCardProps } from '../../types';
-import { formatInr } from '../../utils';
+import { cartLineWarning, formatInr } from '../../utils';
 import { Card, QtyStepper, Text } from '../ui';
 
 function CartVendorGroupCardComponent({
@@ -51,6 +51,7 @@ function CartLineRow({
   const handleIncrease = useCallback(() => onIncrease(item), [item, onIncrease]);
   const handleDecrease = useCallback(() => onDecrease(item), [item, onDecrease]);
   const handleRemove = useCallback(() => onRemove(item), [item, onRemove]);
+  const warning = cartLineWarning(item);
 
   return (
     <View style={styles.line}>
@@ -61,9 +62,9 @@ function CartLineRow({
         <Text variant="caption" color={Colors.inkSoft}>
           {item.productCode} · {formatInr(item.price)}
         </Text>
-        {item.isPaint ? (
+        {warning ? (
           <Text variant="caption" color={Colors.brick}>
-            Paint cannot be checked out
+            {warning}
           </Text>
         ) : null}
       </View>

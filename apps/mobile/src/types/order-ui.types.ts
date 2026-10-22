@@ -16,6 +16,24 @@ export type CartVendorGroup = {
   shortfall: number;
 };
 
+export type PriceSummary = {
+  subtotal: number;
+  tax: number;
+  discount: number;
+  total: number;
+  isDiscountApplied: boolean;
+};
+
+export type PriceSummaryProps = {
+  summary: PriceSummary;
+};
+
+export type PriceSummaryRowProps = {
+  label: string;
+  value: string;
+  isEmphasized?: boolean;
+};
+
 export type CartVendorGroupCardProps = {
   group: CartVendorGroup;
   isUpdating: boolean;

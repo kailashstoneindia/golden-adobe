@@ -29,6 +29,7 @@ interface CartLineForCheckout {
   category_path: string;
   has_loading_unloading_team: boolean | null;
   min_order_value: string | null;
+  product_name: string;
 }
 
 // Decision 0042 (per-sqft addendum). Global rate, not per-category — the
@@ -49,9 +50,21 @@ function isLoadingUnloadingEligible(categoryPath: string): boolean {
   );
 }
 
-interface CheckoutRejection {
+type CheckoutRejection = {
   vendorListingId: string;
   reason: string;
+};
+
+function toLineRejection(line: CartLineForCheckout, reason: string): CheckoutRejection {
+  return {
+    vendorListingId: line.vendor_listing_id,
+    reason: `${line.product_name}: ${reason}`,
+  };
+}
+
+function throwCheckoutRejected(rejections: CheckoutRejection[]): never {
+  const detail = rejections.map((rejection) => rejection.reason).join('; ');
+  throw new BadRequestException(`checkout rejected — ${rejections.length} line(s): ${detail}`);
 }
 
 @Injectable()
@@ -128,6 +141,7 @@ export class CheckoutService {
           vl.price,
           vl.status AS listing_status,
           mp.sale_unit_type,
+          mp.name AS product_name,
           u.is_active AS vendor_is_active,
           inv.quantity_available,
           inv.quantity_reserved,
@@ -157,14 +171,11 @@ export class CheckoutService {
       const rejections: CheckoutRejection[] = [];
       for (const line of lines) {
         if (line.listing_status !== VendorListingStatus.ACTIVE) {
-          rejections.push({
-            vendorListingId: line.vendor_listing_id,
-            reason: 'listing is not active',
-          });
+          rejections.push(toLineRejection(line, 'listing is not active'));
           continue;
         }
         if (!line.vendor_is_active) {
-          rejections.push({ vendorListingId: line.vendor_listing_id, reason: 'vendor is paused' });
+          rejections.push(toLineRejection(line, 'vendor is paused'));
           continue;
         }
         const requested = Number(line.quantity);
@@ -183,28 +194,25 @@ export class CheckoutService {
           // building that is new scope (a colour/shade selection UX and a
           // schema column), not a fix. Until it exists, refuse the line
           // explicitly rather than silently mis-price and mis-record it.
-          rejections.push({
-            vendorListingId: line.vendor_listing_id,
-            reason:
+          rejections.push(
+            toLineRejection(
+              line,
               'paint ordering is not yet supported — colour selection has no path to checkout',
-          });
+            ),
+          );
           continue;
         }
         if (line.quantity_available === null) {
           // No inventory row and not paint: stock was never set. Decision
           // 0041 rule 5's negative case.
-          rejections.push({
-            vendorListingId: line.vendor_listing_id,
-            reason: 'no stock on record',
-          });
+          rejections.push(toLineRejection(line, 'no stock on record'));
           continue;
         }
         const available = Number(line.quantity_available) - Number(line.quantity_reserved ?? 0);
         if (available < requested) {
-          rejections.push({
-            vendorListingId: line.vendor_listing_id,
-            reason: `only ${available} available, ${requested} requested`,
-          });
+          rejections.push(
+            toLineRejection(line, `only ${available} available, ${requested} requested`),
+          );
         }
       }
 
@@ -239,10 +247,12 @@ export class CheckoutService {
         );
         if (groupSubtotal < minOrderValue) {
           for (const line of groupLines) {
-            rejections.push({
-              vendorListingId: line.vendor_listing_id,
-              reason: `vendor ${vendorId}'s subtotal of ${groupSubtotal} is below their minimum order value of ${minOrderValue}`,
-            });
+            rejections.push(
+              toLineRejection(
+                line,
+                `vendor ${vendorId}'s subtotal of ${groupSubtotal} is below their minimum order value of ${minOrderValue}`,
+              ),
+            );
           }
         }
       }
@@ -255,12 +265,7 @@ export class CheckoutService {
         // have any field besides `message`/`error` silently dropped.
         // Interpolate every offending line into one readable string
         // instead.
-        const detail = rejections
-          .map((r) => `listing ${r.vendorListingId}: ${r.reason}`)
-          .join('; ');
-        throw new BadRequestException(
-          `checkout rejected — ${rejections.length} line(s): ${detail}`,
-        );
+        throwCheckoutRejected(rejections);
       }
 
       // Everything passed. SELECT ... FOR UPDATE re-reads and locks every
@@ -303,19 +308,16 @@ export class CheckoutService {
             ? Number(locked.quantity_available) - Number(locked.quantity_reserved)
             : 0;
           if (available < Number(line.quantity)) {
-            raceRejections.push({
-              vendorListingId: line.vendor_listing_id,
-              reason: `only ${available} available, ${line.quantity} requested (stock changed since cart was validated)`,
-            });
+            raceRejections.push(
+              toLineRejection(
+                line,
+                `only ${available} available, ${line.quantity} requested (stock changed since cart was validated)`,
+              ),
+            );
           }
         }
         if (raceRejections.length > 0) {
-          const detail = raceRejections
-            .map((r) => `listing ${r.vendorListingId}: ${r.reason}`)
-            .join('; ');
-          throw new BadRequestException(
-            `checkout rejected — ${raceRejections.length} line(s): ${detail}`,
-          );
+          throwCheckoutRejected(raceRejections);
         }
 
         // Single statement reserving every (non-paint) line at once, not a

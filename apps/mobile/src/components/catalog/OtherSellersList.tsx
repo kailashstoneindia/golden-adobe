@@ -57,7 +57,7 @@ function OtherSellersListComponent({
 
 function SelectableSellerRow({ listing, isSelected, onSelectListing }: SelectableSellerRowProps) {
   const handlePress = useCallback(() => {
-    if (!listing.isPaint) {
+    if (canSelectSeller(listing)) {
       onSelectListing(listing);
     }
   }, [listing, onSelectListing]);
@@ -66,11 +66,17 @@ function SelectableSellerRow({ listing, isSelected, onSelectListing }: Selectabl
 }
 
 function SellerRow({ listing, isSelected, onPress }: SellerRowProps) {
+  const isSelectable = canSelectSeller(listing);
+
   return (
     <Pressable
       onPress={onPress}
-      disabled={listing.isPaint}
-      style={[styles.row, isSelected ? styles.rowSelected : null]}
+      disabled={!isSelectable}
+      style={[
+        styles.row,
+        isSelected ? styles.rowSelected : null,
+        isSelectable ? null : styles.rowDisabled,
+      ]}
     >
       <View style={styles.rowMain}>
         <Text variant="bodyMedium" numberOfLines={1}>
@@ -94,6 +100,10 @@ function SellersMessage({ message }: SellersMessageProps) {
       </Text>
     </Card>
   );
+}
+
+function canSelectSeller(listing: ProductListingRow): boolean {
+  return !listing.isPaint && listing.inStock;
 }
 
 function formatListingMeta(listing: ProductListingRow): string {
@@ -131,6 +141,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.skyTint,
     marginHorizontal: -Spacing.md,
     paddingHorizontal: Spacing.md,
+  },
+  rowDisabled: {
+    opacity: 0.55,
   },
   rowMain: {
     flex: 1,

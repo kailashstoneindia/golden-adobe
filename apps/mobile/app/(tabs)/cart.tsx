@@ -3,7 +3,7 @@ import { Role } from '@golden-abode/types';
 import { router } from 'expo-router';
 import { useCallback, useMemo } from 'react';
 
-import { CartVendorGroupCard } from '../../src/components/cart';
+import { CartVendorGroupCard, PriceSummary } from '../../src/components/cart';
 import { DemoScreen } from '../../src/components/demo/DemoScreen';
 import { Button, EmptyStateCard, Text } from '../../src/components/ui';
 import { EMPTY_STATE_MESSAGES, ERROR_MESSAGES, ROUTES, TOAST_MESSAGES } from '../../src/constants';
@@ -16,12 +16,12 @@ import {
 import { useToast } from '../../src/hooks/useToast';
 import { Colors } from '../../src/theme';
 import {
-  cartGrandTotal,
-  formatInr,
+  buildCartPriceSummary,
   getApiErrorMessage,
   groupCartItemsByShop,
   hasCartMinOrderShortfall,
   hasPaintCartItems,
+  hasUnstockedCartItems,
 } from '../../src/utils';
 
 export default function CartTabScreen() {
@@ -33,10 +33,13 @@ export default function CartTabScreen() {
   const { showSuccess, showError } = useToast();
   const items = cartQuery.data?.items ?? [];
   const groups = useMemo(() => groupCartItemsByShop(items), [items]);
-  const grandTotal = cartGrandTotal(groups);
+  const priceSummary = useMemo(() => buildCartPriceSummary(groups), [groups]);
   const isUpdating = updateItem.isPending || removeItem.isPending;
   const canCheckout =
-    items.length > 0 && !hasPaintCartItems(items) && !hasCartMinOrderShortfall(groups);
+    items.length > 0 &&
+    !hasPaintCartItems(items) &&
+    !hasUnstockedCartItems(items) &&
+    !hasCartMinOrderShortfall(groups);
 
   const handleRemove = useCallback(
     (item: CartItemDto) => {
@@ -116,7 +119,7 @@ export default function CartTabScreen() {
       subtitle="Items grouped by vendor before checkout"
       footer={
         <>
-          <Text variant="bodyMedium">Total {formatInr(grandTotal)}</Text>
+          <PriceSummary summary={priceSummary} />
           <Button
             title="Checkout"
             fullWidth

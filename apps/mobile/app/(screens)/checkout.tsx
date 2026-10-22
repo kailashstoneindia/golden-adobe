@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 
 import { AddressCard } from '../../src/components/addresses';
-import { CartVendorGroupCard } from '../../src/components/cart';
+import { CartVendorGroupCard, PriceSummary } from '../../src/components/cart';
 import { DemoScreen } from '../../src/components/demo/DemoScreen';
 import { Button, EmptyStateCard, Text } from '../../src/components/ui';
 import { EMPTY_STATE_MESSAGES, ERROR_MESSAGES, ROUTES } from '../../src/constants';
@@ -15,7 +15,13 @@ import { usePlaceOrder } from '../../src/hooks/payments';
 import { useToast } from '../../src/hooks/useToast';
 import { Colors } from '../../src/theme';
 import type { CartVendorGroup } from '../../src/types';
-import { cartGrandTotal, formatInr, groupCartItemsByShop } from '../../src/utils';
+import {
+  buildCartPriceSummary,
+  groupCartItemsByShop,
+  hasCartMinOrderShortfall,
+  hasPaintCartItems,
+  hasUnstockedCartItems,
+} from '../../src/utils';
 
 function handleIgnoreCartItem(_item: CartItemDto): void {
   return;
@@ -30,15 +36,26 @@ export default function CheckoutScreen() {
   const { showError } = useToast();
   const items: CartItemDto[] = cartQuery.data?.items ?? [];
   const groups: CartVendorGroup[] = useMemo(() => groupCartItemsByShop(items), [items]);
+  const priceSummary = useMemo(() => buildCartPriceSummary(groups), [groups]);
   const addresses: CustomerAddressDto[] = addressesQuery.data ?? [];
   const defaultAddressId =
     addresses.find((address: CustomerAddressDto) => address.isDefault)?.id ?? addresses[0]?.id;
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const activeAddressId = selectedAddressId ?? defaultAddressId ?? null;
 
+  const canPlaceOrder =
+    Boolean(activeAddressId) &&
+    !hasPaintCartItems(items) &&
+    !hasUnstockedCartItems(items) &&
+    !hasCartMinOrderShortfall(groups);
+
   const handlePlaceOrder = async (): Promise<void> => {
     if (!activeAddressId) {
       showError(ERROR_MESSAGES.checkoutRequiresAddress);
+      return;
+    }
+    if (!canPlaceOrder) {
+      showError(ERROR_MESSAGES.checkoutHasUnstockedItems);
       return;
     }
     await placeOrder(activeAddressId);
@@ -68,11 +85,11 @@ export default function CheckoutScreen() {
       showBack
       footer={
         <>
-          <Text variant="bodyMedium">Total {formatInr(cartGrandTotal(groups))}</Text>
+          <PriceSummary summary={priceSummary} />
           <Button
             title={isPlacing ? 'Placing order…' : 'Place order'}
             fullWidth
-            disabled={isPlacing || !activeAddressId}
+            disabled={isPlacing || !canPlaceOrder}
             onPress={handlePlaceOrder}
           />
         </>

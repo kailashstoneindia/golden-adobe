@@ -12,4 +12,6 @@ export const APP_CONSTANTS = {
   orderPaymentPollIntervalMs: 2_000,
   orderPaymentPollMaxAttempts: 30,
   checkoutMerchantName: 'Kailash Stones',
+  unsetTaxAmount: 0,
+  unsetDiscountAmount: 0,
 } as const;

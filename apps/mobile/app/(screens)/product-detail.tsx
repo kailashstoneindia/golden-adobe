@@ -53,16 +53,9 @@ export default function ProductDetailScreen() {
   }, []);
 
   const handleAddToCart = useCallback(() => {
-    if (!isCustomer) {
-      showError(ERROR_MESSAGES.selectSellerToAdd);
-      return;
-    }
-    if (!selectedListing) {
-      showError(ERROR_MESSAGES.selectSellerToAdd);
-      return;
-    }
-    if (selectedListing.isPaint) {
-      showError(ERROR_MESSAGES.paintNotOrderable);
+    const blockReason = addToCartBlockReason(isCustomer, selectedListing);
+    if (blockReason || !selectedListing) {
+      showError(blockReason ?? ERROR_MESSAGES.selectSellerToAdd);
       return;
     }
     addCartItem.mutate(
@@ -223,6 +216,22 @@ function formatVendorCount(vendorCount: number): string {
   return `available from ${vendorCount} vendors`;
 }
 
+function addToCartBlockReason(
+  isCustomer: boolean,
+  selectedListing: ProductListingRow | undefined,
+): string | null {
+  if (!isCustomer || !selectedListing) {
+    return ERROR_MESSAGES.selectSellerToAdd;
+  }
+  if (selectedListing.isPaint) {
+    return ERROR_MESSAGES.paintNotOrderable;
+  }
+  if (!selectedListing.inStock) {
+    return ERROR_MESSAGES.sellerOutOfStock;
+  }
+  return null;
+}
+
 function canAddToCart(
   isCustomer: boolean,
   selectedListing: ProductListingRow | undefined,
@@ -231,7 +240,7 @@ function canAddToCart(
   if (!isCustomer || !selectedListing || isPending) {
     return false;
   }
-  return !selectedListing.isPaint;
+  return !selectedListing.isPaint && selectedListing.inStock;
 }
 
 function resolveAddToCartTitle(
@@ -250,6 +259,9 @@ function resolveAddToCartTitle(
   }
   if (selectedListing.isPaint) {
     return 'Paint is not orderable';
+  }
+  if (!selectedListing.inStock) {
+    return 'Out of stock';
   }
   return 'Add to cart';
 }

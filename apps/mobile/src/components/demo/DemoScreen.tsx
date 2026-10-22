@@ -94,5 +94,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
     borderTopWidth: 1,
     borderTopColor: Colors.line,
+    gap: Spacing.md,
   },
 });
