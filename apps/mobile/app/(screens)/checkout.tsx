@@ -1,3 +1,4 @@
+import type { CartItemDto, CustomerAddressDto } from '@golden-abode/types';
 import { Role } from '@golden-abode/types';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
@@ -13,7 +14,12 @@ import { useAddressesQuery } from '../../src/hooks/customers';
 import { usePlaceOrder } from '../../src/hooks/payments';
 import { useToast } from '../../src/hooks/useToast';
 import { Colors } from '../../src/theme';
+import type { CartVendorGroup } from '../../src/types';
 import { cartGrandTotal, formatInr, groupCartItemsByShop } from '../../src/utils';
+
+function handleIgnoreCartItem(_item: CartItemDto): void {
+  return;
+}
 
 export default function CheckoutScreen() {
   const { user } = useAuth();
@@ -22,10 +28,11 @@ export default function CheckoutScreen() {
   const addressesQuery = useAddressesQuery(isCustomer);
   const { placeOrder, isPlacing } = usePlaceOrder();
   const { showError } = useToast();
-  const items = cartQuery.data?.items ?? [];
-  const groups = useMemo(() => groupCartItemsByShop(items), [items]);
-  const addresses = addressesQuery.data ?? [];
-  const defaultAddressId = addresses.find((address) => address.isDefault)?.id ?? addresses[0]?.id;
+  const items: CartItemDto[] = cartQuery.data?.items ?? [];
+  const groups: CartVendorGroup[] = useMemo(() => groupCartItemsByShop(items), [items]);
+  const addresses: CustomerAddressDto[] = addressesQuery.data ?? [];
+  const defaultAddressId =
+    addresses.find((address: CustomerAddressDto) => address.isDefault)?.id ?? addresses[0]?.id;
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const activeAddressId = selectedAddressId ?? defaultAddressId ?? null;
 
@@ -71,22 +78,22 @@ export default function CheckoutScreen() {
         </>
       }
     >
-      {groups.map((group) => (
+      {groups.map((group: CartVendorGroup) => (
         <CartVendorGroupCard
           key={group.vendorId}
           group={group}
           isUpdating={false}
           isReadOnly
-          onIncrease={() => undefined}
-          onDecrease={() => undefined}
-          onRemove={() => undefined}
+          onIncrease={handleIgnoreCartItem}
+          onDecrease={handleIgnoreCartItem}
+          onRemove={handleIgnoreCartItem}
         />
       ))}
       <Text variant="h3">Delivery address</Text>
       {addresses.length === 0 ? (
         <EmptyStateCard title="No saved addresses" message={EMPTY_STATE_MESSAGES.addressesEmpty} />
       ) : (
-        addresses.map((address) => (
+        addresses.map((address: CustomerAddressDto) => (
           <AddressCard
             key={address.id}
             address={address}

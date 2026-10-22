@@ -1,11 +1,11 @@
-import type { UpdateVendorProfileDto } from '@golden-abode/types';
+import type { UpdateVendorProfileDto, VendorProfileDto } from '@golden-abode/types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { APP_CONSTANTS, QUERY_KEYS } from '../../constants';
 import { vendorService } from '../../services';
 
 export function useVendorProfileQuery(isEnabled: boolean) {
-  return useQuery({
+  return useQuery<VendorProfileDto>({
     queryKey: QUERY_KEYS.vendor.profile(),
     queryFn: () => vendorService.fetchMe(),
     enabled: isEnabled,

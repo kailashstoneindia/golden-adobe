@@ -1,11 +1,16 @@
-import type { CheckoutRequest, OrderVendorGroupStatus } from '@golden-abode/types';
+import type {
+  CheckoutRequest,
+  OrderDto,
+  OrderVendorGroupStatus,
+  VendorOrderGroupDto,
+} from '@golden-abode/types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { APP_CONSTANTS, QUERY_KEYS } from '../../constants';
 import { ordersService } from '../../services';
 
 export function useOrdersQuery(isEnabled: boolean) {
-  return useQuery({
+  return useQuery<OrderDto[]>({
     queryKey: QUERY_KEYS.orders.list(),
     queryFn: () => ordersService.fetchOrders(),
     enabled: isEnabled,
@@ -14,7 +19,7 @@ export function useOrdersQuery(isEnabled: boolean) {
 }
 
 export function useOrderQuery(orderId: string | null) {
-  return useQuery({
+  return useQuery<OrderDto>({
     queryKey: QUERY_KEYS.orders.detail(orderId ?? ''),
     queryFn: () => ordersService.fetchOrder(orderId!),
     enabled: Boolean(orderId),
@@ -45,7 +50,7 @@ export function useCancelOrderMutation() {
 }
 
 export function useVendorOrderGroupsQuery(isEnabled: boolean) {
-  return useQuery({
+  return useQuery<VendorOrderGroupDto[]>({
     queryKey: QUERY_KEYS.vendorOrderGroups.list(),
     queryFn: () => ordersService.fetchVendorOrderGroups(),
     enabled: isEnabled,
@@ -54,7 +59,7 @@ export function useVendorOrderGroupsQuery(isEnabled: boolean) {
 }
 
 export function useVendorOrderGroupQuery(groupId: string | null) {
-  return useQuery({
+  return useQuery<VendorOrderGroupDto>({
     queryKey: QUERY_KEYS.vendorOrderGroups.detail(groupId ?? ''),
     queryFn: () => ordersService.fetchVendorOrderGroup(groupId!),
     enabled: Boolean(groupId),

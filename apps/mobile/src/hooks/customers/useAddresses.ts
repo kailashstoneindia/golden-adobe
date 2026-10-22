@@ -1,11 +1,11 @@
-import type { UpsertCustomerAddressRequest } from '@golden-abode/types';
+import type { CustomerAddressDto, UpsertCustomerAddressRequest } from '@golden-abode/types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { APP_CONSTANTS, QUERY_KEYS } from '../../constants';
 import { customersService } from '../../services';
 
 export function useAddressesQuery(isEnabled: boolean) {
-  return useQuery({
+  return useQuery<CustomerAddressDto[]>({
     queryKey: QUERY_KEYS.addresses.list(),
     queryFn: () => customersService.fetchAddresses(),
     enabled: isEnabled,

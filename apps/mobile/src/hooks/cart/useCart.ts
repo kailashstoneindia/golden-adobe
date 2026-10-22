@@ -1,11 +1,11 @@
-import type { AddCartItemRequest } from '@golden-abode/types';
+import type { AddCartItemRequest, CartDto } from '@golden-abode/types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { APP_CONSTANTS, QUERY_KEYS } from '../../constants';
 import { cartService } from '../../services';
 
 export function useCartQuery(isEnabled: boolean) {
-  return useQuery({
+  return useQuery<CartDto>({
     queryKey: QUERY_KEYS.cart.current(),
     queryFn: () => cartService.fetchCart(),
     enabled: isEnabled,
