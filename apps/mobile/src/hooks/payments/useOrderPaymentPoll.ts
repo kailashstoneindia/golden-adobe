@@ -18,7 +18,10 @@ export function useOrderPaymentPoll() {
     let attempt = 0;
     let order = await ordersService.fetchOrder(orderId);
 
-    while (order.status === ORDER_STATUSES.PENDING_PAYMENT && attempt < APP_CONSTANTS.orderPaymentPollMaxAttempts) {
+    while (
+      order.status === ORDER_STATUSES.PENDING_PAYMENT &&
+      attempt < APP_CONSTANTS.orderPaymentPollMaxAttempts
+    ) {
       await waitForPollInterval();
       order = await ordersService.fetchOrder(orderId);
       attempt += 1;

@@ -83,10 +83,7 @@ function CustomerOrderDetail({ orderId }: CustomerOrderDetailProps) {
   if (orderQuery.isError || !order) {
     return (
       <DemoScreen title="Order details" showBack>
-        <EmptyStateCard
-          title="Order not available"
-          message={ERROR_MESSAGES.orderDetailFailed}
-        />
+        <EmptyStateCard title="Order not available" message={ERROR_MESSAGES.orderDetailFailed} />
       </DemoScreen>
     );
   }
@@ -152,10 +149,7 @@ function VendorOrderDetail({ groupId }: VendorOrderDetailProps) {
   if (groupQuery.isError || !group) {
     return (
       <DemoScreen title="Order details" showBack>
-        <EmptyStateCard
-          title="Order not available"
-          message={ERROR_MESSAGES.orderDetailFailed}
-        />
+        <EmptyStateCard title="Order not available" message={ERROR_MESSAGES.orderDetailFailed} />
       </DemoScreen>
     );
   }

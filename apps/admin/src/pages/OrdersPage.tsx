@@ -81,7 +81,9 @@ export function OrdersPage() {
   return (
     <section>
       <h2 className={styles.pageTitle}>Orders</h2>
-      <p className={styles.pageSubtitle}>Refund, cancel, and override fulfilment for customer orders.</p>
+      <p className={styles.pageSubtitle}>
+        Refund, cancel, and override fulfilment for customer orders.
+      </p>
 
       {isEmpty(orders) ? (
         <div className={styles.empty}>No orders yet.</div>

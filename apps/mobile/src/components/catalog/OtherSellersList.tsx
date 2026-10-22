@@ -55,20 +55,14 @@ function OtherSellersListComponent({
   );
 }
 
-function SelectableSellerRow({
-  listing,
-  isSelected,
-  onSelectListing,
-}: SelectableSellerRowProps) {
+function SelectableSellerRow({ listing, isSelected, onSelectListing }: SelectableSellerRowProps) {
   const handlePress = useCallback(() => {
     if (!listing.isPaint) {
       onSelectListing(listing);
     }
   }, [listing, onSelectListing]);
 
-  return (
-    <SellerRow listing={listing} isSelected={isSelected} onPress={handlePress} />
-  );
+  return <SellerRow listing={listing} isSelected={isSelected} onPress={handlePress} />;
 }
 
 function SellerRow({ listing, isSelected, onPress }: SellerRowProps) {

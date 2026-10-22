@@ -127,7 +127,11 @@ export function OrderDetailModal({
         </div>
 
         <div className={styles.actions}>
-          <button type="button" className={`${styles.button} ${styles.buttonGhost}`} onClick={onClose}>
+          <button
+            type="button"
+            className={`${styles.button} ${styles.buttonGhost}`}
+            onClick={onClose}
+          >
             Close
           </button>
           {canCancel ? (

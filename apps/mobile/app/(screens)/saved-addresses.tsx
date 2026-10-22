@@ -81,7 +81,8 @@ export default function SavedAddressesScreen() {
             showSuccess(TOAST_MESSAGES.addressSaved);
             handleCancel();
           },
-          onError: (error) => showError(getApiErrorMessage(error, ERROR_MESSAGES.addressSaveFailed)),
+          onError: (error) =>
+            showError(getApiErrorMessage(error, ERROR_MESSAGES.addressSaveFailed)),
         },
       );
       return;
@@ -99,7 +100,8 @@ export default function SavedAddressesScreen() {
     (address: CustomerAddressDto) => {
       deleteAddress.mutate(address.id, {
         onSuccess: () => showSuccess(TOAST_MESSAGES.addressDeleted),
-        onError: (error) => showError(getApiErrorMessage(error, ERROR_MESSAGES.addressDeleteFailed)),
+        onError: (error) =>
+          showError(getApiErrorMessage(error, ERROR_MESSAGES.addressDeleteFailed)),
       });
     },
     [deleteAddress, showError, showSuccess],

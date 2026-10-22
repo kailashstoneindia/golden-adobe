@@ -7,10 +7,7 @@ import { Button, EmptyStateCard, Text, TextInput } from '../../src/components/ui
 import { EMPTY_STATE_MESSAGES, ERROR_MESSAGES, TOAST_MESSAGES } from '../../src/constants';
 import { useAuth } from '../../src/hooks/auth';
 import { useToast } from '../../src/hooks/useToast';
-import {
-  useUpdateVendorProfileMutation,
-  useVendorProfileQuery,
-} from '../../src/hooks/vendor';
+import { useUpdateVendorProfileMutation, useVendorProfileQuery } from '../../src/hooks/vendor';
 import { Colors, Spacing } from '../../src/theme';
 import { getApiErrorMessage } from '../../src/utils';
 

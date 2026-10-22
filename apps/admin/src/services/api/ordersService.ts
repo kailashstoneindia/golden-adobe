@@ -17,7 +17,10 @@ export const ordersService = {
   },
 
   refundOrder(orderId: string): Promise<OrderDto> {
-    return postRequest<OrderDto, Record<string, never>>(API_ENDPOINTS.admin.orderRefund(orderId), {});
+    return postRequest<OrderDto, Record<string, never>>(
+      API_ENDPOINTS.admin.orderRefund(orderId),
+      {},
+    );
   },
 
   cancelOrder(orderId: string): Promise<OrderDto> {
@@ -32,9 +35,9 @@ export const ordersService = {
     groupId: string,
     body: AdminOverrideVendorGroupStatusRequest,
   ): Promise<OrderDto['vendorGroups'][number]> {
-    return patchRequest<
-      OrderDto['vendorGroups'][number],
-      AdminOverrideVendorGroupStatusRequest
-    >(API_ENDPOINTS.admin.overrideVendorGroupStatus(groupId), body);
+    return patchRequest<OrderDto['vendorGroups'][number], AdminOverrideVendorGroupStatusRequest>(
+      API_ENDPOINTS.admin.overrideVendorGroupStatus(groupId),
+      body,
+    );
   },
 };

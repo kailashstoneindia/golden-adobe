@@ -56,7 +56,11 @@ export default function OrderHistoryScreen() {
 
   if (historyOrders.length === 0) {
     return (
-      <DemoScreen title="Order history" subtitle="Completed, cancelled, and refunded orders" showBack>
+      <DemoScreen
+        title="Order history"
+        subtitle="Completed, cancelled, and refunded orders"
+        showBack
+      >
         <EmptyStateCard title="No past orders" message={EMPTY_STATE_MESSAGES.orderHistoryEmpty} />
       </DemoScreen>
     );
