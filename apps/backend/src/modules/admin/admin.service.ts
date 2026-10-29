@@ -13,7 +13,12 @@ import { User } from '../users/models/user.model';
 import { Vendor } from '../vendors/models/vendor.model';
 import { VendorAccountDetails } from '../vendors/models/vendor-account-details.model';
 import { City } from '../catalog/models/city.model';
+import { Artisan } from '../artisans/models/artisan.model';
+import { ArtisanAccountDetails } from '../artisans/models/artisan-account-details.model';
+import { ArtisanTeamMember } from '../artisans/models/artisan-team-member.model';
+import { ArtisanHireRequest } from '../artisans/models/artisan-hire-request.model';
 import { formatTimestamp, toVendorProfileDto } from '../vendors/vendor-profile.mapper';
+import { toArtisanProfileDto } from '../artisans/artisan-profile.mapper';
 import { ListUsersQueryDto } from './dto/list-users-query.dto';
 
 @Injectable()
@@ -25,22 +30,40 @@ export class AdminService {
       model: Vendor,
       include: [VendorAccountDetails, City],
     },
+    {
+      model: Artisan,
+      include: [ArtisanAccountDetails, ArtisanTeamMember],
+    },
   ];
 
   constructor(
     @InjectModel(User)
     private readonly userModel: typeof User,
+    @InjectModel(ArtisanHireRequest)
+    private readonly artisanHireRequestModel: typeof ArtisanHireRequest,
   ) {}
 
   async getDashboardStats(): Promise<AdminDashboardStats> {
-    const [pendingVendors, pendingArtisans, totalUsers, approvedVendors, approvedArtisans] =
-      await Promise.all([
-        this.userModel.count({ where: { role: Role.VENDOR, isApproved: false } }),
-        this.userModel.count({ where: { role: Role.ARTISAN, isApproved: false } }),
-        this.userModel.count(),
-        this.userModel.count({ where: { role: Role.VENDOR, isApproved: true } }),
-        this.userModel.count({ where: { role: Role.ARTISAN, isApproved: true } }),
-      ]);
+    const [
+      pendingVendors,
+      pendingArtisans,
+      totalUsers,
+      approvedVendors,
+      approvedArtisans,
+      pendingArtisanVerifications,
+      pendingHireRequests,
+    ] = await Promise.all([
+      this.userModel.count({ where: { role: Role.VENDOR, isApproved: false } }),
+      this.userModel.count({ where: { role: Role.ARTISAN, isApproved: false } }),
+      this.userModel.count(),
+      this.userModel.count({ where: { role: Role.VENDOR, isApproved: true } }),
+      this.userModel.count({ where: { role: Role.ARTISAN, isApproved: true } }),
+      // Artisan-specific, document-backed verification queue — distinct
+      // from pendingArtisans (the generic users.is_approved gate). See
+      // docs/artisan-module.md §5's two-gate design.
+      Artisan.count({ where: { isVerified: false, documentUrl: { [Op.ne]: null } } }),
+      this.artisanHireRequestModel.count({ where: { status: 'PENDING_ADMIN_REVIEW' } }),
+    ]);
 
     return {
       pendingVendors,
@@ -48,6 +71,8 @@ export class AdminService {
       totalUsers,
       approvedVendors,
       approvedArtisans,
+      pendingArtisanVerifications,
+      pendingHireRequests,
     };
   }
 
@@ -150,6 +175,7 @@ export class AdminService {
         (user.onboardingStage as UserDto['onboardingStage']) ??
         (user.vendorProfile ? VENDOR_ONBOARDING_STAGES.completed : null),
       vendorProfile: toVendorProfileDto(user.vendorProfile),
+      artisan: user.artisanProfile ? toArtisanProfileDto(user.artisanProfile) : undefined,
       lastLoginAt: formatTimestamp(user.get('lastLoginAt')) || null,
       createdAt: formatTimestamp(user.get('createdAt')),
       updatedAt: formatTimestamp(user.get('updatedAt')),
