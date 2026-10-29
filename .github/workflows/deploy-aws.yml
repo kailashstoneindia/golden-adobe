@@ -176,7 +176,7 @@ jobs:
               \"mkdir -p /opt/golden-abode\",
               \"aws s3 cp s3://$BUCKET/deploy-bundles/$SHA.tgz /tmp/deploy-bundle.tgz --region $AWS_REGION\",
               \"tar -xzf /tmp/deploy-bundle.tgz -C /opt/golden-abode --strip-components=1\",
-              \"/opt/golden-abode/deploy.sh $SHA\"
+              \"bash /opt/golden-abode/deploy.sh $SHA\"
             ]" \
             --query 'Command.CommandId' --output text)"
           echo "SSM command $command_id"
