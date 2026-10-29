@@ -8,6 +8,8 @@ export type AdminDashboardStats = {
   totalUsers: number;
   approvedVendors: number;
   approvedArtisans: number;
+  pendingArtisanVerifications: number;
+  pendingHireRequests: number;
 };
 
 export type ListUsersQuery = {

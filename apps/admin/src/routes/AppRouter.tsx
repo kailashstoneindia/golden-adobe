@@ -6,6 +6,8 @@ import { useSessionBootstrap } from '@/hooks/useSessionBootstrap';
 import { tokenStorage } from '@/services/storage/tokenStorage';
 import { selectIsHydrated, useAuthStore } from '@/store';
 import { ApprovalsPage } from '@/pages/ApprovalsPage';
+import { ArtisanVerificationPage } from '@/pages/ArtisanVerificationPage';
+import { ArtisanHireRequestsPage } from '@/pages/ArtisanHireRequestsPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { RegisterPage } from '@/pages/RegisterPage';
@@ -44,6 +46,8 @@ export function AppRouter() {
           <Route path={ROUTES.dashboard} element={<DashboardPage />} />
           <Route path={ROUTES.approvalsVendors} element={<ApprovalsPage />} />
           <Route path={ROUTES.approvalsArtisans} element={<ApprovalsPage />} />
+          <Route path={ROUTES.artisanVerification} element={<ArtisanVerificationPage />} />
+          <Route path={ROUTES.artisanHireRequests} element={<ArtisanHireRequestsPage />} />
           <Route path={ROUTES.users} element={<UsersPage />} />
           <Route path={ROUTES.vendors} element={<VendorsPage />} />
           <Route path={ROUTES.orders} element={<OrdersPage />} />

@@ -8,6 +8,11 @@ import { VendorAccountDetails } from '../../modules/vendors/models/vendor-accoun
 import { City } from '../../modules/catalog/models/city.model';
 import { Customer } from '../../modules/customers/models/customer.model';
 import { CustomerAddress } from '../../modules/customers/models/customer-address.model';
+import { Artisan } from '../../modules/artisans/models/artisan.model';
+import { ArtisanAccountDetails } from '../../modules/artisans/models/artisan-account-details.model';
+import { ArtisanTeamMember } from '../../modules/artisans/models/artisan-team-member.model';
+import { ArtisanHireRequest } from '../../modules/artisans/models/artisan-hire-request.model';
+import { ArtisanCompletionEstimate } from '../../modules/artisans/models/artisan-completion-estimate.model';
 
 @Module({
   imports: [
@@ -30,6 +35,11 @@ import { CustomerAddress } from '../../modules/customers/models/customer-address
           // "City has not been defined", retrying forever. The Jest suites
           // never caught this because test-db.ts registers every model in one
           // explicit list.
+          //
+          // Same reasoning applies to the Artisan models: User declares
+          // @HasOne(() => Artisan), so Artisan (and everything Artisan
+          // itself associates with) must be eagerly listed here too, or
+          // boot fails with "Artisan has not been defined" instead.
           models: [
             User,
             RefreshToken,
@@ -38,6 +48,11 @@ import { CustomerAddress } from '../../modules/customers/models/customer-address
             City,
             Customer,
             CustomerAddress,
+            Artisan,
+            ArtisanAccountDetails,
+            ArtisanTeamMember,
+            ArtisanHireRequest,
+            ArtisanCompletionEstimate,
           ],
           autoLoadModels: true,
           synchronize: false, // Managed by migrations
