@@ -11,7 +11,8 @@ function loadRazorpayModule(): RazorpayNativeModule | null {
     // without it, and a static import would crash the app at startup instead of returning null.
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const loaded = require('react-native-razorpay') as
-      RazorpayNativeModule | { default: RazorpayNativeModule };
+      | RazorpayNativeModule
+      | { default: RazorpayNativeModule };
     if ('open' in loaded) {
       return loaded;
     }
