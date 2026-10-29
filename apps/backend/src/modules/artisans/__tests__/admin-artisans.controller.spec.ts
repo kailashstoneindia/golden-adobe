@@ -10,8 +10,7 @@ describe('AdminArtisansController (real HTTP, Postgres)', () => {
   let t: ArtisansTestApp;
 
   const asAdmin = (req: request.Test) => req.set('Authorization', `Bearer ${t.adminToken}`);
-  const asArtisan = (req: request.Test) =>
-    req.set('Authorization', `Bearer ${t.artisanToken}`);
+  const asArtisan = (req: request.Test) => req.set('Authorization', `Bearer ${t.artisanToken}`);
 
   beforeAll(async () => {
     t = await createArtisansTestApp();
@@ -114,7 +113,9 @@ describe('AdminArtisansController (real HTTP, Postgres)', () => {
     await Artisan.update({ documentUrl: 'artisans/x/doc.pdf' }, { where: { id: artisan!.id } });
 
     const res = await asAdmin(
-      request(t.app.getHttpServer()).get('/api/admin/artisans/pending-verification?page=1&limit=10'),
+      request(t.app.getHttpServer()).get(
+        '/api/admin/artisans/pending-verification?page=1&limit=10',
+      ),
     );
     expect(res.status).toBe(200);
     expect(res.body.data.page).toBe(1);

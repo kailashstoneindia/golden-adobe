@@ -125,7 +125,7 @@ export class HireRequestsService {
         status: nextStatus,
         adminReviewedBy: adminUserId,
         adminReviewedAt: new Date(),
-        adminRejectReason: dto.approve ? null : dto.rejectReason ?? null,
+        adminRejectReason: dto.approve ? null : (dto.rejectReason ?? null),
       } as never,
       { where: { id: requestId, status: 'PENDING_ADMIN_REVIEW' } },
     );
@@ -206,9 +206,7 @@ export class HireRequestsService {
     return request;
   }
 
-  private async latestEstimateFor(
-    requestId: string,
-  ): Promise<ArtisanCompletionEstimate | null> {
+  private async latestEstimateFor(requestId: string): Promise<ArtisanCompletionEstimate | null> {
     return this.completionEstimateModel.findOne({
       where: { hireRequestId: requestId },
       order: [['createdAt', 'DESC']],

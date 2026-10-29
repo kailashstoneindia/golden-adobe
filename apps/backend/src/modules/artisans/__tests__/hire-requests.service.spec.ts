@@ -99,9 +99,9 @@ describe('HireRequestsService (integration)', () => {
       service.reviewRequest(adminId, request.id, { approve: true }),
     ).resolves.toMatchObject({ status: 'ACCEPTED_BY_ARTISAN' });
 
-    await expect(
-      service.reviewRequest(adminId, request.id, { approve: true }),
-    ).rejects.toThrow(ConflictException);
+    await expect(service.reviewRequest(adminId, request.id, { approve: true })).rejects.toThrow(
+      ConflictException,
+    );
   });
 
   it('does not allow re-reviewing a rejected request', async () => {
@@ -110,9 +110,9 @@ describe('HireRequestsService (integration)', () => {
       approve: false,
       rejectReason: 'Not a fit',
     });
-    await expect(
-      service.reviewRequest(adminId, request.id, { approve: true }),
-    ).rejects.toThrow(ConflictException);
+    await expect(service.reviewRequest(adminId, request.id, { approve: true })).rejects.toThrow(
+      ConflictException,
+    );
   });
 
   it('excludes PENDING_ADMIN_REVIEW requests from listForArtisan', async () => {

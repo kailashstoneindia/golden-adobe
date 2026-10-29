@@ -1,10 +1,7 @@
 import { Artisan } from '../models/artisan.model';
 import { ArtisanAccountDetails } from '../models/artisan-account-details.model';
 import { ArtisanTeamMember } from '../models/artisan-team-member.model';
-import {
-  toArtisanProfileDto,
-  toArtisanPublicProfileDto,
-} from '../artisan-profile.mapper';
+import { toArtisanProfileDto, toArtisanPublicProfileDto } from '../artisan-profile.mapper';
 
 // Plain objects, not Sequelize .build() — these models aren't registered
 // against a Sequelize instance in this unit test, and the mapper only
@@ -27,7 +24,8 @@ function buildArtisanFixture(overrides: Record<string, unknown> = {}): Artisan {
   };
   return {
     ...base,
-    get: (key: string) => (key === 'createdAt' || key === 'updatedAt' ? new Date('2026-10-29T00:00:00.000Z') : undefined),
+    get: (key: string) =>
+      key === 'createdAt' || key === 'updatedAt' ? new Date('2026-10-29T00:00:00.000Z') : undefined,
   } as unknown as Artisan;
 }
 

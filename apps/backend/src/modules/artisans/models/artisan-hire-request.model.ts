@@ -1,4 +1,13 @@
-import { Table, Column, Model, DataType, ForeignKey, BelongsTo, HasMany, Index } from 'sequelize-typescript';
+import {
+  Table,
+  Column,
+  Model,
+  DataType,
+  ForeignKey,
+  BelongsTo,
+  HasMany,
+  Index,
+} from 'sequelize-typescript';
 import { ArtisanHireRequestStatus } from '@golden-abode/types';
 import { User } from '../../users/models/user.model';
 import { Artisan } from './artisan.model';

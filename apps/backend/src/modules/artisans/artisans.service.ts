@@ -31,11 +31,7 @@ import {
   toArtisanPublicProfileDto,
   toTeamMemberDto,
 } from './artisan-profile.mapper';
-import {
-  OBJECT_STORAGE,
-  ObjectStorage,
-  PresignedPost,
-} from '../catalog/media/object-storage';
+import { OBJECT_STORAGE, ObjectStorage, PresignedPost } from '../catalog/media/object-storage';
 
 const DEFAULT_INCLUDES = [ArtisanAccountDetails, ArtisanTeamMember];
 
@@ -292,10 +288,7 @@ export class ArtisansService {
     return toArtisanProfileDto(await this.findByIdOrThrow(artisanId));
   }
 
-  async listPendingVerification(
-    page: number,
-    limit: number,
-  ): Promise<PaginatedArtisansResponse> {
+  async listPendingVerification(page: number, limit: number): Promise<PaginatedArtisansResponse> {
     // Review Focus item from the implementation plan, LLD §4.8: an
     // artisan with no document yet is "incomplete", not "pending" —
     // excluded by PENDING_VERIFICATION_WHERE itself, in SQL, not here.

@@ -12,10 +12,7 @@ import { JwtStrategy } from '../../auth/strategies/jwt.strategy';
 import { User } from '../../users/models/user.model';
 import { UsersService } from '../../users/users.service';
 import { loadStorageConfig } from '../../../config/storage.config';
-import {
-  MEDIA_STORAGE_CONFIG,
-  OBJECT_STORAGE,
-} from '../../catalog/media/object-storage';
+import { MEDIA_STORAGE_CONFIG, OBJECT_STORAGE } from '../../catalog/media/object-storage';
 import { ARTISAN_TEST_MODELS } from './test-db';
 import { FakeObjectStorage } from './fake-object-storage';
 import { Artisan } from '../models/artisan.model';
@@ -158,7 +155,9 @@ export async function createArtisansTestApp(): Promise<ArtisansTestApp> {
     async close() {
       await ArtisanHireRequest.destroy({ where: { customerId: customerUser.id } });
       await Artisan.destroy({ where: { userId: [artisanUser.id, ...extraUserIds] } });
-      await User.destroy({ where: { id: [admin.id, artisanUser.id, customerUser.id, ...extraUserIds] } });
+      await User.destroy({
+        where: { id: [admin.id, artisanUser.id, customerUser.id, ...extraUserIds] },
+      });
       await app.close();
     },
   };

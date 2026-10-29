@@ -10,10 +10,8 @@ jest.setTimeout(60_000);
 describe('ArtisansController (real HTTP, Postgres)', () => {
   let t: ArtisansTestApp;
 
-  const asArtisan = (req: request.Test) =>
-    req.set('Authorization', `Bearer ${t.artisanToken}`);
-  const asCustomer = (req: request.Test) =>
-    req.set('Authorization', `Bearer ${t.customerToken}`);
+  const asArtisan = (req: request.Test) => req.set('Authorization', `Bearer ${t.artisanToken}`);
+  const asCustomer = (req: request.Test) => req.set('Authorization', `Bearer ${t.customerToken}`);
   const asAdmin = (req: request.Test) => req.set('Authorization', `Bearer ${t.adminToken}`);
 
   beforeAll(async () => {
@@ -62,7 +60,10 @@ describe('ArtisansController (real HTTP, Postgres)', () => {
         .send({ tradeType: 'PLUMBER' }),
     );
     const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
-    await Artisan.update({ isVerified: true, documentUrl: 'artisans/x/doc.pdf' }, { where: { id: artisan!.id } });
+    await Artisan.update(
+      { isVerified: true, documentUrl: 'artisans/x/doc.pdf' },
+      { where: { id: artisan!.id } },
+    );
 
     await ArtisanHireRequest.create({
       customerId: t.customerUserId,
@@ -80,15 +81,11 @@ describe('ArtisansController (real HTTP, Postgres)', () => {
 
   it('answers 404 for an unverified artisan public profile', async () => {
     const created = await asArtisan(
-      request(t.app.getHttpServer())
-        .post('/api/artisans/me/profile')
-        .send({ tradeType: 'MASON' }),
+      request(t.app.getHttpServer()).post('/api/artisans/me/profile').send({ tradeType: 'MASON' }),
     );
     const id = created.body.data.id;
 
-    const res = await asCustomer(
-      request(t.app.getHttpServer()).get(`/api/artisans/${id}/public`),
-    );
+    const res = await asCustomer(request(t.app.getHttpServer()).get(`/api/artisans/${id}/public`));
     expect(res.status).toBe(404);
   });
 
@@ -112,9 +109,7 @@ describe('ArtisansController (real HTTP, Postgres)', () => {
       accountNumber: '1234567890',
     } as never);
 
-    const res = await asCustomer(
-      request(t.app.getHttpServer()).get(`/api/artisans/${id}/public`),
-    );
+    const res = await asCustomer(request(t.app.getHttpServer()).get(`/api/artisans/${id}/public`));
     expect(res.status).toBe(200);
     expect(res.body.data).not.toHaveProperty('accountDetails');
     expect(res.body.data).not.toHaveProperty('documentUrl');
@@ -187,9 +182,7 @@ describe('ArtisansController (real HTTP, Postgres)', () => {
 
   it('answers 403 when the artisan tries to read estimate history for a request still PENDING_ADMIN_REVIEW', async () => {
     await asArtisan(
-      request(t.app.getHttpServer())
-        .post('/api/artisans/me/profile')
-        .send({ tradeType: 'MASON' }),
+      request(t.app.getHttpServer()).post('/api/artisans/me/profile').send({ tradeType: 'MASON' }),
     );
     const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
     const hireRequest = await ArtisanHireRequest.create({
@@ -207,9 +200,7 @@ describe('ArtisansController (real HTTP, Postgres)', () => {
 
   it('still allows the owning customer to read estimate history while PENDING_ADMIN_REVIEW', async () => {
     await asArtisan(
-      request(t.app.getHttpServer())
-        .post('/api/artisans/me/profile')
-        .send({ tradeType: 'MASON' }),
+      request(t.app.getHttpServer()).post('/api/artisans/me/profile').send({ tradeType: 'MASON' }),
     );
     const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
     const hireRequest = await ArtisanHireRequest.create({
@@ -249,9 +240,7 @@ describe('ArtisansController (real HTTP, Postgres)', () => {
 
   it('rejects a team member documentUrl outside the artisan own prefix', async () => {
     await asArtisan(
-      request(t.app.getHttpServer())
-        .post('/api/artisans/me/profile')
-        .send({ tradeType: 'OTHERS' }),
+      request(t.app.getHttpServer()).post('/api/artisans/me/profile').send({ tradeType: 'OTHERS' }),
     );
 
     const res = await asArtisan(
@@ -264,9 +253,7 @@ describe('ArtisansController (real HTTP, Postgres)', () => {
 
   it('accepts a team member documentUrl under the artisan own prefix', async () => {
     const created = await asArtisan(
-      request(t.app.getHttpServer())
-        .post('/api/artisans/me/profile')
-        .send({ tradeType: 'OTHERS' }),
+      request(t.app.getHttpServer()).post('/api/artisans/me/profile').send({ tradeType: 'OTHERS' }),
     );
     const id = created.body.data.id;
 

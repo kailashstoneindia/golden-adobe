@@ -72,7 +72,9 @@ describe('ArtisanHireRequestsPage', () => {
 
   it('shows the admin-gate context and a pending row', async () => {
     renderPage();
-    expect(await screen.findByText(/artisan is notified only once you approve/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/artisan is notified only once you approve/),
+    ).toBeInTheDocument();
     expect(await screen.findByText('12 MG Road, Bengaluru')).toBeInTheDocument();
   });
 
