@@ -1,7 +1,10 @@
 name: Deploy to AWS
 
-# Ships what CI tested to the single EC2 box, the media Lambda and the admin
-# bucket (decisions 0032 and 0033). INERT until the repository variable
+# Ships main to the single EC2 box, the media Lambda and the admin bucket
+# (decisions 0032 and 0033) on every push to main, and on demand. It does NOT wait
+# for the CI workflow: CI on main has been red for an unrelated mobile lint error,
+# and the deploy builds the backend image, the admin app and the Lambda itself, so
+# a build break stops it before anything reaches the box. INERT until the repository variable
 # AWS_DEPLOY_ENABLED is "true": until AWS has been provisioned (see
 # infra/deploy/README.md) every job here is skipped, so merging this changes nothing.
 #
@@ -10,10 +13,13 @@ name: Deploy to AWS
 # "production" environment (infra/aws/iam/github-deploy-trust.json).
 
 on:
-  workflow_run:
-    workflows: ['CI/CD Pipeline']
-    types: [completed]
+  push:
     branches: [main]
+    # Nothing here reaches the box, so do not take a backup and restart for it.
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+      - 'apps/mobile/**'
   workflow_dispatch:
 
 permissions:
@@ -28,8 +34,8 @@ concurrency:
 env:
   AWS_REGION: ap-south-1
   NODE_VERSION: '22'
-  # The commit CI tested, not whatever main has become since.
-  SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+  # The commit that triggered this run, not whatever main has become since.
+  SHA: ${{ github.sha }}
 
 jobs:
   gate:
@@ -42,13 +48,12 @@ jobs:
         env:
           ENABLED: ${{ vars.AWS_DEPLOY_ENABLED }}
           EVENT: ${{ github.event_name }}
-          CI_RESULT: ${{ github.event.workflow_run.conclusion }}
         run: |
-          if [ "$ENABLED" = "true" ] && { [ "$EVENT" = "workflow_dispatch" ] || [ "$CI_RESULT" = "success" ]; }; then
+          if [ "$ENABLED" = "true" ]; then
             echo "enabled=true" >> "$GITHUB_OUTPUT"
           else
             echo "enabled=false" >> "$GITHUB_OUTPUT"
-            echo "Skipping: AWS_DEPLOY_ENABLED=$ENABLED, event=$EVENT, CI result=$CI_RESULT"
+            echo "Skipping: AWS_DEPLOY_ENABLED=$ENABLED, event=$EVENT"
           fi
 
   build-backend:
