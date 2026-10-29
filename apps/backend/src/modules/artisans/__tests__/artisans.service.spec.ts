@@ -5,6 +5,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { Role } from '@golden-abode/types';
 
 import { ARTISAN_TEST_MODELS } from './test-db';
+import { FakeObjectStorage } from './fake-object-storage';
 import { User } from '../../users/models/user.model';
 import { Artisan } from '../models/artisan.model';
 import { ArtisanAccountDetails } from '../models/artisan-account-details.model';
@@ -12,15 +13,17 @@ import { ArtisanTeamMember } from '../models/artisan-team-member.model';
 import { ArtisansService } from '../artisans.service';
 import { loadStorageConfig } from '../../../config/storage.config';
 import { MEDIA_STORAGE_CONFIG, OBJECT_STORAGE } from '../../catalog/media/object-storage';
-import { S3ObjectStorage } from '../../catalog/media/s3-object-storage.service';
 
 describe('ArtisansService (integration)', () => {
   let moduleRef: TestingModule;
   let service: ArtisansService;
+  let fakeStorage: FakeObjectStorage;
   const suffix = `t${Date.now()}`;
   let userId: string;
 
   beforeAll(async () => {
+    fakeStorage = new FakeObjectStorage();
+
     moduleRef = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({
@@ -46,12 +49,7 @@ describe('ArtisansService (integration)', () => {
           provide: MEDIA_STORAGE_CONFIG,
           useFactory: () => loadStorageConfig(),
         },
-        {
-          provide: OBJECT_STORAGE,
-          inject: [MEDIA_STORAGE_CONFIG],
-          useFactory: (config: ReturnType<typeof loadStorageConfig>) =>
-            new S3ObjectStorage(config),
-        },
+        { provide: OBJECT_STORAGE, useValue: fakeStorage },
       ],
     }).compile();
 
@@ -107,7 +105,9 @@ describe('ArtisansService (integration)', () => {
   it('sets documentUrl only after confirmDocumentUpload is called', async () => {
     const profile = await service.onboardProfile(userId, { tradeType: 'PLUMBER' });
     expect(profile.documentUrl).toBeNull();
-    const confirmed = await service.confirmDocumentUpload(userId, `artisans/${profile.id}/doc-key.pdf`);
+    const key = `artisans/${profile.id}/doc-key.pdf`;
+    fakeStorage.seed(key);
+    const confirmed = await service.confirmDocumentUpload(userId, key);
     expect(confirmed.documentUrl).toContain('doc-key.pdf');
   });
 
@@ -118,8 +118,54 @@ describe('ArtisansService (integration)', () => {
     ).rejects.toThrow();
   });
 
+  it('rejects confirmDocumentUpload when the key was never actually uploaded', async () => {
+    const profile = await service.onboardProfile(userId, { tradeType: 'PLUMBER' });
+    const key = `artisans/${profile.id}/doc-never-uploaded.pdf`;
+    await expect(service.confirmDocumentUpload(userId, key)).rejects.toThrow();
+    const unchanged = await service.getOwnProfile(userId);
+    expect(unchanged.documentUrl).toBeNull();
+  });
+
   it('cannot verify an artisan with no uploaded document', async () => {
     const profile = await service.onboardProfile(userId, { tradeType: 'PLUMBER' });
     await expect(service.verify(profile.id)).rejects.toThrow();
+  });
+
+  it('rejectVerification clears isVerified regardless of whether a reason was given', async () => {
+    const profile = await service.onboardProfile(userId, { tradeType: 'PLUMBER' });
+    const key = `artisans/${profile.id}/doc-key.pdf`;
+    fakeStorage.seed(key);
+    await service.confirmDocumentUpload(userId, key);
+    await service.verify(profile.id);
+
+    const rejected = await service.rejectVerification(profile.id, 'Document is blurry');
+    expect(rejected.isVerified).toBe(false);
+  });
+
+  it('listPendingVerification excludes artisans with no uploaded document', async () => {
+    await service.onboardProfile(userId, { tradeType: 'PLUMBER' });
+    const page = await service.listPendingVerification(1, 20);
+    expect(page.items.find((artisan) => artisan.userId === userId)).toBeUndefined();
+  });
+
+  it('listPendingVerification includes a document-backed, unverified artisan and paginates', async () => {
+    const profile = await service.onboardProfile(userId, { tradeType: 'PLUMBER' });
+    const key = `artisans/${profile.id}/doc-key.pdf`;
+    fakeStorage.seed(key);
+    await service.confirmDocumentUpload(userId, key);
+
+    const page = await service.listPendingVerification(1, 20);
+    expect(page.items.some((artisan) => artisan.id === profile.id)).toBe(true);
+    expect(page.page).toBe(1);
+    expect(page.limit).toBe(20);
+    expect(page.total).toBeGreaterThanOrEqual(1);
+  });
+
+  it('listArtisans returns a paginated page, newest first', async () => {
+    await service.onboardProfile(userId, { tradeType: 'ELECTRICIAN' });
+    const page = await service.listArtisans(1, 20);
+    expect(page.items.some((artisan) => artisan.userId === userId)).toBe(true);
+    expect(page.page).toBe(1);
+    expect(page.limit).toBe(20);
   });
 });

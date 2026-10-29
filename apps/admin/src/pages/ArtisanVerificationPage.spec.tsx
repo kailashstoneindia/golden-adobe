@@ -32,17 +32,29 @@ function artisan(over: Partial<ArtisanProfileDto> = {}): ArtisanProfileDto {
 
 let pending: ArtisanProfileDto[];
 let verifyCalls: string[];
+let rejectCalls: Array<{ id: string; body: unknown }>;
 
 function useHandlers() {
   server.use(
     http.get(`${BASE}/pending-verification`, () =>
-      HttpResponse.json({ success: true, data: pending }),
+      HttpResponse.json({
+        success: true,
+        data: { items: pending, total: pending.length, page: 1, limit: 20, totalPages: 1 },
+      }),
     ),
     http.patch(`${BASE}/:id/verify`, ({ params }) => {
       verifyCalls.push(String(params.id));
       return HttpResponse.json({
         success: true,
         data: { ...pending[0], isVerified: true },
+      });
+    }),
+    http.patch(`${BASE}/:id/reject-verification`, async ({ params, request }) => {
+      const body = await request.json();
+      rejectCalls.push({ id: String(params.id), body });
+      return HttpResponse.json({
+        success: true,
+        data: { ...pending[0], isVerified: false },
       });
     }),
   );
@@ -63,6 +75,7 @@ describe('ArtisanVerificationPage', () => {
   beforeEach(() => {
     pending = [artisan()];
     verifyCalls = [];
+    rejectCalls = [];
     useHandlers();
   });
   afterEach(() => vi.restoreAllMocks());
@@ -87,5 +100,29 @@ describe('ArtisanVerificationPage', () => {
 
     await screen.findByText('PLUMBER'); // dialog closes, list re-renders
     expect(verifyCalls).toEqual([artisan().id]);
+  });
+
+  it('rejecting with a reason calls PATCH .../reject-verification with that reason', async () => {
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByText('PLUMBER'));
+    await user.type(
+      screen.getByPlaceholderText('Optional, stored in logs only'),
+      'Document is blurry',
+    );
+    await user.click(await screen.findByRole('button', { name: 'Reject' }));
+
+    expect(rejectCalls).toEqual([{ id: artisan().id, body: { reason: 'Document is blurry' } }]);
+  });
+
+  it('rejecting with no reason sends an empty body', async () => {
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByText('PLUMBER'));
+    await user.click(await screen.findByRole('button', { name: 'Reject' }));
+
+    expect(rejectCalls).toEqual([{ id: artisan().id, body: {} }]);
   });
 });

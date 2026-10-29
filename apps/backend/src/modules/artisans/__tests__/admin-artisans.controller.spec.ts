@@ -103,4 +103,65 @@ describe('AdminArtisansController (real HTTP, Postgres)', () => {
     expect(res.status).toBe(200);
     expect(res.body.data.status).toBe('ACCEPTED_BY_ARTISAN');
   });
+
+  it('pending-verification is a paginated page, not a bare array', async () => {
+    await asArtisan(
+      request(t.app.getHttpServer())
+        .post('/api/artisans/me/profile')
+        .send({ tradeType: 'PLUMBER' }),
+    );
+    const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
+    await Artisan.update({ documentUrl: 'artisans/x/doc.pdf' }, { where: { id: artisan!.id } });
+
+    const res = await asAdmin(
+      request(t.app.getHttpServer()).get('/api/admin/artisans/pending-verification?page=1&limit=10'),
+    );
+    expect(res.status).toBe(200);
+    expect(res.body.data.page).toBe(1);
+    expect(res.body.data.limit).toBe(10);
+    expect(res.body.data.items.some((a: { id: string }) => a.id === artisan!.id)).toBe(true);
+  });
+
+  it('hire-requests/pending is a paginated page, not a bare array', async () => {
+    await asArtisan(
+      request(t.app.getHttpServer())
+        .post('/api/artisans/me/profile')
+        .send({ tradeType: 'PLUMBER' }),
+    );
+    const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
+    await ArtisanHireRequest.create({
+      customerId: t.customerUserId,
+      artisanId: artisan!.id,
+      addressText: '1 Park Lane',
+      status: 'PENDING_ADMIN_REVIEW',
+    } as never);
+
+    const res = await asAdmin(
+      request(t.app.getHttpServer()).get('/api/admin/artisans/hire-requests/pending'),
+    );
+    expect(res.status).toBe(200);
+    expect(res.body.data.page).toBe(1);
+    expect(Array.isArray(res.body.data.items)).toBe(true);
+  });
+
+  it('rejecting a verification with a reason still clears isVerified and accepts the reason', async () => {
+    await asArtisan(
+      request(t.app.getHttpServer())
+        .post('/api/artisans/me/profile')
+        .send({ tradeType: 'PLUMBER' }),
+    );
+    const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
+    await Artisan.update(
+      { isVerified: true, documentUrl: 'artisans/x/doc.pdf' },
+      { where: { id: artisan!.id } },
+    );
+
+    const res = await asAdmin(
+      request(t.app.getHttpServer())
+        .patch(`/api/admin/artisans/${artisan!.id}/reject-verification`)
+        .send({ reason: 'Document is blurry' }),
+    );
+    expect(res.status).toBe(200);
+    expect(res.body.data.isVerified).toBe(false);
+  });
 });

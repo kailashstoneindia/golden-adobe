@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { ArtisanListQuery } from '@golden-abode/types';
 
 import { APP_CONSTANTS } from '@/constants/appConstants';
 import { artisansService } from '@/services';
@@ -9,14 +10,16 @@ import type {
 
 export const ARTISANS_QUERY_KEYS = {
   all: ['artisans'] as const,
-  pendingVerification: ['artisans', 'pending-verification'] as const,
-  pendingHireRequests: ['artisans', 'hire-requests', 'pending'] as const,
+  pendingVerification: (query: ArtisanListQuery) =>
+    ['artisans', 'pending-verification', query] as const,
+  pendingHireRequests: (query: ArtisanListQuery) =>
+    ['artisans', 'hire-requests', 'pending', query] as const,
 };
 
-export function useArtisanPendingVerificationQuery() {
+export function useArtisanPendingVerificationQuery(query: ArtisanListQuery) {
   return useQuery({
-    queryKey: ARTISANS_QUERY_KEYS.pendingVerification,
-    queryFn: () => artisansService.fetchPendingVerification(),
+    queryKey: ARTISANS_QUERY_KEYS.pendingVerification(query),
+    queryFn: () => artisansService.fetchPendingVerification(query),
     staleTime: APP_CONSTANTS.staleTimeMs,
   });
 }
@@ -44,10 +47,10 @@ export function useRejectArtisanVerificationMutation() {
   });
 }
 
-export function useArtisanPendingHireRequestsQuery() {
+export function useArtisanPendingHireRequestsQuery(query: ArtisanListQuery) {
   return useQuery({
-    queryKey: ARTISANS_QUERY_KEYS.pendingHireRequests,
-    queryFn: () => artisansService.fetchPendingHireRequests(),
+    queryKey: ARTISANS_QUERY_KEYS.pendingHireRequests(query),
+    queryFn: () => artisansService.fetchPendingHireRequests(query),
     staleTime: APP_CONSTANTS.staleTimeMs,
   });
 }

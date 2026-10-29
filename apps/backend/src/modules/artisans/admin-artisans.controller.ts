@@ -1,4 +1,14 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Role } from '@golden-abode/types';
 
@@ -8,6 +18,8 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { ArtisansService } from './artisans.service';
 import { HireRequestsService } from './hire-requests.service';
 import { ReviewHireRequestDto } from './dto/review-hire-request.dto';
+import { RejectArtisanVerificationDto } from './dto/reject-artisan-verification.dto';
+import { PaginationQueryDto } from './dto/pagination-query.dto';
 
 // Admin-facing artisan administration. Mirrors AdminVendorsController's
 // structure exactly: same guard stack, same ParseUUIDPipe on id params,
@@ -25,9 +37,9 @@ export class AdminArtisansController {
 
   @Get()
   @ApiOperation({ summary: 'List all artisan profiles' })
-  @ApiResponse({ status: 200, description: 'All artisan profiles, newest first' })
-  async list() {
-    return this.artisansService.listArtisans();
+  @ApiResponse({ status: 200, description: 'Page of artisan profiles, newest first' })
+  async list(@Query() query: PaginationQueryDto) {
+    return this.artisansService.listArtisans(query.page ?? 1, query.limit ?? 20);
   }
 
   @Get('pending-verification')
@@ -36,16 +48,16 @@ export class AdminArtisansController {
     description:
       'isVerified = false AND a document has been uploaded. An artisan with no document yet is "incomplete", not "pending", and is excluded.',
   })
-  @ApiResponse({ status: 200, description: 'Artisans ready for an admin to review' })
-  async pendingVerification() {
-    return this.artisansService.listPendingVerification();
+  @ApiResponse({ status: 200, description: 'Page of artisans ready for an admin to review' })
+  async pendingVerification(@Query() query: PaginationQueryDto) {
+    return this.artisansService.listPendingVerification(query.page ?? 1, query.limit ?? 20);
   }
 
   @Get('hire-requests/pending')
   @ApiOperation({ summary: 'Hire requests awaiting admin review' })
-  @ApiResponse({ status: 200, description: 'Requests with status PENDING_ADMIN_REVIEW' })
-  async pendingHireRequests() {
-    return this.hireRequestsService.listPendingAdminReview();
+  @ApiResponse({ status: 200, description: 'Page of requests with status PENDING_ADMIN_REVIEW' })
+  async pendingHireRequests(@Query() query: PaginationQueryDto) {
+    return this.hireRequestsService.listPendingAdminReview(query.page ?? 1, query.limit ?? 20);
   }
 
   @Patch('hire-requests/:id/review')
@@ -90,7 +102,10 @@ export class AdminArtisansController {
       'Sets/keeps isVerified false. The optional reason is logged only, matching AdminService.rejectUser — this schema has no persisted-reason column.',
   })
   @ApiResponse({ status: 200, description: 'Updated profile, isVerified: false' })
-  async rejectVerification(@Param('id', ParseUUIDPipe) id: string) {
-    return this.artisansService.rejectVerification(id);
+  async rejectVerification(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: RejectArtisanVerificationDto,
+  ) {
+    return this.artisansService.rejectVerification(id, dto.reason);
   }
 }

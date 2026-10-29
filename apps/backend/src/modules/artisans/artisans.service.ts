@@ -5,9 +5,11 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
+import { Op, WhereOptions } from 'sequelize';
 import {
   ArtisanAccountDetailsDto,
   ArtisanAccountDetailsInputDto,
@@ -15,6 +17,7 @@ import {
   ArtisanPublicProfileDto,
   ArtisanTeamMemberDto,
   ArtisanTeamMemberInputDto,
+  PaginatedArtisansResponse,
 } from '@golden-abode/types';
 
 import { Artisan } from './models/artisan.model';
@@ -43,8 +46,19 @@ const DOCUMENT_MAX_BYTES = 10 * 1024 * 1024;
 const DOCUMENT_PRESIGN_TTL_SECONDS = 300;
 const ALLOWED_DOCUMENT_CONTENT_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
 
+// The single definition of "pending verification" (isVerified = false AND
+// a document has been uploaded — an artisan with no document yet is
+// "incomplete", not "pending"). Shared with AdminService's dashboard
+// count so the two can never drift apart.
+export const PENDING_VERIFICATION_WHERE: WhereOptions<Artisan> = {
+  isVerified: false,
+  documentUrl: { [Op.ne]: null },
+};
+
 @Injectable()
 export class ArtisansService {
+  private readonly logger = new Logger(ArtisansService.name);
+
   constructor(
     @InjectModel(Artisan)
     private readonly artisanModel: typeof Artisan,
@@ -163,12 +177,22 @@ export class ArtisansService {
   // Sets documentUrl after the client confirms the direct-to-S3 upload
   // completed. The key must fall under this artisan's own upload-url
   // prefix (artisans/<artisanId>/...) — otherwise a caller could confirm
-  // an arbitrary S3 key as if it were their own document.
+  // an arbitrary S3 key as if it were their own document. The object
+  // itself must also actually exist in storage — matching
+  // MediaService's confirm-upload path — otherwise a caller could confirm
+  // a key that was never uploaded (or a failed/aborted upload) and have
+  // an admin later verify() them on the strength of a documentUrl that
+  // points at nothing.
   async confirmDocumentUpload(userId: string, key: string): Promise<ArtisanProfileDto> {
     const artisan = await this.resolveArtisanByUserId(userId);
 
     if (!key.startsWith(`artisans/${artisan.id}/`)) {
       throw new BadRequestException("key does not belong to this artisan's own upload");
+    }
+
+    const head = await this.storage.head(key);
+    if (!head) {
+      throw new BadRequestException('no uploaded object found for this key');
     }
 
     await this.artisanModel.update({ documentUrl: key }, { where: { id: artisan.id } });
@@ -227,34 +251,60 @@ export class ArtisansService {
     return toArtisanPublicProfileDto(artisan);
   }
 
-  async listArtisans(): Promise<ArtisanProfileDto[]> {
-    const artisans = await this.artisanModel.findAll({
+  async listArtisans(page: number, limit: number): Promise<PaginatedArtisansResponse> {
+    const offset = (page - 1) * limit;
+    const { rows, count } = await this.artisanModel.findAndCountAll({
       include: DEFAULT_INCLUDES,
+      distinct: true,
+      limit,
+      offset,
       order: [['createdAt', 'DESC']],
     });
-    return artisans.map((artisan) => toArtisanProfileDto(artisan));
+    return {
+      items: rows.map((artisan) => toArtisanProfileDto(artisan)),
+      total: count,
+      page,
+      limit,
+      totalPages: Math.ceil(count / limit) || 1,
+    };
   }
 
   async getArtisanById(artisanId: string): Promise<ArtisanProfileDto> {
     return toArtisanProfileDto(await this.findByIdOrThrow(artisanId));
   }
 
-  async listPendingVerification(): Promise<ArtisanProfileDto[]> {
-    // An artisan with no document yet is "incomplete", not "pending" —
-    // deliberately excluded (Review Focus item from the implementation
-    // plan, LLD §4.8).
-    const artisans = await this.artisanModel.findAll({
-      where: { isVerified: false },
+  async listPendingVerification(
+    page: number,
+    limit: number,
+  ): Promise<PaginatedArtisansResponse> {
+    // Review Focus item from the implementation plan, LLD §4.8: an
+    // artisan with no document yet is "incomplete", not "pending" —
+    // excluded by PENDING_VERIFICATION_WHERE itself, in SQL, not here.
+    const offset = (page - 1) * limit;
+    const { rows, count } = await this.artisanModel.findAndCountAll({
+      where: PENDING_VERIFICATION_WHERE,
       include: DEFAULT_INCLUDES,
+      distinct: true,
+      limit,
+      offset,
       order: [['createdAt', 'ASC']],
     });
-    return artisans
-      .filter((artisan) => artisan.documentUrl !== null)
-      .map((artisan) => toArtisanProfileDto(artisan));
+    return {
+      items: rows.map((artisan) => toArtisanProfileDto(artisan)),
+      total: count,
+      page,
+      limit,
+      totalPages: Math.ceil(count / limit) || 1,
+    };
   }
 
   // Document-backed check (spec §3 scope decision, §6): cannot verify an
-  // artisan who never uploaded a document.
+  // artisan who never uploaded a document. Unlike HireRequestsService's
+  // conditional-UPDATE review gate, isVerified has no terminal state and
+  // no side effect that must fire exactly once — it's a freely
+  // re-toggleable flag an admin can flip back and forth, so a plain
+  // unconditional update (last write wins) is the correct, simpler
+  // choice here, not a gap to close with the same guard.
   async verify(artisanId: string): Promise<ArtisanProfileDto> {
     const artisan = await this.findByIdOrThrow(artisanId);
     if (!artisan.documentUrl) {
@@ -266,10 +316,12 @@ export class ArtisansService {
   }
 
   // No persisted reason column in the §4.1 schema — logged only, matching
-  // AdminService.rejectUser's existing reason-is-log-only pattern.
-  async rejectVerification(artisanId: string): Promise<ArtisanProfileDto> {
+  // AdminService.rejectUser's existing reason-is-log-only pattern. Same
+  // last-write-wins reasoning as verify() above applies here too.
+  async rejectVerification(artisanId: string, reason?: string): Promise<ArtisanProfileDto> {
     await this.findByIdOrThrow(artisanId);
     await this.artisanModel.update({ isVerified: false }, { where: { id: artisanId } });
+    this.logger.log(`Rejected verification for artisan ${artisanId}${reason ? `: ${reason}` : ''}`);
     return toArtisanProfileDto(await this.findByIdOrThrow(artisanId));
   }
 

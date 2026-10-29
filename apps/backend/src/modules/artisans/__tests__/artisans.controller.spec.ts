@@ -149,4 +149,39 @@ describe('ArtisansController (real HTTP, Postgres)', () => {
     );
     expect(res.status).toBe(403);
   });
+
+  it('confirms a document upload once the object actually exists in storage', async () => {
+    const created = await asArtisan(
+      request(t.app.getHttpServer())
+        .post('/api/artisans/me/profile')
+        .send({ tradeType: 'CARPENTER' }),
+    );
+    const id = created.body.data.id;
+    const key = `artisans/${id}/doc-real.pdf`;
+    t.storage.seed(key);
+
+    const res = await asArtisan(
+      request(t.app.getHttpServer()).post('/api/artisans/me/documents/confirm').send({ key }),
+    );
+    expect(res.status).toBe(201);
+    expect(res.body.data.documentUrl).toBe(key);
+  });
+
+  it('rejects confirming a document upload for a key that was never actually uploaded', async () => {
+    const created = await asArtisan(
+      request(t.app.getHttpServer())
+        .post('/api/artisans/me/profile')
+        .send({ tradeType: 'TILE_LAYING' }),
+    );
+    const id = created.body.data.id;
+    const key = `artisans/${id}/doc-never-uploaded.pdf`;
+
+    const res = await asArtisan(
+      request(t.app.getHttpServer()).post('/api/artisans/me/documents/confirm').send({ key }),
+    );
+    expect(res.status).toBe(400);
+
+    const read = await asArtisan(request(t.app.getHttpServer()).get('/api/artisans/me/profile'));
+    expect(read.body.data.documentUrl).toBeNull();
+  });
 });

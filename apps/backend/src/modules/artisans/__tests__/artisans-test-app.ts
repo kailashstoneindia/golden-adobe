@@ -16,8 +16,8 @@ import {
   MEDIA_STORAGE_CONFIG,
   OBJECT_STORAGE,
 } from '../../catalog/media/object-storage';
-import { S3ObjectStorage } from '../../catalog/media/s3-object-storage.service';
 import { ARTISAN_TEST_MODELS } from './test-db';
+import { FakeObjectStorage } from './fake-object-storage';
 import { Artisan } from '../models/artisan.model';
 import { ArtisanAccountDetails } from '../models/artisan-account-details.model';
 import { ArtisanTeamMember } from '../models/artisan-team-member.model';
@@ -37,6 +37,7 @@ export type ArtisansTestApp = {
   artisanUserId: string;
   customerToken: string;
   customerUserId: string;
+  storage: FakeObjectStorage;
   newArtisanUser: () => Promise<{ id: string; token: string }>;
   close: () => Promise<void>;
 };
@@ -45,9 +46,11 @@ export type ArtisansTestApp = {
 // exception filter and response envelope, wired the way main.ts wires
 // them, over the real test Postgres. Mirrors
 // apps/backend/src/modules/catalog/media/__tests__/media-test-app.ts's
-// own rationale. No MinIO/S3 network call is exercised by these tests —
-// S3ObjectStorage's constructor doesn't touch the network — so OBJECT_STORAGE
-// is wired for real but never actually asked to presign in these specs.
+// own rationale. OBJECT_STORAGE is a fake in-memory implementation, not
+// the real S3 adapter — these specs test this module's own logic, not
+// S3 itself (that coverage lives in catalog/media/__tests__ against a
+// real MinIO container), and there is no MinIO reachable from every
+// environment that runs this suite.
 export async function createArtisansTestApp(): Promise<ArtisansTestApp> {
   // High-entropy and unique per call, not just per millisecond: two Jest
   // workers (this file + admin-artisans.controller.spec.ts) both call this
@@ -55,6 +58,7 @@ export async function createArtisansTestApp(): Promise<ArtisansTestApp> {
   // phone unique constraint before.
   const suffix = Math.random().toString(36).slice(2, 10);
   const extraUserIds: string[] = [];
+  const storage = new FakeObjectStorage();
 
   const moduleRef: TestingModule = await Test.createTestingModule({
     imports: [
@@ -99,12 +103,7 @@ export async function createArtisansTestApp(): Promise<ArtisansTestApp> {
         provide: MEDIA_STORAGE_CONFIG,
         useFactory: () => loadStorageConfig(),
       },
-      {
-        provide: OBJECT_STORAGE,
-        inject: [MEDIA_STORAGE_CONFIG],
-        useFactory: (config: ReturnType<typeof loadStorageConfig>) =>
-          new S3ObjectStorage(config),
-      },
+      { provide: OBJECT_STORAGE, useValue: storage },
     ],
   }).compile();
 
@@ -145,6 +144,7 @@ export async function createArtisansTestApp(): Promise<ArtisansTestApp> {
     artisanUserId: artisanUser.id,
     customerToken: jwt.sign({ sub: customerUser.id, role: Role.CUSTOMER }),
     customerUserId: customerUser.id,
+    storage,
     async newArtisanUser() {
       const user = await User.create({
         name: `Artisans Test Artisan ${extraUserIds.length}`,

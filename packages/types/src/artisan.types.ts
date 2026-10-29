@@ -1,3 +1,5 @@
+import { PaginatedResponse } from './pagination.types';
+
 export type TradeType =
   | 'CARPENTER'
   | 'PLUMBER'
@@ -137,3 +139,11 @@ export interface ReviewHireRequestDto {
   approve: boolean;
   rejectReason?: string; // required by the DTO validator when approve is false
 }
+
+export type ArtisanListQuery = {
+  page?: number;
+  limit?: number;
+};
+
+export type PaginatedArtisansResponse = PaginatedResponse<ArtisanProfileDto>;
+export type PaginatedHireRequestsResponse = PaginatedResponse<ArtisanHireRequestDto>;

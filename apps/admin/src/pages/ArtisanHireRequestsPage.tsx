@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import type { ArtisanHireRequestDto } from '@golden-abode/types';
 import { isEmpty } from 'lodash';
 
+import { APP_CONSTANTS } from '@/constants/appConstants';
 import { ERROR_MESSAGES } from '@/constants/error.constants';
 import { useArtisanPendingHireRequestsQuery, useReviewHireRequestMutation } from '@/queries';
 import styles from '@/styles/shared.module.css';
@@ -10,10 +11,13 @@ import { formatDateTime } from '@/utils/date';
 export function ArtisanHireRequestsPage() {
   const [selectedRequest, setSelectedRequest] = useState<ArtisanHireRequestDto | null>(null);
   const [rejectReason, setRejectReason] = useState('');
-  const pendingQuery = useArtisanPendingHireRequestsQuery();
+  const pendingQuery = useArtisanPendingHireRequestsQuery({
+    page: 1,
+    limit: APP_CONSTANTS.defaultPageSize,
+  });
   const reviewMutation = useReviewHireRequestMutation();
 
-  const requests = useMemo(() => pendingQuery.data ?? [], [pendingQuery.data]);
+  const requests = useMemo(() => pendingQuery.data?.items ?? [], [pendingQuery.data?.items]);
 
   const handleApprove = async (requestId: string) => {
     await reviewMutation.mutateAsync({ requestId, body: { approve: true } });

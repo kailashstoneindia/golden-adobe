@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import type { ArtisanProfileDto } from '@golden-abode/types';
 import { isEmpty } from 'lodash';
 
+import { APP_CONSTANTS } from '@/constants/appConstants';
 import { ERROR_MESSAGES } from '@/constants/error.constants';
 import {
   useArtisanPendingVerificationQuery,
@@ -13,11 +14,15 @@ import { formatDateTime } from '@/utils/date';
 
 export function ArtisanVerificationPage() {
   const [selectedArtisan, setSelectedArtisan] = useState<ArtisanProfileDto | null>(null);
-  const pendingQuery = useArtisanPendingVerificationQuery();
+  const [rejectReason, setRejectReason] = useState('');
+  const pendingQuery = useArtisanPendingVerificationQuery({
+    page: 1,
+    limit: APP_CONSTANTS.defaultPageSize,
+  });
   const verifyMutation = useVerifyArtisanMutation();
   const rejectMutation = useRejectArtisanVerificationMutation();
 
-  const artisans = useMemo(() => pendingQuery.data ?? [], [pendingQuery.data]);
+  const artisans = useMemo(() => pendingQuery.data?.items ?? [], [pendingQuery.data?.items]);
   const isSubmitting = verifyMutation.isPending || rejectMutation.isPending;
 
   const handleVerify = async (artisanId: string) => {
@@ -26,8 +31,15 @@ export function ArtisanVerificationPage() {
   };
 
   const handleReject = async (artisanId: string) => {
-    await rejectMutation.mutateAsync({ artisanId, body: {} });
+    const reason = rejectReason.trim();
+    await rejectMutation.mutateAsync({ artisanId, body: reason ? { reason } : {} });
     setSelectedArtisan(null);
+    setRejectReason('');
+  };
+
+  const handleCloseModal = () => {
+    setSelectedArtisan(null);
+    setRejectReason('');
   };
 
   if (pendingQuery.isLoading) {
@@ -76,7 +88,9 @@ export function ArtisanVerificationPage() {
         <ArtisanVerificationModal
           artisan={selectedArtisan}
           isSubmitting={isSubmitting}
-          onClose={() => setSelectedArtisan(null)}
+          rejectReason={rejectReason}
+          onRejectReasonChange={setRejectReason}
+          onClose={handleCloseModal}
           onVerify={handleVerify}
           onReject={handleReject}
         />
@@ -88,6 +102,8 @@ export function ArtisanVerificationPage() {
 type ArtisanVerificationModalProps = {
   artisan: ArtisanProfileDto;
   isSubmitting: boolean;
+  rejectReason: string;
+  onRejectReasonChange: (value: string) => void;
   onClose: () => void;
   onVerify: (artisanId: string) => void;
   onReject: (artisanId: string) => void;
@@ -96,6 +112,8 @@ type ArtisanVerificationModalProps = {
 function ArtisanVerificationModal({
   artisan,
   isSubmitting,
+  rejectReason,
+  onRejectReasonChange,
   onClose,
   onVerify,
   onReject,
@@ -119,6 +137,16 @@ function ArtisanVerificationModal({
           {artisan.team.length > 0 ? (
             <DetailRow label="Team size" value={String(artisan.team.length)} />
           ) : null}
+          <div className={styles.detailRow}>
+            <span className={styles.detailLabel}>Rejection reason</span>
+            <input
+              type="text"
+              value={rejectReason}
+              onChange={(event) => onRejectReasonChange(event.target.value)}
+              placeholder="Optional, stored in logs only"
+              className={styles.detailValue}
+            />
+          </div>
         </div>
 
         <div className={styles.actions}>

@@ -1,4 +1,10 @@
-import type { ArtisanHireRequestDto, ArtisanProfileDto } from '@golden-abode/types';
+import type {
+  ArtisanHireRequestDto,
+  ArtisanListQuery,
+  PaginatedArtisansResponse,
+  PaginatedHireRequestsResponse,
+  ArtisanProfileDto,
+} from '@golden-abode/types';
 
 import { API_ENDPOINTS } from '@/constants/apiEndpoints';
 import { getRequest, patchRequest } from '@/services/api/apiClient';
@@ -7,9 +13,20 @@ import type {
   ReviewArtisanHireRequestRequest,
 } from '@/types/artisans.types';
 
+function buildArtisanQueryString(query: ArtisanListQuery): string {
+  const params = new URLSearchParams();
+  if (query.page) params.set('page', String(query.page));
+  if (query.limit) params.set('limit', String(query.limit));
+  const queryString = params.toString();
+  return queryString ? `?${queryString}` : '';
+}
+
 export const artisansService = {
-  fetchPendingVerification(): Promise<ArtisanProfileDto[]> {
-    return getRequest<ArtisanProfileDto[]>(API_ENDPOINTS.admin.artisansPendingVerification);
+  fetchPendingVerification(query: ArtisanListQuery): Promise<PaginatedArtisansResponse> {
+    const suffix = buildArtisanQueryString(query);
+    return getRequest<PaginatedArtisansResponse>(
+      `${API_ENDPOINTS.admin.artisansPendingVerification}${suffix}`,
+    );
   },
 
   verifyArtisan(artisanId: string): Promise<ArtisanProfileDto> {
@@ -29,8 +46,11 @@ export const artisansService = {
     );
   },
 
-  fetchPendingHireRequests(): Promise<ArtisanHireRequestDto[]> {
-    return getRequest<ArtisanHireRequestDto[]>(API_ENDPOINTS.admin.artisanHireRequestsPending);
+  fetchPendingHireRequests(query: ArtisanListQuery): Promise<PaginatedHireRequestsResponse> {
+    const suffix = buildArtisanQueryString(query);
+    return getRequest<PaginatedHireRequestsResponse>(
+      `${API_ENDPOINTS.admin.artisanHireRequestsPending}${suffix}`,
+    );
   },
 
   reviewHireRequest(

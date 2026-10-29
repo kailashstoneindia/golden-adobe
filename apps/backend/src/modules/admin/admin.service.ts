@@ -19,6 +19,7 @@ import { ArtisanTeamMember } from '../artisans/models/artisan-team-member.model'
 import { ArtisanHireRequest } from '../artisans/models/artisan-hire-request.model';
 import { formatTimestamp, toVendorProfileDto } from '../vendors/vendor-profile.mapper';
 import { toArtisanProfileDto } from '../artisans/artisan-profile.mapper';
+import { PENDING_VERIFICATION_WHERE } from '../artisans/artisans.service';
 import { ListUsersQueryDto } from './dto/list-users-query.dto';
 
 @Injectable()
@@ -60,8 +61,10 @@ export class AdminService {
       this.userModel.count({ where: { role: Role.ARTISAN, isApproved: true } }),
       // Artisan-specific, document-backed verification queue — distinct
       // from pendingArtisans (the generic users.is_approved gate). See
-      // docs/artisan-module.md §5's two-gate design.
-      Artisan.count({ where: { isVerified: false, documentUrl: { [Op.ne]: null } } }),
+      // docs/artisan-module.md §5's two-gate design. Shares its where
+      // clause with ArtisansService.listPendingVerification so the count
+      // and the list it's counting can never drift apart.
+      Artisan.count({ where: PENDING_VERIFICATION_WHERE }),
       this.artisanHireRequestModel.count({ where: { status: 'PENDING_ADMIN_REVIEW' } }),
     ]);
 

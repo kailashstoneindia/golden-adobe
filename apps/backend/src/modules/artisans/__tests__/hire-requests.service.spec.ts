@@ -157,6 +157,33 @@ describe('HireRequestsService (integration)', () => {
     await User.destroy({ where: { id: otherArtisanUser.id } });
   });
 
+  it('listPendingAdminReview paginates and attaches each request its own latest estimate', async () => {
+    const requestA = await createHireRequestFixture({ status: 'PENDING_ADMIN_REVIEW' });
+    const requestB = await createHireRequestFixture({ status: 'PENDING_ADMIN_REVIEW' });
+
+    // Estimates only attach to non-pending requests in the real flow, but
+    // the batching in withLatestEstimates doesn't care about status —
+    // this exercises that each request gets back its OWN latest
+    // estimate, not another request's, once estimates exist for both.
+    await ArtisanCompletionEstimate.create({
+      hireRequestId: requestA.id,
+      estimatedDays: 2,
+    } as never);
+    await ArtisanCompletionEstimate.create({
+      hireRequestId: requestB.id,
+      estimatedDays: 9,
+    } as never);
+
+    const page = await service.listPendingAdminReview(1, 20);
+    const dtoA = page.items.find((r) => r.id === requestA.id);
+    const dtoB = page.items.find((r) => r.id === requestB.id);
+    expect(dtoA?.latestEstimate?.estimatedDays).toBe(2);
+    expect(dtoB?.latestEstimate?.estimatedDays).toBe(9);
+    expect(page.page).toBe(1);
+    expect(page.limit).toBe(20);
+    expect(page.total).toBeGreaterThanOrEqual(2);
+  });
+
   it('createRequest throws for an unverified artisan', async () => {
     const unverifiedUser = await User.create({
       name: `Unverified Artisan ${suffix}`,

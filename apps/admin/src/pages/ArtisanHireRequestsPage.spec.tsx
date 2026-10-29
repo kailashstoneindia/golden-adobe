@@ -34,7 +34,12 @@ let reviewCalls: Array<{ id: string; body: unknown }>;
 
 function useHandlers() {
   server.use(
-    http.get(`${BASE}/pending`, () => HttpResponse.json({ success: true, data: pending })),
+    http.get(`${BASE}/pending`, () =>
+      HttpResponse.json({
+        success: true,
+        data: { items: pending, total: pending.length, page: 1, limit: 20, totalPages: 1 },
+      }),
+    ),
     http.patch(`${BASE}/:id/review`, async ({ params, request }) => {
       const body = await request.json();
       reviewCalls.push({ id: String(params.id), body });

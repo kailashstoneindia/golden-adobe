@@ -11,6 +11,7 @@ import {
   ArtisanHireRequestDto,
   CreateCompletionEstimateDto,
   CreateHireRequestDto,
+  PaginatedHireRequestsResponse,
   ReviewHireRequestDto,
 } from '@golden-abode/types';
 
@@ -77,12 +78,24 @@ export class HireRequestsService {
     return this.withLatestEstimates(requests);
   }
 
-  async listPendingAdminReview(): Promise<ArtisanHireRequestDto[]> {
-    const requests = await this.hireRequestModel.findAll({
+  async listPendingAdminReview(
+    page: number,
+    limit: number,
+  ): Promise<PaginatedHireRequestsResponse> {
+    const offset = (page - 1) * limit;
+    const { rows, count } = await this.hireRequestModel.findAndCountAll({
       where: { status: 'PENDING_ADMIN_REVIEW' },
+      limit,
+      offset,
       order: [['createdAt', 'ASC']],
     });
-    return this.withLatestEstimates(requests);
+    return {
+      items: await this.withLatestEstimates(rows),
+      total: count,
+      page,
+      limit,
+      totalPages: Math.ceil(count / limit) || 1,
+    };
   }
 
   // The admin-gate invariant (spec §8.1, LLD §3): the only legal entry
@@ -186,11 +199,28 @@ export class HireRequestsService {
     });
   }
 
+  // One query for every request in the batch, instead of one findOne()
+  // per request — list endpoints otherwise do N+1 round trips that scale
+  // with queue size. createdAt ASC means the last row seen per
+  // hireRequestId in the reduce is the latest, since estimates are
+  // append-only (never updated in place).
   private async withLatestEstimates(
     requests: ArtisanHireRequest[],
   ): Promise<ArtisanHireRequestDto[]> {
-    return Promise.all(
-      requests.map(async (request) => toHireRequestDto(request, await this.latestEstimateFor(request.id))),
+    if (requests.length === 0) return [];
+
+    const estimates = await this.completionEstimateModel.findAll({
+      where: { hireRequestId: { [Op.in]: requests.map((request) => request.id) } },
+      order: [['createdAt', 'ASC']],
+    });
+
+    const latestByRequestId = new Map<string, ArtisanCompletionEstimate>();
+    for (const estimate of estimates) {
+      latestByRequestId.set(estimate.hireRequestId, estimate);
+    }
+
+    return requests.map((request) =>
+      toHireRequestDto(request, latestByRequestId.get(request.id) ?? null),
     );
   }
 }
