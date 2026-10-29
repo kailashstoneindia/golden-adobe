@@ -63,6 +63,7 @@
       "Effect": "Allow",
       "Action": [
         "lambda:GetFunction",
+        "lambda:GetFunctionConfiguration",
         "lambda:PublishVersion",
         "lambda:UpdateAlias",
         "lambda:UpdateFunctionCode"
