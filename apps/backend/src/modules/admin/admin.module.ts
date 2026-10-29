@@ -8,6 +8,7 @@ import { Artisan } from '../artisans/models/artisan.model';
 import { ArtisanAccountDetails } from '../artisans/models/artisan-account-details.model';
 import { ArtisanTeamMember } from '../artisans/models/artisan-team-member.model';
 import { ArtisanHireRequest } from '../artisans/models/artisan-hire-request.model';
+import { ArtisanCompletionEstimate } from '../artisans/models/artisan-completion-estimate.model';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 
@@ -21,6 +22,7 @@ import { AdminService } from './admin.service';
       ArtisanAccountDetails,
       ArtisanTeamMember,
       ArtisanHireRequest,
+      ArtisanCompletionEstimate,
     ]),
   ],
   controllers: [AdminController],

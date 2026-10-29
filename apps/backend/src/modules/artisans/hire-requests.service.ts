@@ -20,6 +20,12 @@ import { ArtisanHireRequest } from './models/artisan-hire-request.model';
 import { ArtisanCompletionEstimate } from './models/artisan-completion-estimate.model';
 import { toCompletionEstimateDto, toHireRequestDto } from './artisan-profile.mapper';
 
+// The window in which a completion estimate makes sense (spec §8.2): the
+// request has been admin-approved and work is underway, but hasn't
+// closed out yet. Shared by addEstimate (write) and the controller's
+// assertCanViewHireRequest (read, for the PENDING_ADMIN_REVIEW case).
+export const ACTIVE_ENGAGEMENT_STATUSES = new Set(['ACCEPTED_BY_ARTISAN', 'IN_PROGRESS']);
+
 @Injectable()
 export class HireRequestsService {
   constructor(
@@ -156,6 +162,16 @@ export class HireRequestsService {
     }
     if (request.artisanId !== artisan.id) {
       throw new ForbiddenException('this hire request does not belong to you');
+    }
+    // Spec §8.2: the estimate is given "after the site visit", which only
+    // happens once admin has approved the request and the artisan is
+    // actively engaged — not before approval (the artisan isn't even
+    // notified yet, per listForArtisan's own PENDING_ADMIN_REVIEW
+    // exclusion) and not after the engagement has closed.
+    if (!ACTIVE_ENGAGEMENT_STATUSES.has(request.status)) {
+      throw new ForbiddenException(
+        'an estimate can only be added while this hire request is accepted or in progress',
+      );
     }
 
     const estimate = await this.completionEstimateModel.create({

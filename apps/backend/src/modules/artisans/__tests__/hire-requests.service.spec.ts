@@ -135,6 +135,27 @@ describe('HireRequestsService (integration)', () => {
     expect(history.map((e) => e.estimatedDays)).toEqual([5, 8]);
   });
 
+  it('rejects addEstimate while the request is still PENDING_ADMIN_REVIEW', async () => {
+    const request = await createHireRequestFixture({ status: 'PENDING_ADMIN_REVIEW' });
+    await expect(
+      service.addEstimate(artisanUserId, request.id, { estimatedDays: 3 }),
+    ).rejects.toThrow();
+  });
+
+  it('rejects addEstimate once the request has closed out', async () => {
+    const request = await createHireRequestFixture({ status: 'COMPLETED' });
+    await expect(
+      service.addEstimate(artisanUserId, request.id, { estimatedDays: 3 }),
+    ).rejects.toThrow();
+  });
+
+  it('allows addEstimate while IN_PROGRESS, not just ACCEPTED_BY_ARTISAN', async () => {
+    const request = await createHireRequestFixture({ status: 'IN_PROGRESS' });
+    await expect(
+      service.addEstimate(artisanUserId, request.id, { estimatedDays: 4 }),
+    ).resolves.toMatchObject({ estimatedDays: 4 });
+  });
+
   it('rejects addEstimate from an artisan who does not own the request', async () => {
     const otherArtisanUser = await User.create({
       name: `Other Artisan ${suffix}`,

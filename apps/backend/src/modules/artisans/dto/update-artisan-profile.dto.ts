@@ -1,17 +1,11 @@
 import { IsBoolean, IsEnum, IsInt, IsOptional, IsString, IsNotEmpty, Min } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { UpdateArtisanProfileDto as UpdateArtisanProfileContract, TradeType } from '@golden-abode/types';
-
-const TRADE_TYPES: TradeType[] = [
-  'CARPENTER',
-  'PLUMBER',
-  'PAINTER',
-  'ELECTRICIAN',
-  'MASON',
-  'TILE_LAYING',
-  'OTHERS',
-];
+import {
+  UpdateArtisanProfileDto as UpdateArtisanProfileContract,
+  TRADE_TYPES,
+  TradeType,
+} from '@golden-abode/types';
 
 // Every field optional — PATCH semantics, same rationale as
 // UpdateVendorProfileDto. Account details and documents live on their own

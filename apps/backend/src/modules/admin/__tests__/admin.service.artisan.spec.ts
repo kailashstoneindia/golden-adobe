@@ -28,7 +28,7 @@ describe('AdminService artisan surfacing (integration)', () => {
           logging: false,
           models: ARTISAN_TEST_MODELS,
         }),
-        SequelizeModule.forFeature([User, ArtisanHireRequest]),
+        SequelizeModule.forFeature([User, Artisan, ArtisanHireRequest]),
       ],
       providers: [AdminService],
     }).compile();

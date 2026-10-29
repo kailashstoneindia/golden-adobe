@@ -1,17 +1,11 @@
 import { IsEnum, IsInt, IsOptional, IsString, IsNotEmpty, Min } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { ArtisanOnboardDto as ArtisanOnboardContract, TradeType } from '@golden-abode/types';
-
-const TRADE_TYPES: TradeType[] = [
-  'CARPENTER',
-  'PLUMBER',
-  'PAINTER',
-  'ELECTRICIAN',
-  'MASON',
-  'TILE_LAYING',
-  'OTHERS',
-];
+import {
+  ArtisanOnboardDto as ArtisanOnboardContract,
+  TRADE_TYPES,
+  TradeType,
+} from '@golden-abode/types';
 
 export class OnboardArtisanDto implements ArtisanOnboardContract {
   @ApiProperty({ enum: TRADE_TYPES, example: 'PLUMBER' })

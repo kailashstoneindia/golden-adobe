@@ -204,6 +204,9 @@ export class ArtisansService {
     dto: ArtisanTeamMemberInputDto,
   ): Promise<ArtisanTeamMemberDto> {
     const artisan = await this.resolveArtisanByUserId(userId);
+    if (dto.documentUrl !== undefined) {
+      this.assertOwnedDocumentKey(artisan.id, dto.documentUrl);
+    }
 
     const member = await this.artisanTeamMemberModel.create({
       artisanId: artisan.id,
@@ -223,6 +226,9 @@ export class ArtisansService {
   ): Promise<ArtisanTeamMemberDto> {
     const artisan = await this.resolveArtisanByUserId(userId);
     const member = await this.findOwnedTeamMember(artisan.id, memberId);
+    if (dto.documentUrl !== undefined) {
+      this.assertOwnedDocumentKey(artisan.id, dto.documentUrl);
+    }
 
     const updates: Partial<ArtisanTeamMember> = {};
     if (dto.name !== undefined) updates.name = dto.name;
@@ -232,6 +238,19 @@ export class ArtisansService {
 
     await member.update(updates);
     return toTeamMemberDto(member);
+  }
+
+  // Same ownership-prefix rule as confirmDocumentUpload, without the
+  // storage.head() existence check — team-member documents have no
+  // presign/confirm upload flow of their own (spec §8.3: optional,
+  // free-form, "mirroring the lead's own document_url pattern"), so
+  // there is nothing to confirm against. This only stops a caller from
+  // pointing a team member's documentUrl at a key outside their own
+  // artisan prefix (e.g. another artisan's uploaded document).
+  private assertOwnedDocumentKey(artisanId: string, key: string): void {
+    if (!key.startsWith(`artisans/${artisanId}/`)) {
+      throw new BadRequestException("key does not belong to this artisan's own upload");
+    }
   }
 
   async removeTeamMember(userId: string, memberId: string): Promise<void> {

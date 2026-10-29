@@ -94,6 +94,9 @@ export class ArtisanHireRequest extends Model<ArtisanHireRequest> {
   @BelongsTo(() => Artisan)
   declare artisan: Artisan;
 
+  @BelongsTo(() => User, 'adminReviewedBy')
+  declare adminReviewer?: User;
+
   @HasMany(() => ArtisanCompletionEstimate)
   declare estimates?: ArtisanCompletionEstimate[];
 }

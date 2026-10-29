@@ -9,6 +9,19 @@ export type TradeType =
   | 'TILE_LAYING'
   | 'OTHERS';
 
+// The single source of truth for the TradeType union's members, for
+// anywhere (e.g. class-validator's @IsEnum) that needs the values as a
+// runtime array rather than just a type.
+export const TRADE_TYPES: TradeType[] = [
+  'CARPENTER',
+  'PLUMBER',
+  'PAINTER',
+  'ELECTRICIAN',
+  'MASON',
+  'TILE_LAYING',
+  'OTHERS',
+];
+
 export interface ArtisanAccountDetailsDto {
   id: string;
   artisanId: string;

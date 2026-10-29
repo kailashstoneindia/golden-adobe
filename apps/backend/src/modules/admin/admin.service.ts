@@ -40,6 +40,8 @@ export class AdminService {
   constructor(
     @InjectModel(User)
     private readonly userModel: typeof User,
+    @InjectModel(Artisan)
+    private readonly artisanModel: typeof Artisan,
     @InjectModel(ArtisanHireRequest)
     private readonly artisanHireRequestModel: typeof ArtisanHireRequest,
   ) {}
@@ -64,7 +66,7 @@ export class AdminService {
       // docs/artisan-module.md §5's two-gate design. Shares its where
       // clause with ArtisansService.listPendingVerification so the count
       // and the list it's counting can never drift apart.
-      Artisan.count({ where: PENDING_VERIFICATION_WHERE }),
+      this.artisanModel.count({ where: PENDING_VERIFICATION_WHERE }),
       this.artisanHireRequestModel.count({ where: { status: 'PENDING_ADMIN_REVIEW' } }),
     ]);
 

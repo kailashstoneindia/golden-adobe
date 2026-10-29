@@ -184,4 +184,97 @@ describe('ArtisansController (real HTTP, Postgres)', () => {
     const read = await asArtisan(request(t.app.getHttpServer()).get('/api/artisans/me/profile'));
     expect(read.body.data.documentUrl).toBeNull();
   });
+
+  it('answers 403 when the artisan tries to read estimate history for a request still PENDING_ADMIN_REVIEW', async () => {
+    await asArtisan(
+      request(t.app.getHttpServer())
+        .post('/api/artisans/me/profile')
+        .send({ tradeType: 'MASON' }),
+    );
+    const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
+    const hireRequest = await ArtisanHireRequest.create({
+      customerId: t.customerUserId,
+      artisanId: artisan!.id,
+      addressText: '1 Park Lane',
+      status: 'PENDING_ADMIN_REVIEW',
+    } as never);
+
+    const res = await asArtisan(
+      request(t.app.getHttpServer()).get(`/api/artisans/hire-requests/${hireRequest.id}/estimates`),
+    );
+    expect(res.status).toBe(403);
+  });
+
+  it('still allows the owning customer to read estimate history while PENDING_ADMIN_REVIEW', async () => {
+    await asArtisan(
+      request(t.app.getHttpServer())
+        .post('/api/artisans/me/profile')
+        .send({ tradeType: 'MASON' }),
+    );
+    const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
+    const hireRequest = await ArtisanHireRequest.create({
+      customerId: t.customerUserId,
+      artisanId: artisan!.id,
+      addressText: '1 Park Lane',
+      status: 'PENDING_ADMIN_REVIEW',
+    } as never);
+
+    const res = await asCustomer(
+      request(t.app.getHttpServer()).get(`/api/artisans/hire-requests/${hireRequest.id}/estimates`),
+    );
+    expect(res.status).toBe(200);
+  });
+
+  it('answers 403 when an artisan tries to add an estimate while PENDING_ADMIN_REVIEW', async () => {
+    await asArtisan(
+      request(t.app.getHttpServer())
+        .post('/api/artisans/me/profile')
+        .send({ tradeType: 'PAINTER' }),
+    );
+    const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
+    const hireRequest = await ArtisanHireRequest.create({
+      customerId: t.customerUserId,
+      artisanId: artisan!.id,
+      addressText: '1 Park Lane',
+      status: 'PENDING_ADMIN_REVIEW',
+    } as never);
+
+    const res = await asArtisan(
+      request(t.app.getHttpServer())
+        .post(`/api/artisans/me/hire-requests/${hireRequest.id}/estimates`)
+        .send({ estimatedDays: 2 }),
+    );
+    expect(res.status).toBe(403);
+  });
+
+  it('rejects a team member documentUrl outside the artisan own prefix', async () => {
+    await asArtisan(
+      request(t.app.getHttpServer())
+        .post('/api/artisans/me/profile')
+        .send({ tradeType: 'OTHERS' }),
+    );
+
+    const res = await asArtisan(
+      request(t.app.getHttpServer())
+        .post('/api/artisans/me/team')
+        .send({ name: 'Ramesh', documentUrl: 'artisans/someone-else/doc.pdf' }),
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it('accepts a team member documentUrl under the artisan own prefix', async () => {
+    const created = await asArtisan(
+      request(t.app.getHttpServer())
+        .post('/api/artisans/me/profile')
+        .send({ tradeType: 'OTHERS' }),
+    );
+    const id = created.body.data.id;
+
+    const res = await asArtisan(
+      request(t.app.getHttpServer())
+        .post('/api/artisans/me/team')
+        .send({ name: 'Ramesh', documentUrl: `artisans/${id}/team/doc.pdf` }),
+    );
+    expect(res.status).toBe(201);
+  });
 });

@@ -12,22 +12,19 @@ import { ArtisanAccountDetails } from './models/artisan-account-details.model';
 import { ArtisanTeamMember } from './models/artisan-team-member.model';
 import { ArtisanHireRequest } from './models/artisan-hire-request.model';
 import { ArtisanCompletionEstimate } from './models/artisan-completion-estimate.model';
+import { formatTimestamp } from '../vendors/vendor-profile.mapper';
 
 // All DTO mapping for this module lives here, mirroring
 // vendor-profile.mapper.ts's rationale: plain functions, not an
 // injectable — they map already-loaded models and need no dependencies.
 // Callers are responsible for including the right associations; an
 // omitted include yields null/empty here, not a lazy load.
-
-export function formatTimestamp(value: unknown): string {
-  if (value instanceof Date) {
-    return value.toISOString();
-  }
-  if (typeof value === 'string') {
-    return value;
-  }
-  return '';
-}
+//
+// formatTimestamp itself is re-exported from vendor-profile.mapper
+// rather than duplicated — admin.service.ts already imports it from
+// there, so this is reuse of an existing cross-module dependency, not a
+// new one.
+export { formatTimestamp };
 
 export function toAccountDetailsDto(
   accountDetails?: ArtisanAccountDetails | null,

@@ -223,7 +223,7 @@ export class ArtisansController {
   private async assertCanViewHireRequest(
     userId: string,
     role: string,
-    request: { customerId: string; artisanId: string },
+    request: { customerId: string; artisanId: string; status: string },
   ): Promise<void> {
     if (role === Role.ADMIN) {
       return;
@@ -232,6 +232,13 @@ export class ArtisansController {
       return;
     }
     if (role === Role.ARTISAN) {
+      // Same admin-gate boundary as listForArtisan: an artisan isn't
+      // notified of a request until admin approves it, so they can't
+      // confirm it exists via this read either while it's still
+      // PENDING_ADMIN_REVIEW.
+      if (request.status === 'PENDING_ADMIN_REVIEW') {
+        throw new ForbiddenException('you may not view this hire request');
+      }
       const artisan = await this.artisansService.resolveArtisanByUserId(userId).catch(() => null);
       if (artisan && artisan.id === request.artisanId) {
         return;
