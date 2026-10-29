@@ -12,7 +12,6 @@ describe('ArtisansController (real HTTP, Postgres)', () => {
 
   const asArtisan = (req: request.Test) => req.set('Authorization', `Bearer ${t.artisanToken}`);
   const asCustomer = (req: request.Test) => req.set('Authorization', `Bearer ${t.customerToken}`);
-  const asAdmin = (req: request.Test) => req.set('Authorization', `Bearer ${t.adminToken}`);
 
   beforeAll(async () => {
     t = await createArtisansTestApp();
