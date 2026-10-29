@@ -12,7 +12,11 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 # shellcheck source=/dev/null
-[ -f deploy.conf ] && . ./deploy.conf
+if [ -f deploy.conf ]; then
+  set -a # export it: render-env.sh and docker compose are child processes
+  . ./deploy.conf
+  set +a
+fi
 
 if [ -z "${API_IMAGE:-}" ] && [ -f .current-tag ]; then
   : "${ECR_REPO_URI:?ECR_REPO_URI must be set in deploy.conf}"

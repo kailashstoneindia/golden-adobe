@@ -24,7 +24,11 @@ TAG="${1:?usage: deploy.sh <image-tag>}"
 cd "$(dirname "$0")"
 
 # shellcheck source=/dev/null
-[ -f deploy.conf ] && . ./deploy.conf
+if [ -f deploy.conf ]; then
+  set -a # export it: render-env.sh and docker compose are child processes
+  . ./deploy.conf
+  set +a
+fi
 : "${ECR_REPO_URI:?ECR_REPO_URI must be set in deploy.conf}"
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-180}"
 KEEP_IMAGES="${KEEP_IMAGES:-3}"
