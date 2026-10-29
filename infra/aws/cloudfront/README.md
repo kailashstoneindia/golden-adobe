@@ -35,9 +35,22 @@ browser sees one origin and no CORS configuration is needed for `/api`.
 | Default (`*`) | The admin S3 bucket, through an OAC     | `CachingOptimized`                                         | none                                                                 | GET/HEAD |
 
 - Origin protocol for the box: **HTTPS only**, so the Caddy certificate is validated.
-- **Custom error responses** on the S3 origin: 403 and 404 return `/index.html` with
-  status 200, which is what makes client-side routes (`/catalog/products`) work on a
-  refresh.
+- A **CloudFront Function** (`cloudfront-js-2.0`, viewer-request, default behaviour only)
+  rewrites any path without a `.` to `/index.html`, which is what makes client-side routes
+  (`/catalog/products`) work on a refresh. Do not use custom error responses for this: they
+  apply to the whole distribution, so the API's own 403 and 404 answers would be replaced by
+  the admin page with status 200.
+
+  ```js
+  function handler(event) {
+    var request = event.request;
+    if (request.uri.indexOf('.') === -1) {
+      request.uri = '/index.html';
+    }
+    return request;
+  }
+  ```
+
 - Default root object: `index.html`.
 - `index.html` is uploaded with `Cache-Control: no-cache` and everything else with a
   year-long `immutable`, by the deploy workflow.

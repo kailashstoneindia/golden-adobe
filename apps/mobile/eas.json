@@ -34,6 +34,19 @@
       "android": {
         "buildType": "app-bundle"
       }
+    },
+    "aws-preview": {
+      "distribution": "internal",
+      "env": {
+        "APP_VARIANT": "production",
+        "EXPO_PUBLIC_API_URL": "https://REPLACE-WITH-AWS-API-NAME/api"
+      },
+      "android": {
+        "buildType": "apk"
+      },
+      "ios": {
+        "simulator": false
+      }
     }
   },
   "submit": {

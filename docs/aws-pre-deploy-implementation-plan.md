@@ -623,7 +623,7 @@ The limits total about 1.95 GB, so the runbook adds a **2 GB swap file** on EBS 
 3. VPC default + SG (80/443 from the internet only)
 4. EBS gp3 30GB, encrypted
 5. Instance role → `bootstrap-host.sh`
-6. ECR repo with a lifecycle rule (keep 10)
+6. ECR repo with a lifecycle rule (keep 5)
 7. Buckets: Block Public Access ON for all three, SSE-S3, versioning on backups
 8. CloudFront ×2 with OAC
 9. Lambda + `live` alias + S3 trigger (prefix `original/`, events `s3:ObjectCreated:*`) + DLQ
