@@ -24,6 +24,7 @@ import { ArtisanTeamMember } from '../models/artisan-team-member.model';
 import { ArtisanHireRequest } from '../models/artisan-hire-request.model';
 import { ArtisanCompletionEstimate } from '../models/artisan-completion-estimate.model';
 import { ArtisansController } from '../artisans.controller';
+import { AdminArtisansController } from '../admin-artisans.controller';
 import { ArtisansService } from '../artisans.service';
 import { HireRequestsService } from '../hire-requests.service';
 
@@ -48,7 +49,11 @@ export type ArtisansTestApp = {
 // S3ObjectStorage's constructor doesn't touch the network — so OBJECT_STORAGE
 // is wired for real but never actually asked to presign in these specs.
 export async function createArtisansTestApp(): Promise<ArtisansTestApp> {
-  const suffix = `c${Date.now()}${Math.floor(Math.random() * 1000)}`;
+  // High-entropy and unique per call, not just per millisecond: two Jest
+  // workers (this file + admin-artisans.controller.spec.ts) both call this
+  // concurrently, and a Date.now()-based suffix alone has collided on the
+  // phone unique constraint before.
+  const suffix = Math.random().toString(36).slice(2, 10);
   const extraUserIds: string[] = [];
 
   const moduleRef: TestingModule = await Test.createTestingModule({
@@ -84,7 +89,7 @@ export async function createArtisansTestApp(): Promise<ArtisansTestApp> {
       PassportModule.register({ defaultStrategy: 'jwt' }),
       JwtModule.register({ secret: JWT_SECRET, signOptions: { expiresIn: '15m' } }),
     ],
-    controllers: [ArtisansController],
+    controllers: [ArtisansController, AdminArtisansController],
     providers: [
       UsersService,
       JwtStrategy,

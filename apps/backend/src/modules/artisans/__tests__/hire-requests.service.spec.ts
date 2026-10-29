@@ -13,7 +13,11 @@ import { HireRequestsService } from '../hire-requests.service';
 describe('HireRequestsService (integration)', () => {
   let moduleRef: TestingModule;
   let service: HireRequestsService;
-  const suffix = `t${Date.now()}`;
+  // High-entropy, not just millisecond-based: this spec's own Jest worker
+  // runs concurrently with the controller specs' test-app fixtures, and a
+  // Date.now()-based suffix alone has collided on the phone unique
+  // constraint before.
+  const suffix = Math.random().toString(36).slice(2, 10);
   let adminId: string;
   let customerId: string;
   let artisanUserId: string;

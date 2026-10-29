@@ -12,7 +12,7 @@ import { ArtisanCompletionEstimate } from '../models/artisan-completion-estimate
 
 describe('Artisan models (integration)', () => {
   let moduleRef: TestingModule;
-  const suffix = `t${Date.now()}`;
+  const suffix = Math.random().toString(36).slice(2, 10);
   let artisanUserId: string;
   let customerUserId: string;
 
