@@ -8,6 +8,12 @@
       "Resource": "arn:aws:s3:::<MEDIA_BUCKET>/original/*"
     },
     {
+      "Sid": "ListBucketSoMissingKeysReadAsNotFound",
+      "Effect": "Allow",
+      "Action": "s3:ListBucket",
+      "Resource": "arn:aws:s3:::<MEDIA_BUCKET>"
+    },
+    {
       "Sid": "WriteVariantsOnly",
       "Effect": "Allow",
       "Action": "s3:PutObject",

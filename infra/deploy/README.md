@@ -79,7 +79,7 @@ everything it created.
 | EBS gp3, 30 GB                           | $3               |
 | **Public IPv4 address (the Elastic IP)** | **$3.65**        |
 | S3, CloudFront, Lambda, SSM, CloudWatch  | $2–8             |
-| ECR storage (10 images)                  | under $1         |
+| ECR storage (5 images)                   | under $1         |
 | **Total**                                | **about $22–30** |
 
 The public IPv4 charge ($0.005 per hour since February 2024) was missing from the earlier
@@ -91,6 +91,20 @@ service used here (EC2, ECR, S3, CloudFront, Lambda, SQS, SSM, CloudWatch, ACM):
 so in the console if one is restricted. If one is, stop and decide deliberately.
 
 ## Provisioning, step by step
+
+**Before a domain exists** (first run, 2026-10-21): use the free names instead.
+`API_DOMAIN` is `<elastic-ip-with-dashes>.sslip.io` (for example `1-2-3-4.sslip.io`; Caddy
+gets a real certificate for it), and `ADMIN_DOMAIN` / `MEDIA_DOMAIN` are the distributions'
+`xxxx.cloudfront.net` names, so step 8 (certificates) and the DNS records are skipped. When a
+domain arrives, add the alternate names and certificates to both distributions, change
+`API_DOMAIN` and `MEDIA_PUBLIC_BASE_URL` in SSM, update the Lambda's `API_CALLBACK_BASE_URL`,
+redeploy and queue one search rebuild. Releasing the Elastic IP while the box is stopped saves
+$3.65 a month; the sslip.io name changes with the IP.
+
+**Windows (Git Bash) notes.** Set `MSYS_NO_PATHCONV=1`, or arguments such as
+`/golden-abode/prod/X` are rewritten into Windows paths. Use `cygpath -m` for temp files you
+pass as `file://`, and `PYTHONUTF8=1` before `aws ssm get-command-invocation`, which otherwise
+fails on non-ASCII output.
 
 Every step is a command you run once. Set these variables first, in a shell that stays
 open for the whole session. Bucket names are global across AWS, so they carry the
@@ -171,8 +185,8 @@ Check: `aws s3api get-public-access-block --bucket "$MEDIA_BUCKET"` shows all fo
 aws ecr create-repository --repository-name "$ECR_REPOSITORY" \
   --image-scanning-configuration scanOnPush=true
 aws ecr put-lifecycle-policy --repository-name "$ECR_REPOSITORY" --lifecycle-policy-text '{
-  "rules": [{"rulePriority": 1, "description": "keep the newest 10",
-    "selection": {"tagStatus": "any", "countType": "imageCountMoreThan", "countNumber": 10},
+  "rules": [{"rulePriority": 1, "description": "keep the newest 5",
+    "selection": {"tagStatus": "any", "countType": "imageCountMoreThan", "countNumber": 5},
     "action": {"type": "expire"}}]}'
 ```
 
@@ -328,6 +342,12 @@ aws s3api put-bucket-notification-configuration --bucket "$MEDIA_BUCKET" \
   --notification-configuration file:///tmp/s3-notify.json
 ```
 
+**A Lambda version is a frozen snapshot, environment variables included.** The `live` alias
+serves a published version, so changing the function's environment (for example the callback
+address) only changes `$LATEST`. After any configuration change, `publish-version` and move the
+alias to it, or the old value keeps being used. The deploy workflow does this for code; it does
+not change the environment.
+
 **Reserved concurrency.** The plan caps the function at 5 concurrent runs. A new account's
 Lambda quota is often only 10 in total, and AWS refuses to reserve capacity below its
 floor, so `aws lambda put-function-concurrency --function-name "$LAMBDA_NAME"
@@ -361,7 +381,10 @@ that matter are in [../aws/cloudfront/README.md](../aws/cloudfront/README.md). I
   behaviour with the `CachingOptimized` policy; alternate domain = `MEDIA_DOMAIN`.
 - **Admin**: default behaviour to the admin bucket (OAC); a second behaviour `/api/*` to
   `API_DOMAIN` over HTTPS only with `CachingDisabled`, `AllViewerExceptHostHeader` and all
-  methods; custom error responses turning 403 and 404 into `/index.html` with status 200.
+  methods; plus a CloudFront Function on the default behaviour that rewrites page routes (paths
+  without a `.`) to `/index.html`. Do **not** use CloudFront's custom error responses for
+  this: they apply to the whole distribution and would also turn the API's own 403 and 404
+  answers into the admin page.
 
 Then allow the media distribution to read **variants only**, and give the admin
 distribution's id to the pipeline:
@@ -540,7 +563,7 @@ database unless you pass `--force`.
 | Task                      | How                                                                                                                                                                                      |
 | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Deploy                    | Merge to `main`. CI runs, then **Deploy to AWS** ships the same commit.                                                                                                                  |
-| Roll back                 | On the box: `/opt/golden-abode/deploy.sh <older-git-sha>`. The last 3 images stay on disk, ECR keeps 10.                                                                                 |
+| Roll back                 | On the box: `/opt/golden-abode/deploy.sh <older-git-sha>`. The last 3 images stay on disk, ECR keeps 5.                                                                                  |
 | See what is running       | `cd /opt/golden-abode && ./compose.sh ps`                                                                                                                                                |
 | Read logs                 | `./compose.sh logs --tail 200 api` (also `caddy`, `postgres`, `meilisearch`)                                                                                                             |
 | Backup now                | `./compose.sh --profile backup run --rm backup`                                                                                                                                          |

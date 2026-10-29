@@ -13,9 +13,16 @@
       "Expiration": { "Days": 30 }
     },
     {
-      "ID": "AbortStalledUploads",
+      "ID": "DropOldVersionsAfter3Days",
       "Status": "Enabled",
       "Filter": { "Prefix": "" },
+      "NoncurrentVersionExpiration": { "NoncurrentDays": 3 }
+    },
+    {
+      "ID": "CleanExpiredMarkersAndStalledUploads",
+      "Status": "Enabled",
+      "Filter": { "Prefix": "" },
+      "Expiration": { "ExpiredObjectDeleteMarker": true },
       "AbortIncompleteMultipartUpload": { "DaysAfterInitiation": 1 }
     }
   ]
