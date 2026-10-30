@@ -176,6 +176,11 @@ import { StockService } from './stock.service';
     // service travels to it, matching how VendorCategoriesService is
     // already consumed by AdminVendorsController.
     StockService,
+    // Lets ArtisansModule reuse the existing presigned-POST S3 plumbing
+    // (decision 0033) for KYC document uploads instead of building a
+    // second object-storage integration. MEDIA_STORAGE_CONFIG stays
+    // un-exported — nothing outside this module needs it directly.
+    OBJECT_STORAGE,
   ],
 })
 export class CatalogModule {}

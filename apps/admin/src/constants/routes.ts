@@ -5,6 +5,8 @@ export const ROUTES = {
   approvals: '/approvals',
   approvalsVendors: '/approvals/vendors',
   approvalsArtisans: '/approvals/artisans',
+  artisanVerification: '/artisans/verification',
+  artisanHireRequests: '/artisans/hire-requests',
   users: '/users',
   vendors: '/vendors',
   orders: '/orders',

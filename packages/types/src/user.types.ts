@@ -1,5 +1,6 @@
 import { Role } from './role.enum';
 import { VendorProfileDto } from './vendor.types';
+import { ArtisanProfileDto } from './artisan.types';
 
 export const VENDOR_ONBOARDING_STAGES = {
   basicDetails: 'BASIC_DETAILS',
@@ -28,6 +29,7 @@ export interface UserDto {
   onboardingCompletedAt: string | null;
   onboardingStage: VendorOnboardingStage | null;
   vendorProfile?: VendorProfileDto;
+  artisan?: ArtisanProfileDto;
   // Null means never logged in since this column existed (0039). Set only
   // on real authentication, never on token refresh.
   lastLoginAt: string | null;

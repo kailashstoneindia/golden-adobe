@@ -13,6 +13,15 @@ export {
 } from './useAdminQueries';
 
 export {
+  ARTISANS_QUERY_KEYS,
+  useArtisanPendingHireRequestsQuery,
+  useArtisanPendingVerificationQuery,
+  useRejectArtisanVerificationMutation,
+  useReviewHireRequestMutation,
+  useVerifyArtisanMutation,
+} from './useArtisansQueries';
+
+export {
   CATALOG_QUERY_KEYS,
   useBulkPublishProductsMutation,
   useCategoryAttributesQuery,

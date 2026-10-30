@@ -7,6 +7,9 @@ type RazorpayNativeModule = {
 
 function loadRazorpayModule(): RazorpayNativeModule | null {
   try {
+    // Loaded lazily on purpose: the native module is missing in Expo Go and on devices
+    // without it, and a static import would crash the app at startup instead of returning null.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const loaded = require('react-native-razorpay') as
       | RazorpayNativeModule
       | { default: RazorpayNativeModule };

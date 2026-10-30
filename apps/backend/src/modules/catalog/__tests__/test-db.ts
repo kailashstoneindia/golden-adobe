@@ -29,11 +29,20 @@ import { Vendor } from '../../vendors/models/vendor.model';
 import { VendorAccountDetails } from '../../vendors/models/vendor-account-details.model';
 import { User } from '../../users/models/user.model';
 import { RefreshToken } from '../../users/models/refresh-token.model';
+import { Artisan } from '../../artisans/models/artisan.model';
+import { ArtisanAccountDetails } from '../../artisans/models/artisan-account-details.model';
+import { ArtisanTeamMember } from '../../artisans/models/artisan-team-member.model';
+import { ArtisanHireRequest } from '../../artisans/models/artisan-hire-request.model';
+import { ArtisanCompletionEstimate } from '../../artisans/models/artisan-completion-estimate.model';
 
 // Shared model list for catalog integration tests — every model any of the
 // above associates with must be present, or sequelize-typescript throws
 // "X has not been defined" at connection time. Kept in one place so a new
 // association doesn't mean updating N test files.
+//
+// The Artisan models are here, not because any catalog model associates
+// with them, but because User does (@HasOne(() => Artisan), added
+// alongside the Artisan module) — and User is already in this list.
 export const CATALOG_TEST_MODELS = [
   UnitOfMeasure,
   HsnCode,
@@ -64,6 +73,11 @@ export const CATALOG_TEST_MODELS = [
   User,
   VendorAccountDetails,
   RefreshToken,
+  Artisan,
+  ArtisanAccountDetails,
+  ArtisanTeamMember,
+  ArtisanHireRequest,
+  ArtisanCompletionEstimate,
 ];
 
 // Integration tests run against a REAL Postgres database (golden_abode_test

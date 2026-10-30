@@ -25,6 +25,8 @@ export function DashboardPage() {
       <div className={styles.statsGrid}>
         <StatCard label="Pending vendors" value={stats.pendingVendors} />
         <StatCard label="Pending ustaads" value={stats.pendingArtisans} />
+        <StatCard label="Ustaad verifications" value={stats.pendingArtisanVerifications} />
+        <StatCard label="Pending hire requests" value={stats.pendingHireRequests} />
         <StatCard label="Approved vendors" value={stats.approvedVendors} />
         <StatCard label="Total users" value={stats.totalUsers} />
       </div>
@@ -35,6 +37,12 @@ export function DashboardPage() {
         </Link>
         <Link className={styles.tab} to={ROUTES.approvalsArtisans}>
           Review ustaads
+        </Link>
+        <Link className={styles.tab} to={ROUTES.artisanVerification}>
+          Ustaad verification
+        </Link>
+        <Link className={styles.tab} to={ROUTES.artisanHireRequests}>
+          Hire requests
         </Link>
         <Link className={styles.tab} to={ROUTES.users}>
           Browse all users
