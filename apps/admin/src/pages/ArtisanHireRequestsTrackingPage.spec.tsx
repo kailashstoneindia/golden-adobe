@@ -52,7 +52,11 @@ function useHandlers() {
       cancelCalls.push({ id: String(params.id), body });
       return HttpResponse.json({
         success: true,
-        data: { ...requests[0], status: 'CANCELLED', cancelReason: (body as { reason: string }).reason },
+        data: {
+          ...requests[0],
+          status: 'CANCELLED',
+          cancelReason: (body as { reason: string }).reason,
+        },
       });
     }),
   );
