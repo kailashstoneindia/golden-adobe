@@ -18,15 +18,25 @@ CUTOVER   Clients ──► AWS (new)        Railway kept running as the fallbac
 DONE      Clients ──► AWS              Railway archived, then stopped
 ```
 
-## Progress (updated 2026-10-21)
+## Progress (updated 2026-10-30)
 
-| Phase                             | State                                                                                                              |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| 0. Waiting tasks                  | Not started (yours)                                                                                                |
-| 1. Domain arrives                 | Waiting on the client                                                                                              |
-| 2. Build AWS                      | **About 80% done.** Server, CloudFront, roles and host are ready. Left: GitHub variables (you), first deploy (me). |
-| 2b. Park to save money            | Not yet                                                                                                            |
-| 3-6. Data, test, cutover, cleanup | Not started                                                                                                        |
+| Phase                  | State                                                                                                                                   |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| 0. Waiting tasks       | Partly done. Left: client confirms the SNS alert email, root MFA and billing access.                                                    |
+| 1. Domain arrives      | **Done.** `nirmaancenter.com`: `api.`, `admin.`, `media.` resolve to AWS.                                                               |
+| 2. Build AWS           | **Done.** Box running, admin and API live, GitHub variables set, `production` environment limited to `main`.                            |
+| 2b. Park to save money | **Skipped on purpose.** The box stays running while development and testing continue (about $0.03/hr). Stop it when activity pauses.    |
+| 3. Data                | **Done.** Railway data restored on AWS; the 20 wrong photos removed; 238 photos attached.                                               |
+| 4. Test in parallel    | **Done.** Admin login, upload to Ready, backup and restore drill, deploy rollback path.                                                 |
+| 5. Cutover             | Admin and API already run on AWS. Left: mobile `eas.json` profiles still point at Railway (store release is the slow part).             |
+| 6. Cleanup             | Railway reported **stopped** (2026-10-30). Left: rotate the Railway DB password, remove Railway wiring from the repo, final dump saved. |
+
+## How deploys work now (2026-10-30)
+
+- Every push to `main` runs CI. When CI is **green**, "Deploy to AWS" ships the backend, the media Lambda and the admin app. Red CI means no deploy.
+- Docs-only and `apps/mobile/**` changes do not deploy.
+- Every green merge reaches the live site, so keep merges small. A failed health check rolls the backend back by itself; a pre-deploy backup is taken first.
+- Restoring a Railway dump at cutover: restore every table **except** `master_product_media`, or rerun the idempotent `media:load-demo`; otherwise photo rows are lost.
 
 ## Where Railway is wired in (do not edit until Phase 5)
 
@@ -108,9 +118,9 @@ then the Railway cutover (Phase 5). The mobile store release is the only slow pa
 - [x] Real upload through resize and signed callback: ready in about 2 s; originals private
 - [x] 259 demo images loaded; backup, restore drill and pre-deploy backup all pass
 - [x] Server stopped and Elastic IP released. SSM, Lambda callback and CloudFront now hold the real names (`api.nirmaancenter.com`).
-- [ ] Not yet: GitHub workflow run, DNS for `api.` `admin.` `media.`, browser login on AWS
+- [x] Later the same week: DNS for `api.` `admin.` `media.` fixed by the client, GitHub workflow runs green, admin login works on AWS, temporary smoke-test admin deleted (2026-10-30)
 
-To start again: allocate an Elastic IP, start the instance, associate it, give the client the `api` A record, wait for DNS, run the deploy (workflow, or by hand with `deploy.sh`).
+Historical note, only needed if the box is parked again. To start again: allocate an Elastic IP, start the instance, associate it, give the client the `api` A record, wait for DNS, run the deploy (workflow, or by hand with `deploy.sh`).
 
 ## Phase 2b: park it until the domain arrives
 
