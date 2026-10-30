@@ -14,8 +14,12 @@ export {
 
 export {
   ARTISANS_QUERY_KEYS,
+  useAllHireRequestsQuery,
+  useArtisanByIdQuery,
   useArtisanPendingHireRequestsQuery,
   useArtisanPendingVerificationQuery,
+  useArtisansQuery,
+  useCancelHireRequestMutation,
   useRejectArtisanVerificationMutation,
   useReviewHireRequestMutation,
   useVerifyArtisanMutation,

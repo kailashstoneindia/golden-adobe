@@ -94,6 +94,17 @@ describe('ArtisanHireRequestsPage', () => {
     expect(reviewCalls).toEqual([{ id: hireRequest().id, body: { approve: true } }]);
   });
 
+  it('shows the artisan capacity signal in the review modal', async () => {
+    pending = [hireRequest({ artisanActiveJobCount: 3, artisanTeamSize: 4 })];
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByText('12 MG Road, Bengaluru'));
+
+    expect(await screen.findByText('3')).toBeInTheDocument();
+    expect(await screen.findByText('4')).toBeInTheDocument();
+  });
+
   it('the reject button stays disabled until a reason is entered', async () => {
     renderPage();
     const user = userEvent.setup();
