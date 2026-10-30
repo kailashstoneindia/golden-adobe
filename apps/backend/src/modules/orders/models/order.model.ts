@@ -47,6 +47,12 @@ export class Order extends Model<Order> {
   @Column({ type: DataType.STRING(128), allowNull: true, field: 'razorpay_payment_id' })
   declare razorpayPaymentId: string | null;
 
+  // Decision 0045: NULL for a direct order (Path A), set to the
+  // ArtisanHireRequest this checkout was attributed to (Path B). The hire
+  // request is the booking — there is no separate service_bookings table.
+  @Column({ type: DataType.UUID, allowNull: true, field: 'booking_id' })
+  declare bookingId: string | null;
+
   @BelongsTo(() => Customer)
   declare customer: Customer;
 

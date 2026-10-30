@@ -22,6 +22,7 @@ export function toOrderDto(order: Order, includeDeliveryAddress: boolean): Order
     status: order.status as OrderStatus,
     razorpayOrderId: order.razorpayOrderId,
     razorpayPaymentId: order.razorpayPaymentId,
+    bookingId: order.bookingId,
     createdAt: toIsoDate(order.createdAt),
     updatedAt: toIsoDate(order.updatedAt),
     deliveryAddress:

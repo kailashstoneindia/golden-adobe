@@ -28,6 +28,7 @@ import { UpdateAccountDetailsDto } from './dto/update-account-details.dto';
 import { CreateTeamMemberDto } from './dto/create-team-member.dto';
 import { UpdateTeamMemberDto } from './dto/update-team-member.dto';
 import { CreateHireRequestDto } from './dto/create-hire-request.dto';
+import { CancelHireRequestDto } from './dto/cancel-hire-request.dto';
 import { CreateCompletionEstimateDto } from './dto/create-completion-estimate.dto';
 import { CreateDocumentUploadUrlDto } from './dto/create-document-upload-url.dto';
 import { ConfirmDocumentUploadDto } from './dto/confirm-document-upload.dto';
@@ -168,6 +169,52 @@ export class ArtisansController {
     return this.hireRequestsService.addEstimate(req.user.sub, id, dto);
   }
 
+  @Patch('me/hire-requests/:id/start')
+  @Roles(Role.ARTISAN)
+  @ApiOperation({
+    summary: 'Start work on an accepted hire request',
+    description: 'ACCEPTED_BY_ARTISAN -> IN_PROGRESS. Only the owning artisan may call this.',
+  })
+  @ApiResponse({ status: 200, description: 'Updated hire request, status IN_PROGRESS' })
+  @ApiResponse({ status: 403, description: 'This hire request does not belong to you' })
+  @ApiResponse({ status: 409, description: 'Request is not currently ACCEPTED_BY_ARTISAN' })
+  async startWork(@Req() req: any, @Param('id', ParseUUIDPipe) id: string) {
+    return this.hireRequestsService.startWork(req.user.sub, id);
+  }
+
+  @Patch('me/hire-requests/:id/complete')
+  @Roles(Role.ARTISAN)
+  @ApiOperation({
+    summary: 'Mark a hire request as completed',
+    description: 'IN_PROGRESS -> COMPLETED. Only the owning artisan may call this.',
+  })
+  @ApiResponse({ status: 200, description: 'Updated hire request, status COMPLETED' })
+  @ApiResponse({ status: 403, description: 'This hire request does not belong to you' })
+  @ApiResponse({ status: 409, description: 'Request is not currently IN_PROGRESS' })
+  async completeWork(@Req() req: any, @Param('id', ParseUUIDPipe) id: string) {
+    return this.hireRequestsService.completeWork(req.user.sub, id);
+  }
+
+  // Shared action: owning customer, owning artisan, or admin. Ownership is
+  // enforced in the service, not by @Roles() alone — same reasoning as
+  // assertCanViewHireRequest below.
+  @Patch('hire-requests/:id/cancel')
+  @ApiOperation({
+    summary: 'Cancel a hire request',
+    description:
+      'Legal from PENDING_ADMIN_REVIEW, ACCEPTED_BY_ARTISAN, or IN_PROGRESS. Terminal — no resume path.',
+  })
+  @ApiResponse({ status: 200, description: 'Updated hire request, status CANCELLED' })
+  @ApiResponse({ status: 403, description: 'Not the owning customer, owning artisan, or admin' })
+  @ApiResponse({ status: 409, description: 'Request is already completed or cancelled' })
+  async cancelHireRequest(
+    @Req() req: any,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CancelHireRequestDto,
+  ) {
+    return this.hireRequestsService.cancel(req.user.sub, req.user.role, id, dto);
+  }
+
   // Customer-initiated routes. Hiring is customer-initiated, not
   // artisan-initiated (spec §8.1), so these are gated separately from the
   // ARTISAN-only routes above even though they live in the same
@@ -207,6 +254,18 @@ export class ArtisansController {
     const request = await this.hireRequestsService.getRequestById(id);
     await this.assertCanViewHireRequest(req.user.sub, req.user.role, request);
     return this.hireRequestsService.getEstimateHistory(id);
+  }
+
+  // Decision 0045 item 7: the orders a customer placed while attributing
+  // to this engagement. Same ownership rule as getEstimateHistory above.
+  @Get('hire-requests/:id/orders')
+  @ApiOperation({ summary: 'Orders attributed to this hire request' })
+  @ApiResponse({ status: 200, description: 'Orders, newest first' })
+  @ApiResponse({ status: 403, description: 'Not the owning customer, owning artisan, or admin' })
+  async getAttributedOrders(@Req() req: any, @Param('id', ParseUUIDPipe) id: string) {
+    const request = await this.hireRequestsService.getRequestById(id);
+    await this.assertCanViewHireRequest(req.user.sub, req.user.role, request);
+    return this.hireRequestsService.listAttributedOrders(id);
   }
 
   // Public read: any authenticated role may view a verified artisan's

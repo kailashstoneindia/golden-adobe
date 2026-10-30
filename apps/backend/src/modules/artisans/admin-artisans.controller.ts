@@ -60,6 +60,17 @@ export class AdminArtisansController {
     return this.hireRequestsService.listPendingAdminReview(query.page ?? 1, query.limit ?? 20);
   }
 
+  @Get('hire-requests')
+  @ApiOperation({
+    summary: 'All hire requests, any status',
+    description:
+      'Tracking surface for engagements past the review queue — optionally narrowed with ?status=. Unlike hire-requests/pending, this is not limited to PENDING_ADMIN_REVIEW.',
+  })
+  @ApiResponse({ status: 200, description: 'Page of hire requests, newest first' })
+  async allHireRequests(@Query() query: PaginationQueryDto) {
+    return this.hireRequestsService.listAll(query.page ?? 1, query.limit ?? 20, query.status);
+  }
+
   @Patch('hire-requests/:id/review')
   @ApiOperation({
     summary: 'Approve or reject a hire request',

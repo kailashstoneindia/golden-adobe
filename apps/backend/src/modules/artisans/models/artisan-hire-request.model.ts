@@ -97,6 +97,43 @@ export class ArtisanHireRequest extends Model<ArtisanHireRequest> {
   })
   declare notes: string | null;
 
+  // Set exactly once, by startWork, when status moves ACCEPTED_BY_ARTISAN ->
+  // IN_PROGRESS. Never updated afterwards — mirrors admin_reviewed_at's
+  // write-once convention above.
+  @Column({
+    type: DataType.DATE,
+    allowNull: true,
+    field: 'started_at',
+  })
+  declare startedAt: Date | null;
+
+  // Set exactly once, by completeWork, when status moves IN_PROGRESS ->
+  // COMPLETED.
+  @Column({
+    type: DataType.DATE,
+    allowNull: true,
+    field: 'completed_at',
+  })
+  declare completedAt: Date | null;
+
+  // Set exactly once, by cancel, when status moves to CANCELLED from any of
+  // PENDING_ADMIN_REVIEW, ACCEPTED_BY_ARTISAN, or IN_PROGRESS.
+  @Column({
+    type: DataType.DATE,
+    allowNull: true,
+    field: 'cancelled_at',
+  })
+  declare cancelledAt: Date | null;
+
+  // Mirrors admin_reject_reason's log-and-display pattern: always set
+  // alongside cancelled_at, never set independently of it.
+  @Column({
+    type: DataType.TEXT,
+    allowNull: true,
+    field: 'cancel_reason',
+  })
+  declare cancelReason: string | null;
+
   @BelongsTo(() => User, 'customerId')
   declare customer: User;
 

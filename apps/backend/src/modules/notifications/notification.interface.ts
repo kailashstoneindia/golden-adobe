@@ -14,4 +14,15 @@ export interface NotificationService {
   // there is otherwise no path from a multi-vendor checkout to any
   // individual vendor knowing a group landed in their queue.
   sendNewOrderToVendor(vendorId: string, orderVendorGroupId: string): Promise<void>;
+  // Decision 0045: hire-request status changes were previously silent for
+  // every party (artisan, customer, admin) — listForArtisan's
+  // PENDING_ADMIN_REVIEW exclusion stood in for "notified" but is only a
+  // visibility filter, not an actual notification. Fired on every
+  // transition past the initial create (review, start, complete, cancel),
+  // to whichever party did not initiate it.
+  sendHireRequestStatusChanged(
+    recipientUserId: string,
+    hireRequestId: string,
+    status: string,
+  ): Promise<void>;
 }

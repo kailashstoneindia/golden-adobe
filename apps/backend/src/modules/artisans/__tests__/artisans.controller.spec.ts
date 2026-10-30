@@ -215,6 +215,61 @@ describe('ArtisansController (real HTTP, Postgres)', () => {
     expect(res.status).toBe(200);
   });
 
+  it('owning customer can list orders attributed to a hire request', async () => {
+    await asArtisan(
+      request(t.app.getHttpServer()).post('/api/artisans/me/profile').send({ tradeType: 'MASON' }),
+    );
+    const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
+    const hireRequest = await ArtisanHireRequest.create({
+      customerId: t.customerUserId,
+      artisanId: artisan!.id,
+      addressText: '1 Park Lane',
+      status: 'ACCEPTED_BY_ARTISAN',
+    } as never);
+    t.orderModel.findAll.mockResolvedValueOnce([
+      {
+        id: 'order-1',
+        customerId: 'customer-1',
+        deliveryAddressId: 'addr-1',
+        grandTotal: 500,
+        status: 'confirmed',
+        razorpayOrderId: null,
+        razorpayPaymentId: null,
+        bookingId: hireRequest.id,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deliveryAddress: null,
+        vendorGroups: [],
+      },
+    ]);
+
+    const res = await asCustomer(
+      request(t.app.getHttpServer()).get(`/api/artisans/hire-requests/${hireRequest.id}/orders`),
+    );
+    expect(res.status).toBe(200);
+    expect(res.body.data).toHaveLength(1);
+    expect(res.body.data[0].bookingId).toBe(hireRequest.id);
+  });
+
+  it('answers 403 when a stranger tries to list orders attributed to someone else hire request', async () => {
+    await asArtisan(
+      request(t.app.getHttpServer()).post('/api/artisans/me/profile').send({ tradeType: 'MASON' }),
+    );
+    const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
+    const hireRequest = await ArtisanHireRequest.create({
+      customerId: t.customerUserId,
+      artisanId: artisan!.id,
+      addressText: '1 Park Lane',
+      status: 'ACCEPTED_BY_ARTISAN',
+    } as never);
+    const { token: otherArtisanToken } = await t.newArtisanUser();
+
+    const res = await request(t.app.getHttpServer())
+      .get(`/api/artisans/hire-requests/${hireRequest.id}/orders`)
+      .set('Authorization', `Bearer ${otherArtisanToken}`);
+    expect(res.status).toBe(403);
+  });
+
   it('answers 403 when an artisan tries to add an estimate while PENDING_ADMIN_REVIEW', async () => {
     await asArtisan(
       request(t.app.getHttpServer())
@@ -234,6 +289,124 @@ describe('ArtisansController (real HTTP, Postgres)', () => {
         .post(`/api/artisans/me/hire-requests/${hireRequest.id}/estimates`)
         .send({ estimatedDays: 2 }),
     );
+    expect(res.status).toBe(403);
+  });
+
+  it('artisan can start and complete work on their own accepted hire request', async () => {
+    await asArtisan(
+      request(t.app.getHttpServer()).post('/api/artisans/me/profile').send({ tradeType: 'MASON' }),
+    );
+    const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
+    const hireRequest = await ArtisanHireRequest.create({
+      customerId: t.customerUserId,
+      artisanId: artisan!.id,
+      addressText: '1 Park Lane',
+      status: 'ACCEPTED_BY_ARTISAN',
+    } as never);
+
+    const start = await asArtisan(
+      request(t.app.getHttpServer()).patch(
+        `/api/artisans/me/hire-requests/${hireRequest.id}/start`,
+      ),
+    );
+    expect(start.status).toBe(200);
+    expect(start.body.data.status).toBe('IN_PROGRESS');
+    expect(start.body.data.startedAt).not.toBeNull();
+
+    const complete = await asArtisan(
+      request(t.app.getHttpServer()).patch(
+        `/api/artisans/me/hire-requests/${hireRequest.id}/complete`,
+      ),
+    );
+    expect(complete.status).toBe(200);
+    expect(complete.body.data.status).toBe('COMPLETED');
+    expect(complete.body.data.completedAt).not.toBeNull();
+  });
+
+  it('answers 409 when starting a hire request that is not yet accepted', async () => {
+    await asArtisan(
+      request(t.app.getHttpServer()).post('/api/artisans/me/profile').send({ tradeType: 'MASON' }),
+    );
+    const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
+    const hireRequest = await ArtisanHireRequest.create({
+      customerId: t.customerUserId,
+      artisanId: artisan!.id,
+      addressText: '1 Park Lane',
+      status: 'PENDING_ADMIN_REVIEW',
+    } as never);
+
+    const res = await asArtisan(
+      request(t.app.getHttpServer()).patch(
+        `/api/artisans/me/hire-requests/${hireRequest.id}/start`,
+      ),
+    );
+    expect(res.status).toBe(409);
+  });
+
+  it('customer can cancel their own hire request with a reason', async () => {
+    await asArtisan(
+      request(t.app.getHttpServer()).post('/api/artisans/me/profile').send({ tradeType: 'MASON' }),
+    );
+    const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
+    const hireRequest = await ArtisanHireRequest.create({
+      customerId: t.customerUserId,
+      artisanId: artisan!.id,
+      addressText: '1 Park Lane',
+      status: 'ACCEPTED_BY_ARTISAN',
+    } as never);
+
+    const res = await asCustomer(
+      request(t.app.getHttpServer())
+        .patch(`/api/artisans/hire-requests/${hireRequest.id}/cancel`)
+        .send({ reason: 'No longer needed' }),
+    );
+    expect(res.status).toBe(200);
+    expect(res.body.data.status).toBe('CANCELLED');
+    expect(res.body.data.cancelReason).toBe('No longer needed');
+  });
+
+  it('answers 400 when cancelling without a reason', async () => {
+    await asArtisan(
+      request(t.app.getHttpServer()).post('/api/artisans/me/profile').send({ tradeType: 'MASON' }),
+    );
+    const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
+    const hireRequest = await ArtisanHireRequest.create({
+      customerId: t.customerUserId,
+      artisanId: artisan!.id,
+      addressText: '1 Park Lane',
+      status: 'ACCEPTED_BY_ARTISAN',
+    } as never);
+
+    const res = await asCustomer(
+      request(t.app.getHttpServer())
+        .patch(`/api/artisans/hire-requests/${hireRequest.id}/cancel`)
+        .send({}),
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it('answers 403 when a stranger customer tries to cancel someone else hire request', async () => {
+    const { token: otherArtisanToken } = await t.newArtisanUser();
+    await request(t.app.getHttpServer())
+      .post('/api/artisans/me/profile')
+      .set('Authorization', `Bearer ${otherArtisanToken}`)
+      .send({ tradeType: 'MASON' });
+
+    await asArtisan(
+      request(t.app.getHttpServer()).post('/api/artisans/me/profile').send({ tradeType: 'MASON' }),
+    );
+    const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
+    const hireRequest = await ArtisanHireRequest.create({
+      customerId: t.customerUserId,
+      artisanId: artisan!.id,
+      addressText: '1 Park Lane',
+      status: 'ACCEPTED_BY_ARTISAN',
+    } as never);
+
+    const res = await request(t.app.getHttpServer())
+      .patch(`/api/artisans/hire-requests/${hireRequest.id}/cancel`)
+      .set('Authorization', `Bearer ${otherArtisanToken}`)
+      .send({ reason: 'not mine' });
     expect(res.status).toBe(403);
   });
 

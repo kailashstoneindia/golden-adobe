@@ -1,18 +1,21 @@
-import { ConflictException } from '@nestjs/common';
-import { SequelizeModule } from '@nestjs/sequelize';
+import { ConflictException, ForbiddenException } from '@nestjs/common';
+import { SequelizeModule, getModelToken } from '@nestjs/sequelize';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Role } from '@golden-abode/types';
 
 import { ARTISAN_TEST_MODELS } from './test-db';
+import { NOTIFICATION_SERVICE } from '../../notifications/notification.interface';
 import { User } from '../../users/models/user.model';
 import { Artisan } from '../models/artisan.model';
 import { ArtisanHireRequest } from '../models/artisan-hire-request.model';
 import { ArtisanCompletionEstimate } from '../models/artisan-completion-estimate.model';
+import { Order } from '../../orders/models/order.model';
 import { HireRequestsService } from '../hire-requests.service';
 
 describe('HireRequestsService (integration)', () => {
   let moduleRef: TestingModule;
   let service: HireRequestsService;
+  let notificationsMock: { sendHireRequestStatusChanged: jest.Mock };
   // High-entropy, not just millisecond-based: this spec's own Jest worker
   // runs concurrently with the controller specs' test-app fixtures, and a
   // Date.now()-based suffix alone has collided on the phone unique
@@ -24,6 +27,8 @@ describe('HireRequestsService (integration)', () => {
   let artisanId: string;
 
   beforeAll(async () => {
+    notificationsMock = { sendHireRequestStatusChanged: jest.fn() };
+
     moduleRef = await Test.createTestingModule({
       imports: [
         SequelizeModule.forRoot({
@@ -38,7 +43,17 @@ describe('HireRequestsService (integration)', () => {
         }),
         SequelizeModule.forFeature([Artisan, ArtisanHireRequest, ArtisanCompletionEstimate]),
       ],
-      providers: [HireRequestsService],
+      providers: [
+        HireRequestsService,
+        { provide: NOTIFICATION_SERVICE, useValue: notificationsMock },
+        // Mocked, not registered via SequelizeModule.forFeature like the
+        // artisan models above: Order pulls in Customer, CustomerAddress,
+        // and OrderVendorGroup's whole associated graph, which this
+        // artisan-focused integration fixture has no need to stand up —
+        // listAttributedOrders itself is covered by a dedicated unit spec
+        // (hire-requests-attributed-orders.spec.ts), not here.
+        { provide: getModelToken(Order), useValue: { findAll: jest.fn().mockResolvedValue([]) } },
+      ],
     }).compile();
 
     service = moduleRef.get(HireRequestsService);
@@ -75,6 +90,10 @@ describe('HireRequestsService (integration)', () => {
     artisanId = artisan.id;
   });
 
+  afterEach(() => {
+    notificationsMock.sendHireRequestStatusChanged.mockClear();
+  });
+
   afterAll(async () => {
     await ArtisanHireRequest.destroy({ where: { artisanId } });
     await Artisan.destroy({ where: { id: artisanId } });
@@ -101,6 +120,16 @@ describe('HireRequestsService (integration)', () => {
 
     await expect(service.reviewRequest(adminId, request.id, { approve: true })).rejects.toThrow(
       ConflictException,
+    );
+  });
+
+  it('reviewRequest approval notifies the artisan', async () => {
+    const request = await createHireRequestFixture({ status: 'PENDING_ADMIN_REVIEW' });
+    await service.reviewRequest(adminId, request.id, { approve: true });
+    expect(notificationsMock.sendHireRequestStatusChanged).toHaveBeenCalledWith(
+      artisanUserId,
+      request.id,
+      'ACCEPTED_BY_ARTISAN',
     );
   });
 
@@ -203,6 +232,185 @@ describe('HireRequestsService (integration)', () => {
     expect(page.page).toBe(1);
     expect(page.limit).toBe(20);
     expect(page.total).toBeGreaterThanOrEqual(2);
+  });
+
+  it('startWork moves ACCEPTED_BY_ARTISAN to IN_PROGRESS and stamps startedAt', async () => {
+    const request = await createHireRequestFixture({ status: 'ACCEPTED_BY_ARTISAN' });
+    const result = await service.startWork(artisanUserId, request.id);
+    expect(result.status).toBe('IN_PROGRESS');
+    expect(result.startedAt).not.toBeNull();
+  });
+
+  it('startWork notifies the customer', async () => {
+    const request = await createHireRequestFixture({ status: 'ACCEPTED_BY_ARTISAN' });
+    await service.startWork(artisanUserId, request.id);
+    expect(notificationsMock.sendHireRequestStatusChanged).toHaveBeenCalledWith(
+      customerId,
+      request.id,
+      'IN_PROGRESS',
+    );
+  });
+
+  it('startWork rejects a request still PENDING_ADMIN_REVIEW', async () => {
+    const request = await createHireRequestFixture({ status: 'PENDING_ADMIN_REVIEW' });
+    await expect(service.startWork(artisanUserId, request.id)).rejects.toThrow(ConflictException);
+  });
+
+  it('startWork rejects an artisan who does not own the request', async () => {
+    const otherArtisanUser = await User.create({
+      name: `Other Start Artisan ${suffix}`,
+      phone: `4${suffix}`.slice(0, 10),
+      role: Role.ARTISAN,
+      isActive: true,
+    } as never);
+    const otherArtisan = await Artisan.create({
+      userId: otherArtisanUser.id,
+      tradeType: 'MASON',
+      isVerified: true,
+    } as never);
+
+    const request = await createHireRequestFixture({ status: 'ACCEPTED_BY_ARTISAN' });
+    await expect(service.startWork(otherArtisanUser.id, request.id)).rejects.toThrow(
+      ForbiddenException,
+    );
+
+    await Artisan.destroy({ where: { id: otherArtisan.id } });
+    await User.destroy({ where: { id: otherArtisanUser.id } });
+  });
+
+  it('completeWork moves IN_PROGRESS to COMPLETED and stamps completedAt', async () => {
+    const request = await createHireRequestFixture({ status: 'IN_PROGRESS' });
+    const result = await service.completeWork(artisanUserId, request.id);
+    expect(result.status).toBe('COMPLETED');
+    expect(result.completedAt).not.toBeNull();
+  });
+
+  it('completeWork notifies the customer', async () => {
+    const request = await createHireRequestFixture({ status: 'IN_PROGRESS' });
+    await service.completeWork(artisanUserId, request.id);
+    expect(notificationsMock.sendHireRequestStatusChanged).toHaveBeenCalledWith(
+      customerId,
+      request.id,
+      'COMPLETED',
+    );
+  });
+
+  it('completeWork rejects a request that is not yet IN_PROGRESS', async () => {
+    const request = await createHireRequestFixture({ status: 'ACCEPTED_BY_ARTISAN' });
+    await expect(service.completeWork(artisanUserId, request.id)).rejects.toThrow(
+      ConflictException,
+    );
+  });
+
+  it('cancel moves PENDING_ADMIN_REVIEW, ACCEPTED_BY_ARTISAN, or IN_PROGRESS to CANCELLED', async () => {
+    for (const status of ['PENDING_ADMIN_REVIEW', 'ACCEPTED_BY_ARTISAN', 'IN_PROGRESS']) {
+      const request = await createHireRequestFixture({ status });
+      const result = await service.cancel(customerId, Role.CUSTOMER, request.id, {
+        reason: 'Changed my mind',
+      });
+      expect(result.status).toBe('CANCELLED');
+      expect(result.cancelledAt).not.toBeNull();
+      expect(result.cancelReason).toBe('Changed my mind');
+    }
+  });
+
+  it('cancel rejects a request already COMPLETED', async () => {
+    const request = await createHireRequestFixture({ status: 'COMPLETED' });
+    await expect(
+      service.cancel(customerId, Role.CUSTOMER, request.id, { reason: 'too late' }),
+    ).rejects.toThrow(ConflictException);
+  });
+
+  it('cancel by the customer notifies the artisan', async () => {
+    const request = await createHireRequestFixture({ status: 'ACCEPTED_BY_ARTISAN' });
+    await service.cancel(customerId, Role.CUSTOMER, request.id, { reason: 'changed my mind' });
+    expect(notificationsMock.sendHireRequestStatusChanged).toHaveBeenCalledWith(
+      artisanUserId,
+      request.id,
+      'CANCELLED',
+    );
+  });
+
+  it('cancel by the artisan notifies the customer', async () => {
+    const request = await createHireRequestFixture({ status: 'ACCEPTED_BY_ARTISAN' });
+    await service.cancel(artisanUserId, Role.ARTISAN, request.id, { reason: 'unavailable' });
+    expect(notificationsMock.sendHireRequestStatusChanged).toHaveBeenCalledWith(
+      customerId,
+      request.id,
+      'CANCELLED',
+    );
+  });
+
+  it('cancel allows the owning artisan and an admin, not just the owning customer', async () => {
+    const asArtisan = await createHireRequestFixture({ status: 'ACCEPTED_BY_ARTISAN' });
+    await expect(
+      service.cancel(artisanUserId, Role.ARTISAN, asArtisan.id, { reason: 'no longer available' }),
+    ).resolves.toMatchObject({ status: 'CANCELLED' });
+
+    const asAdmin = await createHireRequestFixture({ status: 'ACCEPTED_BY_ARTISAN' });
+    await expect(
+      service.cancel(adminId, Role.ADMIN, asAdmin.id, { reason: 'admin override' }),
+    ).resolves.toMatchObject({ status: 'CANCELLED' });
+  });
+
+  it('cancel rejects a caller who is neither the owning customer, owning artisan, nor admin', async () => {
+    const strangerUser = await User.create({
+      name: `Stranger ${suffix}`,
+      phone: `3${suffix}`.slice(0, 10),
+      role: Role.CUSTOMER,
+      isActive: true,
+    } as never);
+
+    const request = await createHireRequestFixture({ status: 'ACCEPTED_BY_ARTISAN' });
+    await expect(
+      service.cancel(strangerUser.id, Role.CUSTOMER, request.id, { reason: 'not mine' }),
+    ).rejects.toThrow(ForbiddenException);
+
+    await User.destroy({ where: { id: strangerUser.id } });
+  });
+
+  it('listAll returns every status when no filter is given', async () => {
+    await createHireRequestFixture({ status: 'PENDING_ADMIN_REVIEW' });
+    await createHireRequestFixture({ status: 'COMPLETED' });
+    const page = await service.listAll(1, 20);
+    expect(page.items.some((r) => r.status === 'PENDING_ADMIN_REVIEW')).toBe(true);
+    expect(page.items.some((r) => r.status === 'COMPLETED')).toBe(true);
+  });
+
+  it('listAll filters to a single status when given one', async () => {
+    await createHireRequestFixture({ status: 'IN_PROGRESS' });
+    const page = await service.listAll(1, 20, 'IN_PROGRESS');
+    expect(page.items.length).toBeGreaterThan(0);
+    expect(page.items.every((r) => r.status === 'IN_PROGRESS')).toBe(true);
+  });
+
+  it('listPendingAdminReview attaches the artisan active-job count and team size', async () => {
+    // This suite reuses one artisan fixture across many tests with no
+    // per-test cleanup (only afterAll), so the active-job count already
+    // includes rows other tests left behind — measure the delta two new
+    // active rows cause, not an absolute count.
+    const pendingBefore = await createHireRequestFixture({ status: 'PENDING_ADMIN_REVIEW' });
+    const before = await service.listPendingAdminReview(1, 20);
+    const baselineCount =
+      before.items.find((r) => r.id === pendingBefore.id)?.artisanActiveJobCount ?? 0;
+
+    await createHireRequestFixture({ status: 'ACCEPTED_BY_ARTISAN' });
+    await createHireRequestFixture({ status: 'IN_PROGRESS' });
+    await createHireRequestFixture({ status: 'COMPLETED' }); // not active, excluded from count
+    const pending = await createHireRequestFixture({ status: 'PENDING_ADMIN_REVIEW' });
+
+    const page = await service.listPendingAdminReview(1, 20);
+    const dto = page.items.find((r) => r.id === pending.id);
+    expect(dto?.artisanActiveJobCount).toBe(baselineCount + 2);
+    expect(dto?.artisanTeamSize).toBe(0);
+  });
+
+  it('listAll does not attach capacity info (admin review surface only)', async () => {
+    const request = await createHireRequestFixture({ status: 'COMPLETED' });
+    const page = await service.listAll(1, 20);
+    const dto = page.items.find((r) => r.id === request.id);
+    expect(dto?.artisanActiveJobCount).toBeNull();
+    expect(dto?.artisanTeamSize).toBeNull();
   });
 
   it('createRequest throws for an unverified artisan', async () => {

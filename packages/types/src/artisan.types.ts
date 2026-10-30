@@ -112,6 +112,19 @@ export type ArtisanHireRequestStatus =
   | 'COMPLETED'
   | 'CANCELLED';
 
+// Single source of truth for ArtisanHireRequestStatus's members, same
+// rationale as TRADE_TYPES above: callers that need the values as a
+// runtime array (e.g. class-validator's @IsIn) read this instead of
+// re-listing the union.
+export const HIRE_REQUEST_STATUSES: ArtisanHireRequestStatus[] = [
+  'PENDING_ADMIN_REVIEW',
+  'ADMIN_REJECTED',
+  'ACCEPTED_BY_ARTISAN',
+  'IN_PROGRESS',
+  'COMPLETED',
+  'CANCELLED',
+];
+
 export interface ArtisanCompletionEstimateDto {
   id: string;
   hireRequestId: string;
@@ -138,6 +151,16 @@ export interface ArtisanHireRequestDto {
   // Latest estimate only, for list views. Full history via a dedicated
   // endpoint (GET /artisans/hire-requests/:id/estimates).
   latestEstimate: ArtisanCompletionEstimateDto | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  cancelledAt: string | null;
+  cancelReason: string | null;
+  // Capacity signal for admin review (decision 0045 addendum) — present
+  // only on admin-facing reads (listPendingAdminReview, listAll), null
+  // elsewhere. A proxy, not real per-job assignment tracking: admin reads
+  // active jobs against team size and judges capacity themselves.
+  artisanActiveJobCount: number | null;
+  artisanTeamSize: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -151,6 +174,10 @@ export interface CreateHireRequestDto {
 export interface ReviewHireRequestDto {
   approve: boolean;
   rejectReason?: string; // required by the DTO validator when approve is false
+}
+
+export interface CancelHireRequestDto {
+  reason: string;
 }
 
 export type ArtisanListQuery = {
