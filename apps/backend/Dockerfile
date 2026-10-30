@@ -3,7 +3,6 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 
 # Build context MUST be the monorepo root (not apps/backend).
-# Railway: leave service "Root Directory" empty; set dockerfilePath to apps/backend/Dockerfile.
 
 RUN npm install -g pnpm@9.12.3
 

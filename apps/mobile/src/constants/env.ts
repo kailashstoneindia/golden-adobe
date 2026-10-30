@@ -1,5 +1,5 @@
 const DEFAULT_DEV_API_URL = 'http://192.168.1.6:3000/api';
-const DEFAULT_PROD_API_URL = 'https://golden-adobe-production.up.railway.app/api';
+const DEFAULT_PROD_API_URL = 'https://api.nirmaancenter.com/api';
 
 /**
  * Runtime environment values.

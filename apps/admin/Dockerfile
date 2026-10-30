@@ -24,8 +24,8 @@ FROM nginx:1.27-alpine AS runner
 RUN apk add --no-cache gettext
 
 ENV PORT=3000
-# Must be set in Railway env vars if the backend is not on the same container.
-# Example: https://golden-adobe-production.up.railway.app
+# Set at runtime if the backend is not on the same container.
+# Example: https://api.nirmaancenter.com
 ENV API_UPSTREAM=http://localhost:3000
 
 COPY --from=builder /app/apps/admin/dist /usr/share/nginx/html

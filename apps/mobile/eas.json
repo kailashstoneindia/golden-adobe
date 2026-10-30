@@ -9,14 +9,14 @@
       "distribution": "internal",
       "env": {
         "APP_VARIANT": "development",
-        "EXPO_PUBLIC_API_URL": "https://golden-adobe-production.up.railway.app/api"
+        "EXPO_PUBLIC_API_URL": "https://api.nirmaancenter.com/api"
       }
     },
     "preview": {
       "distribution": "internal",
       "env": {
         "APP_VARIANT": "production",
-        "EXPO_PUBLIC_API_URL": "https://golden-adobe-production.up.railway.app/api"
+        "EXPO_PUBLIC_API_URL": "https://api.nirmaancenter.com/api"
       },
       "android": {
         "buildType": "apk"
@@ -29,7 +29,7 @@
       "autoIncrement": true,
       "env": {
         "APP_VARIANT": "production",
-        "EXPO_PUBLIC_API_URL": "https://golden-adobe-production.up.railway.app/api"
+        "EXPO_PUBLIC_API_URL": "https://api.nirmaancenter.com/api"
       },
       "android": {
         "buildType": "app-bundle"
