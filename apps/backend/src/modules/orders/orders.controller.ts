@@ -21,7 +21,7 @@ export class OrdersController {
 
   @Post('checkout')
   checkout(@Req() req: any, @Body() dto: CheckoutDto) {
-    return this.checkoutService.checkout(req.user.sub, dto.deliveryAddressId);
+    return this.checkoutService.checkout(req.user.sub, dto.deliveryAddressId, dto.bookingId);
   }
 
   @Get('orders')

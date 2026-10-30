@@ -1,7 +1,14 @@
-import { BadRequestException, Inject, Injectable, NotFoundException, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+  Logger,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { Sequelize } from 'sequelize-typescript';
-import { QueryTypes } from 'sequelize';
+import { QueryTypes, Transaction } from 'sequelize';
 import { Order, OrderStatus } from './models/order.model';
 import { OrderVendorGroup, OrderVendorGroupStatus } from './models/order-vendor-group.model';
 import { OrderItem } from './models/order-item.model';
@@ -11,8 +18,17 @@ import { CustomerAddress } from '../customers/models/customer-address.model';
 import { PAYMENT_PROVIDER, PaymentProviderService } from '../payments/payment-provider.interface';
 import { VendorListingStatus } from '../catalog/models/vendor-listing.model';
 import { SaleUnitType } from '../catalog/models/master-product.model';
+import { ArtisanHireRequest } from '../artisans/models/artisan-hire-request.model';
 import type { OrderDto } from '@golden-abode/types';
 import { toOrderDto } from './order-display.mapper';
+
+// Decision 0045: the set of hire-request statuses a checkout may legally
+// attribute to. Deliberately one state wider than
+// HireRequestsService.ACTIVE_ENGAGEMENT_STATUSES (which excludes
+// COMPLETED — that set gates adding a completion ESTIMATE, which makes no
+// sense once the job is done) — a customer can still place the
+// recommended-products order after the artisan has finished the visit.
+const BOOKING_ATTRIBUTABLE_STATUSES = new Set(['ACCEPTED_BY_ARTISAN', 'IN_PROGRESS', 'COMPLETED']);
 
 interface CartLineForCheckout {
   cart_item_id: string;
@@ -76,14 +92,62 @@ export class CheckoutService {
     @InjectModel(OrderVendorGroup) private readonly groupModel: typeof OrderVendorGroup,
     @InjectModel(OrderItem) private readonly itemModel: typeof OrderItem,
     @InjectModel(CustomerAddress) private readonly addressModel: typeof CustomerAddress,
+    @InjectModel(ArtisanHireRequest) private readonly hireRequestModel: typeof ArtisanHireRequest,
     private readonly sequelize: Sequelize,
     private readonly cartService: CartService,
     private readonly customersService: CustomersService,
     @Inject(PAYMENT_PROVIDER) private readonly paymentProvider: PaymentProviderService,
   ) {}
 
-  async checkout(userId: string, deliveryAddressId: string): Promise<OrderDto> {
+  // Decision 0045: a checkout may only attribute to a hire request that
+  // (a) exists, (b) was made by the same user placing this order — note
+  // ArtisanHireRequest.customerId is a User.id, the same id passed in
+  // here as userId, NOT the Customer.id this method's caller separately
+  // resolves — and (c) is in a status where attribution makes sense.
+  // Ownership and status failures both answer 403, not 404 — same
+  // "don't distinguish exists-but-forbidden from doesn't-exist" choice
+  // ArtisansService.getPublicProfile already makes, since a bare existence
+  // check here would let a customer probe other customers' booking ids.
+  async validateBooking(userId: string, bookingId: string): Promise<ArtisanHireRequest> {
+    const booking = await this.hireRequestModel.findByPk(bookingId);
+    if (!booking) {
+      throw new NotFoundException(`hire request ${bookingId} not found`);
+    }
+    if (booking.customerId !== userId) {
+      throw new ForbiddenException('this hire request does not belong to you');
+    }
+    if (!BOOKING_ATTRIBUTABLE_STATUSES.has(booking.status)) {
+      throw new ForbiddenException(
+        'this hire request is not in a status that can be attributed to an order',
+      );
+    }
+    return booking;
+  }
+
+  // validateBooking runs before the cart lock is acquired, so the window
+  // between it and this checkout's commit is open to the hire request
+  // being cancelled (by the customer, the artisan, or admin) in the
+  // meantime. Re-read it inside the same transaction, right before the
+  // order row that would carry its id is created — same "claim at the
+  // last possible moment, inside the transaction" discipline this
+  // service's own inventory lock already follows above. Ownership is not
+  // re-checked here: it cannot change between the two reads (no code path
+  // reassigns a hire request's customerId), only its status can.
+  async reconfirmBookingStatus(bookingId: string, transaction: Transaction): Promise<void> {
+    const booking = await this.hireRequestModel.findByPk(bookingId, { transaction });
+    if (!booking) {
+      throw new NotFoundException(`hire request ${bookingId} not found`);
+    }
+    if (!BOOKING_ATTRIBUTABLE_STATUSES.has(booking.status)) {
+      throw new ForbiddenException(
+        'this hire request is no longer in a status that can be attributed to an order',
+      );
+    }
+  }
+
+  async checkout(userId: string, deliveryAddressId: string, bookingId?: string): Promise<OrderDto> {
     const customer = await this.customersService.resolveCustomerByUserId(userId);
+    const booking = bookingId ? await this.validateBooking(userId, bookingId) : null;
 
     const address = await this.addressModel.findOne({
       where: { id: deliveryAddressId, customerId: customer.id },
@@ -367,12 +431,17 @@ export class CheckoutService {
       );
       const grandTotal = itemsTotal + totalLoadingUnloadingFee;
 
+      if (booking) {
+        await this.reconfirmBookingStatus(booking.id, t);
+      }
+
       const createdOrder = await this.orderModel.create(
         {
           customerId: customer.id,
           deliveryAddressId: address.id,
           grandTotal,
           status: OrderStatus.PENDING_PAYMENT,
+          bookingId: booking?.id ?? null,
         } as any,
         { transaction: t },
       );

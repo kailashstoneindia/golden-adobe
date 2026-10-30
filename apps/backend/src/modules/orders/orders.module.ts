@@ -5,6 +5,7 @@ import { OrderVendorGroup } from './models/order-vendor-group.model';
 import { OrderItem } from './models/order-item.model';
 import { PaymentEvent } from './models/payment-event.model';
 import { CustomerAddress } from '../customers/models/customer-address.model';
+import { ArtisanHireRequest } from '../artisans/models/artisan-hire-request.model';
 import { CheckoutService } from './checkout.service';
 import { OrdersService } from './orders.service';
 import { OrdersController } from './orders.controller';
@@ -18,7 +19,14 @@ import { CatalogModule } from '../catalog/catalog.module';
 
 @Module({
   imports: [
-    SequelizeModule.forFeature([Order, OrderVendorGroup, OrderItem, CustomerAddress, PaymentEvent]),
+    SequelizeModule.forFeature([
+      Order,
+      OrderVendorGroup,
+      OrderItem,
+      CustomerAddress,
+      PaymentEvent,
+      ArtisanHireRequest,
+    ]),
     CartModule,
     CustomersModule,
     PaymentsModule,

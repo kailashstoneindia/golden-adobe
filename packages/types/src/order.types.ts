@@ -90,6 +90,9 @@ export type UpsertCustomerAddressRequest = {
 
 export type CheckoutRequest = {
   deliveryAddressId: string;
+  // Decision 0045: attributes the resulting order to this hire request
+  // (Path B). Omitted or undefined for a direct order (Path A).
+  bookingId?: string;
 };
 
 export type OrderItemDto = {
@@ -123,6 +126,9 @@ export type OrderDto = {
   status: OrderStatus;
   razorpayOrderId: string | null;
   razorpayPaymentId: string | null;
+  // Decision 0045: set when this order was placed against an artisan hire
+  // request (Path B); null for a direct order (Path A).
+  bookingId: string | null;
   createdAt: string;
   updatedAt: string;
   deliveryAddress: CustomerAddressDto | null;
