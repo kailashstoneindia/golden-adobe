@@ -12,8 +12,7 @@ export const APP_CONSTANTS = {
   /**
    * Vite build-time API origin.
    * Local + Docker/nginx keep relative "/api".
-   * Vercel must set VITE_API_BASE_URL to the Railway backend, e.g.
-   * https://golden-adobe-production.up.railway.app/api
+   * Production (CloudFront) also keeps the relative "/api"; set VITE_API_BASE_URL only to override.
    */
   apiBaseUrl: import.meta.env.VITE_API_BASE_URL?.trim() || '/api',
 } as const;
