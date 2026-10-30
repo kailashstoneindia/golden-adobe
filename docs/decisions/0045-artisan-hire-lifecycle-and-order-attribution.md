@@ -71,7 +71,7 @@ visibility needed to track both, nothing else.
 #### Option A — Nullable `booking_id` column directly on `orders`
 
 - **Pro:** Exactly what `docs/artisan.md` §4 already specifies (`orders.booking_id REFERENCES
-  service_bookings(id)`), adjusted to reference `artisan_hire_requests.id` directly since this
+service_bookings(id)`), adjusted to reference `artisan_hire_requests.id` directly since this
   codebase never built a separate `service_bookings` table — the hire request **is** the
   booking. One column, one index, no new table. `NULL` = Path A (direct order), set = Path B.
 - **Con:** `Order` can span multiple vendors via `OrderVendorGroup`
@@ -84,7 +84,7 @@ visibility needed to track both, nothing else.
 - **Pro:** Matches docs/artisan.md's Phase 2 schema literally (`artisan_recommendations` linking
   booking → product → artisan, separate from `orders.booking_id`).
 - **Con:** Conflates two different features. Attribution ("this order came from this hire
-  request") does not require knowing *which specific products* were recommended — that's a
+  request") does not require knowing _which specific products_ were recommended — that's a
   richer feature (artisan proposes products, customer picks from them) that can be built later,
   on top of the `booking_id` column, without changing the column's meaning. Building the join
   table first with no attribution column yet to point at it is backwards.
@@ -112,8 +112,8 @@ visibility needed to track both, nothing else.
 >      `reason` string in the body (logged, same log-only pattern `rejectVerification` uses —
 >      no new persisted-reason column, matching this module's existing convention).
 > 2. Add `startedAt`/`completedAt`/`cancelledAt` nullable timestamp columns (migration, same
->    style as the existing artisan migrations: explicit FK/index where relevant, snake_case,
->    symmetric `down`) so admin and both parties can see *when* each transition happened, not
+>    style as the existing artisan migrations: explicit FK/index where relevant, snake*case,
+>    symmetric `down`) so admin and both parties can see \_when* each transition happened, not
 >    just the current status — needed for the dashboard/tracking ask, not just the state machine
 >    itself.
 > 3. Wire `NotificationService` calls (extending the interface in
@@ -222,7 +222,7 @@ is already committed to and how big their team is, before deciding.
 and/or the single-request read) gains two derived numbers, computed from data that already
 exists — no new table or column:
 
-- **Active jobs** — count of this artisan's *other* hire requests currently in
+- **Active jobs** — count of this artisan's _other_ hire requests currently in
   `ACCEPTED_BY_ARTISAN` or `IN_PROGRESS` (`HireRequestsService.ACTIVE_ENGAGEMENT_STATUSES`,
   already defined).
 - **Team size** — `artisan.team.length` (`ArtisanTeamMember` rows, already loaded via
@@ -273,7 +273,7 @@ type-declaration gap that predates this branch).
   `20261030110000-add-booking-id-to-orders.js`)
 - `CheckoutDto.bookingId` (optional) → `CheckoutService.validateBooking()` (exists, owned by the
   caller, in an attributable status: `ACCEPTED_BY_ARTISAN`, `IN_PROGRESS`, or `COMPLETED`) →
-  `reconfirmBookingStatus()` re-checks status *inside* the transaction, closing the race window
+  `reconfirmBookingStatus()` re-checks status _inside_ the transaction, closing the race window
   between validation (before the cart lock) and commit — added beyond the original spec, per
   user direction, to match this codebase's existing claim-inside-the-transaction discipline
 - `OrderDto.bookingId` surfaced on every order read (customer and admin)
@@ -318,7 +318,7 @@ remain out of scope per the original decision.
   `apps/backend/src/modules/orders/dto/checkout.dto.ts`,
   `apps/backend/src/modules/orders/models/order.model.ts`
 - `apps/backend/src/modules/vendors/vendors.controller.ts` (`PATCH
-  /vendors/order-groups/:id/status` — the rejected single-PATCH-with-status-body pattern, for
+/vendors/order-groups/:id/status` — the rejected single-PATCH-with-status-body pattern, for
   contrast)
 - `apps/backend/src/modules/notifications/notification.interface.ts`,
   `log-notification.service.ts`

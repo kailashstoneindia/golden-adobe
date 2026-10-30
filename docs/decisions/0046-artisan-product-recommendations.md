@@ -66,7 +66,7 @@ masterProductId, suggestedQty, note }` — nothing else.
 
 - **Pro:** Simpler to reason about — no update/delete code paths, no ownership-of-mutation
   checks beyond create.
-- **Con:** Wrong fit. Estimates are append-only because the *history of estimates* is the point
+- **Con:** Wrong fit. Estimates are append-only because the _history of estimates_ is the point
   (§8.2: "always appends, never overwrites"). A recommendation has no such history requirement —
   what matters is "what does the artisan currently recommend," which an append-only log would
   force the customer-facing read to compute (latest-per-product, or worse, show every stale
@@ -122,8 +122,8 @@ extends through `COMPLETED`, independently of this gate).
 >      artisan, or admin — same `assertCanViewHireRequest` reuse as `getEstimateHistory` and
 >      0045's `getAttributedOrders`)
 > 5. **DTOs**: `CreateRecommendationDto { masterProductId: string; suggestedQty?: number; note?:
->    string }`, `UpdateRecommendationDto extends PartialType(OmitType(CreateRecommendationDto,
->    ['masterProductId']))` — `masterProductId` deliberately excluded from the update shape per
+string }`, `UpdateRecommendationDto extends PartialType(OmitType(CreateRecommendationDto,
+['masterProductId']))` — `masterProductId` deliberately excluded from the update shape per
 >    item 3's "not re-pointable" rule, enforced at the type level, not just by convention.
 > 6. **Shared types** (`packages/types/src/artisan.types.ts`): `ArtisanRecommendationDto`,
 >    `CreateRecommendationDto`, `UpdateRecommendationDto`, each carrying `masterProductName` and
@@ -200,5 +200,5 @@ documents the rule.
   product-name/code snapshotting precedent)
 - `apps/backend/src/modules/catalog/models/master-product.model.ts`
 - `apps/backend/src/modules/search/search.controller.ts` (`GET
-  /search/:masterProductId/listings` — the customer-facing follow-through path, confirmed public
+/search/:masterProductId/listings` — the customer-facing follow-through path, confirmed public
   during 0045's own research)
