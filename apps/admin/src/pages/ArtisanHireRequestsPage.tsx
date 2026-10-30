@@ -93,6 +93,15 @@ export function ArtisanHireRequestsPage() {
             <div className={styles.modalBody}>
               <DetailRow label="Notes" value={selectedRequest.notes || '-'} />
               <DetailRow label="Requested" value={formatDateTime(selectedRequest.createdAt)} />
+              {selectedRequest.artisanActiveJobCount != null ? (
+                <DetailRow
+                  label="Active jobs"
+                  value={String(selectedRequest.artisanActiveJobCount)}
+                />
+              ) : null}
+              {selectedRequest.artisanTeamSize != null ? (
+                <DetailRow label="Team size" value={String(selectedRequest.artisanTeamSize)} />
+              ) : null}
               <div className={styles.detailRow}>
                 <span className={styles.detailLabel}>Rejection reason</span>
                 <input

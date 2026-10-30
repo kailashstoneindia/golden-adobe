@@ -6,3 +6,7 @@ export type ReviewArtisanHireRequestRequest = {
   approve: boolean;
   rejectReason?: string;
 };
+
+export type CancelArtisanHireRequestRequest = {
+  reason: string;
+};

@@ -31,8 +31,12 @@ export const API_ENDPOINTS = {
     rejectArtisanVerification: (artisanId: string) =>
       `/admin/artisans/${artisanId}/reject-verification`,
     artisanHireRequestsPending: '/admin/artisans/hire-requests/pending',
+    artisanHireRequestsAll: '/admin/artisans/hire-requests',
     reviewArtisanHireRequest: (requestId: string) =>
       `/admin/artisans/hire-requests/${requestId}/review`,
+    // Not under /admin/ — shared across customer/artisan/admin roles on
+    // ArtisansController, not AdminArtisansController.
+    cancelArtisanHireRequest: (requestId: string) => `/artisans/hire-requests/${requestId}/cancel`,
   },
   catalog: {
     categories: '/admin/catalog/categories',

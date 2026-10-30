@@ -52,7 +52,7 @@ export function AdminLayout() {
               Vendors
             </NavLink>
             <NavLink
-              to={ROUTES.approvalsArtisans}
+              to={ROUTES.artisans}
               className={({ isActive }) =>
                 `${styles.subNavLink} ${isActive ? styles.subNavLinkActive : ''}`
               }
@@ -74,6 +74,14 @@ export function AdminLayout() {
               }
             >
               Hire requests
+            </NavLink>
+            <NavLink
+              to={ROUTES.artisanHireRequestsAll}
+              className={({ isActive }) =>
+                `${styles.subNavLink} ${isActive ? styles.subNavLinkActive : ''}`
+              }
+            >
+              All hire requests
             </NavLink>
           </div>
           <NavLink

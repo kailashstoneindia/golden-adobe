@@ -1,5 +1,6 @@
 import type {
   ArtisanHireRequestDto,
+  ArtisanHireRequestStatus,
   ArtisanListQuery,
   PaginatedArtisansResponse,
   PaginatedHireRequestsResponse,
@@ -9,6 +10,7 @@ import type {
 import { API_ENDPOINTS } from '@/constants/apiEndpoints';
 import { getRequest, patchRequest } from '@/services/api/apiClient';
 import type {
+  CancelArtisanHireRequestRequest,
   RejectArtisanVerificationRequest,
   ReviewArtisanHireRequestRequest,
 } from '@/types/artisans.types';
@@ -21,7 +23,27 @@ function buildArtisanQueryString(query: ArtisanListQuery): string {
   return queryString ? `?${queryString}` : '';
 }
 
+type HireRequestListQuery = ArtisanListQuery & { status?: ArtisanHireRequestStatus };
+
+function buildHireRequestQueryString(query: HireRequestListQuery): string {
+  const params = new URLSearchParams();
+  if (query.page) params.set('page', String(query.page));
+  if (query.limit) params.set('limit', String(query.limit));
+  if (query.status) params.set('status', query.status);
+  const queryString = params.toString();
+  return queryString ? `?${queryString}` : '';
+}
+
 export const artisansService = {
+  fetchArtisans(query: ArtisanListQuery): Promise<PaginatedArtisansResponse> {
+    const suffix = buildArtisanQueryString(query);
+    return getRequest<PaginatedArtisansResponse>(`${API_ENDPOINTS.admin.artisans}${suffix}`);
+  },
+
+  fetchArtisanById(artisanId: string): Promise<ArtisanProfileDto> {
+    return getRequest<ArtisanProfileDto>(API_ENDPOINTS.admin.artisanById(artisanId));
+  },
+
   fetchPendingVerification(query: ArtisanListQuery): Promise<PaginatedArtisansResponse> {
     const suffix = buildArtisanQueryString(query);
     return getRequest<PaginatedArtisansResponse>(
@@ -59,6 +81,23 @@ export const artisansService = {
   ): Promise<ArtisanHireRequestDto> {
     return patchRequest<ArtisanHireRequestDto, ReviewArtisanHireRequestRequest>(
       API_ENDPOINTS.admin.reviewArtisanHireRequest(requestId),
+      body,
+    );
+  },
+
+  fetchAllHireRequests(query: HireRequestListQuery): Promise<PaginatedHireRequestsResponse> {
+    const suffix = buildHireRequestQueryString(query);
+    return getRequest<PaginatedHireRequestsResponse>(
+      `${API_ENDPOINTS.admin.artisanHireRequestsAll}${suffix}`,
+    );
+  },
+
+  cancelHireRequest(
+    requestId: string,
+    body: CancelArtisanHireRequestRequest,
+  ): Promise<ArtisanHireRequestDto> {
+    return patchRequest<ArtisanHireRequestDto, CancelArtisanHireRequestRequest>(
+      API_ENDPOINTS.admin.cancelArtisanHireRequest(requestId),
       body,
     );
   },
