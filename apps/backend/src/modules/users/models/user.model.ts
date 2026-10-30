@@ -2,6 +2,7 @@ import { Table, Column, Model, DataType, HasMany, HasOne } from 'sequelize-types
 import { Role, VENDOR_ONBOARDING_STAGES, VendorOnboardingStage } from '@golden-abode/types';
 import { RefreshToken } from './refresh-token.model';
 import { Vendor } from '../../vendors/models/vendor.model';
+import { Artisan } from '../../artisans/models/artisan.model';
 
 @Table({
   tableName: 'users',
@@ -106,4 +107,7 @@ export class User extends Model<User> {
 
   @HasOne(() => Vendor)
   declare vendorProfile?: Vendor;
+
+  @HasOne(() => Artisan)
+  declare artisanProfile?: Artisan;
 }

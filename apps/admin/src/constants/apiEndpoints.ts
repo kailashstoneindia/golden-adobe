@@ -24,6 +24,15 @@ export const API_ENDPOINTS = {
     orderPaymentEvents: (orderId: string) => `/admin/orders/${orderId}/payment-events`,
     overrideVendorGroupStatus: (groupId: string) =>
       `/admin/orders/vendor-group/${groupId}/override-status`,
+    artisans: '/admin/artisans',
+    artisanById: (artisanId: string) => `/admin/artisans/${artisanId}`,
+    artisansPendingVerification: '/admin/artisans/pending-verification',
+    verifyArtisan: (artisanId: string) => `/admin/artisans/${artisanId}/verify`,
+    rejectArtisanVerification: (artisanId: string) =>
+      `/admin/artisans/${artisanId}/reject-verification`,
+    artisanHireRequestsPending: '/admin/artisans/hire-requests/pending',
+    reviewArtisanHireRequest: (requestId: string) =>
+      `/admin/artisans/hire-requests/${requestId}/review`,
   },
   catalog: {
     categories: '/admin/catalog/categories',

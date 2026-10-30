@@ -5,6 +5,7 @@ import { HealthModule } from './modules/health/health.module';
 import { CoreModule } from './core/core.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { VendorsModule } from './modules/vendors/vendors.module';
+import { ArtisansModule } from './modules/artisans/artisans.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { CatalogModule } from './modules/catalog/catalog.module';
 import { SearchModule } from './modules/search/search.module';
@@ -22,6 +23,7 @@ import { OrdersModule } from './modules/orders/orders.module';
     HealthModule,
     AuthModule,
     VendorsModule,
+    ArtisansModule,
     AdminModule,
     CatalogModule,
     SearchModule,

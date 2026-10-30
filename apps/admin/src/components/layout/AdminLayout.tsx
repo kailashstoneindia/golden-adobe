@@ -59,6 +59,22 @@ export function AdminLayout() {
             >
               Ustaads
             </NavLink>
+            <NavLink
+              to={ROUTES.artisanVerification}
+              className={({ isActive }) =>
+                `${styles.subNavLink} ${isActive ? styles.subNavLinkActive : ''}`
+              }
+            >
+              Ustaad verification
+            </NavLink>
+            <NavLink
+              to={ROUTES.artisanHireRequests}
+              className={({ isActive }) =>
+                `${styles.subNavLink} ${isActive ? styles.subNavLinkActive : ''}`
+              }
+            >
+              Hire requests
+            </NavLink>
           </div>
           <NavLink
             to={ROUTES.users}
