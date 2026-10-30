@@ -1,5 +1,7 @@
 # AWS cutover checklist (Railway stays untouched until AWS is proven)
 
+> **Status 2026-10-30:** Railway is stopped and ignored. Vercel is being disconnected by the client. Everything below about Railway is history.
+
 Owner of every box: **you**. `[ME]` = ask Claude to do it. Related: [0032](decisions/0032-aws-cost-minimized-single-box.md), [runbook](../infra/deploy/README.md).
 
 ## The rule
@@ -20,16 +22,16 @@ DONE      Clients ──► AWS              Railway archived, then stopped
 
 ## Progress (updated 2026-10-30)
 
-| Phase                  | State                                                                                                                                   |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| 0. Waiting tasks       | Partly done. Left: client confirms the SNS alert email, root MFA and billing access.                                                    |
-| 1. Domain arrives      | **Done.** `nirmaancenter.com`: `api.`, `admin.`, `media.` resolve to AWS.                                                               |
-| 2. Build AWS           | **Done.** Box running, admin and API live, GitHub variables set, `production` environment limited to `main`.                            |
-| 2b. Park to save money | **Skipped on purpose.** The box stays running while development and testing continue (about $0.03/hr). Stop it when activity pauses.    |
-| 3. Data                | **Done.** Railway data restored on AWS; the 20 wrong photos removed; 238 photos attached.                                               |
-| 4. Test in parallel    | **Done.** Admin login, upload to Ready, backup and restore drill, deploy rollback path.                                                 |
-| 5. Cutover             | Admin and API already run on AWS. Left: mobile `eas.json` profiles still point at Railway (store release is the slow part).             |
-| 6. Cleanup             | Railway reported **stopped** (2026-10-30). Left: rotate the Railway DB password, remove Railway wiring from the repo, final dump saved. |
+| Phase                  | State                                                                                                                                                                                         |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0. Waiting tasks       | Partly done. Left: client confirms the SNS alert email, root MFA and billing access.                                                                                                          |
+| 1. Domain arrives      | **Done.** `nirmaancenter.com`: `api.`, `admin.`, `media.` resolve to AWS.                                                                                                                     |
+| 2. Build AWS           | **Done.** Box running, admin and API live, GitHub variables set, `production` environment limited to `main`.                                                                                  |
+| 2b. Park to save money | **Skipped on purpose.** The box stays running while development and testing continue (about $0.03/hr). Stop it when activity pauses.                                                          |
+| 3. Data                | **Done.** Railway data restored on AWS; the 20 wrong photos removed; 238 photos attached.                                                                                                     |
+| 4. Test in parallel    | **Done.** Admin login, upload to Ready, backup and restore drill, deploy rollback path.                                                                                                       |
+| 5. Cutover             | Admin and API run on AWS. Mobile `eas.json` and defaults now point at `api.nirmaancenter.com` (#32). Left: a new store build by whoever holds the Expo and store accounts.                    |
+| 6. Cleanup             | **Closed 2026-10-30.** Railway is stopped and ignored from here on (no more dumps, no password rotation). Wiring removed from the repo (#32). Vercel project: the client is disconnecting it. |
 
 ## How deploys work now (2026-10-30)
 
@@ -38,7 +40,7 @@ DONE      Clients ──► AWS              Railway archived, then stopped
 - Every green merge reaches the live site, so keep merges small. A failed health check rolls the backend back by itself; a pre-deploy backup is taken first.
 - Restoring a Railway dump at cutover: restore every table **except** `master_product_media`, or rerun the idempotent `media:load-demo`; otherwise photo rows are lost.
 
-## Where Railway is wired in (do not edit until Phase 5)
+## Where Railway was wired in (removed in #32, kept for history)
 
 | Place                                | What points at Railway                | Effect of editing it                                           |
 | ------------------------------------ | ------------------------------------- | -------------------------------------------------------------- |
@@ -166,10 +168,10 @@ two certificates, add the alternate names to CloudFront, change `API_DOMAIN` and
 
 ## Phase 6: after cutover
 
-- [ ] Old app builds keep calling Railway until users update. Keep Railway running 1-2 weeks.
-- [ ] Final Railway dump saved in the backup bucket
-- [ ] Someone with Railway dashboard access (you have DB access only) stops the services
-- [ ] [ME] Remove Railway wiring from the repo (`railway.toml`, Vercel rewrite, docs), update decision 0032
+- [x] Old app builds keep calling Railway: not applicable, Railway is stopped; old builds stay broken until users update
+- [x] Final Railway dump: skipped, Railway is closed and ignored
+- [x] Railway services stopped (2026-10-30)
+- [x] [ME] Railway wiring removed from the repo (#32). Vercel disconnect handed to the client, who will do it.
 - [ ] Review the weekly `media:sweep` dry-run output, then switch it to `--apply`
 
 ## Money during the overlap
