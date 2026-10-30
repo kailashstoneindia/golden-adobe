@@ -26,4 +26,10 @@ describe('LogNotificationService', () => {
       service.sendNewOrderToVendor('vendor-1', 'order-vendor-group-1'),
     ).resolves.toBeUndefined();
   });
+
+  it('sendHireRequestStatusChanged resolves without throwing', async () => {
+    await expect(
+      service.sendHireRequestStatusChanged('user-1', 'hire-request-1', 'IN_PROGRESS'),
+    ).resolves.toBeUndefined();
+  });
 });

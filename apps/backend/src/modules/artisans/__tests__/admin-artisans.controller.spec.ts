@@ -145,6 +145,59 @@ describe('AdminArtisansController (real HTTP, Postgres)', () => {
     expect(Array.isArray(res.body.data.items)).toBe(true);
   });
 
+  it('hire-requests lists every status, not just pending', async () => {
+    await asArtisan(
+      request(t.app.getHttpServer())
+        .post('/api/artisans/me/profile')
+        .send({ tradeType: 'PLUMBER' }),
+    );
+    const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
+    await ArtisanHireRequest.create({
+      customerId: t.customerUserId,
+      artisanId: artisan!.id,
+      addressText: '1 Park Lane',
+      status: 'COMPLETED',
+    } as never);
+
+    const res = await asAdmin(
+      request(t.app.getHttpServer()).get('/api/admin/artisans/hire-requests'),
+    );
+    expect(res.status).toBe(200);
+    expect(res.body.data.items.some((r: { status: string }) => r.status === 'COMPLETED')).toBe(
+      true,
+    );
+  });
+
+  it('hire-requests?status= narrows to that one status', async () => {
+    await asArtisan(
+      request(t.app.getHttpServer())
+        .post('/api/artisans/me/profile')
+        .send({ tradeType: 'PLUMBER' }),
+    );
+    const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
+    await ArtisanHireRequest.create({
+      customerId: t.customerUserId,
+      artisanId: artisan!.id,
+      addressText: '1 Park Lane',
+      status: 'IN_PROGRESS',
+    } as never);
+
+    const res = await asAdmin(
+      request(t.app.getHttpServer()).get('/api/admin/artisans/hire-requests?status=IN_PROGRESS'),
+    );
+    expect(res.status).toBe(200);
+    expect(res.body.data.items.every((r: { status: string }) => r.status === 'IN_PROGRESS')).toBe(
+      true,
+    );
+  });
+
+  it('answers 403 for an artisan calling the admin hire-requests list', async () => {
+    const res = await asArtisan(
+      request(t.app.getHttpServer()).get('/api/admin/artisans/hire-requests'),
+    );
+    expect(res.status).toBe(403);
+  });
+
   it('rejecting a verification with a reason still clears isVerified and accepts the reason', async () => {
     await asArtisan(
       request(t.app.getHttpServer())

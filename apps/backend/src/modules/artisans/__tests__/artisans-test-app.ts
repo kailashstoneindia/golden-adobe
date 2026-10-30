@@ -2,7 +2,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { JwtModule, JwtService } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
-import { SequelizeModule } from '@nestjs/sequelize';
+import { SequelizeModule, getModelToken } from '@nestjs/sequelize';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Role } from '@golden-abode/types';
 
@@ -20,10 +20,13 @@ import { ArtisanAccountDetails } from '../models/artisan-account-details.model';
 import { ArtisanTeamMember } from '../models/artisan-team-member.model';
 import { ArtisanHireRequest } from '../models/artisan-hire-request.model';
 import { ArtisanCompletionEstimate } from '../models/artisan-completion-estimate.model';
+import { Order } from '../../orders/models/order.model';
 import { ArtisansController } from '../artisans.controller';
 import { AdminArtisansController } from '../admin-artisans.controller';
 import { ArtisansService } from '../artisans.service';
 import { HireRequestsService } from '../hire-requests.service';
+import { NOTIFICATION_SERVICE } from '../../notifications/notification.interface';
+import { LogNotificationService } from '../../notifications/log-notification.service';
 
 export const JWT_SECRET = 'artisans-controller-test-jwt-secret-1234567890';
 
@@ -35,6 +38,11 @@ export type ArtisansTestApp = {
   customerToken: string;
   customerUserId: string;
   storage: FakeObjectStorage;
+  // Mocked, not a real model — Order's own association graph (Customer,
+  // CustomerAddress, OrderVendorGroup) is out of scope for this
+  // artisan-focused fixture. Exposed so a spec can set findAll's return
+  // value to exercise GET hire-requests/:id/orders meaningfully.
+  orderModel: { findAll: jest.Mock };
   newArtisanUser: () => Promise<{ id: string; token: string }>;
   close: () => Promise<void>;
 };
@@ -56,6 +64,7 @@ export async function createArtisansTestApp(): Promise<ArtisansTestApp> {
   const suffix = Math.random().toString(36).slice(2, 10);
   const extraUserIds: string[] = [];
   const storage = new FakeObjectStorage();
+  const orderModel = { findAll: jest.fn().mockResolvedValue([]) };
 
   const moduleRef: TestingModule = await Test.createTestingModule({
     imports: [
@@ -96,6 +105,8 @@ export async function createArtisansTestApp(): Promise<ArtisansTestApp> {
       JwtStrategy,
       ArtisansService,
       HireRequestsService,
+      { provide: NOTIFICATION_SERVICE, useClass: LogNotificationService },
+      { provide: getModelToken(Order), useValue: orderModel },
       {
         provide: MEDIA_STORAGE_CONFIG,
         useFactory: () => loadStorageConfig(),
@@ -142,6 +153,7 @@ export async function createArtisansTestApp(): Promise<ArtisansTestApp> {
     customerToken: jwt.sign({ sub: customerUser.id, role: Role.CUSTOMER }),
     customerUserId: customerUser.id,
     storage,
+    orderModel,
     async newArtisanUser() {
       const user = await User.create({
         name: `Artisans Test Artisan ${extraUserIds.length}`,

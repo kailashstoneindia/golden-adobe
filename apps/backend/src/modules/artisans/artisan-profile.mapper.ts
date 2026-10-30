@@ -106,10 +106,13 @@ export function toCompletionEstimateDto(
 
 // latestEstimate is whatever the caller already loaded as the single most
 // recent row (ORDER BY created_at DESC LIMIT 1) — this function never
-// queries, it only maps what's already in memory.
+// queries, it only maps what's already in memory. capacity is the same
+// deal: admin-only derived numbers (decision 0045 addendum), omitted
+// (-> null) by every caller that isn't the admin review surface.
 export function toHireRequestDto(
   request: ArtisanHireRequest,
   latestEstimate?: ArtisanCompletionEstimate | null,
+  capacity?: { activeJobCount: number; teamSize: number } | null,
 ): ArtisanHireRequestDto {
   return {
     id: request.id,
@@ -122,6 +125,12 @@ export function toHireRequestDto(
     addressText: request.addressText,
     notes: request.notes,
     latestEstimate: latestEstimate ? toCompletionEstimateDto(latestEstimate) : null,
+    startedAt: formatTimestamp(request.startedAt) || null,
+    completedAt: formatTimestamp(request.completedAt) || null,
+    cancelledAt: formatTimestamp(request.cancelledAt) || null,
+    cancelReason: request.cancelReason,
+    artisanActiveJobCount: capacity?.activeJobCount ?? null,
+    artisanTeamSize: capacity?.teamSize ?? null,
     createdAt: formatTimestamp(request.get('createdAt')),
     updatedAt: formatTimestamp(request.get('updatedAt')),
   };

@@ -24,4 +24,14 @@ export class LogNotificationService implements NotificationService {
       `[notify] new order for vendor: vendor=${vendorId} orderVendorGroup=${orderVendorGroupId}`,
     );
   }
+
+  async sendHireRequestStatusChanged(
+    recipientUserId: string,
+    hireRequestId: string,
+    status: string,
+  ): Promise<void> {
+    this.logger.log(
+      `[notify] hire request status changed: recipient=${recipientUserId} hireRequest=${hireRequestId} status=${status}`,
+    );
+  }
 }

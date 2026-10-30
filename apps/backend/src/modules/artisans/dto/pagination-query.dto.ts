@@ -1,10 +1,11 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, Max, Min } from 'class-validator';
+import { IsIn, IsInt, IsOptional, Max, Min } from 'class-validator';
+import { ArtisanHireRequestStatus, HIRE_REQUEST_STATUSES } from '@golden-abode/types';
 
 // Same page/limit shape and defaults as ListUsersQueryDto — these admin
-// artisan list endpoints have no other filters, so there's nothing else
-// to put in this DTO.
+// artisan list endpoints have no other filters beyond the optional status
+// filter below.
 export class PaginationQueryDto {
   @ApiPropertyOptional({ default: 1 })
   @IsOptional()
@@ -20,4 +21,12 @@ export class PaginationQueryDto {
   @Min(1)
   @Max(100)
   limit?: number = 20;
+
+  // GET /admin/artisans/hire-requests only — ignored by every other
+  // endpoint that reuses this DTO (they already scope status themselves,
+  // e.g. hire-requests/pending is always PENDING_ADMIN_REVIEW).
+  @ApiPropertyOptional({ enum: HIRE_REQUEST_STATUSES })
+  @IsOptional()
+  @IsIn(HIRE_REQUEST_STATUSES)
+  status?: ArtisanHireRequestStatus;
 }
