@@ -1,7 +1,7 @@
 # 0050 — Admin password reset
 
 - **Date:** 2026-10-31
-- **Status:** Proposed — ready to execute
+- **Status:** Implemented (`0dde8ba`)
 - **Supersedes / Superseded by:** —
 
 ## Context
