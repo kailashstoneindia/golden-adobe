@@ -1,5 +1,7 @@
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/sequelize';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { Sequelize } from 'sequelize-typescript';
 import { Op, QueryTypes } from 'sequelize';
 import type {
@@ -30,6 +32,13 @@ import {
   toPaymentEventDto,
 } from './order-display.mapper';
 
+// Decision 0049. Slightly above the typical 5-15 minute industry range
+// for a checkout hold, since payment.failed's own handling already
+// treats a UPI-retry-after-wrong-PIN as the expected case for this
+// checkout, not an edge case — a customer retrying needs more headroom
+// than a single-swipe card checkout does.
+const STALE_RESERVATION_TIMEOUT_MS = 20 * 60 * 1000;
+
 @Injectable()
 export class OrdersService {
   private readonly logger = new Logger(OrdersService.name);
@@ -44,6 +53,7 @@ export class OrdersService {
     private readonly customersService: CustomersService,
     @Inject(NOTIFICATION_SERVICE) private readonly notifications: NotificationService,
     @Inject(PAYMENT_PROVIDER) private readonly paymentProvider: PaymentProviderService,
+    private readonly configService: ConfigService,
   ) {}
 
   async listForCustomer(userId: string): Promise<OrderDto[]> {
@@ -152,7 +162,28 @@ export class OrdersService {
       throw new BadRequestException(`order cannot be cancelled from status ${order.status}`);
     }
 
-    const cancelled = await this.sequelize.transaction(async (t) => {
+    const cancelled = await this.releaseAndCancel(order.id);
+
+    if (!cancelled) {
+      // Lost a race against a concurrent transition (e.g. the webhook
+      // just confirmed it) between the advisory read above and the
+      // transaction's own guarded UPDATE.
+      throw new BadRequestException('order could not be cancelled — its status just changed');
+    }
+
+    order.status = OrderStatus.CANCELLED;
+    await this.notifications.sendOrderStatusChanged(customer.id, order.id, OrderStatus.CANCELLED);
+    return this.getForCustomer(userId, orderId);
+  }
+
+  // Decision 0049. Extracted from cancel()'s own transaction body —
+  // guarded status UPDATE, inventory reservation release, vendor-group
+  // cancellation — so the stale-reservation sweep reuses the exact same
+  // release logic rather than a second, possibly-drifting copy. Returns
+  // false if the order was not actually PENDING_PAYMENT at the moment of
+  // the guarded UPDATE (lost a race, or was already cancelled/confirmed).
+  private async releaseAndCancel(orderId: string): Promise<boolean> {
+    return this.sequelize.transaction(async (t) => {
       // Sequelize's QueryTypes.UPDATE return shape for Postgres is
       // [results, affectedRowCount] — results is always an empty array,
       // the count is the SECOND element. Verified empirically (not
@@ -164,7 +195,7 @@ export class OrdersService {
         `UPDATE orders SET status = :cancelled WHERE id = :orderId AND status = :pending`,
         {
           replacements: {
-            orderId: order.id,
+            orderId,
             cancelled: OrderStatus.CANCELLED,
             pending: OrderStatus.PENDING_PAYMENT,
           },
@@ -183,7 +214,7 @@ export class OrdersService {
         JOIN order_vendor_group ovg ON ovg.id = oi.order_vendor_group_id
         WHERE ovg.order_id = :orderId
         `,
-        { replacements: { orderId: order.id }, type: QueryTypes.SELECT, transaction: t },
+        { replacements: { orderId }, type: QueryTypes.SELECT, transaction: t },
       );
       for (const item of items) {
         await this.sequelize.query(
@@ -208,23 +239,53 @@ export class OrdersService {
       await this.groupModel.update(
         { status: OrderVendorGroupStatus.CANCELLED },
         {
-          where: { orderId: order.id, status: OrderVendorGroupStatus.PENDING },
+          where: { orderId, status: OrderVendorGroupStatus.PENDING },
           transaction: t,
         },
       );
       return true;
     });
+  }
 
-    if (!cancelled) {
-      // Lost a race against a concurrent transition (e.g. the webhook
-      // just confirmed it) between the advisory read above and the
-      // transaction's own guarded UPDATE.
-      throw new BadRequestException('order could not be cancelled — its status just changed');
+  // Decision 0049. A customer who reaches the Razorpay payment sheet and
+  // abandons it (closes the tab, loses signal, never completes or
+  // explicitly fails) leaves no webhook for this codebase to react to —
+  // payment.failed is NOT this case (see webhooks.controller.ts's own
+  // comment: a failed attempt stays PENDING_PAYMENT for a UPI-style
+  // retry, by design). Without this sweep, that order's quantity_reserved
+  // hold is never released. 20 minutes is slightly above the typical
+  // 5-15 minute industry range specifically because a UPI retry needs
+  // more headroom than a single card swipe.
+  //
+  // Gated the same way IndexingProcessor.onModuleInit gates the
+  // search-outbox drain: WORKER_MODE=api means this process serves HTTP
+  // only, and some other process owns scheduled work. No lock is needed
+  // for correctness (unlike the outbox drain) — releaseAndCancel's own
+  // guarded UPDATE already makes two concurrent sweeps of the same order
+  // a no-op on the second one, not a hazard.
+  @Cron(CronExpression.EVERY_5_MINUTES)
+  async sweepStaleReservations(): Promise<void> {
+    if (this.configService.get<string>('search.workerMode', 'all') === 'api') {
+      return;
     }
 
-    order.status = OrderStatus.CANCELLED;
-    await this.notifications.sendOrderStatusChanged(customer.id, order.id, OrderStatus.CANCELLED);
-    return this.getForCustomer(userId, orderId);
+    const cutoff = new Date(Date.now() - STALE_RESERVATION_TIMEOUT_MS);
+    const stale = await this.orderModel.findAll({
+      where: { status: OrderStatus.PENDING_PAYMENT, createdAt: { [Op.lt]: cutoff } },
+    });
+
+    for (const order of stale) {
+      const released = await this.releaseAndCancel(order.id);
+      if (!released) {
+        continue;
+      }
+      this.logger.log(`order ${order.id}: swept — stale reservation released, order cancelled`);
+      await this.notifications.sendOrderStatusChanged(
+        order.customerId,
+        order.id,
+        OrderStatus.CANCELLED,
+      );
+    }
   }
 
   // The read half of the vendor order surface. Without this, a vendor has

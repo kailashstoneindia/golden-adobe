@@ -1,4 +1,5 @@
 import { Test } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { getModelToken } from '@nestjs/sequelize';
 import { Sequelize } from 'sequelize-typescript';
 import { Role } from '@golden-abode/types';
@@ -14,7 +15,7 @@ import { ArtisanHireRequest } from '../../artisans/models/artisan-hire-request.m
 
 describe('OrdersService', () => {
   let service: OrdersService;
-  let orderModelMock: { findByPk: jest.Mock; findOne: jest.Mock };
+  let orderModelMock: { findByPk: jest.Mock; findOne: jest.Mock; findAll: jest.Mock };
   let groupModelMock: { update: jest.Mock; findByPk: jest.Mock; findOne: jest.Mock };
   let paymentEventModelMock: { findAll: jest.Mock };
   let sequelizeMock: { transaction: jest.Mock; query: jest.Mock };
@@ -23,10 +24,11 @@ describe('OrdersService', () => {
   let customersServiceMock: { resolveCustomerByUserId: jest.Mock };
   let artisanModelMock: { findOne: jest.Mock };
   let hireRequestModelMock: { findByPk: jest.Mock };
+  let configServiceMock: { get: jest.Mock };
   const mockTransaction = {};
 
   beforeEach(async () => {
-    orderModelMock = { findByPk: jest.fn(), findOne: jest.fn() };
+    orderModelMock = { findByPk: jest.fn(), findOne: jest.fn(), findAll: jest.fn() };
     groupModelMock = { update: jest.fn(), findByPk: jest.fn(), findOne: jest.fn() };
     paymentEventModelMock = { findAll: jest.fn() };
     sequelizeMock = { transaction: jest.fn(), query: jest.fn() };
@@ -35,6 +37,7 @@ describe('OrdersService', () => {
     customersServiceMock = { resolveCustomerByUserId: jest.fn() };
     artisanModelMock = { findOne: jest.fn() };
     hireRequestModelMock = { findByPk: jest.fn() };
+    configServiceMock = { get: jest.fn().mockReturnValue('all') };
 
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -48,6 +51,7 @@ describe('OrdersService', () => {
         { provide: CustomersService, useValue: customersServiceMock },
         { provide: NOTIFICATION_SERVICE, useValue: notificationsMock },
         { provide: PAYMENT_PROVIDER, useValue: paymentProviderMock },
+        { provide: ConfigService, useValue: configServiceMock },
       ],
     }).compile();
 
@@ -375,6 +379,81 @@ describe('OrdersService', () => {
       );
       // Only the lock-read should run — the UPDATE must never be reached.
       expect(sequelizeMock.query).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('sweepStaleReservations', () => {
+    it('releases and cancels each stale pending_payment order, then notifies its customer', async () => {
+      orderModelMock.findAll.mockResolvedValue([
+        { id: 'order-1', customerId: 'cust-1' },
+        { id: 'order-2', customerId: 'cust-2' },
+      ]);
+      sequelizeMock.transaction.mockImplementation(async (cb: any) => cb(mockTransaction));
+      sequelizeMock.query
+        // order-1: UPDATE succeeds, then the item SELECT (empty — no per-item release needed for this assertion)
+        .mockResolvedValueOnce([[], 1])
+        .mockResolvedValueOnce([])
+        // order-2: same
+        .mockResolvedValueOnce([[], 1])
+        .mockResolvedValueOnce([]);
+
+      await service.sweepStaleReservations();
+
+      expect(orderModelMock.findAll).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ status: OrderStatus.PENDING_PAYMENT }),
+        }),
+      );
+      expect(notificationsMock.sendOrderStatusChanged).toHaveBeenCalledTimes(2);
+      expect(notificationsMock.sendOrderStatusChanged).toHaveBeenNthCalledWith(
+        1,
+        'cust-1',
+        'order-1',
+        OrderStatus.CANCELLED,
+      );
+      expect(notificationsMock.sendOrderStatusChanged).toHaveBeenNthCalledWith(
+        2,
+        'cust-2',
+        'order-2',
+        OrderStatus.CANCELLED,
+      );
+    });
+
+    it('does not notify for an order that lost the race (already confirmed by a webhook)', async () => {
+      orderModelMock.findAll.mockResolvedValue([{ id: 'order-1', customerId: 'cust-1' }]);
+      sequelizeMock.transaction.mockImplementation(async (cb: any) => cb(mockTransaction));
+      // The guarded UPDATE affects 0 rows — a webhook confirmed this order
+      // between the sweep's findAll and its own transaction.
+      sequelizeMock.query.mockResolvedValueOnce([[], 0]);
+
+      await service.sweepStaleReservations();
+
+      expect(notificationsMock.sendOrderStatusChanged).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when WORKER_MODE is api — some other process owns scheduled work', async () => {
+      configServiceMock.get.mockReturnValue('api');
+
+      await service.sweepStaleReservations();
+
+      expect(orderModelMock.findAll).not.toHaveBeenCalled();
+      expect(notificationsMock.sendOrderStatusChanged).not.toHaveBeenCalled();
+    });
+
+    it('releases reservations for each item on a swept order', async () => {
+      orderModelMock.findAll.mockResolvedValue([{ id: 'order-1', customerId: 'cust-1' }]);
+      sequelizeMock.transaction.mockImplementation(async (cb: any) => cb(mockTransaction));
+      sequelizeMock.query
+        .mockResolvedValueOnce([[], 1]) // UPDATE orders succeeds
+        .mockResolvedValueOnce([{ vendor_listing_id: 'vl-1', quantity: '3' }]); // item SELECT
+
+      await service.sweepStaleReservations();
+
+      // 3rd call is the per-item inventory release UPDATE.
+      expect(sequelizeMock.query).toHaveBeenCalledTimes(3);
+      const inventoryCall = sequelizeMock.query.mock.calls[2];
+      expect(inventoryCall[0]).toContain('quantity_reserved = quantity_reserved - :qty');
+      expect(inventoryCall[1].replacements).toEqual({ listingId: 'vl-1', qty: '3' });
     });
   });
 
