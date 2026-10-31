@@ -8,6 +8,10 @@ export type SetVendorCategoriesRequest = {
   categoryIds: string[];
 };
 
+export type RejectVendorRequest = {
+  reason: string;
+};
+
 export type VendorDetailModalProps = {
   vendor: VendorProfileDto;
   cities: CityDto[];
@@ -20,6 +24,8 @@ export type VendorDetailModalProps = {
   onClose: () => void;
   onSaveCity: (cityId: string | null) => Promise<void>;
   onSaveCategories: (categoryIds: string[]) => Promise<void>;
+  onApprove: () => Promise<void>;
+  onReject: (reason: string) => Promise<void>;
 };
 
 export type VendorDetailRowProps = {
