@@ -13,6 +13,7 @@ import { VendorAccountDetails } from './vendor-account-details.model';
 import { City } from '../../catalog/models/city.model';
 
 export type VendorCitySource = 'gps' | 'admin';
+export type VendorStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
 @Table({
   tableName: 'vendors',
@@ -125,6 +126,31 @@ export class Vendor extends Model<Vendor> {
     field: 'min_order_value',
   })
   declare minOrderValue: number | null;
+
+  // Decision 0048 — richer than User.isApproved (unchanged, still the
+  // authorization gate every guard reads). This is the vendor-facing
+  // record of how isApproved got to its current value, kept in sync by
+  // VendorsService.approveVendor/rejectVendor.
+  @Column({
+    type: DataType.STRING(16),
+    allowNull: false,
+    defaultValue: 'PENDING',
+  })
+  declare status: VendorStatus;
+
+  @Column({
+    type: DataType.TEXT,
+    allowNull: true,
+    field: 'rejection_reason',
+  })
+  declare rejectionReason: string | null;
+
+  @Column({
+    type: DataType.DATE,
+    allowNull: true,
+    field: 'status_updated_at',
+  })
+  declare statusUpdatedAt: Date | null;
 
   @BelongsTo(() => User)
   declare user: User;

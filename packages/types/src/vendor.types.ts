@@ -50,6 +50,14 @@ export interface VendorProfileDto {
   // exists on vendor_listing and still round-trips through the Excel
   // import/export template, just unrelated to this field.
   minOrderValue: number | null;
+  // Decision 0048 — distinguishes "never reviewed" from "admin rejected",
+  // which User.isApproved alone cannot. isApproved remains the
+  // authorization gate; this is the richer record of how it got there.
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  // Only set when status is REJECTED; cleared on a later approval so a
+  // re-approved vendor doesn't keep showing a stale reason.
+  rejectionReason: string | null;
+  statusUpdatedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
