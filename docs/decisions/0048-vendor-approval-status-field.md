@@ -1,7 +1,7 @@
 # 0048 — Vendor approval status field: distinguishing pending from rejected
 
 - **Date:** 2026-10-31
-- **Status:** Proposed — ready to execute
+- **Status:** Implemented — backend (`8a97fbd`) and admin UI (`201e9f9`), both on `main`
 - **Supersedes / Superseded by:** —
 
 ## Context
