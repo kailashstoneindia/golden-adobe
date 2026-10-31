@@ -1,7 +1,7 @@
 # 0049 — Stale reservation sweep: releasing abandoned-checkout stock holds
 
 - **Date:** 2026-10-31
-- **Status:** Proposed — ready to execute
+- **Status:** Implemented (`27e6784`)
 - **Supersedes / Superseded by:** —
 
 ## Context
