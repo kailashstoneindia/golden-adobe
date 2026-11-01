@@ -1,6 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/sequelize';
 import { Sequelize } from 'sequelize-typescript';
+import { Role } from '@golden-abode/types';
 import { OrdersService } from '../orders.service';
 import { Order, OrderStatus } from '../models/order.model';
 import { OrderVendorGroup, OrderVendorGroupStatus } from '../models/order-vendor-group.model';
@@ -8,24 +9,32 @@ import { PaymentEvent } from '../models/payment-event.model';
 import { CustomersService } from '../../customers/customers.service';
 import { NOTIFICATION_SERVICE } from '../../notifications/notification.interface';
 import { PAYMENT_PROVIDER } from '../../payments/payment-provider.interface';
+import { Artisan } from '../../artisans/models/artisan.model';
+import { ArtisanHireRequest } from '../../artisans/models/artisan-hire-request.model';
 
 describe('OrdersService', () => {
   let service: OrdersService;
-  let orderModelMock: { findByPk: jest.Mock };
+  let orderModelMock: { findByPk: jest.Mock; findOne: jest.Mock };
   let groupModelMock: { update: jest.Mock; findByPk: jest.Mock; findOne: jest.Mock };
   let paymentEventModelMock: { findAll: jest.Mock };
   let sequelizeMock: { transaction: jest.Mock; query: jest.Mock };
   let paymentProviderMock: { refundPayment: jest.Mock };
   let notificationsMock: { sendOrderStatusChanged: jest.Mock };
+  let customersServiceMock: { resolveCustomerByUserId: jest.Mock };
+  let artisanModelMock: { findOne: jest.Mock };
+  let hireRequestModelMock: { findByPk: jest.Mock };
   const mockTransaction = {};
 
   beforeEach(async () => {
-    orderModelMock = { findByPk: jest.fn() };
+    orderModelMock = { findByPk: jest.fn(), findOne: jest.fn() };
     groupModelMock = { update: jest.fn(), findByPk: jest.fn(), findOne: jest.fn() };
     paymentEventModelMock = { findAll: jest.fn() };
     sequelizeMock = { transaction: jest.fn(), query: jest.fn() };
     paymentProviderMock = { refundPayment: jest.fn() };
     notificationsMock = { sendOrderStatusChanged: jest.fn() };
+    customersServiceMock = { resolveCustomerByUserId: jest.fn() };
+    artisanModelMock = { findOne: jest.fn() };
+    hireRequestModelMock = { findByPk: jest.fn() };
 
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -33,14 +42,168 @@ describe('OrdersService', () => {
         { provide: getModelToken(Order), useValue: orderModelMock },
         { provide: getModelToken(OrderVendorGroup), useValue: groupModelMock },
         { provide: getModelToken(PaymentEvent), useValue: paymentEventModelMock },
+        { provide: getModelToken(Artisan), useValue: artisanModelMock },
+        { provide: getModelToken(ArtisanHireRequest), useValue: hireRequestModelMock },
         { provide: Sequelize, useValue: sequelizeMock },
-        { provide: CustomersService, useValue: {} },
+        { provide: CustomersService, useValue: customersServiceMock },
         { provide: NOTIFICATION_SERVICE, useValue: notificationsMock },
         { provide: PAYMENT_PROVIDER, useValue: paymentProviderMock },
       ],
     }).compile();
 
     service = moduleRef.get(OrdersService);
+  });
+
+  describe('getForOwner', () => {
+    it('returns the order for the owning customer', async () => {
+      customersServiceMock.resolveCustomerByUserId.mockResolvedValue({ id: 'customer-1' });
+      orderModelMock.findOne.mockResolvedValue({
+        id: 'order-1',
+        customerId: 'customer-1',
+        deliveryAddressId: 'addr-1',
+        grandTotal: 500,
+        status: OrderStatus.CONFIRMED,
+        razorpayOrderId: null,
+        razorpayPaymentId: null,
+        bookingId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deliveryAddress: null,
+        vendorGroups: [],
+      });
+
+      const result = await service.getForOwner('user-1', Role.CUSTOMER, 'order-1');
+
+      expect(result.id).toBe('order-1');
+      expect(orderModelMock.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'order-1', customerId: 'customer-1' } }),
+      );
+    });
+
+    it('404s when the order does not belong to the calling customer', async () => {
+      customersServiceMock.resolveCustomerByUserId.mockResolvedValue({ id: 'customer-1' });
+      orderModelMock.findOne.mockResolvedValue(null);
+
+      await expect(service.getForOwner('user-1', Role.CUSTOMER, 'order-1')).rejects.toThrow(
+        'order not found',
+      );
+    });
+
+    it('returns the order for the artisan who owns the attributed hire request', async () => {
+      artisanModelMock.findOne.mockResolvedValue({ id: 'artisan-1' });
+      orderModelMock.findOne.mockResolvedValue({
+        id: 'order-1',
+        customerId: 'customer-1',
+        deliveryAddressId: 'addr-1',
+        grandTotal: 500,
+        status: OrderStatus.CONFIRMED,
+        razorpayOrderId: null,
+        razorpayPaymentId: null,
+        bookingId: 'hire-request-1',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deliveryAddress: null,
+        vendorGroups: [],
+      });
+      hireRequestModelMock.findByPk.mockResolvedValue({
+        id: 'hire-request-1',
+        artisanId: 'artisan-1',
+      });
+
+      const result = await service.getForOwner('artisan-user-1', Role.ARTISAN, 'order-1');
+
+      expect(result.id).toBe('order-1');
+    });
+
+    it('never leaks customerId, razorpay fields, or precise delivery GPS to the owning artisan', async () => {
+      artisanModelMock.findOne.mockResolvedValue({ id: 'artisan-1' });
+      orderModelMock.findOne.mockResolvedValue({
+        id: 'order-1',
+        customerId: 'customer-1',
+        deliveryAddressId: 'addr-1',
+        grandTotal: 500,
+        status: OrderStatus.CONFIRMED,
+        razorpayOrderId: 'razorpay_order_abc',
+        razorpayPaymentId: 'razorpay_pay_xyz',
+        bookingId: 'hire-request-1',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deliveryAddress: {
+          label: 'Home',
+          addressLine1: '42 Test Lane',
+          addressLine2: null,
+          city: 'Bengaluru',
+          pincode: '560001',
+          lat: 12.9716,
+          lng: 77.5946,
+        },
+        vendorGroups: [],
+      });
+      hireRequestModelMock.findByPk.mockResolvedValue({
+        id: 'hire-request-1',
+        artisanId: 'artisan-1',
+      });
+
+      const result = await service.getForOwner('artisan-user-1', Role.ARTISAN, 'order-1');
+
+      expect(result).not.toHaveProperty('customerId');
+      expect(result).not.toHaveProperty('razorpayOrderId');
+      expect(result).not.toHaveProperty('razorpayPaymentId');
+      expect(result).not.toHaveProperty('deliveryAddressId');
+      expect((result as { deliveryAddress: { lat?: number } }).deliveryAddress).not.toHaveProperty(
+        'lat',
+      );
+      expect((result as { deliveryAddress: { lng?: number } }).deliveryAddress).not.toHaveProperty(
+        'lng',
+      );
+      expect(
+        (result as { deliveryAddress: { customerId?: string } }).deliveryAddress,
+      ).not.toHaveProperty('customerId');
+      // The address TEXT the artisan does legitimately need is still there.
+      expect((result as { deliveryAddress: { addressLine1: string } }).deliveryAddress).toEqual(
+        expect.objectContaining({
+          addressLine1: '42 Test Lane',
+          city: 'Bengaluru',
+          pincode: '560001',
+        }),
+      );
+    });
+
+    it('404s for an artisan when the order has no bookingId at all', async () => {
+      artisanModelMock.findOne.mockResolvedValue({ id: 'artisan-1' });
+      orderModelMock.findOne.mockResolvedValue({
+        id: 'order-1',
+        bookingId: null,
+      });
+
+      await expect(service.getForOwner('artisan-user-1', Role.ARTISAN, 'order-1')).rejects.toThrow(
+        'order not found',
+      );
+    });
+
+    it('404s for an artisan when the attributed hire request belongs to someone else', async () => {
+      artisanModelMock.findOne.mockResolvedValue({ id: 'artisan-1' });
+      orderModelMock.findOne.mockResolvedValue({
+        id: 'order-1',
+        bookingId: 'hire-request-1',
+      });
+      hireRequestModelMock.findByPk.mockResolvedValue({
+        id: 'hire-request-1',
+        artisanId: 'someone-elses-artisan-id',
+      });
+
+      await expect(service.getForOwner('artisan-user-1', Role.ARTISAN, 'order-1')).rejects.toThrow(
+        'order not found',
+      );
+    });
+
+    it('404s when the caller has no artisan profile at all', async () => {
+      artisanModelMock.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.getForOwner('artisan-user-1', Role.ARTISAN, 'order-1'),
+      ).rejects.toThrow();
+    });
   });
 
   describe('adminRefund', () => {

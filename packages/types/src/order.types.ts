@@ -118,6 +118,39 @@ export type OrderVendorGroupDto = {
 
 export type VendorOrderGroupDto = OrderVendorGroupDto;
 
+// Artisan-facing delivery address — built by explicit field listing, never
+// by spreading CustomerAddressDto and deleting keys, same discipline
+// ArtisanPublicProfileDto's own comment documents for the same reason: a
+// future field added to CustomerAddressDto must not leak into this view by
+// default. Keeps enough for the artisan to find the job site
+// (addressLine1/2, city, pincode) without the customer's precise GPS
+// coordinates or internal ids.
+export type ArtisanOrderAddressDto = {
+  label: string;
+  addressLine1: string;
+  addressLine2: string | null;
+  city: string;
+  pincode: string;
+};
+
+// What an artisan may see of an order attributed to their own hire request
+// (decision 0051/0052's order-detail fix, tightened after a code review
+// caught the original implementation leaking the customer's full address,
+// GPS, and customerId by reusing OrderDto's customer-facing shape
+// unmodified). No customerId, no razorpay payment internals, no precise
+// lat/lng — only what an artisan doing the job plausibly needs: status,
+// what was ordered, and where to deliver.
+export type ArtisanOrderDto = {
+  id: string;
+  grandTotal: number;
+  status: OrderStatus;
+  bookingId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  deliveryAddress: ArtisanOrderAddressDto | null;
+  vendorGroups: OrderVendorGroupDto[];
+};
+
 export type OrderDto = {
   id: string;
   customerId: string;

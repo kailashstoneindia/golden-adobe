@@ -2,20 +2,33 @@ import { BadRequestException, Inject, Injectable, Logger, NotFoundException } fr
 import { InjectModel } from '@nestjs/sequelize';
 import { Sequelize } from 'sequelize-typescript';
 import { Op, QueryTypes } from 'sequelize';
-import type { OrderDto, OrderVendorGroupDto, PaymentEventDto } from '@golden-abode/types';
+import type {
+  ArtisanOrderDto,
+  OrderDto,
+  OrderVendorGroupDto,
+  PaymentEventDto,
+} from '@golden-abode/types';
+import { Role } from '@golden-abode/types';
 import { Order, OrderStatus } from './models/order.model';
 import { OrderVendorGroup, OrderVendorGroupStatus } from './models/order-vendor-group.model';
 import { PaymentEvent } from './models/payment-event.model';
 import { CustomersService } from '../customers/customers.service';
 import { NOTIFICATION_SERVICE, NotificationService } from '../notifications/notification.interface';
 import { PAYMENT_PROVIDER, PaymentProviderService } from '../payments/payment-provider.interface';
+import { Artisan } from '../artisans/models/artisan.model';
+import { ArtisanHireRequest } from '../artisans/models/artisan-hire-request.model';
 import {
   ADMIN_ORDER_DISPLAY_INCLUDE,
   ORDER_GROUP_DISPLAY_INCLUDE,
   customerOrderInclude,
   vendorGroupInclude,
 } from './order-display.include';
-import { toOrderDto, toOrderVendorGroupDto, toPaymentEventDto } from './order-display.mapper';
+import {
+  toArtisanOrderDto,
+  toOrderDto,
+  toOrderVendorGroupDto,
+  toPaymentEventDto,
+} from './order-display.mapper';
 
 @Injectable()
 export class OrdersService {
@@ -25,6 +38,8 @@ export class OrdersService {
     @InjectModel(Order) private readonly orderModel: typeof Order,
     @InjectModel(OrderVendorGroup) private readonly groupModel: typeof OrderVendorGroup,
     @InjectModel(PaymentEvent) private readonly paymentEventModel: typeof PaymentEvent,
+    @InjectModel(Artisan) private readonly artisanModel: typeof Artisan,
+    @InjectModel(ArtisanHireRequest) private readonly hireRequestModel: typeof ArtisanHireRequest,
     private readonly sequelize: Sequelize,
     private readonly customersService: CustomersService,
     @Inject(NOTIFICATION_SERVICE) private readonly notifications: NotificationService,
@@ -51,6 +66,64 @@ export class OrdersService {
       throw new NotFoundException('order not found');
     }
     return toOrderDto(order, true);
+  }
+
+  // Closes the "artisan can't open a linked order" gap: an artisan sees
+  // an order's id via listAttributedOrders (hire-requests.service.ts),
+  // but had no detail endpoint that would let them in — getForCustomer is
+  // unconditionally scoped to a Customer row, which an artisan caller has
+  // none of. Role branches here rather than splitting into two methods:
+  // both paths converge on the identical "find one order, 404 if not
+  // owned, map to DTO" shape, just with a different ownership test, and
+  // callers (the controller) only know "the caller's own role", not which
+  // branch to pick themselves.
+  async getForOwner(
+    userId: string,
+    role: string,
+    orderId: string,
+  ): Promise<OrderDto | ArtisanOrderDto> {
+    if (role === Role.ARTISAN) {
+      return this.getForArtisan(userId, orderId);
+    }
+    return this.getForCustomer(userId, orderId);
+  }
+
+  // An artisan may view an order only if it is attributed (via
+  // Order.bookingId, decision 0045) to one of their own hire requests —
+  // never by customerId, which an artisan has none of. 404, not 403, for
+  // every failure mode (no artisan profile, order not found, order not
+  // attributed to any hire request, or attributed to someone else's) —
+  // same "don't distinguish doesn't-exist from not-yours" reasoning
+  // ArtisansService.getPublicProfile and HireRequestsService.cancel's
+  // own ownership checks already use elsewhere in this codebase.
+  //
+  // Returns ArtisanOrderDto, not OrderDto — deliberately a different,
+  // narrower shape (decision 0052 addendum, after code review flagged the
+  // original implementation leaking the customer's customerId, precise
+  // delivery GPS, and razorpay payment fields to the artisan by reusing
+  // toOrderDto unmodified). An artisan doing the job needs to know what
+  // was ordered and where to deliver it — not the customer's internal id,
+  // exact coordinates, or payment internals.
+  private async getForArtisan(userId: string, orderId: string): Promise<ArtisanOrderDto> {
+    const artisan = await this.artisanModel.findOne({ where: { userId } });
+    if (!artisan) {
+      throw new NotFoundException('order not found');
+    }
+
+    const order = await this.orderModel.findOne({
+      where: { id: orderId },
+      include: customerOrderInclude(true),
+    });
+    if (!order || !order.bookingId) {
+      throw new NotFoundException('order not found');
+    }
+
+    const hireRequest = await this.hireRequestModel.findByPk(order.bookingId);
+    if (!hireRequest || hireRequest.artisanId !== artisan.id) {
+      throw new NotFoundException('order not found');
+    }
+
+    return toArtisanOrderDto(order);
   }
 
   // Cancellation authorization (who, until when) is an explicit open
