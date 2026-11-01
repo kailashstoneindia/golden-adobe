@@ -115,6 +115,60 @@ describe('OrdersService', () => {
       expect(result.id).toBe('order-1');
     });
 
+    it('never leaks customerId, razorpay fields, or precise delivery GPS to the owning artisan', async () => {
+      artisanModelMock.findOne.mockResolvedValue({ id: 'artisan-1' });
+      orderModelMock.findOne.mockResolvedValue({
+        id: 'order-1',
+        customerId: 'customer-1',
+        deliveryAddressId: 'addr-1',
+        grandTotal: 500,
+        status: OrderStatus.CONFIRMED,
+        razorpayOrderId: 'razorpay_order_abc',
+        razorpayPaymentId: 'razorpay_pay_xyz',
+        bookingId: 'hire-request-1',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deliveryAddress: {
+          label: 'Home',
+          addressLine1: '42 Test Lane',
+          addressLine2: null,
+          city: 'Bengaluru',
+          pincode: '560001',
+          lat: 12.9716,
+          lng: 77.5946,
+        },
+        vendorGroups: [],
+      });
+      hireRequestModelMock.findByPk.mockResolvedValue({
+        id: 'hire-request-1',
+        artisanId: 'artisan-1',
+      });
+
+      const result = await service.getForOwner('artisan-user-1', Role.ARTISAN, 'order-1');
+
+      expect(result).not.toHaveProperty('customerId');
+      expect(result).not.toHaveProperty('razorpayOrderId');
+      expect(result).not.toHaveProperty('razorpayPaymentId');
+      expect(result).not.toHaveProperty('deliveryAddressId');
+      expect((result as { deliveryAddress: { lat?: number } }).deliveryAddress).not.toHaveProperty(
+        'lat',
+      );
+      expect((result as { deliveryAddress: { lng?: number } }).deliveryAddress).not.toHaveProperty(
+        'lng',
+      );
+      expect(
+        (result as { deliveryAddress: { customerId?: string } }).deliveryAddress,
+      ).not.toHaveProperty('customerId');
+      // The address TEXT the artisan does legitimately need is still there.
+      expect((result as { deliveryAddress: { addressLine1: string } }).deliveryAddress).toEqual(
+        expect.objectContaining({
+          addressLine1: '42 Test Lane',
+          city: 'Bengaluru',
+          pincode: '560001',
+        }),
+      );
+    });
+
     it('404s for an artisan when the order has no bookingId at all', async () => {
       artisanModelMock.findOne.mockResolvedValue({ id: 'artisan-1' });
       orderModelMock.findOne.mockResolvedValue({

@@ -441,12 +441,19 @@ export class HireRequestsService {
   // to get one request's full shape was a list endpoint. The controller
   // resolves the model and checks ownership first (getRequestById +
   // assertCanViewHireRequest, same as getEstimateHistory/
-  // listAttributedOrders) before calling this to map it to the DTO —
-  // this method does not re-check ownership itself, same division of
+  // listAttributedOrders) before calling this to map it to the DTO — this
+  // method does not re-check ownership itself, same division of
   // responsibility as those two.
-  async getHireRequestDto(requestId: string): Promise<ArtisanHireRequestDto> {
-    const request = await this.getRequestById(requestId);
-    return toHireRequestDto(request, await this.latestEstimateFor(requestId));
+  //
+  // Takes the already-loaded model, not an id (code review caught the
+  // original version taking an id and re-querying the exact same row the
+  // controller had just fetched one line earlier for the ownership check
+  // — two findByPk round trips for one row on every single-hire-request
+  // read). Mirrors claimTransition's own "map what's already loaded,
+  // don't re-query" discipline elsewhere in this file.
+  async mapToHireRequestDto(request: ArtisanHireRequest): Promise<ArtisanHireRequestDto> {
+    const estimate = await this.latestEstimateFor(request.id);
+    return toHireRequestDto(request, estimate);
   }
 
   // Decision 0045 item 7: the reverse of Order.bookingId — every order a

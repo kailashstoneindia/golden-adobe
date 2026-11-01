@@ -301,7 +301,7 @@ export class ArtisansController {
   async getHireRequestById(@Req() req: any, @Param('id', ParseUUIDPipe) id: string) {
     const request = await this.hireRequestsService.getRequestById(id);
     await this.assertCanViewHireRequest(req.user.sub, req.user.role, request);
-    return this.hireRequestsService.getHireRequestDto(id);
+    return this.hireRequestsService.mapToHireRequestDto(request);
   }
 
   // Decision 0045 item 7: the orders a customer placed while attributing

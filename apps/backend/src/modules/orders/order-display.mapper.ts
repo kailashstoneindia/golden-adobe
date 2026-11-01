@@ -1,4 +1,6 @@
 import type {
+  ArtisanOrderAddressDto,
+  ArtisanOrderDto,
   OrderDto,
   OrderItemDto,
   OrderStatus,
@@ -10,6 +12,7 @@ import { Order } from './models/order.model';
 import { OrderVendorGroup } from './models/order-vendor-group.model';
 import { OrderItem } from './models/order-item.model';
 import { PaymentEvent } from './models/payment-event.model';
+import { CustomerAddress } from '../customers/models/customer-address.model';
 import { toCustomerAddressDto } from '../customers/customer-address.mapper';
 import { toFiniteNumber, toIsoDate } from '../../common/utils/display-number.util';
 
@@ -30,6 +33,36 @@ export function toOrderDto(order: Order, includeDeliveryAddress: boolean): Order
         ? toCustomerAddressDto(order.deliveryAddress)
         : null,
     vendorGroups: (order.vendorGroups ?? []).map(toOrderVendorGroupDto),
+  };
+}
+
+// Artisan-facing order view (decision 0051/0052, tightened after code
+// review flagged toOrderDto's customerId/razorpay/precise-GPS fields
+// leaking to an artisan with no business need for them). Built by
+// explicit field listing, same discipline toArtisanPublicProfileDto
+// already uses in the artisans module for the identical reason: a future
+// field added to Order or CustomerAddress must not leak into this view by
+// default just because someone spreads the wrong object.
+export function toArtisanOrderDto(order: Order): ArtisanOrderDto {
+  return {
+    id: order.id,
+    grandTotal: toFiniteNumber(order.grandTotal),
+    status: order.status as OrderStatus,
+    bookingId: order.bookingId,
+    createdAt: toIsoDate(order.createdAt),
+    updatedAt: toIsoDate(order.updatedAt),
+    deliveryAddress: order.deliveryAddress ? toArtisanOrderAddressDto(order.deliveryAddress) : null,
+    vendorGroups: (order.vendorGroups ?? []).map(toOrderVendorGroupDto),
+  };
+}
+
+function toArtisanOrderAddressDto(address: CustomerAddress): ArtisanOrderAddressDto {
+  return {
+    label: address.label,
+    addressLine1: address.addressLine1,
+    addressLine2: address.addressLine2,
+    city: address.city,
+    pincode: address.pincode,
   };
 }
 

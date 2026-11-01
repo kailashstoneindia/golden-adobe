@@ -2,7 +2,12 @@ import { BadRequestException, Inject, Injectable, Logger, NotFoundException } fr
 import { InjectModel } from '@nestjs/sequelize';
 import { Sequelize } from 'sequelize-typescript';
 import { Op, QueryTypes } from 'sequelize';
-import type { OrderDto, OrderVendorGroupDto, PaymentEventDto } from '@golden-abode/types';
+import type {
+  ArtisanOrderDto,
+  OrderDto,
+  OrderVendorGroupDto,
+  PaymentEventDto,
+} from '@golden-abode/types';
 import { Role } from '@golden-abode/types';
 import { Order, OrderStatus } from './models/order.model';
 import { OrderVendorGroup, OrderVendorGroupStatus } from './models/order-vendor-group.model';
@@ -18,7 +23,12 @@ import {
   customerOrderInclude,
   vendorGroupInclude,
 } from './order-display.include';
-import { toOrderDto, toOrderVendorGroupDto, toPaymentEventDto } from './order-display.mapper';
+import {
+  toArtisanOrderDto,
+  toOrderDto,
+  toOrderVendorGroupDto,
+  toPaymentEventDto,
+} from './order-display.mapper';
 
 @Injectable()
 export class OrdersService {
@@ -67,7 +77,11 @@ export class OrdersService {
   // owned, map to DTO" shape, just with a different ownership test, and
   // callers (the controller) only know "the caller's own role", not which
   // branch to pick themselves.
-  async getForOwner(userId: string, role: string, orderId: string): Promise<OrderDto> {
+  async getForOwner(
+    userId: string,
+    role: string,
+    orderId: string,
+  ): Promise<OrderDto | ArtisanOrderDto> {
     if (role === Role.ARTISAN) {
       return this.getForArtisan(userId, orderId);
     }
@@ -82,7 +96,15 @@ export class OrdersService {
   // same "don't distinguish doesn't-exist from not-yours" reasoning
   // ArtisansService.getPublicProfile and HireRequestsService.cancel's
   // own ownership checks already use elsewhere in this codebase.
-  private async getForArtisan(userId: string, orderId: string): Promise<OrderDto> {
+  //
+  // Returns ArtisanOrderDto, not OrderDto — deliberately a different,
+  // narrower shape (decision 0052 addendum, after code review flagged the
+  // original implementation leaking the customer's customerId, precise
+  // delivery GPS, and razorpay payment fields to the artisan by reusing
+  // toOrderDto unmodified). An artisan doing the job needs to know what
+  // was ordered and where to deliver it — not the customer's internal id,
+  // exact coordinates, or payment internals.
+  private async getForArtisan(userId: string, orderId: string): Promise<ArtisanOrderDto> {
     const artisan = await this.artisanModel.findOne({ where: { userId } });
     if (!artisan) {
       throw new NotFoundException('order not found');
@@ -101,7 +123,7 @@ export class OrdersService {
       throw new NotFoundException('order not found');
     }
 
-    return toOrderDto(order, true);
+    return toArtisanOrderDto(order);
   }
 
   // Cancellation authorization (who, until when) is an explicit open
