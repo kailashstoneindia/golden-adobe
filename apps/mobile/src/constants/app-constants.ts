@@ -9,6 +9,8 @@ export const APP_CONSTANTS = {
   ordersStaleTimeMs: 15_000,
   addressesStaleTimeMs: 60_000,
   vendorProfileStaleTimeMs: 60_000,
+  artisanProfileStaleTimeMs: 60_000,
+  hireRequestsStaleTimeMs: 15_000,
   orderPaymentPollIntervalMs: 2_000,
   orderPaymentPollMaxAttempts: 30,
   checkoutMerchantName: 'Kailash Stones',

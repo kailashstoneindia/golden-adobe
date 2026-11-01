@@ -11,3 +11,5 @@ export { ordersService } from './orders.service';
 export { customersService } from './customers.service';
 export { openRazorpayCheckout } from './razorpay.service';
 export { CatalogFileToolsError, pickCatalogWorkbook, saveAndShareCatalogExport } from './catalog';
+export { artisansService } from './artisans.service';
+export { ArtisanDocumentError, pickArtisanDocument, uploadToPresignedPost } from './artisans';

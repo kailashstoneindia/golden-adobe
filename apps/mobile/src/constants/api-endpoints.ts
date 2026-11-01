@@ -26,6 +26,26 @@ export const API_ENDPOINTS = {
     items: '/cart/items',
     itemById: (itemId: string) => `/cart/items/${itemId}`,
   },
+  artisans: {
+    meProfile: '/artisans/me/profile',
+    meAccountDetails: '/artisans/me/account-details',
+    meDocumentUploadUrl: '/artisans/me/documents/upload-url',
+    meDocumentConfirm: '/artisans/me/documents/confirm',
+    meTeam: '/artisans/me/team',
+    meTeamMember: (memberId: string) => `/artisans/me/team/${memberId}`,
+    meHireRequests: '/artisans/me/hire-requests',
+    meHireRequestEstimates: (requestId: string) =>
+      `/artisans/me/hire-requests/${requestId}/estimates`,
+    meHireRequestStart: (requestId: string) => `/artisans/me/hire-requests/${requestId}/start`,
+    meHireRequestComplete: (requestId: string) =>
+      `/artisans/me/hire-requests/${requestId}/complete`,
+    hireRequests: '/artisans/hire-requests',
+    myHireRequests: '/artisans/hire-requests/mine',
+    hireRequestCancel: (requestId: string) => `/artisans/hire-requests/${requestId}/cancel`,
+    hireRequestEstimates: (requestId: string) => `/artisans/hire-requests/${requestId}/estimates`,
+    hireRequestOrders: (requestId: string) => `/artisans/hire-requests/${requestId}/orders`,
+    publicProfile: (artisanId: string) => `/artisans/${artisanId}/public`,
+  },
   checkout: '/checkout',
   orders: {
     list: '/orders',

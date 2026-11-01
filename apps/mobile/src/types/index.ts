@@ -39,3 +39,13 @@ export type {
   VendorOrderDetailProps,
   VendorStatusActionsProps,
 } from './order-ui.types';
+export type {
+  ArtisanBankFieldsProps,
+  ArtisanDocumentCardProps,
+  ArtisanDocumentFile,
+  ArtisanDocumentUploadUrl,
+  ArtisanProfileFieldsProps,
+  ArtisanProfileFormValues,
+  HireRequestListRowProps,
+  TradeTypeChipsProps,
+} from './artisan-ui.types';

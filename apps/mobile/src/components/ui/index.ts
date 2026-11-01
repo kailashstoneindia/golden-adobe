@@ -16,3 +16,6 @@ export type { TextInputProps } from './TextInput';
 export { EmptyStateCard } from './EmptyStateCard';
 
 export { QtyStepper } from './QtyStepper';
+
+export { Chip } from './Chip';
+export type { ChipProps } from './Chip';

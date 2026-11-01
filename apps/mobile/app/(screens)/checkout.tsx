@@ -6,14 +6,21 @@ import { useMemo, useState } from 'react';
 import { AddressCard } from '../../src/components/addresses';
 import { CartVendorGroupCard, PriceSummary } from '../../src/components/cart';
 import { DemoScreen } from '../../src/components/demo/DemoScreen';
-import { Button, EmptyStateCard, Text } from '../../src/components/ui';
-import { EMPTY_STATE_MESSAGES, ERROR_MESSAGES, ROUTES } from '../../src/constants';
+import { Button, Chip, EmptyStateCard, Text } from '../../src/components/ui';
+import {
+  EMPTY_STATE_MESSAGES,
+  ERROR_MESSAGES,
+  HIRE_REQUEST_STATUS_LABELS,
+  ROUTES,
+} from '../../src/constants';
+import { useCustomerHireRequestsQuery } from '../../src/hooks/artisans';
 import { useAuth } from '../../src/hooks/auth';
 import { useCartQuery } from '../../src/hooks/cart';
 import { useAddressesQuery } from '../../src/hooks/customers';
 import { usePlaceOrder } from '../../src/hooks/payments';
 import { useToast } from '../../src/hooks/useToast';
-import { Colors } from '../../src/theme';
+import { StyleSheet, View } from 'react-native';
+import { Colors, Spacing } from '../../src/theme';
 import type { CartVendorGroup } from '../../src/types';
 import {
   buildCartPriceSummary,
@@ -21,6 +28,8 @@ import {
   hasCartMinOrderShortfall,
   hasPaintCartItems,
   hasUnstockedCartItems,
+  isBookingAttributable,
+  shortId,
 } from '../../src/utils';
 
 function handleIgnoreCartItem(_item: CartItemDto): void {
@@ -42,6 +51,11 @@ export default function CheckoutScreen() {
     addresses.find((address: CustomerAddressDto) => address.isDefault)?.id ?? addresses[0]?.id;
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const activeAddressId = selectedAddressId ?? defaultAddressId ?? null;
+  const hireRequestsQuery = useCustomerHireRequestsQuery(isCustomer);
+  const attributableHireRequests = (hireRequestsQuery.data ?? []).filter((request) =>
+    isBookingAttributable(request.status),
+  );
+  const [bookingId, setBookingId] = useState<string | null>(null);
 
   const canPlaceOrder =
     Boolean(activeAddressId) &&
@@ -58,7 +72,7 @@ export default function CheckoutScreen() {
       showError(ERROR_MESSAGES.checkoutHasUnstockedItems);
       return;
     }
-    await placeOrder(activeAddressId);
+    await placeOrder(activeAddressId, bookingId ?? undefined);
   };
 
   if (cartQuery.isLoading || addressesQuery.isLoading) {
@@ -124,6 +138,33 @@ export default function CheckoutScreen() {
         variant="secondary"
         onPress={() => router.push(ROUTES.screens.savedAddresses)}
       />
+      {attributableHireRequests.length > 0 ? (
+        <>
+          <Text variant="h3">Link to an Ustaad job</Text>
+          <Text variant="caption" color={Colors.inkSoft}>
+            Optional. Link this order if your Ustaad recommended these materials.
+          </Text>
+          <View style={styles.chips}>
+            <Chip label="Don’t link" isSelected={!bookingId} onPress={() => setBookingId(null)} />
+            {attributableHireRequests.map((request) => (
+              <Chip
+                key={request.id}
+                label={`Job ${shortId(request.id)} · ${HIRE_REQUEST_STATUS_LABELS[request.status]}`}
+                isSelected={bookingId === request.id}
+                onPress={() => setBookingId(request.id)}
+              />
+            ))}
+          </View>
+        </>
+      ) : null}
     </DemoScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  chips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.xs,
+  },
+});

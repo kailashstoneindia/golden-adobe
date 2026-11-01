@@ -1,10 +1,12 @@
+import { Role } from '@golden-abode/types';
 import { useEffect } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { Screen } from '../src/components/layout/Screen';
 import { Badge, Button, Text } from '../src/components/ui';
-import { ROUTES } from '../src/constants';
+import { ROUTES, TRADE_TYPE_LABELS } from '../src/constants';
+import { useArtisanOnboardingStatus, useArtisanProfileQuery } from '../src/hooks/artisans';
 import { useAuth, useMe } from '../src/hooks/auth';
 import { useLogout } from '../src/hooks/auth/useLogout';
 import { Colors, Spacing } from '../src/theme';
@@ -14,6 +16,9 @@ export default function PendingApprovalScreen() {
   const { isAuthenticated, isHydrated, user } = useAuth();
   const me = useMe();
   const logout = useLogout();
+  const artisanOnboarding = useArtisanOnboardingStatus(user);
+  const isArtisan = user?.role === Role.ARTISAN;
+  const artisanProfile = useArtisanProfileQuery(isArtisan).data;
 
   useEffect(() => {
     if (!isHydrated) return;
@@ -28,10 +33,15 @@ export default function PendingApprovalScreen() {
       return;
     }
 
+    if (artisanOnboarding.needsOnboarding) {
+      router.replace(ROUTES.artisanOnboard);
+      return;
+    }
+
     if (user && !isPendingApproval(user)) {
       router.replace(ROUTES.home);
     }
-  }, [isAuthenticated, isHydrated, user]);
+  }, [artisanOnboarding.needsOnboarding, isAuthenticated, isHydrated, user]);
 
   const handleCheckStatus = async () => {
     const result = await me.refetch();
@@ -75,6 +85,12 @@ export default function PendingApprovalScreen() {
               </Text>
               <Text variant="caption">{user.vendorProfile.address}</Text>
             </>
+          ) : null}
+          {artisanProfile ? (
+            <Text variant="bodyMedium" style={styles.shopName}>
+              {TRADE_TYPE_LABELS[artisanProfile.tradeType]}
+              {artisanProfile.servicePincode ? ` · ${artisanProfile.servicePincode}` : ''}
+            </Text>
           ) : null}
         </View>
 
