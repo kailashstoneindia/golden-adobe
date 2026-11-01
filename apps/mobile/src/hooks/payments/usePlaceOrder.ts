@@ -12,9 +12,12 @@ export function usePlaceOrder() {
   const { pollUntilResolved } = useOrderPaymentPoll();
   const { showSuccess, showError, showWarning } = useToast();
 
-  async function placeOrder(deliveryAddressId: string): Promise<void> {
+  async function placeOrder(deliveryAddressId: string, bookingId?: string): Promise<void> {
     try {
-      const order = await checkout.mutateAsync({ deliveryAddressId });
+      const order = await checkout.mutateAsync({
+        deliveryAddressId,
+        ...(bookingId ? { bookingId } : {}),
+      });
       await openPaymentSheetOrWarn(order, showError);
       const resolved = await pollUntilResolved(order.id);
       notifyPaymentResult(resolved.status, showSuccess, showWarning);

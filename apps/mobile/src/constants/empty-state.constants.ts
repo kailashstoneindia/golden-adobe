@@ -14,6 +14,11 @@ export const EMPTY_STATE_MESSAGES = {
   homeUstaadsEmpty: 'No verified ustaads nearby yet.',
   homeVendorsEmpty: 'No top vendors in your area yet.',
   homePendingOrdersEmpty: 'No pending orders.',
+  artisanJobsEmpty: 'No jobs yet. Hire requests appear here once an admin approves them for you.',
+  customerHireRequestsEmpty: 'You haven’t hired an Ustaad yet.',
+  teamEmpty: 'No team members added yet.',
+  estimatesEmpty: 'No completion estimates yet.',
+  attributedOrdersEmpty: 'No material orders linked to this job yet.',
   helpSupportUnavailable:
     'Live support isn’t connected yet. Check back soon for FAQs and contact options.',
 } as const;

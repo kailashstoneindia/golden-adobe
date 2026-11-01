@@ -1,14 +1,16 @@
 import { Role } from '@golden-abode/types';
 import { useCallback } from 'react';
 
+import { HireRequestListRow } from '../../src/components/artisans';
 import { DemoScreen } from '../../src/components/demo/DemoScreen';
 import { OrderListRow, VendorGroupListRow } from '../../src/components/orders';
 import { EmptyStateCard, Text } from '../../src/components/ui';
 import { EMPTY_STATE_MESSAGES, ERROR_MESSAGES } from '../../src/constants';
+import { useArtisanHireRequestsQuery } from '../../src/hooks/artisans';
 import { useAuth } from '../../src/hooks/auth';
 import { useOrdersQuery, useVendorOrderGroupsQuery } from '../../src/hooks/orders';
 import { Colors } from '../../src/theme';
-import { navigateToOrderDetail } from '../../src/utils';
+import { navigateToHireRequestDetail, navigateToOrderDetail } from '../../src/utils';
 
 export default function OrdersTabScreen() {
   const { user } = useAuth();
@@ -16,6 +18,10 @@ export default function OrdersTabScreen() {
 
   if (isVendor) {
     return <VendorOrdersList />;
+  }
+
+  if (user?.role === Role.ARTISAN) {
+    return <ArtisanJobsList />;
   }
 
   return <CustomerOrdersList />;
@@ -103,6 +109,46 @@ function VendorOrdersList() {
     <DemoScreen title="Orders" subtitle="Incoming requests from customers on your shop">
       {groups.map((group) => (
         <VendorGroupListRow key={group.id} group={group} onPress={handlePress} />
+      ))}
+    </DemoScreen>
+  );
+}
+
+function ArtisanJobsList() {
+  const jobsQuery = useArtisanHireRequestsQuery(true);
+  const subtitle = 'Jobs approved for you by the admin team';
+
+  if (jobsQuery.isLoading) {
+    return (
+      <DemoScreen title="Jobs" subtitle={subtitle}>
+        <Text variant="body" color={Colors.inkSoft}>
+          Loading jobs…
+        </Text>
+      </DemoScreen>
+    );
+  }
+
+  if (jobsQuery.isError) {
+    return (
+      <DemoScreen title="Jobs">
+        <EmptyStateCard title="Could not load jobs" message={ERROR_MESSAGES.hireRequestsFailed} />
+      </DemoScreen>
+    );
+  }
+
+  const jobs = jobsQuery.data ?? [];
+  if (jobs.length === 0) {
+    return (
+      <DemoScreen title="Jobs" subtitle={subtitle}>
+        <EmptyStateCard title="No jobs yet" message={EMPTY_STATE_MESSAGES.artisanJobsEmpty} />
+      </DemoScreen>
+    );
+  }
+
+  return (
+    <DemoScreen title="Jobs" subtitle={subtitle}>
+      {jobs.map((job) => (
+        <HireRequestListRow key={job.id} request={job} onPress={navigateToHireRequestDetail} />
       ))}
     </DemoScreen>
   );

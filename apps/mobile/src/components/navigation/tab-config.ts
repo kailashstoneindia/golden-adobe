@@ -40,9 +40,19 @@ const VENDOR_TABS: TabItem[] = [
   { routeName: 'shop', label: 'SHOP', Icon: ShopIcon },
 ];
 
+const ARTISAN_TABS: TabItem[] = [
+  { routeName: 'index', label: 'HOME', Icon: HomeIcon },
+  { routeName: 'orders', label: 'JOBS', Icon: OrdersIcon },
+  { routeName: 'you', label: 'YOU', Icon: YouIcon },
+];
+
 export function getTabsForRole(role?: Role): TabItem[] {
   if (role === Role.VENDOR) {
     return VENDOR_TABS;
+  }
+
+  if (role === Role.ARTISAN) {
+    return ARTISAN_TABS;
   }
 
   return CUSTOMER_TABS;

@@ -1,3 +1,4 @@
+import { Role } from '@golden-abode/types';
 import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -14,7 +15,15 @@ import { formatRoleLabel, requiresAdminApproval } from '../../src/utils';
 const MENU_ROUTES = [
   { label: 'My Projects', route: ROUTES.screens.myProjects },
   { label: 'Order History', route: ROUTES.screens.orderHistory },
+  { label: 'Hired Ustaads', route: ROUTES.screens.hireRequests },
   { label: 'Saved Addresses', route: ROUTES.screens.savedAddresses },
+  { label: 'Help & Support', route: ROUTES.screens.helpSupport },
+] as const;
+
+const ARTISAN_MENU_ROUTES = [
+  { label: 'Ustaad Profile', route: ROUTES.screens.artisanProfile },
+  { label: 'My Team', route: ROUTES.screens.artisanTeam },
+  { label: 'Bank Details', route: ROUTES.screens.artisanBank },
   { label: 'Help & Support', route: ROUTES.screens.helpSupport },
 ] as const;
 
@@ -22,6 +31,9 @@ export default function YouTabScreen() {
   const { user } = useAuth();
   const logout = useLogout();
   const { showSuccess, showError } = useToast();
+  const isArtisan = user?.role === Role.ARTISAN;
+  const menuRoutes = isArtisan ? ARTISAN_MENU_ROUTES : MENU_ROUTES;
+  const profileRoute = isArtisan ? ROUTES.screens.artisanProfile : ROUTES.screens.myProjects;
 
   const initials = user?.name
     .split(' ')
@@ -47,7 +59,7 @@ export default function YouTabScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <Pressable style={styles.profileRow} onPress={() => router.push(ROUTES.screens.myProjects)}>
+        <Pressable style={styles.profileRow} onPress={() => router.push(profileRoute)}>
           <View style={styles.avatar}>
             <Text variant="h2" color={Colors.ember}>
               {initials ?? '?'}
@@ -71,7 +83,7 @@ export default function YouTabScreen() {
         </Pressable>
 
         <View style={styles.menu}>
-          {MENU_ROUTES.map((item) => (
+          {menuRoutes.map((item) => (
             <MenuRow key={item.label} label={item.label} onPress={() => router.push(item.route)} />
           ))}
 

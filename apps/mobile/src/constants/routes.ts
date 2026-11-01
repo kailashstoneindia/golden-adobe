@@ -4,6 +4,7 @@ export const ROUTES = {
   home: '/(tabs)',
   pendingApproval: '/pending-approval',
   vendorOnboard: '/vendor-onboard',
+  artisanOnboard: '/artisan-onboard',
   tabs: {
     home: '/(tabs)',
     browse: '/(tabs)/browse',
@@ -32,5 +33,11 @@ export const ROUTES = {
     catalogSync: '/(screens)/catalog-sync',
     pendingConfirmations: '/(screens)/pending-confirmations',
     listingDetail: '/(screens)/listing-detail',
+    artisanProfile: '/(screens)/artisan-profile',
+    artisanTeam: '/(screens)/artisan-team',
+    artisanBank: '/(screens)/artisan-bank',
+    artisanPublic: '/(screens)/artisan/[id]',
+    hireRequests: '/(screens)/hire-requests',
+    hireRequestDetail: '/(screens)/hire-request/[id]',
   },
 } as const;

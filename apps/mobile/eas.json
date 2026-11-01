@@ -39,7 +39,7 @@
       "distribution": "internal",
       "env": {
         "APP_VARIANT": "production",
-        "EXPO_PUBLIC_API_URL": "https://REPLACE-WITH-AWS-API-NAME/api"
+        "EXPO_PUBLIC_API_URL": "https://api.nirmaancenter.com/api"
       },
       "android": {
         "buildType": "apk"
