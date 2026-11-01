@@ -118,6 +118,142 @@ describe('ArtisansService (integration)', () => {
     expect(confirmed.documentUrl).toContain('doc-key.pdf');
   });
 
+  it('createUploadUrl mints a key under the artisan own prefix by default (lead KYC doc)', async () => {
+    const profile = await service.onboardProfile(userId, {
+      tradeType: 'PLUMBER',
+      servicePincode: '560001',
+    });
+    const presignSpy = jest.spyOn(fakeStorage, 'presignPost');
+
+    await service.createUploadUrl(userId, 'application/pdf');
+
+    expect(presignSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: expect.stringMatching(new RegExp(`^artisans/${profile.id}/doc-`)),
+      }),
+    );
+    presignSpy.mockRestore();
+  });
+
+  it('createUploadUrl mints a key under the team/ sub-path when purpose is team_member', async () => {
+    const profile = await service.onboardProfile(userId, {
+      tradeType: 'PLUMBER',
+      servicePincode: '560001',
+    });
+    const presignSpy = jest.spyOn(fakeStorage, 'presignPost');
+
+    await service.createUploadUrl(userId, 'application/pdf', 'team_member');
+
+    expect(presignSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: expect.stringMatching(new RegExp(`^artisans/${profile.id}/team/doc-`)),
+      }),
+    );
+    presignSpy.mockRestore();
+  });
+
+  it('a team_member-purpose key passes the existing team member ownership-prefix check', async () => {
+    const profile = await service.onboardProfile(userId, {
+      tradeType: 'PLUMBER',
+      servicePincode: '560001',
+    });
+    const key = `artisans/${profile.id}/team/doc-e2e-test.pdf`;
+
+    const member = await service.addTeamMember(userId, { name: 'Suresh', documentUrl: key });
+    expect(member.documentUrl).toBe(key);
+  });
+
+  describe('searchPublic', () => {
+    it('only returns verified artisans', async () => {
+      const artisan = await service.onboardProfile(userId, {
+        tradeType: 'PLUMBER',
+        servicePincode: '560001',
+      });
+      const page = await service.searchPublic(1, 20, {});
+      expect(page.items.some((a) => a.id === artisan.id)).toBe(false);
+
+      await Artisan.update({ isVerified: true }, { where: { id: artisan.id } });
+      const pageAfterVerify = await service.searchPublic(1, 20, {});
+      expect(pageAfterVerify.items.some((a) => a.id === artisan.id)).toBe(true);
+    });
+
+    it('filters by tradeType', async () => {
+      const plumber = await service.onboardProfile(userId, {
+        tradeType: 'PLUMBER',
+        servicePincode: '560001',
+      });
+      await Artisan.update({ isVerified: true }, { where: { id: plumber.id } });
+
+      const electricianUser = await User.create({
+        name: `Search Electrician ${suffix}-${Date.now()}`,
+        phone: `8${Date.now()}`.slice(0, 10),
+        role: Role.ARTISAN,
+        isActive: true,
+      } as never);
+      const electrician = await service.onboardProfile(electricianUser.id, {
+        tradeType: 'ELECTRICIAN',
+        servicePincode: '560001',
+      });
+      await Artisan.update({ isVerified: true }, { where: { id: electrician.id } });
+
+      const page = await service.searchPublic(1, 20, { tradeType: 'ELECTRICIAN' });
+      expect(page.items.every((a) => a.tradeType === 'ELECTRICIAN')).toBe(true);
+      expect(page.items.some((a) => a.id === electrician.id)).toBe(true);
+      expect(page.items.some((a) => a.id === plumber.id)).toBe(false);
+
+      await Artisan.destroy({ where: { id: electrician.id } });
+      await User.destroy({ where: { id: electricianUser.id } });
+    });
+
+    it('filters by exact pincode match', async () => {
+      const artisan = await service.onboardProfile(userId, {
+        tradeType: 'PLUMBER',
+        servicePincode: '560001',
+      });
+      await Artisan.update({ isVerified: true }, { where: { id: artisan.id } });
+
+      const matching = await service.searchPublic(1, 20, { pincode: '560001' });
+      expect(matching.items.some((a) => a.id === artisan.id)).toBe(true);
+
+      const nonMatching = await service.searchPublic(1, 20, { pincode: '560002' });
+      expect(nonMatching.items.some((a) => a.id === artisan.id)).toBe(false);
+    });
+
+    it('combines tradeType and pincode filters', async () => {
+      const artisan = await service.onboardProfile(userId, {
+        tradeType: 'MASON',
+        servicePincode: '110001',
+      });
+      await Artisan.update({ isVerified: true }, { where: { id: artisan.id } });
+
+      const match = await service.searchPublic(1, 20, { tradeType: 'MASON', pincode: '110001' });
+      expect(match.items.some((a) => a.id === artisan.id)).toBe(true);
+
+      const wrongPincode = await service.searchPublic(1, 20, {
+        tradeType: 'MASON',
+        pincode: '110002',
+      });
+      expect(wrongPincode.items.some((a) => a.id === artisan.id)).toBe(false);
+    });
+
+    it('returns ArtisanPublicProfileDto shape only — never phone, documents, or account details', async () => {
+      const artisan = await service.onboardProfile(userId, {
+        tradeType: 'PLUMBER',
+        servicePincode: '560001',
+      });
+      await Artisan.update(
+        { isVerified: true, documentUrl: 'artisans/x/doc.pdf' },
+        { where: { id: artisan.id } },
+      );
+
+      const page = await service.searchPublic(1, 20, { tradeType: 'PLUMBER' });
+      const found = page.items.find((a) => a.id === artisan.id);
+      expect(found).not.toHaveProperty('documentUrl');
+      expect(found).not.toHaveProperty('servicePincode');
+      expect(found).not.toHaveProperty('accountDetails');
+    });
+  });
+
   it('rejects confirmDocumentUpload for a key outside this artisan own prefix', async () => {
     await service.onboardProfile(userId, { tradeType: 'PLUMBER', servicePincode: '560001' });
     await expect(

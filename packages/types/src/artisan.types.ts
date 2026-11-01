@@ -185,5 +185,18 @@ export type ArtisanListQuery = {
   limit?: number;
 };
 
+// Customer-facing browse/search (decision 0051 Batch B) — distinct from
+// ArtisanListQuery (admin-only, full ArtisanProfileDto). Exact-match
+// filters only: tradeType and pincode are both plain equality, not a
+// geo/radius search — Artisan has no lat/lng today, only a service
+// pincode string.
+export type ArtisanSearchQuery = {
+  page?: number;
+  limit?: number;
+  tradeType?: TradeType;
+  pincode?: string;
+};
+
 export type PaginatedArtisansResponse = PaginatedResponse<ArtisanProfileDto>;
+export type PaginatedArtisanPublicProfilesResponse = PaginatedResponse<ArtisanPublicProfileDto>;
 export type PaginatedHireRequestsResponse = PaginatedResponse<ArtisanHireRequestDto>;

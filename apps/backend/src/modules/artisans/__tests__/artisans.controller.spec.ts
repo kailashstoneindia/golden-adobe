@@ -52,6 +52,53 @@ describe('ArtisansController (real HTTP, Postgres)', () => {
     expect(read.body.data.bio).toBe('Reliable plumber');
   });
 
+  it('GET /artisans only returns verified artisans', async () => {
+    const created = await asArtisan(
+      request(t.app.getHttpServer())
+        .post('/api/artisans/me/profile')
+        .send({ tradeType: 'PLUMBER', servicePincode: '560001' }),
+    );
+    const id = created.body.data.id;
+
+    const beforeVerify = await asCustomer(request(t.app.getHttpServer()).get('/api/artisans'));
+    expect(beforeVerify.status).toBe(200);
+    expect(beforeVerify.body.data.items.some((a: { id: string }) => a.id === id)).toBe(false);
+
+    await Artisan.update(
+      { isVerified: true, documentUrl: 'artisans/x/doc.pdf' },
+      { where: { id } },
+    );
+    const afterVerify = await asCustomer(request(t.app.getHttpServer()).get('/api/artisans'));
+    expect(afterVerify.body.data.items.some((a: { id: string }) => a.id === id)).toBe(true);
+  });
+
+  it('GET /artisans?tradeType=&pincode= filters results and never leaks private fields', async () => {
+    const created = await asArtisan(
+      request(t.app.getHttpServer())
+        .post('/api/artisans/me/profile')
+        .send({ tradeType: 'ELECTRICIAN', servicePincode: '400001' }),
+    );
+    const id = created.body.data.id;
+    await Artisan.update(
+      { isVerified: true, documentUrl: 'artisans/x/doc.pdf' },
+      { where: { id } },
+    );
+
+    const res = await asCustomer(
+      request(t.app.getHttpServer()).get('/api/artisans?tradeType=ELECTRICIAN&pincode=400001'),
+    );
+    expect(res.status).toBe(200);
+    const found = res.body.data.items.find((a: { id: string }) => a.id === id);
+    expect(found).toBeDefined();
+    expect(found).not.toHaveProperty('documentUrl');
+    expect(found).not.toHaveProperty('servicePincode');
+
+    const wrongTrade = await asCustomer(
+      request(t.app.getHttpServer()).get('/api/artisans?tradeType=MASON'),
+    );
+    expect(wrongTrade.body.data.items.some((a: { id: string }) => a.id === id)).toBe(false);
+  });
+
   it('never returns a PENDING_ADMIN_REVIEW request from GET /artisans/me/hire-requests', async () => {
     await asArtisan(
       request(t.app.getHttpServer())

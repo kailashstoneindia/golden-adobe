@@ -11,6 +11,7 @@ import {
   Patch,
   Post,
   Put,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -32,6 +33,7 @@ import { CancelHireRequestDto } from './dto/cancel-hire-request.dto';
 import { CreateCompletionEstimateDto } from './dto/create-completion-estimate.dto';
 import { CreateDocumentUploadUrlDto } from './dto/create-document-upload-url.dto';
 import { ConfirmDocumentUploadDto } from './dto/confirm-document-upload.dto';
+import { SearchArtisansQueryDto } from './dto/search-artisans-query.dto';
 
 // No controller-level @Roles(): routes here are split across ARTISAN,
 // CUSTOMER, and "any authenticated role" (the public profile and shared
@@ -48,6 +50,24 @@ export class ArtisansController {
     private readonly artisansService: ArtisansService,
     private readonly hireRequestsService: HireRequestsService,
   ) {}
+
+  // Customer-facing browse/search (decision 0051 Batch B). Any
+  // authenticated role, like :id/public — verified artisans are meant to
+  // be discoverable, not customer-only. Bare 'artisans' as a path has no
+  // collision risk against the dynamic :id routes below (a static
+  // segment always wins over a dynamic one at the same position,
+  // regardless of registration order — unlike the :id vs :id/estimates
+  // ordering concern noted further down, which is between two dynamic
+  // routes).
+  @Get()
+  @ApiOperation({ summary: 'Browse verified artisans, optionally filtered by trade and pincode' })
+  @ApiResponse({ status: 200, description: 'Page of public (bio-only) artisan profiles' })
+  async search(@Query() query: SearchArtisansQueryDto) {
+    return this.artisansService.searchPublic(query.page ?? 1, query.limit ?? 20, {
+      tradeType: query.tradeType,
+      pincode: query.pincode,
+    });
+  }
 
   @Post('me/profile')
   @Roles(Role.ARTISAN)
@@ -92,10 +112,16 @@ export class ArtisansController {
 
   @Post('me/documents/upload-url')
   @Roles(Role.ARTISAN)
-  @ApiOperation({ summary: 'Get a presigned upload URL for your KYC document' })
+  @ApiOperation({
+    summary: 'Get a presigned upload URL for a document',
+    description:
+      "purpose 'lead' (default): your own KYC document, used with POST me/documents/confirm. " +
+      "purpose 'team_member': a key for a team member's documentUrl — upload to it, then pass " +
+      'the resulting key straight to POST/PATCH me/team — no confirm step for this purpose.',
+  })
   @ApiResponse({ status: 200, description: 'Presigned POST url and fields' })
   async createUploadUrl(@Req() req: any, @Body() dto: CreateDocumentUploadUrlDto) {
-    return this.artisansService.createUploadUrl(req.user.sub, dto.contentType);
+    return this.artisansService.createUploadUrl(req.user.sub, dto.contentType, dto.purpose);
   }
 
   @Post('me/documents/confirm')
