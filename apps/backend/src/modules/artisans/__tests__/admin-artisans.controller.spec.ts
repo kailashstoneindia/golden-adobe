@@ -32,7 +32,7 @@ describe('AdminArtisansController (real HTTP, Postgres)', () => {
     await asArtisan(
       request(t.app.getHttpServer())
         .post('/api/artisans/me/profile')
-        .send({ tradeType: 'PLUMBER' }),
+        .send({ tradeType: 'PLUMBER', servicePincode: '560001' }),
     );
     const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
 
@@ -46,7 +46,7 @@ describe('AdminArtisansController (real HTTP, Postgres)', () => {
     await asArtisan(
       request(t.app.getHttpServer())
         .post('/api/artisans/me/profile')
-        .send({ tradeType: 'PLUMBER' }),
+        .send({ tradeType: 'PLUMBER', servicePincode: '560001' }),
     );
     const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
     await Artisan.update({ documentUrl: 'artisans/x/doc.pdf' }, { where: { id: artisan!.id } });
@@ -62,7 +62,7 @@ describe('AdminArtisansController (real HTTP, Postgres)', () => {
     await asArtisan(
       request(t.app.getHttpServer())
         .post('/api/artisans/me/profile')
-        .send({ tradeType: 'PLUMBER' }),
+        .send({ tradeType: 'PLUMBER', servicePincode: '560001' }),
     );
     const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
     const hireRequest = await ArtisanHireRequest.create({
@@ -84,7 +84,7 @@ describe('AdminArtisansController (real HTTP, Postgres)', () => {
     await asArtisan(
       request(t.app.getHttpServer())
         .post('/api/artisans/me/profile')
-        .send({ tradeType: 'PLUMBER' }),
+        .send({ tradeType: 'PLUMBER', servicePincode: '560001' }),
     );
     const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
     const hireRequest = await ArtisanHireRequest.create({
@@ -107,7 +107,7 @@ describe('AdminArtisansController (real HTTP, Postgres)', () => {
     await asArtisan(
       request(t.app.getHttpServer())
         .post('/api/artisans/me/profile')
-        .send({ tradeType: 'PLUMBER' }),
+        .send({ tradeType: 'PLUMBER', servicePincode: '560001' }),
     );
     const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
     await Artisan.update({ documentUrl: 'artisans/x/doc.pdf' }, { where: { id: artisan!.id } });
@@ -127,7 +127,7 @@ describe('AdminArtisansController (real HTTP, Postgres)', () => {
     await asArtisan(
       request(t.app.getHttpServer())
         .post('/api/artisans/me/profile')
-        .send({ tradeType: 'PLUMBER' }),
+        .send({ tradeType: 'PLUMBER', servicePincode: '560001' }),
     );
     const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
     await ArtisanHireRequest.create({
@@ -149,7 +149,7 @@ describe('AdminArtisansController (real HTTP, Postgres)', () => {
     await asArtisan(
       request(t.app.getHttpServer())
         .post('/api/artisans/me/profile')
-        .send({ tradeType: 'PLUMBER' }),
+        .send({ tradeType: 'PLUMBER', servicePincode: '560001' }),
     );
     const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
     await ArtisanHireRequest.create({
@@ -172,7 +172,7 @@ describe('AdminArtisansController (real HTTP, Postgres)', () => {
     await asArtisan(
       request(t.app.getHttpServer())
         .post('/api/artisans/me/profile')
-        .send({ tradeType: 'PLUMBER' }),
+        .send({ tradeType: 'PLUMBER', servicePincode: '560001' }),
     );
     const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
     await ArtisanHireRequest.create({
@@ -202,7 +202,7 @@ describe('AdminArtisansController (real HTTP, Postgres)', () => {
     await asArtisan(
       request(t.app.getHttpServer())
         .post('/api/artisans/me/profile')
-        .send({ tradeType: 'PLUMBER' }),
+        .send({ tradeType: 'PLUMBER', servicePincode: '560001' }),
     );
     const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
     await Artisan.update(

@@ -256,6 +256,28 @@ export class ArtisansController {
     return this.hireRequestsService.getEstimateHistory(id);
   }
 
+  // Direct single-hire-request read, by id. Previously the only way to
+  // get one request's full shape was to find it in a list response
+  // (listMyHireRequests / listMyRequestsAsCustomer) — this closes that
+  // gap for a detail screen that only has an id (e.g. from a
+  // notification or a deep link). Same ownership rule as
+  // getEstimateHistory/getAttributedOrders above. Registered before the
+  // ':id/estimates' and ':id/orders' sub-resource routes below so this
+  // bare ':id' never swallows those more specific paths — Nest/Express
+  // match registration order for two dynamic segments at the same
+  // position, unlike a static-vs-dynamic case where the static one
+  // always wins regardless of order.
+  @Get('hire-requests/:id')
+  @ApiOperation({ summary: 'Read a single hire request by id' })
+  @ApiResponse({ status: 200, description: 'The hire request' })
+  @ApiResponse({ status: 403, description: 'Not the owning customer, owning artisan, or admin' })
+  @ApiResponse({ status: 404, description: 'No such hire request' })
+  async getHireRequestById(@Req() req: any, @Param('id', ParseUUIDPipe) id: string) {
+    const request = await this.hireRequestsService.getRequestById(id);
+    await this.assertCanViewHireRequest(req.user.sub, req.user.role, request);
+    return this.hireRequestsService.getHireRequestDto(id);
+  }
+
   // Decision 0045 item 7: the orders a customer placed while attributing
   // to this engagement. Same ownership rule as getEstimateHistory above.
   @Get('hire-requests/:id/orders')

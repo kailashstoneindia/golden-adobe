@@ -12,12 +12,17 @@ export class OnboardArtisanDto implements ArtisanOnboardContract {
   @IsEnum(TRADE_TYPES)
   tradeType: TradeType;
 
-  @ApiPropertyOptional({ example: '560001' })
-  @IsOptional()
+  // Required (docs/artisan.md §3's Step 1 spec — service area is a
+  // required onboarding field, previously only enforced client-side).
+  // Matches the shared ArtisanOnboardDto contract's own optional `?`
+  // (customer/admin reads of an already-onboarded artisan can still see a
+  // null pincode from data created before this change), but new
+  // onboarding must supply it.
+  @ApiProperty({ example: '560001' })
   @IsString()
   @IsNotEmpty()
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
-  servicePincode?: string;
+  servicePincode: string;
 
   @ApiPropertyOptional({ example: 6 })
   @IsOptional()

@@ -76,7 +76,7 @@ describe('ArtisansService (integration)', () => {
   });
 
   it('creates a team member with only a name and nothing else', async () => {
-    await service.onboardProfile(userId, { tradeType: 'PLUMBER' });
+    await service.onboardProfile(userId, { tradeType: 'PLUMBER', servicePincode: '560001' });
     const member = await service.addTeamMember(userId, { name: 'Ramesh' });
     expect(member.roleOnTeam).toBeNull();
     expect(member.phone).toBeNull();
@@ -84,13 +84,17 @@ describe('ArtisansService (integration)', () => {
   });
 
   it('throws NotFoundException for an unverified artisan', async () => {
-    const artisan = await service.onboardProfile(userId, { tradeType: 'PLUMBER' });
+    const artisan = await service.onboardProfile(userId, {
+      tradeType: 'PLUMBER',
+      servicePincode: '560001',
+    });
     await expect(service.getPublicProfile(artisan.id)).rejects.toThrow(NotFoundException);
   });
 
   it('returns the bio-only profile for a verified artisan', async () => {
     const artisan = await service.onboardProfile(userId, {
       tradeType: 'PLUMBER',
+      servicePincode: '560001',
       bio: 'Ten years tiling.',
     });
     await Artisan.update(
@@ -103,7 +107,10 @@ describe('ArtisansService (integration)', () => {
   });
 
   it('sets documentUrl only after confirmDocumentUpload is called', async () => {
-    const profile = await service.onboardProfile(userId, { tradeType: 'PLUMBER' });
+    const profile = await service.onboardProfile(userId, {
+      tradeType: 'PLUMBER',
+      servicePincode: '560001',
+    });
     expect(profile.documentUrl).toBeNull();
     const key = `artisans/${profile.id}/doc-key.pdf`;
     fakeStorage.seed(key);
@@ -112,14 +119,17 @@ describe('ArtisansService (integration)', () => {
   });
 
   it('rejects confirmDocumentUpload for a key outside this artisan own prefix', async () => {
-    await service.onboardProfile(userId, { tradeType: 'PLUMBER' });
+    await service.onboardProfile(userId, { tradeType: 'PLUMBER', servicePincode: '560001' });
     await expect(
       service.confirmDocumentUpload(userId, 'artisans/someone-else/doc-key.pdf'),
     ).rejects.toThrow();
   });
 
   it('rejects confirmDocumentUpload when the key was never actually uploaded', async () => {
-    const profile = await service.onboardProfile(userId, { tradeType: 'PLUMBER' });
+    const profile = await service.onboardProfile(userId, {
+      tradeType: 'PLUMBER',
+      servicePincode: '560001',
+    });
     const key = `artisans/${profile.id}/doc-never-uploaded.pdf`;
     await expect(service.confirmDocumentUpload(userId, key)).rejects.toThrow();
     const unchanged = await service.getOwnProfile(userId);
@@ -127,12 +137,18 @@ describe('ArtisansService (integration)', () => {
   });
 
   it('cannot verify an artisan with no uploaded document', async () => {
-    const profile = await service.onboardProfile(userId, { tradeType: 'PLUMBER' });
+    const profile = await service.onboardProfile(userId, {
+      tradeType: 'PLUMBER',
+      servicePincode: '560001',
+    });
     await expect(service.verify(profile.id)).rejects.toThrow();
   });
 
   it('rejectVerification clears isVerified regardless of whether a reason was given', async () => {
-    const profile = await service.onboardProfile(userId, { tradeType: 'PLUMBER' });
+    const profile = await service.onboardProfile(userId, {
+      tradeType: 'PLUMBER',
+      servicePincode: '560001',
+    });
     const key = `artisans/${profile.id}/doc-key.pdf`;
     fakeStorage.seed(key);
     await service.confirmDocumentUpload(userId, key);
@@ -143,13 +159,16 @@ describe('ArtisansService (integration)', () => {
   });
 
   it('listPendingVerification excludes artisans with no uploaded document', async () => {
-    await service.onboardProfile(userId, { tradeType: 'PLUMBER' });
+    await service.onboardProfile(userId, { tradeType: 'PLUMBER', servicePincode: '560001' });
     const page = await service.listPendingVerification(1, 20);
     expect(page.items.find((artisan) => artisan.userId === userId)).toBeUndefined();
   });
 
   it('listPendingVerification includes a document-backed, unverified artisan and paginates', async () => {
-    const profile = await service.onboardProfile(userId, { tradeType: 'PLUMBER' });
+    const profile = await service.onboardProfile(userId, {
+      tradeType: 'PLUMBER',
+      servicePincode: '560001',
+    });
     const key = `artisans/${profile.id}/doc-key.pdf`;
     fakeStorage.seed(key);
     await service.confirmDocumentUpload(userId, key);
@@ -162,7 +181,7 @@ describe('ArtisansService (integration)', () => {
   });
 
   it('listArtisans returns a paginated page, newest first', async () => {
-    await service.onboardProfile(userId, { tradeType: 'ELECTRICIAN' });
+    await service.onboardProfile(userId, { tradeType: 'ELECTRICIAN', servicePincode: '560001' });
     const page = await service.listArtisans(1, 20);
     expect(page.items.some((artisan) => artisan.userId === userId)).toBe(true);
     expect(page.page).toBe(1);
