@@ -24,12 +24,16 @@ import { VendorListingStatus } from '../models/vendor-listing.model';
 // maxDecimalPlaces mirrors the column's scale of 3: a value with more
 // precision than the column can store would otherwise be silently rounded
 // on write, and the vendor would read back a number they did not type.
-const QUANTITY_CONSTRAINTS = { allowNaN: false, allowInfinity: false, maxDecimalPlaces: 3 };
+//
+// Exported so create-vendor-listing.dto.ts's initialQuantityAvailable
+// (decision 0053) validates against the exact same bounds as this file's
+// quantityAvailable, rather than a second, independently-maintained copy.
+export const QUANTITY_CONSTRAINTS = { allowNaN: false, allowInfinity: false, maxDecimalPlaces: 3 };
 
 // 12 digits total, 3 after the point, so the largest storable value is
 // 999999999.999. Rejecting above that at the DTO turns an opaque Postgres
 // "numeric field overflow" into a message naming the limit.
-const MAX_QUANTITY = 999999999.999;
+export const MAX_QUANTITY = 999999999.999;
 
 export class SetStockDto {
   @ApiProperty({
@@ -78,7 +82,7 @@ export class BulkStockItemDto {
 // (partial success with a failures[] report) leaves the vendor in a
 // half-applied state they then have to reconcile by hand, and this
 // codebase has already chosen loud rejection over silent partial success
-// for export scoping (VendorCategoriesService.assertExportScopeAllowed).
+// for category scoping (VendorCategoriesService.assertCategoryScopeAllowed).
 //
 // The 500-item cap is not arbitrary: the whole batch becomes one SQL
 // statement, so the cap bounds both the statement size and the size of a

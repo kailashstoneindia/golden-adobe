@@ -65,7 +65,7 @@ export class VendorCatalogImportController {
     // products sit in categories they may not export, and the two routes
     // would disagree about what counts as a valid scope.
     const vendor = await this.resolveVendor(req);
-    await this.vendorCategoriesService.assertExportScopeAllowed(vendor.id, scope.leafCategoryIds);
+    await this.vendorCategoriesService.assertCategoryScopeAllowed(vendor.id, scope.leafCategoryIds);
 
     const count = await this.exportService.countRows({
       leafCategoryIds: scope.leafCategoryIds,
@@ -83,7 +83,7 @@ export class VendorCatalogImportController {
   })
   async exportFile(@Req() req: any, @Query() scope: VendorExportScopeDto, @Res() res: Response) {
     const vendor = await this.resolveVendor(req);
-    await this.vendorCategoriesService.assertExportScopeAllowed(vendor.id, scope.leafCategoryIds);
+    await this.vendorCategoriesService.assertCategoryScopeAllowed(vendor.id, scope.leafCategoryIds);
 
     const { buffer, filename, rowCount } = await this.exportService.generate({
       leafCategoryIds: scope.leafCategoryIds,

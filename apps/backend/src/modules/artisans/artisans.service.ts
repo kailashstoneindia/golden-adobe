@@ -15,8 +15,10 @@ import {
   ArtisanAccountDetailsInputDto,
   ArtisanProfileDto,
   ArtisanPublicProfileDto,
+  ArtisanSearchQuery,
   ArtisanTeamMemberDto,
   ArtisanTeamMemberInputDto,
+  PaginatedArtisanPublicProfilesResponse,
   PaginatedArtisansResponse,
 } from '@golden-abode/types';
 
@@ -152,7 +154,21 @@ export class ArtisansService {
     return toAccountDetailsDto(updated)!;
   }
 
-  async createUploadUrl(userId: string, contentType: string): Promise<PresignedPost> {
+  // purpose 'lead' (default) mints a key confirmDocumentUpload will later
+  // accept and set as this artisan's own documentUrl. purpose
+  // 'team_member' mints a key one sub-path deeper
+  // (artisans/<id>/team/...) for a mobile client building a team
+  // member's documentUrl directly — no confirm step exists or is needed
+  // for that path (team-member documents have no existence check, by
+  // design — see assertOwnedDocumentKey's own comment below); the client
+  // uploads to the presigned URL, then passes the resulting key straight
+  // through to addTeamMember/updateTeamMember, which already validates
+  // the artisans/<id>/ prefix regardless of which sub-path it's under.
+  async createUploadUrl(
+    userId: string,
+    contentType: string,
+    purpose: 'lead' | 'team_member' = 'lead',
+  ): Promise<PresignedPost> {
     const artisan = await this.resolveArtisanByUserId(userId);
 
     if (!ALLOWED_DOCUMENT_CONTENT_TYPES.includes(contentType)) {
@@ -160,7 +176,8 @@ export class ArtisansService {
     }
 
     const extension = contentType === 'application/pdf' ? 'pdf' : contentType.split('/')[1];
-    const key = `artisans/${artisan.id}/doc-${randomUUID()}.${extension}`;
+    const subPath = purpose === 'team_member' ? 'team/' : '';
+    const key = `artisans/${artisan.id}/${subPath}doc-${randomUUID()}.${extension}`;
 
     return this.storage.presignPost({
       key,
@@ -253,6 +270,41 @@ export class ArtisansService {
     const artisan = await this.resolveArtisanByUserId(userId);
     const member = await this.findOwnedTeamMember(artisan.id, memberId);
     await member.destroy();
+  }
+
+  // Customer-facing browse/search (decision 0051 Batch B). isVerified:
+  // true unconditionally — same visibility rule getPublicProfile already
+  // enforces, applied here as a list filter instead of a single-row gate.
+  // Both filters are exact-match (tradeType an enum equality, pincode a
+  // plain string equality) — Artisan has no lat/lng today, so this is not
+  // a radius/geo search, only what the schema actually supports.
+  async searchPublic(
+    page: number,
+    limit: number,
+    query: Pick<ArtisanSearchQuery, 'tradeType' | 'pincode'>,
+  ): Promise<PaginatedArtisanPublicProfilesResponse> {
+    const where: WhereOptions<Artisan> = { isVerified: true };
+    if (query.tradeType) {
+      where.tradeType = query.tradeType;
+    }
+    if (query.pincode) {
+      where.servicePincode = query.pincode;
+    }
+
+    const offset = (page - 1) * limit;
+    const { rows, count } = await this.artisanModel.findAndCountAll({
+      where,
+      limit,
+      offset,
+      order: [['createdAt', 'DESC']],
+    });
+    return {
+      items: rows.map((artisan) => toArtisanPublicProfileDto(artisan)),
+      total: count,
+      page,
+      limit,
+      totalPages: Math.ceil(count / limit) || 1,
+    };
   }
 
   // Unverified artisans are not customer-visible at all (spec §5) — a 404

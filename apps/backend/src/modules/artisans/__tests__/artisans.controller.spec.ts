@@ -42,7 +42,7 @@ describe('ArtisansController (real HTTP, Postgres)', () => {
     const create = await asArtisan(
       request(t.app.getHttpServer())
         .post('/api/artisans/me/profile')
-        .send({ tradeType: 'PLUMBER', bio: 'Reliable plumber' }),
+        .send({ tradeType: 'PLUMBER', servicePincode: '560001', bio: 'Reliable plumber' }),
     );
     expect(create.status).toBe(201);
     expect(create.body.data.tradeType).toBe('PLUMBER');
@@ -52,11 +52,58 @@ describe('ArtisansController (real HTTP, Postgres)', () => {
     expect(read.body.data.bio).toBe('Reliable plumber');
   });
 
+  it('GET /artisans only returns verified artisans', async () => {
+    const created = await asArtisan(
+      request(t.app.getHttpServer())
+        .post('/api/artisans/me/profile')
+        .send({ tradeType: 'PLUMBER', servicePincode: '560001' }),
+    );
+    const id = created.body.data.id;
+
+    const beforeVerify = await asCustomer(request(t.app.getHttpServer()).get('/api/artisans'));
+    expect(beforeVerify.status).toBe(200);
+    expect(beforeVerify.body.data.items.some((a: { id: string }) => a.id === id)).toBe(false);
+
+    await Artisan.update(
+      { isVerified: true, documentUrl: 'artisans/x/doc.pdf' },
+      { where: { id } },
+    );
+    const afterVerify = await asCustomer(request(t.app.getHttpServer()).get('/api/artisans'));
+    expect(afterVerify.body.data.items.some((a: { id: string }) => a.id === id)).toBe(true);
+  });
+
+  it('GET /artisans?tradeType=&pincode= filters results and never leaks private fields', async () => {
+    const created = await asArtisan(
+      request(t.app.getHttpServer())
+        .post('/api/artisans/me/profile')
+        .send({ tradeType: 'ELECTRICIAN', servicePincode: '400001' }),
+    );
+    const id = created.body.data.id;
+    await Artisan.update(
+      { isVerified: true, documentUrl: 'artisans/x/doc.pdf' },
+      { where: { id } },
+    );
+
+    const res = await asCustomer(
+      request(t.app.getHttpServer()).get('/api/artisans?tradeType=ELECTRICIAN&pincode=400001'),
+    );
+    expect(res.status).toBe(200);
+    const found = res.body.data.items.find((a: { id: string }) => a.id === id);
+    expect(found).toBeDefined();
+    expect(found).not.toHaveProperty('documentUrl');
+    expect(found).not.toHaveProperty('servicePincode');
+
+    const wrongTrade = await asCustomer(
+      request(t.app.getHttpServer()).get('/api/artisans?tradeType=MASON'),
+    );
+    expect(wrongTrade.body.data.items.some((a: { id: string }) => a.id === id)).toBe(false);
+  });
+
   it('never returns a PENDING_ADMIN_REVIEW request from GET /artisans/me/hire-requests', async () => {
     await asArtisan(
       request(t.app.getHttpServer())
         .post('/api/artisans/me/profile')
-        .send({ tradeType: 'PLUMBER' }),
+        .send({ tradeType: 'PLUMBER', servicePincode: '560001' }),
     );
     const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
     await Artisan.update(
@@ -80,7 +127,9 @@ describe('ArtisansController (real HTTP, Postgres)', () => {
 
   it('answers 404 for an unverified artisan public profile', async () => {
     const created = await asArtisan(
-      request(t.app.getHttpServer()).post('/api/artisans/me/profile').send({ tradeType: 'MASON' }),
+      request(t.app.getHttpServer())
+        .post('/api/artisans/me/profile')
+        .send({ tradeType: 'MASON', servicePincode: '560001' }),
     );
     const id = created.body.data.id;
 
@@ -92,7 +141,7 @@ describe('ArtisansController (real HTTP, Postgres)', () => {
     const created = await asArtisan(
       request(t.app.getHttpServer())
         .post('/api/artisans/me/profile')
-        .send({ tradeType: 'ELECTRICIAN' }),
+        .send({ tradeType: 'ELECTRICIAN', servicePincode: '560001' }),
     );
     const id = created.body.data.id;
     await Artisan.update(
@@ -118,7 +167,7 @@ describe('ArtisansController (real HTTP, Postgres)', () => {
     const created = await asArtisan(
       request(t.app.getHttpServer())
         .post('/api/artisans/me/profile')
-        .send({ tradeType: 'PAINTER' }),
+        .send({ tradeType: 'PAINTER', servicePincode: '560001' }),
     );
     const id = created.body.data.id;
     await Artisan.update(
@@ -144,11 +193,31 @@ describe('ArtisansController (real HTTP, Postgres)', () => {
     expect(res.status).toBe(403);
   });
 
+  it('answers 409 when hiring a verified but unavailable artisan', async () => {
+    const created = await asArtisan(
+      request(t.app.getHttpServer())
+        .post('/api/artisans/me/profile')
+        .send({ tradeType: 'PAINTER', servicePincode: '560001' }),
+    );
+    const id = created.body.data.id;
+    await Artisan.update(
+      { isVerified: true, isAvailable: false, documentUrl: 'artisans/x/doc.pdf' },
+      { where: { id } },
+    );
+
+    const res = await asCustomer(
+      request(t.app.getHttpServer())
+        .post('/api/artisans/hire-requests')
+        .send({ artisanId: id, addressText: '1 Park Lane' }),
+    );
+    expect(res.status).toBe(409);
+  });
+
   it('confirms a document upload once the object actually exists in storage', async () => {
     const created = await asArtisan(
       request(t.app.getHttpServer())
         .post('/api/artisans/me/profile')
-        .send({ tradeType: 'CARPENTER' }),
+        .send({ tradeType: 'CARPENTER', servicePincode: '560001' }),
     );
     const id = created.body.data.id;
     const key = `artisans/${id}/doc-real.pdf`;
@@ -165,7 +234,7 @@ describe('ArtisansController (real HTTP, Postgres)', () => {
     const created = await asArtisan(
       request(t.app.getHttpServer())
         .post('/api/artisans/me/profile')
-        .send({ tradeType: 'TILE_LAYING' }),
+        .send({ tradeType: 'TILE_LAYING', servicePincode: '560001' }),
     );
     const id = created.body.data.id;
     const key = `artisans/${id}/doc-never-uploaded.pdf`;
@@ -181,7 +250,9 @@ describe('ArtisansController (real HTTP, Postgres)', () => {
 
   it('answers 403 when the artisan tries to read estimate history for a request still PENDING_ADMIN_REVIEW', async () => {
     await asArtisan(
-      request(t.app.getHttpServer()).post('/api/artisans/me/profile').send({ tradeType: 'MASON' }),
+      request(t.app.getHttpServer())
+        .post('/api/artisans/me/profile')
+        .send({ tradeType: 'MASON', servicePincode: '560001' }),
     );
     const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
     const hireRequest = await ArtisanHireRequest.create({
@@ -199,7 +270,9 @@ describe('ArtisansController (real HTTP, Postgres)', () => {
 
   it('still allows the owning customer to read estimate history while PENDING_ADMIN_REVIEW', async () => {
     await asArtisan(
-      request(t.app.getHttpServer()).post('/api/artisans/me/profile').send({ tradeType: 'MASON' }),
+      request(t.app.getHttpServer())
+        .post('/api/artisans/me/profile')
+        .send({ tradeType: 'MASON', servicePincode: '560001' }),
     );
     const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
     const hireRequest = await ArtisanHireRequest.create({
@@ -215,9 +288,106 @@ describe('ArtisansController (real HTTP, Postgres)', () => {
     expect(res.status).toBe(200);
   });
 
+  it('owning customer can fetch a single hire request by id', async () => {
+    await asArtisan(
+      request(t.app.getHttpServer())
+        .post('/api/artisans/me/profile')
+        .send({ tradeType: 'MASON', servicePincode: '560001' }),
+    );
+    const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
+    const hireRequest = await ArtisanHireRequest.create({
+      customerId: t.customerUserId,
+      artisanId: artisan!.id,
+      addressText: '1 Park Lane',
+      notes: 'Leaking pipe',
+      status: 'ACCEPTED_BY_ARTISAN',
+    } as never);
+
+    const res = await asCustomer(
+      request(t.app.getHttpServer()).get(`/api/artisans/hire-requests/${hireRequest.id}`),
+    );
+    expect(res.status).toBe(200);
+    expect(res.body.data.id).toBe(hireRequest.id);
+    expect(res.body.data.addressText).toBe('1 Park Lane');
+    expect(res.body.data.notes).toBe('Leaking pipe');
+  });
+
+  it('owning artisan can fetch a single hire request by id once admin-approved', async () => {
+    await asArtisan(
+      request(t.app.getHttpServer())
+        .post('/api/artisans/me/profile')
+        .send({ tradeType: 'MASON', servicePincode: '560001' }),
+    );
+    const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
+    const hireRequest = await ArtisanHireRequest.create({
+      customerId: t.customerUserId,
+      artisanId: artisan!.id,
+      addressText: '1 Park Lane',
+      status: 'IN_PROGRESS',
+    } as never);
+
+    const res = await asArtisan(
+      request(t.app.getHttpServer()).get(`/api/artisans/hire-requests/${hireRequest.id}`),
+    );
+    expect(res.status).toBe(200);
+    expect(res.body.data.status).toBe('IN_PROGRESS');
+  });
+
+  it('answers 403 when the artisan tries to fetch a hire request still PENDING_ADMIN_REVIEW', async () => {
+    await asArtisan(
+      request(t.app.getHttpServer())
+        .post('/api/artisans/me/profile')
+        .send({ tradeType: 'MASON', servicePincode: '560001' }),
+    );
+    const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
+    const hireRequest = await ArtisanHireRequest.create({
+      customerId: t.customerUserId,
+      artisanId: artisan!.id,
+      addressText: '1 Park Lane',
+      status: 'PENDING_ADMIN_REVIEW',
+    } as never);
+
+    const res = await asArtisan(
+      request(t.app.getHttpServer()).get(`/api/artisans/hire-requests/${hireRequest.id}`),
+    );
+    expect(res.status).toBe(403);
+  });
+
+  it('answers 403 when a stranger tries to fetch someone else hire request by id', async () => {
+    await asArtisan(
+      request(t.app.getHttpServer())
+        .post('/api/artisans/me/profile')
+        .send({ tradeType: 'MASON', servicePincode: '560001' }),
+    );
+    const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
+    const hireRequest = await ArtisanHireRequest.create({
+      customerId: t.customerUserId,
+      artisanId: artisan!.id,
+      addressText: '1 Park Lane',
+      status: 'ACCEPTED_BY_ARTISAN',
+    } as never);
+    const { token: otherArtisanToken } = await t.newArtisanUser();
+
+    const res = await request(t.app.getHttpServer())
+      .get(`/api/artisans/hire-requests/${hireRequest.id}`)
+      .set('Authorization', `Bearer ${otherArtisanToken}`);
+    expect(res.status).toBe(403);
+  });
+
+  it('answers 404 for a hire request id that does not exist', async () => {
+    const res = await asCustomer(
+      request(t.app.getHttpServer()).get(
+        '/api/artisans/hire-requests/00000000-0000-4000-8000-000000000000',
+      ),
+    );
+    expect(res.status).toBe(404);
+  });
+
   it('owning customer can list orders attributed to a hire request', async () => {
     await asArtisan(
-      request(t.app.getHttpServer()).post('/api/artisans/me/profile').send({ tradeType: 'MASON' }),
+      request(t.app.getHttpServer())
+        .post('/api/artisans/me/profile')
+        .send({ tradeType: 'MASON', servicePincode: '560001' }),
     );
     const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
     const hireRequest = await ArtisanHireRequest.create({
@@ -253,7 +423,9 @@ describe('ArtisansController (real HTTP, Postgres)', () => {
 
   it('answers 403 when a stranger tries to list orders attributed to someone else hire request', async () => {
     await asArtisan(
-      request(t.app.getHttpServer()).post('/api/artisans/me/profile').send({ tradeType: 'MASON' }),
+      request(t.app.getHttpServer())
+        .post('/api/artisans/me/profile')
+        .send({ tradeType: 'MASON', servicePincode: '560001' }),
     );
     const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
     const hireRequest = await ArtisanHireRequest.create({
@@ -274,7 +446,7 @@ describe('ArtisansController (real HTTP, Postgres)', () => {
     await asArtisan(
       request(t.app.getHttpServer())
         .post('/api/artisans/me/profile')
-        .send({ tradeType: 'PAINTER' }),
+        .send({ tradeType: 'PAINTER', servicePincode: '560001' }),
     );
     const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
     const hireRequest = await ArtisanHireRequest.create({
@@ -294,7 +466,9 @@ describe('ArtisansController (real HTTP, Postgres)', () => {
 
   it('artisan can start and complete work on their own accepted hire request', async () => {
     await asArtisan(
-      request(t.app.getHttpServer()).post('/api/artisans/me/profile').send({ tradeType: 'MASON' }),
+      request(t.app.getHttpServer())
+        .post('/api/artisans/me/profile')
+        .send({ tradeType: 'MASON', servicePincode: '560001' }),
     );
     const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
     const hireRequest = await ArtisanHireRequest.create({
@@ -325,7 +499,9 @@ describe('ArtisansController (real HTTP, Postgres)', () => {
 
   it('answers 409 when starting a hire request that is not yet accepted', async () => {
     await asArtisan(
-      request(t.app.getHttpServer()).post('/api/artisans/me/profile').send({ tradeType: 'MASON' }),
+      request(t.app.getHttpServer())
+        .post('/api/artisans/me/profile')
+        .send({ tradeType: 'MASON', servicePincode: '560001' }),
     );
     const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
     const hireRequest = await ArtisanHireRequest.create({
@@ -345,7 +521,9 @@ describe('ArtisansController (real HTTP, Postgres)', () => {
 
   it('customer can cancel their own hire request with a reason', async () => {
     await asArtisan(
-      request(t.app.getHttpServer()).post('/api/artisans/me/profile').send({ tradeType: 'MASON' }),
+      request(t.app.getHttpServer())
+        .post('/api/artisans/me/profile')
+        .send({ tradeType: 'MASON', servicePincode: '560001' }),
     );
     const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
     const hireRequest = await ArtisanHireRequest.create({
@@ -367,7 +545,9 @@ describe('ArtisansController (real HTTP, Postgres)', () => {
 
   it('answers 400 when cancelling without a reason', async () => {
     await asArtisan(
-      request(t.app.getHttpServer()).post('/api/artisans/me/profile').send({ tradeType: 'MASON' }),
+      request(t.app.getHttpServer())
+        .post('/api/artisans/me/profile')
+        .send({ tradeType: 'MASON', servicePincode: '560001' }),
     );
     const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
     const hireRequest = await ArtisanHireRequest.create({
@@ -390,10 +570,12 @@ describe('ArtisansController (real HTTP, Postgres)', () => {
     await request(t.app.getHttpServer())
       .post('/api/artisans/me/profile')
       .set('Authorization', `Bearer ${otherArtisanToken}`)
-      .send({ tradeType: 'MASON' });
+      .send({ tradeType: 'MASON', servicePincode: '560001' });
 
     await asArtisan(
-      request(t.app.getHttpServer()).post('/api/artisans/me/profile').send({ tradeType: 'MASON' }),
+      request(t.app.getHttpServer())
+        .post('/api/artisans/me/profile')
+        .send({ tradeType: 'MASON', servicePincode: '560001' }),
     );
     const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
     const hireRequest = await ArtisanHireRequest.create({
@@ -412,7 +594,9 @@ describe('ArtisansController (real HTTP, Postgres)', () => {
 
   it('rejects a team member documentUrl outside the artisan own prefix', async () => {
     await asArtisan(
-      request(t.app.getHttpServer()).post('/api/artisans/me/profile').send({ tradeType: 'OTHERS' }),
+      request(t.app.getHttpServer())
+        .post('/api/artisans/me/profile')
+        .send({ tradeType: 'OTHERS', servicePincode: '560001' }),
     );
 
     const res = await asArtisan(
@@ -425,7 +609,9 @@ describe('ArtisansController (real HTTP, Postgres)', () => {
 
   it('accepts a team member documentUrl under the artisan own prefix', async () => {
     const created = await asArtisan(
-      request(t.app.getHttpServer()).post('/api/artisans/me/profile').send({ tradeType: 'OTHERS' }),
+      request(t.app.getHttpServer())
+        .post('/api/artisans/me/profile')
+        .send({ tradeType: 'OTHERS', servicePincode: '560001' }),
     );
     const id = created.body.data.id;
 

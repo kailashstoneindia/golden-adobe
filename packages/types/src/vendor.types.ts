@@ -143,6 +143,28 @@ export type ListVendorListingsQuery = {
   limit?: number;
 };
 
+// Decision 0053 — vendor-facing catalog search, so a vendor can find a
+// master_product id to list against without a bulk sheet upload. Deliberately
+// thin: just enough to identify the right row, not full admin-catalog detail.
+export type VendorCatalogProductDto = {
+  masterProductId: string;
+  name: string;
+  productCode: string;
+  brand: string | null;
+  categoryPath: string;
+  saleUnitType: 'discrete' | 'cut_to_length' | 'tinted_to_order';
+};
+
+export type CreateVendorListingRequest = {
+  masterProductId: string;
+  price: number;
+  mrp?: number;
+  minOrderQty?: number;
+  statedGrade?: string;
+  vendorSku?: string;
+  initialQuantityAvailable?: number;
+};
+
 export type SetVendorStockRequest = {
   quantityAvailable: number;
 };

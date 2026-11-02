@@ -413,6 +413,41 @@ describe('HireRequestsService (integration)', () => {
     expect(dto?.artisanTeamSize).toBeNull();
   });
 
+  it('createRequest rejects an unavailable (but verified) artisan with a 409', async () => {
+    const unavailableUser = await User.create({
+      name: `Unavailable Artisan ${suffix}`,
+      phone: `2${suffix}`.slice(0, 10),
+      role: Role.ARTISAN,
+      isActive: true,
+    } as never);
+    const unavailableArtisan = await Artisan.create({
+      userId: unavailableUser.id,
+      tradeType: 'PAINTER',
+      isVerified: true,
+      isAvailable: false,
+    } as never);
+
+    await expect(
+      service.createRequest(customerId, {
+        artisanId: unavailableArtisan.id,
+        addressText: 'Somewhere',
+      }),
+    ).rejects.toThrow(ConflictException);
+
+    await Artisan.destroy({ where: { id: unavailableArtisan.id } });
+    await User.destroy({ where: { id: unavailableUser.id } });
+  });
+
+  it('createRequest succeeds for a verified, available artisan', async () => {
+    await Artisan.update({ isAvailable: true }, { where: { id: artisanId } });
+    await expect(
+      service.createRequest(customerId, {
+        artisanId,
+        addressText: 'Somewhere available',
+      }),
+    ).resolves.toMatchObject({ status: 'PENDING_ADMIN_REVIEW' });
+  });
+
   it('createRequest throws for an unverified artisan', async () => {
     const unverifiedUser = await User.create({
       name: `Unverified Artisan ${suffix}`,

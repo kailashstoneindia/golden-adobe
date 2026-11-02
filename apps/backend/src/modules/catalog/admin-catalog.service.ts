@@ -14,6 +14,7 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { AttributeValueInputDto } from './dto/attribute-value-input.dto';
 import { BulkPublishProductsDto } from './dto/bulk-publish-products.dto';
+import { buildProductSearchClause, productSearchOrderBy } from './product-search-filter.util';
 
 // Backing service for the admin panel's catalog screens (browse, inspect,
 // publish). Reads Postgres directly rather than the search index, because
@@ -183,14 +184,10 @@ export class AdminCatalogService {
     const replacements: Record<string, unknown> = { limit, offset };
 
     if (query.search) {
-      // word_similarity, not similarity — a keyword against a full product
-      // name scores near zero under similarity() because it penalises length
-      // difference. Product code is matched exactly: an admin pasting
-      // "GA-0000123" wants that row, not a fuzzy neighbour.
-      where.push(
-        `(word_similarity(:search, mp.name) >= 0.5 OR mp.product_code = :search
-          OR mp.mfr_part_number = :search OR mp.gtin = :search)`,
-      );
+      // Shared with VendorCatalogSearchService (decision 0053) via
+      // product-search-filter.util.ts — see that file for why
+      // word_similarity, not similarity.
+      where.push(buildProductSearchClause());
       replacements.search = query.search;
     }
     if (query.categoryId) {
@@ -230,7 +227,7 @@ export class AdminCatalogService {
        JOIN category cat ON cat.id = mp.category_id
        LEFT JOIN brand b ON b.id = mp.brand_id
        WHERE ${whereSql}
-       ORDER BY ${query.search ? 'word_similarity(:search, mp.name) DESC,' : ''} mp.updated_at DESC
+       ORDER BY ${productSearchOrderBy(Boolean(query.search))} mp.updated_at DESC
        LIMIT :limit OFFSET :offset`,
       { type: QueryTypes.SELECT, replacements },
     );
