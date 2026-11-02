@@ -29,7 +29,7 @@ Two things a vendor needs that do not exist today, found while researching this:
   `vendor/catalog-import`, `internal/media` — nothing a vendor can search by name/code/category).
   The customer-facing search (Meilisearch, [0017](0017-search-engine-choice.md)) is city- and
   listing-scoped — it is built to show products that already have a vendor behind them in a
-  city, the opposite of what's needed here (showing products that do *not* yet have this
+  city, the opposite of what's needed here (showing products that do _not_ yet have this
   vendor's listing).
 - **No enforcement tying listing creation to `vendor_category`.** The only place
   `VendorCategoriesService.assertExportScopeAllowed` is called today is the export flow
@@ -203,7 +203,7 @@ owns "this product doesn't exist in the catalog yet."
 ## Why
 
 Treating this as "search, then create by id" rather than "run it through the match ladder" is the
-load-bearing choice: the match ladder's entire design is resolving *uncertainty* about which
+load-bearing choice: the match ladder's entire design is resolving _uncertainty_ about which
 catalog product a piece of vendor-supplied free text refers to. A vendor using a dedicated
 single-listing API has no free text to resolve — they can see real rows and click one. Routing
 that through five ladder steps built for a different problem would reintroduce
@@ -212,7 +212,7 @@ needs_review/pending_confirmation states for a case that is, by construction, ne
 Reusing `assertExportScopeAllowed` rather than writing a second category-authorization check
 keeps exactly one answer to "is this vendor allowed to touch this category" in the codebase. The
 alternative — a stricter check here while export stays on the lenient fallback — would mean a
-vendor could legitimately create a listing in a category they can't legally *export*, which is a
+vendor could legitimately create a listing in a category they can't legally _export_, which is a
 strange asymmetry to explain later. Reuse means both call sites move together when the backfill
 (0037 Batch 3 item 4, confirmed parked by the user) eventually lands.
 
