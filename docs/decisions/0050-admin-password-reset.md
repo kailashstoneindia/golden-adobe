@@ -36,7 +36,7 @@ infrastructure this project does not otherwise need yet.
   password are the same trust decision (who may act as an admin), so reusing the same gate is
   consistent with the trust model already in place, not a new one invented for this record. Works
   immediately, in every environment, with no delivery dependency.
-- **Con:** Whoever holds the secret can reset *any* admin's password without that admin's
+- **Con:** Whoever holds the secret can reset _any_ admin's password without that admin's
   involvement or consent — there is no "prove you own this email" step, unlike a typical
   emailed-link reset. Acceptable here because the secret already grants the equivalent power
   (create a brand new admin account outright), so this adds no capability beyond what already
@@ -60,7 +60,7 @@ infrastructure this project does not otherwise need yet.
 >    ([auth.controller.ts](../../apps/backend/src/modules/auth/auth.controller.ts)), alongside
 >    the existing `admin/register` and `admin/login` routes.
 > 2. **New DTO**: `AdminResetPasswordDto` — `{ email: string; newPassword: string; secretKey:
->    string }`, same validation shape as `AdminRegisterDto`/`AdminLoginDto` (`@IsEmail()`,
+string }`, same validation shape as `AdminRegisterDto`/`AdminLoginDto` (`@IsEmail()`,
 >    password `@MinLength(8) @MaxLength(128)`, `secretKey` `@MinLength(8)`).
 > 3. **New service method** `AuthService.resetAdminPassword(dto)`:
 >    - Validates `secretKey` via the existing `assertValidAdminRegistrationSecret` — no new
@@ -80,7 +80,7 @@ infrastructure this project does not otherwise need yet.
 >      password was forgotten/compromised, any session issued under the old password should not
 >      silently persist.
 >    - Logs the reset (admin email, no password/secret in the log line) and returns `{ success:
->      true }` — no tokens issued; the admin logs in again via the normal `admin/login` flow
+true }` — no tokens issued; the admin logs in again via the normal `admin/login` flow
 >      with their new password, matching how a reset conventionally ends in "now log in," not an
 >      automatic session.
 > 4. **No admin UI change in this record.** The admin app's `RegisterPage`/`LoginPage` are not

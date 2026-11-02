@@ -31,7 +31,7 @@ customer undecided. This record settles all three.
 
 - **Pro:** In-process, no new infrastructure. The release logic already exists and is already
   safe under concurrent execution — `cancel`'s guarded `UPDATE orders SET status = 'cancelled'
-  WHERE id = :id AND status = 'pending_payment'`
+WHERE id = :id AND status = 'pending_payment'`
   ([orders.service.ts:90-101](../../apps/backend/src/modules/orders/orders.service.ts#L90)) means
   two processes sweeping the same stale order at once is harmless: the second one's UPDATE
   affects zero rows and does nothing further. No lock is needed for correctness, unlike the
@@ -51,7 +51,7 @@ customer undecided. This record settles all three.
   the sweep's own guarded UPDATE is self-serializing. Adopting the heavier pattern for a job that
   doesn't need its guarantees is the kind of unjustified complexity this project avoids
   elsewhere (see 0046's rejection of an append-only recommendation log for the same reason —
-  matching a precedent's *shape* without needing its *reason* is not reuse, it's cargo-culting).
+  matching a precedent's _shape_ without needing its _reason_ is not reuse, it's cargo-culting).
 
 #### Option C — Redis TTL keys with expiry events
 
@@ -81,7 +81,7 @@ customerId)` method; both the customer-triggered `cancel` and the new sweep call
 
 **Decision: 20 minutes, swept every 5 minutes.** Typical checkout-hold windows across comparable
 platforms run 5–15 minutes; 20 is chosen slightly above that floor specifically because
-`payment.failed`'s own handling already treats a UPI-retry-after-wrong-PIN as the *expected* case
+`payment.failed`'s own handling already treats a UPI-retry-after-wrong-PIN as the _expected_ case
 for this exact checkout, not an edge case — a customer retrying across one or two failed
 attempts needs more headroom than a single-swipe card checkout does. Both numbers are named
 constants (`STALE_RESERVATION_TIMEOUT_MS`, `SWEEP_INTERVAL_MS`) in the sweep's own file, not
@@ -119,7 +119,7 @@ No such gap exists; not tracked further here.
 >    `IndexingProcessor.onModuleInit` gates the outbox drain
 >    ([indexing.processor.ts:54-61](../../apps/backend/src/modules/search/indexing/indexing.processor.ts#L54)).
 >    Finds `Order` rows where `status = PENDING_PAYMENT AND created_at < now() -
->    STALE_RESERVATION_TIMEOUT_MS`, calls `releaseAndCancel` for each, and on a true result calls
+STALE_RESERVATION_TIMEOUT_MS`, calls `releaseAndCancel` for each, and on a true result calls
 >    `sendOrderStatusChanged(customerId, orderId, OrderStatus.CANCELLED)` — same call `cancel`
 >    already makes, same reasoning.
 > 4. `STALE_RESERVATION_TIMEOUT_MS = 20 * 60 * 1000`, `SWEEP_INTERVAL` via
@@ -130,7 +130,7 @@ No such gap exists; not tracked further here.
 Option A over Option B is the load-bearing choice in this record: this project has an existing,
 proven "scheduled background job" pattern (BullMQ), and deliberately not reusing it here is a
 call worth defending explicitly rather than silently diverging. The outbox drain's weight (lock,
-retry/backoff, `WORKER_MODE` service-split readiness) exists because *without* those guarantees,
+retry/backoff, `WORKER_MODE` service-split readiness) exists because _without_ those guarantees,
 concurrent drains corrupt state (double-processing the same outbox batch) — the sweep has no
 equivalent failure mode, because its own guarded UPDATE already makes concurrent execution a
 no-op rather than a hazard. Matching Option B's shape without needing its reason would be
@@ -153,7 +153,7 @@ append-only log for recommendations that have no append-only requirement.
 ## Open questions
 
 - Whether a `PENDING_PAYMENT` order that already received at least one `payment.failed` webhook
-  should get a *shorter* sweep timeout than one that never got a webhook at all (the former has
+  should get a _shorter_ sweep timeout than one that never got a webhook at all (the former has
   stronger evidence the customer tried and struggled; the latter could still be mid-flow on a
   slow connection). Not designed here — a single fixed timeout is simpler and sufficient to
   close the gap; a differentiated timeout can be layered on later without revisiting this

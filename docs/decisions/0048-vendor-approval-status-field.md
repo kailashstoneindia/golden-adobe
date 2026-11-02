@@ -81,7 +81,7 @@ same fix can be applied there later as its own record if wanted.
 **Decision: Option A.** A new `status` column on `Vendor`
 (`PENDING | APPROVED | REJECTED`), with `User.isApproved` kept as the authorization boolean it
 already is everywhere in the guard/route layer — unchanged, so nothing that currently reads
-`isApproved` needs to change. `Vendor.status` is the richer, vendor-facing record of *how* that
+`isApproved` needs to change. `Vendor.status` is the richer, vendor-facing record of _how_ that
 boolean got set, written alongside it from the same admin actions.
 
 ### Keeping the two fields in sync
@@ -141,7 +141,7 @@ artisans (and as a fallback/generic path) — not removed, not vendor-scoped fur
 >    - These are **additive** — `PATCH /admin/users/:id/approve`/`reject` keep working exactly as
 >      today for artisans and as a generic fallback; not removed, not redirected.
 > 5. **Types** (`packages/types/src/vendor.types.ts`): add `status: 'PENDING' | 'APPROVED' |
->    'REJECTED'`, `rejectionReason: string | null`, `statusUpdatedAt: string | null` to
+'REJECTED'`, `rejectionReason: string | null`, `statusUpdatedAt: string | null` to
 >    `VendorProfileDto`, surfaced via `vendor-profile.mapper.ts`'s existing
 >    `toVendorProfileDto` — so every place that already reads a vendor profile (admin list/detail,
 >    `UserDto.vendorProfile`) gets the new fields with no separate endpoint needed.
@@ -166,7 +166,7 @@ artisans (and as a fallback/generic path) — not removed, not vendor-scoped fur
 Option A (new column on `Vendor`, not replacing `User.isApproved`) was chosen because
 `isApproved` is load-bearing everywhere auth/route guards check it today — changing its meaning
 or removing it would touch every guard in the codebase for a problem that is really about
-*admin's visibility into vendor history*, not about *authorization*. Keeping both, with
+_admin's visibility into vendor history_, not about _authorization_. Keeping both, with
 `Vendor.status` as the richer record and `isApproved` as the simple gate, mirrors how artisans
 already separate `isVerified` (gate) from the richer `ArtisanHireRequestStatus` state machine
 (0045) — proven pattern in this exact codebase, not a new idea.

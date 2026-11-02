@@ -16,8 +16,8 @@ delivery-status tracking distinct from a vendor's own order-fulfilment status
 (`OrderVendorGroup` status, per [0042](0042-cart-and-order-structure.md)).
 
 This record exists only to put the requirement on the record before it is lost to chat, per this
-project's standing rule that every design outcome — and in this case, every *confirmed future
-scope item*, even pre-design — goes to `docs/decisions/` rather than living only in
+project's standing rule that every design outcome — and in this case, every _confirmed future
+scope item_, even pre-design — goes to `docs/decisions/` rather than living only in
 conversation. The user has explicitly said scoping happens later; this is not that scoping pass.
 
 ## What's confirmed
