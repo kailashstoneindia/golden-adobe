@@ -60,14 +60,21 @@ export async function pickArtisanDocument(): Promise<ArtisanDocumentFile | null>
  * Uploads straight to S3 with the presigned POST. Goes through `fetch`, not
  * the API client — S3 must not receive our bearer token or JSON headers.
  * The policy fields go first and the file last, or S3 rejects the form.
+ *
+ * Expo SDK 56's global `fetch` (expo/fetch) only accepts strings, Blobs or
+ * objects exposing `bytes()` as FormData parts. The React Native
+ * `{ uri, name, type }` shape throws "Unsupported FormDataPart
+ * implementation", so the picked file goes in as an expo-file-system `File`.
+ * S3 reads Content-Type from the policy field, not the part header.
  */
 export async function uploadToPresignedPost(
   upload: ArtisanDocumentUploadUrl,
   file: ArtisanDocumentFile,
 ): Promise<void> {
+  const { File } = await import('expo-file-system');
   const formData = new FormData();
   Object.entries(upload.fields).forEach(([field, value]) => formData.append(field, value));
-  formData.append('file', { uri: file.uri, name: file.name, type: file.mimeType } as never);
+  formData.append('file', new File(file.uri) as unknown as Blob);
 
   const response = await fetch(upload.url, { method: 'POST', body: formData });
   if (!response.ok) {
