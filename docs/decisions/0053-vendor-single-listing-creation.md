@@ -1,7 +1,7 @@
 # 0053 — Vendor single-listing creation
 
 - **Date:** 2026-11-02
-- **Status:** Implemented (`c76bb64`)
+- **Status:** Implemented (`c76bb64`, review fixes in `327c8b7`)
 - **Supersedes / Superseded by:** —
 
 ## Context
