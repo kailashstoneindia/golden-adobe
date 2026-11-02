@@ -1,11 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsNumber, IsOptional, IsString, IsUUID, Max, MaxLength, Min } from 'class-validator';
 
-// Mirrors SetStockDto's decimal rules (vendor-stock.dto.ts) — quantity_available
-// is DECIMAL(12,3), price/mrp are DECIMAL(12,2).
-const DECIMAL_3_CONSTRAINTS = { allowNaN: false, allowInfinity: false, maxDecimalPlaces: 3 };
+import { MAX_QUANTITY, QUANTITY_CONSTRAINTS } from './vendor-stock.dto';
+
+// price/mrp have no shared constant elsewhere in this module yet — DECIMAL(12,2),
+// so 2 decimal places, same reasoning as QUANTITY_CONSTRAINTS (imported
+// above) but for money instead of quantity.
 const DECIMAL_2_CONSTRAINTS = { allowNaN: false, allowInfinity: false, maxDecimalPlaces: 2 };
-const MAX_QUANTITY = 999999999.999;
 const MAX_MONEY = 9999999999.99;
 
 export class CreateVendorListingDto {
@@ -33,7 +34,7 @@ export class CreateVendorListingDto {
 
   @ApiPropertyOptional({ default: 1, minimum: 0 })
   @IsOptional()
-  @IsNumber(DECIMAL_3_CONSTRAINTS)
+  @IsNumber(QUANTITY_CONSTRAINTS)
   @Min(0)
   @Max(MAX_QUANTITY)
   minOrderQty?: number;
@@ -57,7 +58,7 @@ export class CreateVendorListingDto {
     maximum: MAX_QUANTITY,
   })
   @IsOptional()
-  @IsNumber(DECIMAL_3_CONSTRAINTS)
+  @IsNumber(QUANTITY_CONSTRAINTS)
   @Min(0)
   @Max(MAX_QUANTITY)
   initialQuantityAvailable?: number;

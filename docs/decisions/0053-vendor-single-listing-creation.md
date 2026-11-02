@@ -227,12 +227,9 @@ unrelated gap-closing record.
 - Two new endpoints (one read, one write) plus one new service file — larger than a typical
   single-PR item in this project's pattern, but both pieces are required together: the write
   endpoint is unusable without a way to find a `masterProductId` to send it.
-- `assertExportScopeAllowed`'s name will read oddly once it's called from a non-export call site;
-  acceptable for now (flagged, not fixed) rather than renaming a method with an existing call site
-  as a drive-by in this record.
 - Creating a listing via this endpoint and via the bulk-import path now share the exact same
-  `vendor_listing_unique` constraint and the same `assertExportScopeAllowed` gate, so neither path
-  can produce a result the other considers invalid — no new inconsistency between the two listing
+  `vendor_listing_unique` constraint and the same category-scope gate, so neither path can
+  produce a result the other considers invalid — no new inconsistency between the two listing
   creation surfaces.
 - A vendor with a genuinely new (not-yet-cataloged) product still has no single-call path; they
   fall back to the one-row bulk upload (which routes to needs_review -> admin review queue) same
@@ -240,17 +237,54 @@ unrelated gap-closing record.
 
 ## Open questions
 
-- Whether `GET /vendor/catalog/products` should flag which results the vendor already has a
-  listing against (so the UI can show "you already list this" inline rather than letting them
-  discover it via the 409 from step 2). Leaning toward yes as a fast follow-on once this ships,
-  not required for correctness — the 409 already prevents the bad outcome, just later than ideal.
-- Whether `assertExportScopeAllowed` should be renamed to something scope-neutral (e.g.
-  `assertCategoryScopeAllowed`) now that it has two call sites with different purposes. Flagged,
-  not resolved — a pure rename, zero behavior change, safe to defer to whenever it's next touched.
-- Exact search strategy for `GET /vendor/catalog/products` (`pg_trgm` similarity vs. plain
-  `ILIKE '%...%'`) — not designed here; implementer's call based on what performs acceptably
-  against the live `master_product` table size, since this is a convenience lookup with no
-  correctness implications either way.
+- Whether the search endpoint should flag which results the vendor already has a listing against
+  (so the UI can show "you already list this" inline rather than letting them discover it via the
+  409). Leaning toward yes as a fast follow-on once this ships, not required for correctness — the
+  409 already prevents the bad outcome, just later than ideal.
+- Exact search strategy (`word_similarity` vs. plain `ILIKE '%...%'`) — resolved during
+  implementation by reusing `AdminCatalogService.listProducts`'s existing `word_similarity` +
+  exact-code pattern (now shared via `product-search-filter.util.ts`, see Implementation notes)
+  rather than inventing a second strategy.
+
+## Implementation notes (post-review fixes, same day)
+
+A senior-level code review of the initial implementation (`c76bb64`) found five issues, all
+addressed before this record's status moved to Implemented:
+
+- **Endpoint path differs from the Decision section above.** Built as
+  `GET /vendor/listings/catalog-search` on the existing `VendorListingsController`, not a
+  separate `GET /vendor/catalog/products` controller — simpler (one controller, already wired
+  into `VendorsModule`) and avoids standing up a second controller for a single read route. The
+  Decision section's text is left as originally written rather than silently edited, since this
+  note is the accurate record of what shipped.
+- **`createListing` is now transactional.** The listing INSERT and the optional initial-stock
+  write happen inside one `sequelize.transaction()` (`VendorListingsService.createListing`,
+  `StockService.setStock`/`getOne` now accept an optional `Transaction` parameter). Originally
+  these were two separate statements — a stock-write failure after the listing already committed
+  would have left an orphaned active listing with no stock row. Covered by a new regression test
+  forcing the stock write to fail (a negative quantity hitting Postgres's own CHECK constraint,
+  bypassing DTO validation by calling the service directly) and asserting the listing was rolled
+  back too.
+- **`createListing` now returns `VendorListingStockDto`, not the raw Sequelize model.** The raw
+  model serialized DECIMAL columns (`price`, `mrp`, `minOrderQty`) as numeric strings, inconsistent
+  with every other read path in this module (`StockService.listForVendor`/`getOne` already
+  explicitly coerce with `Number(...)` for this exact reason). Fixed by having `createListing`
+  call `StockService.getOne` (now public) inside the same transaction to build the response,
+  reusing the existing row-to-DTO mapping instead of adding a third copy of it.
+- **`assertExportScopeAllowed` renamed to `assertCategoryScopeAllowed`.** This was the "flagged,
+  not resolved" open question above under its old wording — fixed rather than deferred, since the
+  rename is zero-behavior-change and the old name's export-specific log line and error message
+  ("...before exporting them") were actively wrong when hit from this record's create path. Both
+  call sites (export's two routes, this record's create path) now share the corrected name and a
+  scope-neutral log/error message.
+- **`CreateVendorListingDto`'s quantity-decimal constraints now import `SetStockDto`'s, not
+  redefine them.** `QUANTITY_CONSTRAINTS`/`MAX_QUANTITY` exported from `vendor-stock.dto.ts`,
+  imported here — the file's own comment already claimed it "mirrors" `SetStockDto`'s rules; now
+  it actually does, instead of carrying an independent copy that could silently drift.
+- **Vendor and admin catalog search no longer duplicate the same SQL pattern.** Extracted
+  `buildProductSearchClause()`/`productSearchOrderBy()` into `product-search-filter.util.ts`,
+  used by both `VendorCatalogSearchService.search` and `AdminCatalogService.listProducts` — a
+  fix to the ranking threshold or the exact-match columns now lands in one place for both.
 
 ## Sources
 

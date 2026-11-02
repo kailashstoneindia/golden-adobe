@@ -4,6 +4,7 @@ import { QueryTypes } from 'sequelize';
 import { PaginatedResponse, VendorCatalogProductDto } from '@golden-abode/types';
 
 import { VendorCatalogSearchQueryDto } from './dto/vendor-catalog-search.dto';
+import { buildProductSearchClause, productSearchOrderBy } from './product-search-filter.util';
 
 // Decision 0053 — vendor-facing catalog search, so a vendor can find a
 // master_product id to list against via POST /vendor/listings, without
@@ -12,10 +13,11 @@ import { VendorCatalogSearchQueryDto } from './dto/vendor-catalog-search.dto';
 // from a spreadsheet cell; this is a plain search the vendor reads and
 // picks from directly, so there's no ambiguity to resolve.
 //
-// Follows the same word_similarity + exact-code pattern as
-// AdminCatalogService.listProducts, but ALWAYS restricted to
-// status = 'live' — a vendor must never be able to list against a
-// draft/pending_review/deprecated product.
+// Shares its word_similarity + exact-code matching with
+// AdminCatalogService.listProducts via product-search-filter.util.ts, so
+// a fix to the ranking threshold lands in one place for both. ALWAYS
+// restricted to status = 'live' here — a vendor must never be able to
+// list against a draft/pending_review/deprecated product.
 @Injectable()
 export class VendorCatalogSearchService {
   constructor(private readonly sequelize: Sequelize) {}
@@ -31,10 +33,7 @@ export class VendorCatalogSearchService {
     const replacements: Record<string, unknown> = { limit, offset };
 
     if (query.search) {
-      where.push(
-        `(word_similarity(:search, mp.name) >= 0.5 OR mp.product_code = :search
-          OR mp.mfr_part_number = :search OR mp.gtin = :search)`,
-      );
+      where.push(buildProductSearchClause());
       replacements.search = query.search;
     }
     if (query.categoryId) {
@@ -60,7 +59,7 @@ export class VendorCatalogSearchService {
        JOIN category cat ON cat.id = mp.category_id
        LEFT JOIN brand b ON b.id = mp.brand_id
        WHERE ${whereSql}
-       ORDER BY ${query.search ? 'word_similarity(:search, mp.name) DESC,' : ''} mp.name ASC
+       ORDER BY ${productSearchOrderBy(Boolean(query.search))} mp.name ASC
        LIMIT :limit OFFSET :offset`,
       { type: QueryTypes.SELECT, replacements },
     );

@@ -5,6 +5,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
+import { Sequelize } from 'sequelize-typescript';
+import { VendorListingStockDto } from '@golden-abode/types';
 
 import { MasterProduct, MasterProductStatus, SaleUnitType } from './models/master-product.model';
 import { VendorListing, VendorListingStatus } from './models/vendor-listing.model';
@@ -32,9 +34,13 @@ export class VendorListingsService {
     private readonly vendorListingModel: typeof VendorListing,
     private readonly vendorCategories: VendorCategoriesService,
     private readonly stockService: StockService,
+    private readonly sequelize: Sequelize,
   ) {}
 
-  async createListing(vendorId: string, dto: CreateVendorListingDto): Promise<VendorListing> {
+  async createListing(
+    vendorId: string,
+    dto: CreateVendorListingDto,
+  ): Promise<VendorListingStockDto> {
     const product = await this.masterProductModel.findByPk(dto.masterProductId);
     if (!product) {
       throw new NotFoundException(`master product ${dto.masterProductId} not found`);
@@ -45,12 +51,14 @@ export class VendorListingsService {
       );
     }
 
-    // Same enforcement export already applies (vendor-categories.service.ts
-    // assertExportScopeAllowed) — one rule for "is this vendor allowed to
-    // touch this category," reused rather than a second, differently-behaved
-    // copy. Currently a no-op for every vendor (zero vendor_category rows
-    // backfilled), same as export, until that backfill lands.
-    await this.vendorCategories.assertExportScopeAllowed(vendorId, [product.categoryId]);
+    // Same check export already applies (vendor-categories.service.ts
+    // assertCategoryScopeAllowed, renamed from assertExportScopeAllowed
+    // when this call site was added) — one rule for "is this vendor
+    // allowed to touch this category," reused rather than a second,
+    // differently-behaved copy. Currently a no-op for every vendor (zero
+    // vendor_category rows backfilled), same as export, until that
+    // backfill lands.
+    await this.vendorCategories.assertCategoryScopeAllowed(vendorId, [product.categoryId]);
 
     const isPaint = product.saleUnitType === SaleUnitType.TINTED_TO_ORDER;
     if (isPaint && dto.initialQuantityAvailable !== undefined) {
@@ -59,28 +67,42 @@ export class VendorListingsService {
       );
     }
 
-    let listing: VendorListing;
+    // Listing creation and its initial stock write (when given) happen in
+    // ONE transaction: without this, the stock write failing after the
+    // listing INSERT already committed would leave an orphaned active
+    // listing with no stock row and no way to discover it short of a
+    // separate GET /vendor/listings call.
     try {
-      listing = await this.vendorListingModel.create({
-        vendorId,
-        masterProductId: dto.masterProductId,
-        vendorSku: dto.vendorSku ?? null,
-        price: dto.price,
-        mrp: dto.mrp ?? null,
-        minOrderQty: dto.minOrderQty ?? 1,
-        statedGrade: dto.statedGrade ?? null,
-        supportsTinting: isPaint,
-        status: VendorListingStatus.ACTIVE,
-      } as never);
+      return await this.sequelize.transaction(async (transaction) => {
+        const listing = await this.vendorListingModel.create(
+          {
+            vendorId,
+            masterProductId: dto.masterProductId,
+            vendorSku: dto.vendorSku ?? null,
+            price: dto.price,
+            mrp: dto.mrp ?? null,
+            minOrderQty: dto.minOrderQty ?? 1,
+            statedGrade: dto.statedGrade ?? null,
+            supportsTinting: isPaint,
+            status: VendorListingStatus.ACTIVE,
+          } as never,
+          { transaction },
+        );
+
+        if (!isPaint && dto.initialQuantityAvailable !== undefined) {
+          return this.stockService.setStock(
+            vendorId,
+            listing.id,
+            dto.initialQuantityAvailable,
+            transaction,
+          );
+        }
+
+        return this.stockService.getOne(vendorId, listing.id, transaction);
+      });
     } catch (err) {
       throw await this.translateWriteError(err, vendorId, dto);
     }
-
-    if (!isPaint && dto.initialQuantityAvailable !== undefined) {
-      await this.stockService.setStock(vendorId, listing.id, dto.initialQuantityAvailable);
-    }
-
-    return listing;
   }
 
   // Mirrors AdminCatalogService.translateWriteError's shape: Sequelize puts

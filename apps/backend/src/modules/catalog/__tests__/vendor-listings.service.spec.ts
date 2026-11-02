@@ -104,14 +104,15 @@ describe('VendorListingsService.createListing (integration)', () => {
     await sequelize.close();
   });
 
-  it('creates an active listing against a live product', async () => {
+  it('creates an active listing against a live product, returning price as a number', async () => {
     const result = await service.createListing(vendorId, {
       masterProductId: liveProductId,
       price: 499,
     });
     expect(result.status).toBe(VendorListingStatus.ACTIVE);
     expect(result.masterProductId).toBe(liveProductId);
-    expect(Number(result.price)).toBe(499);
+    expect(result.price).toBe(499);
+    expect(typeof result.price).toBe('number');
   });
 
   it('rejects a product that is not live', async () => {
@@ -151,8 +152,11 @@ describe('VendorListingsService.createListing (integration)', () => {
       statedGrade: `stock-test-${suffix}`,
       initialQuantityAvailable: 25,
     });
-    const inventory = await Inventory.findOne({ where: { vendorListingId: result.id } as never });
+    const inventory = await Inventory.findOne({
+      where: { vendorListingId: result.vendorListingId } as never,
+    });
     expect(Number(inventory?.quantityAvailable)).toBe(25);
+    expect(result.quantityAvailable).toBe(25);
   });
 
   it('creates a paint listing with supportsTinting true, and no inventory row', async () => {
@@ -160,9 +164,12 @@ describe('VendorListingsService.createListing (integration)', () => {
       masterProductId: paintProductId,
       price: 300,
     });
-    const listing = await VendorListing.findByPk(result.id);
+    const listing = await VendorListing.findByPk(result.vendorListingId);
     expect(listing?.supportsTinting).toBe(true);
-    const inventory = await Inventory.findOne({ where: { vendorListingId: result.id } as never });
+    expect(result.isPaint).toBe(true);
+    const inventory = await Inventory.findOne({
+      where: { vendorListingId: result.vendorListingId } as never,
+    });
     expect(inventory).toBeNull();
   });
 
@@ -175,5 +182,28 @@ describe('VendorListingsService.createListing (integration)', () => {
         initialQuantityAvailable: 10,
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  // Regression for a real review finding: the listing INSERT and the
+  // initial-stock write originally happened as two separate statements,
+  // so a failure in the second left an orphaned active listing with no
+  // stock row. Forcing the stock write to fail (a negative quantity,
+  // rejected by the inventory CHECK constraint) must now roll back the
+  // listing too, since both happen in one transaction.
+  it('rolls back the listing if the initial stock write fails', async () => {
+    const grade = `rollback-test-${suffix}`;
+    await expect(
+      service.createListing(vendorId, {
+        masterProductId: liveProductId,
+        price: 10,
+        statedGrade: grade,
+        initialQuantityAvailable: -1,
+      }),
+    ).rejects.toThrow();
+
+    const listing = await VendorListing.findOne({
+      where: { vendorId, masterProductId: liveProductId, statedGrade: grade } as never,
+    });
+    expect(listing).toBeNull();
   });
 });

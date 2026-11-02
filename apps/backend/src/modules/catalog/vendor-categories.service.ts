@@ -81,13 +81,21 @@ export class VendorCategoriesService {
   }
 
   // ---------------------------------------------------------------------
-  // Export scope enforcement (the control decision 0011 and the export
-  // Swagger both describe, which until now did not exist in code).
+  // Category scope enforcement — "is this vendor allowed to touch this
+  // category." Originally written for export (the control decision 0011
+  // and the export Swagger describe, which until now did not exist in
+  // code); decision 0053 (vendor single-listing creation) reuses it
+  // verbatim rather than writing a second, differently-behaved copy, since
+  // the two operations ask the exact same authorization question. Renamed
+  // from assertExportScopeAllowed accordingly — a name and a log line that
+  // said "export" were actively misleading once a non-export caller
+  // existed (flagged as an open question in 0053, fixed here rather than
+  // deferred).
   //
   // FALLBACK, DELIBERATE: a vendor with zero registered categories is
   // treated as unrestricted rather than as "permitted nothing". Every
-  // existing vendor has zero rows today, so failing closed would break all
-  // exports the moment this shipped. This is the agreed Option A.
+  // existing vendor has zero rows today, so failing closed would break
+  // every call site the moment this shipped. This is the agreed Option A.
   //
   // TODO(phase-2): once vendor_category is backfilled for all live
   // vendors, delete the empty-set branch so an unregistered vendor is
@@ -95,12 +103,15 @@ export class VendorCategoriesService {
   // this being a real control and a formality — it is not done here only
   // because the data is not ready.
   // ---------------------------------------------------------------------
-  async assertExportScopeAllowed(vendorId: string, requestedCategoryIds: string[]): Promise<void> {
+  async assertCategoryScopeAllowed(
+    vendorId: string,
+    requestedCategoryIds: string[],
+  ): Promise<void> {
     const registered = await this.vendorCategoryModel.findAll({ where: { vendorId } });
 
     if (registered.length === 0) {
       this.logger.warn(
-        `vendor ${vendorId} has no registered categories — allowing unrestricted export scope (Option A fallback)`,
+        `vendor ${vendorId} has no registered categories — allowing unrestricted category scope (Option A fallback)`,
       );
       return;
     }
@@ -115,7 +126,8 @@ export class VendorCategoriesService {
     // Reject naming the offending categories rather than silently
     // narrowing the scope: a vendor who asked for five categories and
     // received three would have no way to tell that happened, and would
-    // read the short export as "the catalog has nothing for me".
+    // read a short export (or a rejected listing) as "the catalog has
+    // nothing for me".
     const names = await this.categoryModel.findAll({
       where: { id: { [Op.in]: notRegistered } },
     });
@@ -125,7 +137,7 @@ export class VendorCategoriesService {
     });
 
     throw new BadRequestException(
-      `not registered for ${notRegistered.length === 1 ? 'category' : 'categories'}: ${labels.join(', ')}. Ask an admin to register your shop for these categories before exporting them.`,
+      `not registered for ${notRegistered.length === 1 ? 'category' : 'categories'}: ${labels.join(', ')}. Ask an admin to register your shop for these categories first.`,
     );
   }
 
