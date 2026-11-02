@@ -53,6 +53,11 @@ valid when circumstances change.
 | [0042](0042-cart-and-order-structure.md)                     | Cart and order structure: what an item points at, and how one payment becomes many vendors' work | 2026-10-07 | Accepted                                                      |
 | [0043](0043-minimum-order-value-per-vendor.md)               | Minimum order value per vendor, replacing per-listing minimum order quantity at checkout         | 2026-10-21 | Accepted and built                                            |
 | [0044](0044-aws-first-build-before-domain.md)                | Build AWS ahead of the domain on free names, then park it                                        | 2026-10-21 | Accepted                                                      |
+| [0045](0045-artisan-hire-lifecycle-and-order-attribution.md) | Artisan hire-request lifecycle completion and order attribution                                  | 2026-10-30 | Implemented (backend)                                         |
+| [0046](0046-artisan-product-recommendations.md)              | Artisan product recommendations                                                                  | 2026-10-30 | Proposed — ready to execute                                   |
+| [0051](0051-mobile-dev-artisan-gaps-batch-a.md)              | Mobile-dev artisan gaps, Batch A (contained backend fixes)                                       | 2026-11-01 | Implemented                                                   |
+| [0052](0052-mobile-dev-artisan-gaps-batch-b.md)              | Mobile-dev artisan gaps, Batch B (browse/search, team document upload)                           | 2026-11-01 | Implemented                                                   |
+| [0053](0053-vendor-single-listing-creation.md)               | Vendor single-listing creation: the last Phase 2 gap (0037 Batch 2)                              | 2026-11-02 | Implemented                                                   |
 
 **Numbering note (corrected 2026-10-19):** 0034 was written 2026-10-15 but existed only as an
 uncommitted file until recovered and committed here alongside 0035–0037 — it was never missing

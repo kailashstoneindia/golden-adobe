@@ -18,12 +18,16 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { VendorsService } from '../vendors/vendors.service';
 import { StockService } from './stock.service';
+import { VendorCatalogSearchService } from './vendor-catalog-search.service';
+import { VendorListingsService } from './vendor-listings.service';
 import {
   BulkSetStockDto,
   ListVendorListingsQueryDto,
   SetListingStatusDto,
   SetStockDto,
 } from './dto/vendor-stock.dto';
+import { VendorCatalogSearchQueryDto } from './dto/vendor-catalog-search.dto';
+import { CreateVendorListingDto } from './dto/create-vendor-listing.dto';
 
 // Workstream 4 — the vendor's own stock screen. Until now `inventory` had
 // no write path at all: the table shipped in Phase 4, and the two columns
@@ -48,7 +52,44 @@ export class VendorListingsController {
   constructor(
     private readonly vendorsService: VendorsService,
     private readonly stockService: StockService,
+    private readonly catalogSearchService: VendorCatalogSearchService,
+    private readonly vendorListingsService: VendorListingsService,
   ) {}
+
+  // Decision 0053 — find a masterProductId to list against. Separate
+  // from GET / above: this searches the CATALOG (products you may not
+  // have a listing for yet), that lists YOUR listings.
+  @Get('catalog-search')
+  @ApiOperation({
+    summary: 'Search the catalog for a product to list, by name/code or category',
+    description:
+      'Always restricted to live products — you cannot list against a draft, pending-review, or deprecated product. Use the returned masterProductId with POST /vendor/listings.',
+  })
+  @ApiResponse({ status: 200, description: 'A page of matching catalog products' })
+  async searchCatalog(@Query() query: VendorCatalogSearchQueryDto) {
+    return this.catalogSearchService.search(query);
+  }
+
+  @Post()
+  @ApiOperation({
+    summary: 'Create one listing against an existing, live catalog product',
+    description:
+      'For a vendor with one new product to list, without building a bulk sheet. Always created active — unlike the bulk-upload path, there is no ambiguous match to confirm here, since you already picked an exact masterProductId. Scoped to your registered categories the same way export is (a vendor with no categories registered is currently unrestricted — see vendor_category backfill).',
+  })
+  @ApiResponse({ status: 201, description: 'The created listing' })
+  @ApiResponse({
+    status: 400,
+    description: 'Product is not live, or not registered for the category',
+  })
+  @ApiResponse({ status: 404, description: 'No such master product' })
+  @ApiResponse({
+    status: 409,
+    description: 'You already have a listing for this product and grade',
+  })
+  async createListing(@Req() req: any, @Body() dto: CreateVendorListingDto) {
+    const vendor = await this.vendorsService.resolveVendorByUserId(req.user.sub);
+    return this.vendorListingsService.createListing(vendor.id, dto);
+  }
 
   @Get()
   @ApiOperation({

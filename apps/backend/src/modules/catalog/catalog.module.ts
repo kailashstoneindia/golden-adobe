@@ -51,6 +51,8 @@ import { AdminCatalogService } from './admin-catalog.service';
 import { AdminCitiesController } from './admin-cities.controller';
 import { CitiesService } from './cities.service';
 import { StockService } from './stock.service';
+import { VendorCatalogSearchService } from './vendor-catalog-search.service';
+import { VendorListingsService } from './vendor-listings.service';
 
 // Phase 1 (taxonomy) + Phase 2 (master catalog, incl. the attributes_flat /
 // identity_hash trigger layer) + Phase 3 (admin catalog import) + Phase 4
@@ -159,6 +161,8 @@ import { StockService } from './stock.service';
     AdminCatalogService,
     CitiesService,
     StockService,
+    VendorCatalogSearchService,
+    VendorListingsService,
   ],
   exports: [
     SequelizeModule,
@@ -176,6 +180,11 @@ import { StockService } from './stock.service';
     // service travels to it, matching how VendorCategoriesService is
     // already consumed by AdminVendorsController.
     StockService,
+    // Same reasoning as StockService above — VendorListingsController
+    // (declared in VendorsModule) needs both to implement decision 0053's
+    // search-then-create flow.
+    VendorCatalogSearchService,
+    VendorListingsService,
     // Lets ArtisansModule reuse the existing presigned-POST S3 plumbing
     // (decision 0033) for KYC document uploads instead of building a
     // second object-storage integration. MEDIA_STORAGE_CONFIG stays

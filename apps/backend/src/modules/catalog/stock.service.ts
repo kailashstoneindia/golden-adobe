@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { Sequelize } from 'sequelize-typescript';
-import { QueryTypes } from 'sequelize';
+import { QueryTypes, Transaction } from 'sequelize';
 import { BulkStockResult, PaginatedResponse, VendorListingStockDto } from '@golden-abode/types';
 
 import { VendorListing, VendorListingStatus } from './models/vendor-listing.model';
@@ -47,6 +47,7 @@ export class StockService {
   async listForVendor(
     vendorId: string,
     query: ListVendorListingsQueryDto,
+    transaction?: Transaction,
   ): Promise<PaginatedResponse<VendorListingStockDto>> {
     const limit = Math.min(query.limit ?? 25, 100);
     const page = query.page ?? 1;
@@ -106,14 +107,14 @@ export class StockService {
        WHERE ${whereSql}
        ORDER BY vl.updated_at DESC
        LIMIT :limit OFFSET :offset`,
-      { type: QueryTypes.SELECT, replacements },
+      { type: QueryTypes.SELECT, replacements, transaction },
     );
 
     const [{ total }] = await this.sequelize.query<{ total: string }>(
       `SELECT COUNT(*) AS total
          FROM vendor_listing vl
         WHERE ${whereSql}`,
-      { type: QueryTypes.SELECT, replacements },
+      { type: QueryTypes.SELECT, replacements, transaction },
     );
 
     const totalCount = Number(total);
@@ -147,8 +148,9 @@ export class StockService {
     vendorId: string,
     vendorListingId: string,
     quantityAvailable: number,
+    transaction?: Transaction,
   ): Promise<VendorListingStockDto> {
-    const listing = await this.assertListingOwned(vendorId, vendorListingId);
+    const listing = await this.assertListingOwned(vendorId, vendorListingId, transaction);
     await this.assertNotPaint(listing);
 
     // ON CONFLICT against the partial unique index installed by
@@ -157,16 +159,22 @@ export class StockService {
     // which is exactly the duplicate the index now forbids — turning a
     // silent data split into a constraint error is an improvement, but
     // upserting avoids the error entirely.
+    //
+    // Accepts an optional transaction so a caller creating the listing AND
+    // its initial stock in one call (VendorListingsService.createListing,
+    // decision 0053) can make both writes atomic — without it, a stock
+    // write failing after the listing INSERT already committed would leave
+    // an orphaned active listing with no stock row and no way to know it.
     await this.sequelize.query(
       `INSERT INTO inventory (id, vendor_listing_id, warehouse_id, quantity_available, quantity_reserved, created_at, updated_at)
        VALUES (gen_random_uuid(), :vendorListingId, NULL, :quantityAvailable, 0, now(), now())
        ON CONFLICT (vendor_listing_id) WHERE warehouse_id IS NULL
        DO UPDATE SET quantity_available = EXCLUDED.quantity_available,
                      updated_at = now()`,
-      { replacements: { vendorListingId, quantityAvailable } },
+      { replacements: { vendorListingId, quantityAvailable }, transaction },
     );
 
-    return this.getOne(vendorId, vendorListingId);
+    return this.getOne(vendorId, vendorListingId, transaction);
   }
 
   async setStatus(
@@ -275,10 +283,12 @@ export class StockService {
   private async assertListingOwned(
     vendorId: string,
     vendorListingId: string,
+    transaction?: Transaction,
   ): Promise<VendorListing> {
     const listing = await this.vendorListingModel.findOne({
       where: { id: vendorListingId, vendorId },
       include: [{ association: 'masterProduct', attributes: ['id', 'saleUnitType'] }],
+      transaction,
     });
 
     if (!listing) {
@@ -296,11 +306,21 @@ export class StockService {
     }
   }
 
-  private async getOne(vendorId: string, vendorListingId: string): Promise<VendorListingStockDto> {
-    const page = await this.listForVendor(vendorId, {
-      page: 1,
-      limit: 1,
-    } as ListVendorListingsQueryDto);
+  // Public so VendorListingsService.createListing (decision 0053) can
+  // build the same VendorListingStockDto shape right after creating a
+  // listing + its initial stock inside one transaction, instead of
+  // duplicating this row-to-DTO mapping (and its string->number
+  // coercion) a third time.
+  async getOne(
+    vendorId: string,
+    vendorListingId: string,
+    transaction?: Transaction,
+  ): Promise<VendorListingStockDto> {
+    const page = await this.listForVendor(
+      vendorId,
+      { page: 1, limit: 1 } as ListVendorListingsQueryDto,
+      transaction,
+    );
     const found = page.items.find((item) => item.vendorListingId === vendorListingId);
     if (found) return found;
 
@@ -332,7 +352,7 @@ export class StockService {
        LEFT JOIN inventory inv
          ON inv.vendor_listing_id = vl.id AND inv.warehouse_id IS NULL
        WHERE vl.id = :vendorListingId AND vl.vendor_id = :vendorId`,
-      { type: QueryTypes.SELECT, replacements: { vendorListingId, vendorId } },
+      { type: QueryTypes.SELECT, replacements: { vendorListingId, vendorId }, transaction },
     );
 
     const row = rows[0];

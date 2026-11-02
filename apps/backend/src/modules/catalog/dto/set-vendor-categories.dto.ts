@@ -7,9 +7,10 @@ import { ApiProperty } from '@nestjs/swagger';
 // plain empty array rather than a special case.
 //
 // NOT @ArrayNotEmpty — an empty array is the legitimate way to clear a
-// vendor's registrations. Note that under the Option A export fallback,
-// clearing them currently widens export scope rather than narrowing it
-// (see VendorCategoriesService.assertExportScopeAllowed).
+// vendor's registrations. Note that under the Option A fallback, clearing
+// them currently widens scope (export AND listing creation — decision
+// 0053) rather than narrowing it (see
+// VendorCategoriesService.assertCategoryScopeAllowed).
 export class SetVendorCategoriesDto {
   @ApiProperty({
     type: [String],
