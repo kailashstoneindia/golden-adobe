@@ -17,11 +17,15 @@ export function VendorDetailModal({
   onClose,
   onSaveCity,
   onSaveCategories,
+  onApprove,
+  onReject,
 }: VendorDetailModalProps) {
   const [selectedCityId, setSelectedCityId] = useState(vendor.cityId ?? '');
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>(
     registeredCategories.map((category) => category.categoryId),
   );
+  const [isRejecting, setIsRejecting] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
 
   useEffect(() => {
     setSelectedCityId(vendor.cityId ?? '');
@@ -43,6 +47,15 @@ export function VendorDetailModal({
     await onSaveCategories(selectedCategoryIds);
   };
 
+  const handleConfirmReject = async (): Promise<void> => {
+    if (!rejectReason.trim()) {
+      return;
+    }
+    await onReject(rejectReason.trim());
+    setIsRejecting(false);
+    setRejectReason('');
+  };
+
   return (
     <div className={styles.overlay} onClick={onClose} role="presentation">
       <div className={styles.modal} onClick={(event) => event.stopPropagation()} role="dialog">
@@ -50,10 +63,73 @@ export function VendorDetailModal({
         <p className={styles.pageSubtitle}>Vendor profile and registration scope</p>
 
         <div className={styles.modalBody}>
+          <DetailRow label="Status" value={formatVendorStatus(vendor.status)} />
+          {vendor.status === 'REJECTED' && vendor.rejectionReason ? (
+            <DetailRow label="Rejection reason" value={vendor.rejectionReason} />
+          ) : null}
+          {vendor.statusUpdatedAt ? (
+            <DetailRow label="Status updated" value={formatDateTime(vendor.statusUpdatedAt)} />
+          ) : null}
           <DetailRow label="Address" value={vendor.address} />
           <DetailRow label="GSTIN" value={vendor.gstin || '—'} />
           <DetailRow label="Current city" value={vendor.city?.name ?? 'Not set'} />
           <DetailRow label="Updated" value={formatDateTime(vendor.updatedAt)} />
+
+          <section className={styles.detailSections}>
+            <h3 className={styles.sectionTitle}>Approval</h3>
+            {isRejecting ? (
+              <>
+                <label className={styles.detailLabel} htmlFor="vendor-reject-reason">
+                  Reason for rejection
+                </label>
+                <textarea
+                  id="vendor-reject-reason"
+                  className={styles.input}
+                  value={rejectReason}
+                  disabled={isSubmitting}
+                  onChange={(event) => setRejectReason(event.target.value)}
+                  placeholder="Why is this vendor being rejected? Shown back on their record."
+                />
+                <div className={styles.actions}>
+                  <button
+                    type="button"
+                    className={styles.buttonGhost}
+                    disabled={isSubmitting}
+                    onClick={() => setIsRejecting(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.buttonDanger}
+                    disabled={isSubmitting || !rejectReason.trim()}
+                    onClick={() => void handleConfirmReject()}
+                  >
+                    Confirm reject
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className={styles.actions}>
+                <button
+                  type="button"
+                  className={styles.buttonDanger}
+                  disabled={isSubmitting || vendor.status === 'REJECTED'}
+                  onClick={() => setIsRejecting(true)}
+                >
+                  Reject
+                </button>
+                <button
+                  type="button"
+                  className={styles.buttonPrimary}
+                  disabled={isSubmitting || vendor.status === 'APPROVED'}
+                  onClick={() => void onApprove()}
+                >
+                  Approve
+                </button>
+              </div>
+            )}
+          </section>
 
           <section className={styles.detailSections}>
             <h3 className={styles.sectionTitle}>City override</h3>
@@ -149,6 +225,12 @@ function DetailRow({ label, value }: VendorDetailRowProps) {
       <span className={styles.detailValue}>{value}</span>
     </div>
   );
+}
+
+function formatVendorStatus(status: string): string {
+  if (status === 'APPROVED') return 'Approved';
+  if (status === 'REJECTED') return 'Rejected';
+  return 'Pending';
 }
 
 function toggleCategoryId(currentIds: string[], categoryId: string): string[] {

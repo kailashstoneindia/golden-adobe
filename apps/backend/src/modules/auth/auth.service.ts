@@ -3,6 +3,7 @@ import {
   UnauthorizedException,
   ConflictException,
   BadRequestException,
+  NotFoundException,
   Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -24,6 +25,7 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { LogoutDto } from './dto/logout.dto';
 import { AdminRegisterDto } from './dto/admin-register.dto';
 import { AdminLoginDto } from './dto/admin-login.dto';
+import { AdminResetPasswordDto } from './dto/admin-reset-password.dto';
 
 const BCRYPT_SALT_ROUNDS = 12;
 
@@ -268,6 +270,30 @@ export class AuthService {
       refreshToken: tokens.refreshToken,
       user: this.sanitizeUser(user),
     };
+  }
+
+  // Decision 0050. No email/SMS delivery exists for admin accounts, so
+  // this reuses the same ADMIN_REGISTRATION_SECRET that already gates
+  // "may create a new admin" — the same trust decision, extended to an
+  // existing account instead of only a new one. Revokes every refresh
+  // token for the user, same pattern refresh()'s reuse-detection branch
+  // already uses: a credential change should not leave old sessions
+  // standing.
+  async resetAdminPassword(dto: AdminResetPasswordDto): Promise<{ success: true }> {
+    this.assertValidAdminRegistrationSecret(dto.secretKey);
+
+    const normalizedEmail = dto.email.trim().toLowerCase();
+    const user = await this.usersService.findByEmail(normalizedEmail);
+    if (!user || user.role !== Role.ADMIN) {
+      throw new NotFoundException('No admin account with this email');
+    }
+
+    const passwordHash = await bcrypt.hash(dto.newPassword, BCRYPT_SALT_ROUNDS);
+    await user.update({ passwordHash });
+    await this.refreshTokenModel.update({ isRevoked: true }, { where: { userId: user.id } });
+
+    this.logger.log(`Admin password reset: ${normalizedEmail}`);
+    return { success: true };
   }
 
   private assertValidAdminRegistrationSecret(secretKey: string): void {

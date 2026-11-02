@@ -9,6 +9,7 @@ import { VendorsService } from './vendors.service';
 import { VendorCategoriesService } from '../catalog/vendor-categories.service';
 import { SetVendorCategoriesDto } from '../catalog/dto/set-vendor-categories.dto';
 import { SetVendorCityDto } from './dto/set-vendor-city.dto';
+import { RejectVendorDto } from './dto/reject-vendor.dto';
 
 // Admin-facing vendor administration. Vendor data was previously reachable
 // only nested inside GET /admin/users/:id, which meant no way to list
@@ -79,5 +80,29 @@ export class AdminVendorsController {
   @ApiResponse({ status: 404, description: 'No such vendor' })
   async setCategories(@Param('id', ParseUUIDPipe) id: string, @Body() dto: SetVendorCategoriesDto) {
     return this.vendorCategoriesService.replaceForVendor(id, dto.categoryIds);
+  }
+
+  @Patch(':id/approve')
+  @ApiOperation({
+    summary: 'Approve a vendor',
+    description:
+      'Sets Vendor.status to APPROVED and User.isApproved to true. Clears any prior rejection reason. See decision 0048.',
+  })
+  @ApiResponse({ status: 200, description: 'The approved vendor profile' })
+  @ApiResponse({ status: 404, description: 'No such vendor' })
+  async approve(@Param('id', ParseUUIDPipe) id: string) {
+    return this.vendorsService.approveVendor(id);
+  }
+
+  @Patch(':id/reject')
+  @ApiOperation({
+    summary: 'Reject a vendor',
+    description:
+      'Sets Vendor.status to REJECTED and User.isApproved to false. A reason is required and persisted — shown back to admin on the vendor record. See decision 0048.',
+  })
+  @ApiResponse({ status: 200, description: 'The rejected vendor profile' })
+  @ApiResponse({ status: 404, description: 'No such vendor' })
+  async reject(@Param('id', ParseUUIDPipe) id: string, @Body() dto: RejectVendorDto) {
+    return this.vendorsService.rejectVendor(id, dto.reason);
   }
 }

@@ -2,7 +2,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { APP_CONSTANTS } from '@/constants/appConstants';
 import { vendorsService } from '@/services/api/vendorsService';
-import type { SetVendorCategoriesRequest, SetVendorCityRequest } from '@/types/vendors.types';
+import type {
+  RejectVendorRequest,
+  SetVendorCategoriesRequest,
+  SetVendorCityRequest,
+} from '@/types/vendors.types';
 
 export const VENDORS_QUERY_KEYS = {
   all: ['vendors'] as const,
@@ -58,6 +62,29 @@ export function useSetVendorCategoriesMutation() {
       queryClient.invalidateQueries({
         queryKey: VENDORS_QUERY_KEYS.categories(variables.vendorId),
       });
+    },
+  });
+}
+
+export function useApproveVendorMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (vendorId: string) => vendorsService.approveVendor(vendorId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: VENDORS_QUERY_KEYS.all });
+      queryClient.invalidateQueries({ queryKey: ['admin'] });
+    },
+  });
+}
+
+export function useRejectVendorMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (options: { vendorId: string; body: RejectVendorRequest }) =>
+      vendorsService.rejectVendor(options.vendorId, options.body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: VENDORS_QUERY_KEYS.all });
+      queryClient.invalidateQueries({ queryKey: ['admin'] });
     },
   });
 }

@@ -2,7 +2,11 @@ import type { CityDto, VendorCategoryDto, VendorProfileDto } from '@golden-abode
 
 import { API_ENDPOINTS } from '@/constants/apiEndpoints';
 import { getRequest, patchRequest, putRequest } from '@/services/api/apiClient';
-import type { SetVendorCategoriesRequest, SetVendorCityRequest } from '@/types/vendors.types';
+import type {
+  RejectVendorRequest,
+  SetVendorCategoriesRequest,
+  SetVendorCityRequest,
+} from '@/types/vendors.types';
 
 export const vendorsService = {
   fetchVendors(): Promise<VendorProfileDto[]> {
@@ -36,5 +40,19 @@ export const vendorsService = {
 
   fetchCities(): Promise<CityDto[]> {
     return getRequest<CityDto[]>(API_ENDPOINTS.admin.cities);
+  },
+
+  approveVendor(vendorId: string): Promise<VendorProfileDto> {
+    return patchRequest<VendorProfileDto, Record<string, never>>(
+      API_ENDPOINTS.admin.vendorApprove(vendorId),
+      {},
+    );
+  },
+
+  rejectVendor(vendorId: string, body: RejectVendorRequest): Promise<VendorProfileDto> {
+    return patchRequest<VendorProfileDto, RejectVendorRequest>(
+      API_ENDPOINTS.admin.vendorReject(vendorId),
+      body,
+    );
   },
 };
