@@ -45,6 +45,11 @@ export function DemoScreen({
           style={styles.scroll}
           contentContainerStyle={[styles.content, contentStyle]}
           showsVerticalScrollIndicator={false}
+          // Keeps the focused field above the keyboard on iOS; Android
+          // resizes the window instead.
+          automaticallyAdjustKeyboardInsets
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
         >
           <Text variant="h1" style={styles.title}>
             {title}
