@@ -171,3 +171,7 @@ export function navigateToHireRequestDetail(requestId: string): void {
 export function replaceToHireRequestDetail(requestId: string): void {
   router.replace({ pathname: ROUTES.screens.hireRequestDetail, params: { id: requestId } });
 }
+
+export function navigateToArtisanProfile(artisanId: string): void {
+  router.push({ pathname: ROUTES.screens.artisanPublic, params: { id: artisanId } });
+}

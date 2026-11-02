@@ -1,4 +1,5 @@
 import type {
+  ArtisanOrderDto,
   CheckoutRequest,
   OrderDto,
   OrderVendorGroupStatus,
@@ -22,6 +23,15 @@ export function useOrderQuery(orderId: string | null) {
   return useQuery<OrderDto>({
     queryKey: QUERY_KEYS.orders.detail(orderId ?? ''),
     queryFn: () => ordersService.fetchOrder(orderId!),
+    enabled: Boolean(orderId),
+    staleTime: APP_CONSTANTS.ordersStaleTimeMs,
+  });
+}
+
+export function useArtisanOrderQuery(orderId: string | null) {
+  return useQuery<ArtisanOrderDto>({
+    queryKey: QUERY_KEYS.orders.artisanDetail(orderId ?? ''),
+    queryFn: () => ordersService.fetchArtisanOrder(orderId!),
     enabled: Boolean(orderId),
     staleTime: APP_CONSTANTS.ordersStaleTimeMs,
   });

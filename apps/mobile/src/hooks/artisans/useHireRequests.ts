@@ -27,6 +27,15 @@ export function useCustomerHireRequestsQuery(isEnabled: boolean) {
   });
 }
 
+export function useHireRequestQuery(requestId: string | null) {
+  return useQuery<ArtisanHireRequestDto>({
+    queryKey: QUERY_KEYS.hireRequests.detail(requestId ?? ''),
+    queryFn: () => artisansService.fetchHireRequest(requestId!),
+    enabled: Boolean(requestId),
+    staleTime: APP_CONSTANTS.hireRequestsStaleTimeMs,
+  });
+}
+
 export function useHireRequestEstimatesQuery(requestId: string, isEnabled: boolean) {
   return useQuery<ArtisanCompletionEstimateDto[]>({
     queryKey: QUERY_KEYS.hireRequests.estimates(requestId),

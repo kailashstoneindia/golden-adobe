@@ -4,6 +4,8 @@ export const ARTISAN_CONSTANTS = {
   // Mirrors the backend's DOCUMENT_MAX_BYTES presign condition.
   documentMaxBytes: 10 * 1024 * 1024,
   bioMaxLength: 500,
+  searchPageSize: 20,
+  homePreviewCount: 3,
 } as const;
 
 export const ARTISAN_DOCUMENT_CONTENT_TYPES = [

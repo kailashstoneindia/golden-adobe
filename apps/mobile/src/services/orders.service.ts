@@ -1,4 +1,5 @@
 import type {
+  ArtisanOrderDto,
   CheckoutRequest,
   OrderDto,
   OrderVendorGroupStatus,
@@ -19,6 +20,12 @@ export const ordersService = {
 
   fetchOrder(orderId: string): Promise<OrderDto> {
     return apiClient.get<OrderDto>(API_ENDPOINTS.orders.byId(orderId));
+  },
+
+  // Same endpoint as fetchOrder; the backend returns the artisan-safe shape
+  // (no customer ids, payment internals or GPS) when an artisan calls it.
+  fetchArtisanOrder(orderId: string): Promise<ArtisanOrderDto> {
+    return apiClient.get<ArtisanOrderDto>(API_ENDPOINTS.orders.byId(orderId));
   },
 
   cancelOrder(orderId: string): Promise<OrderDto> {

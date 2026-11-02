@@ -3,12 +3,14 @@ import type {
   ArtisanOnboardDto,
   ArtisanProfileDto,
   ArtisanPublicProfileDto,
+  ArtisanSearchQuery,
+  PaginatedArtisanPublicProfilesResponse,
   UpdateArtisanProfileDto,
 } from '@golden-abode/types';
 import { Role, type UserDto } from '@golden-abode/types';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { APP_CONSTANTS, QUERY_KEYS } from '../../constants';
+import { APP_CONSTANTS, ARTISAN_CONSTANTS, QUERY_KEYS } from '../../constants';
 import { artisansService, uploadToPresignedPost } from '../../services';
 import type { ArtisanDocumentFile } from '../../types';
 import { isArtisanOnboardingComplete, isNotFoundError } from '../../utils';
@@ -92,5 +94,47 @@ export function useArtisanPublicProfileQuery(artisanId: string | null) {
     queryFn: () => artisansService.fetchPublicProfile(artisanId!),
     enabled: Boolean(artisanId),
     retry: (failureCount, error) => !isNotFoundError(error) && failureCount < 1,
+  });
+}
+
+/**
+ * Team-member documents have no confirm step: the uploaded key is passed
+ * straight to the team member's `documentUrl` on create/update.
+ */
+export function useUploadTeamMemberDocumentMutation() {
+  return useMutation({
+    mutationFn: async (file: ArtisanDocumentFile): Promise<string> => {
+      const upload = await artisansService.createDocumentUploadUrl(file.mimeType, 'team_member');
+      await uploadToPresignedPost(upload, file);
+      return upload.fields.key;
+    },
+  });
+}
+
+type ArtisanSearchFilters = Pick<ArtisanSearchQuery, 'tradeType' | 'pincode'>;
+
+/** First page only, for previews such as the customer home section. */
+export function useArtisanSearchQuery(filters: ArtisanSearchFilters, limit: number) {
+  const query: ArtisanSearchQuery = { ...filters, page: 1, limit };
+  return useQuery<PaginatedArtisanPublicProfilesResponse>({
+    queryKey: QUERY_KEYS.artisan.search(JSON.stringify(query)),
+    queryFn: () => artisansService.searchArtisans(query),
+    staleTime: 60_000,
+  });
+}
+
+export function useArtisanSearchInfiniteQuery(filters: ArtisanSearchFilters) {
+  return useInfiniteQuery({
+    queryKey: QUERY_KEYS.artisan.search(`infinite:${JSON.stringify(filters)}`),
+    queryFn: ({ pageParam }) =>
+      artisansService.searchArtisans({
+        ...filters,
+        page: pageParam,
+        limit: ARTISAN_CONSTANTS.searchPageSize,
+      }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.page < lastPage.totalPages ? lastPage.page + 1 : undefined,
+    staleTime: 60_000,
   });
 }
