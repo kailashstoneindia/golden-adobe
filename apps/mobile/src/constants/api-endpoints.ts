@@ -27,6 +27,7 @@ export const API_ENDPOINTS = {
     itemById: (itemId: string) => `/cart/items/${itemId}`,
   },
   artisans: {
+    search: '/artisans',
     meProfile: '/artisans/me/profile',
     meAccountDetails: '/artisans/me/account-details',
     meDocumentUploadUrl: '/artisans/me/documents/upload-url',
@@ -41,6 +42,7 @@ export const API_ENDPOINTS = {
       `/artisans/me/hire-requests/${requestId}/complete`,
     hireRequests: '/artisans/hire-requests',
     myHireRequests: '/artisans/hire-requests/mine',
+    hireRequestById: (requestId: string) => `/artisans/hire-requests/${requestId}`,
     hireRequestCancel: (requestId: string) => `/artisans/hire-requests/${requestId}/cancel`,
     hireRequestEstimates: (requestId: string) => `/artisans/hire-requests/${requestId}/estimates`,
     hireRequestOrders: (requestId: string) => `/artisans/hire-requests/${requestId}/orders`,

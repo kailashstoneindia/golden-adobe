@@ -3,22 +3,35 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { DemoScreen } from '../../src/components/demo/DemoScreen';
-import { Button, Card, EmptyStateCard, Text, TextInput } from '../../src/components/ui';
+import { Badge, Button, Card, EmptyStateCard, Text, TextInput } from '../../src/components/ui';
 import { EMPTY_STATE_MESSAGES, ERROR_MESSAGES, TOAST_MESSAGES } from '../../src/constants';
 import {
   useAddTeamMemberMutation,
   useArtisanProfileQuery,
   useRemoveTeamMemberMutation,
   useUpdateTeamMemberMutation,
+  useUploadTeamMemberDocumentMutation,
 } from '../../src/hooks/artisans';
 import { useAuth } from '../../src/hooks/auth';
 import { useToast } from '../../src/hooks/useToast';
+import { pickArtisanDocument } from '../../src/services';
 import { Colors, Spacing } from '../../src/theme';
 import { getApiErrorMessage } from '../../src/utils';
 
-type TeamMemberFormValues = { name: string; roleOnTeam: string; phone: string };
+type TeamMemberFormValues = {
+  name: string;
+  roleOnTeam: string;
+  phone: string;
+  // S3 key from the team_member upload; sent as-is as the member's documentUrl.
+  documentUrl: string | null;
+};
 
-const EMPTY_MEMBER_FORM: TeamMemberFormValues = { name: '', roleOnTeam: '', phone: '' };
+const EMPTY_MEMBER_FORM: TeamMemberFormValues = {
+  name: '',
+  roleOnTeam: '',
+  phone: '',
+  documentUrl: null,
+};
 
 export default function ArtisanTeamScreen() {
   const { user } = useAuth();
@@ -26,6 +39,7 @@ export default function ArtisanTeamScreen() {
   const addMember = useAddTeamMemberMutation();
   const updateMember = useUpdateTeamMemberMutation();
   const removeMember = useRemoveTeamMemberMutation();
+  const uploadDocument = useUploadTeamMemberDocumentMutation();
   const { showSuccess, showError } = useToast();
   const team = profileQuery.data?.team ?? [];
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
@@ -45,8 +59,23 @@ export default function ArtisanTeamScreen() {
       name: member.name ?? '',
       roleOnTeam: member.roleOnTeam ?? '',
       phone: member.phone ?? '',
+      documentUrl: member.documentUrl,
     });
     setFormError(null);
+  };
+
+  const handleAttachDocument = async (): Promise<void> => {
+    try {
+      const file = await pickArtisanDocument();
+      if (!file) {
+        return;
+      }
+      const documentUrl = await uploadDocument.mutateAsync(file);
+      setFormValues((previous) => ({ ...previous, documentUrl }));
+      showSuccess(TOAST_MESSAGES.artisanDocumentUploaded);
+    } catch (error) {
+      showError(getApiErrorMessage(error, ERROR_MESSAGES.artisanDocumentUploadFailed));
+    }
   };
 
   const handleSave = (): void => {
@@ -58,7 +87,12 @@ export default function ArtisanTeamScreen() {
     // The API rejects empty strings, so blank optionals are left out.
     const roleOnTeam = formValues.roleOnTeam.trim();
     const phone = formValues.phone.trim();
-    const body = { name, ...(roleOnTeam ? { roleOnTeam } : {}), ...(phone ? { phone } : {}) };
+    const body = {
+      name,
+      ...(roleOnTeam ? { roleOnTeam } : {}),
+      ...(phone ? { phone } : {}),
+      ...(formValues.documentUrl ? { documentUrl: formValues.documentUrl } : {}),
+    };
     const callbacks = {
       onSuccess: () => {
         showSuccess(TOAST_MESSAGES.teamMemberSaved);
@@ -111,6 +145,24 @@ export default function ArtisanTeamScreen() {
           onChangeText={(phone) => setFormValues((previous) => ({ ...previous, phone }))}
           keyboardType="phone-pad"
         />
+        <View style={styles.documentRow}>
+          <Badge
+            label={formValues.documentUrl ? 'ID document attached' : 'No ID document'}
+            variant={formValues.documentUrl ? 'success' : 'info'}
+          />
+          <Button
+            title={
+              uploadDocument.isPending
+                ? 'Uploading…'
+                : formValues.documentUrl
+                  ? 'Replace'
+                  : 'Attach (optional)'
+            }
+            variant="ghost"
+            disabled={uploadDocument.isPending}
+            onPress={handleAttachDocument}
+          />
+        </View>
         {formError ? (
           <Text variant="caption" color={Colors.brick}>
             {formError}
@@ -119,7 +171,7 @@ export default function ArtisanTeamScreen() {
         <View style={styles.formActions}>
           <Button
             title={isSaving ? 'Saving…' : editingMemberId ? 'Save changes' : 'Add member'}
-            disabled={isSaving}
+            disabled={isSaving || uploadDocument.isPending}
             onPress={handleSave}
           />
           {editingMemberId ? <Button title="Cancel" variant="ghost" onPress={resetForm} /> : null}
@@ -140,6 +192,11 @@ export default function ArtisanTeamScreen() {
               <Text variant="caption" color={Colors.inkSoft}>
                 {[member.roleOnTeam, member.phone].filter(Boolean).join(' · ') || 'No details'}
               </Text>
+              {member.documentUrl ? (
+                <Text variant="caption" color={Colors.sage}>
+                  ID document on file
+                </Text>
+              ) : null}
             </View>
             <Pressable onPress={() => handleEdit(member)} hitSlop={8}>
               <Text variant="caption" color={Colors.sky}>
@@ -169,6 +226,12 @@ const styles = StyleSheet.create({
   formActions: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  documentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     gap: Spacing.sm,
   },
   memberCard: {

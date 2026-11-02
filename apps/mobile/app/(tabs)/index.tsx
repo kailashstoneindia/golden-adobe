@@ -4,12 +4,14 @@ import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ArtisanCard } from '../../src/components/artisans';
 import { CategoryGrid } from '../../src/components/customer/CategoryGrid';
 import { ProjectPill } from '../../src/components/customer/ProjectPill';
 import { SearchBar } from '../../src/components/customer/SearchBar';
 import { VendorGroupListRow } from '../../src/components/orders';
 import { Card, EmptyStateCard, Text } from '../../src/components/ui';
 import {
+  ARTISAN_CONSTANTS,
   EMPTY_STATE_MESSAGES,
   ERROR_MESSAGES,
   ROUTES,
@@ -20,6 +22,7 @@ import {
 import {
   useArtisanHireRequestsQuery,
   useArtisanProfileQuery,
+  useArtisanSearchQuery,
   useUpdateArtisanProfileMutation,
 } from '../../src/hooks/artisans';
 import { useAuth } from '../../src/hooks/auth';
@@ -35,6 +38,7 @@ import type { PendingOrdersPreviewProps } from '../../src/types';
 import {
   getApiErrorMessage,
   isActiveArtisanJob,
+  navigateToArtisanProfile,
   navigateToCatalogSearch,
   navigateToLocationGate,
   navigateToOrderDetail,
@@ -95,10 +99,7 @@ function CustomerHome({ firstName }: { firstName: string }) {
         </Text>
         <CategoryGrid onCategoryPress={handleCategoryPress} />
 
-        <Text variant="h3" style={styles.sectionHeaderTitle}>
-          Verified Ustaads nearby
-        </Text>
-        <EmptyStateCard message={EMPTY_STATE_MESSAGES.homeUstaadsEmpty} />
+        <UstaadsPreview pincode={preference.pincode} />
 
         <Text variant="h3" style={styles.sectionHeaderTitle}>
           Top vendors nearby
@@ -106,6 +107,32 @@ function CustomerHome({ firstName }: { firstName: string }) {
         <EmptyStateCard message={EMPTY_STATE_MESSAGES.homeVendorsEmpty} />
       </ScrollView>
     </View>
+  );
+}
+
+function UstaadsPreview({ pincode }: Readonly<{ pincode: string | null }>) {
+  const searchQuery = useArtisanSearchQuery(
+    { pincode: pincode ?? undefined },
+    ARTISAN_CONSTANTS.homePreviewCount,
+  );
+  const artisans = searchQuery.data?.items ?? [];
+  const handleSeeAllPress = () => router.push(ROUTES.screens.findUstaad);
+
+  return (
+    <>
+      <SectionHeader
+        title="Verified Ustaads nearby"
+        actionLabel="See all"
+        onActionPress={handleSeeAllPress}
+      />
+      {artisans.length === 0 ? (
+        <EmptyStateCard message={EMPTY_STATE_MESSAGES.homeUstaadsEmpty} />
+      ) : (
+        artisans.map((artisan) => (
+          <ArtisanCard key={artisan.id} artisan={artisan} onPress={navigateToArtisanProfile} />
+        ))
+      )}
+    </>
   );
 }
 

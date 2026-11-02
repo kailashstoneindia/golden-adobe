@@ -6,18 +6,20 @@ import type {
   ArtisanOnboardDto,
   ArtisanProfileDto,
   ArtisanPublicProfileDto,
+  ArtisanSearchQuery,
   ArtisanTeamMemberDto,
   ArtisanTeamMemberInputDto,
   CancelHireRequestDto,
   CreateCompletionEstimateDto,
   CreateHireRequestDto,
   OrderDto,
+  PaginatedArtisanPublicProfilesResponse,
   UpdateArtisanProfileDto,
 } from '@golden-abode/types';
 
 import { apiClient } from '../api/client';
 import { API_ENDPOINTS } from '../constants';
-import type { ArtisanDocumentUploadUrl } from '../types';
+import type { ArtisanDocumentPurpose, ArtisanDocumentUploadUrl } from '../types';
 
 const ENDPOINTS = API_ENDPOINTS.artisans;
 
@@ -34,9 +36,13 @@ export const artisansService = {
   replaceAccountDetails(body: ArtisanAccountDetailsInputDto): Promise<ArtisanAccountDetailsDto> {
     return apiClient.put<ArtisanAccountDetailsDto>(ENDPOINTS.meAccountDetails, body);
   },
-  createDocumentUploadUrl(contentType: string): Promise<ArtisanDocumentUploadUrl> {
+  createDocumentUploadUrl(
+    contentType: string,
+    purpose: ArtisanDocumentPurpose = 'lead',
+  ): Promise<ArtisanDocumentUploadUrl> {
     return apiClient.post<ArtisanDocumentUploadUrl>(ENDPOINTS.meDocumentUploadUrl, {
       contentType,
+      purpose,
     });
   },
   confirmDocumentUpload(key: string): Promise<ArtisanProfileDto> {
@@ -78,6 +84,9 @@ export const artisansService = {
   createHireRequest(body: CreateHireRequestDto): Promise<ArtisanHireRequestDto> {
     return apiClient.post<ArtisanHireRequestDto>(ENDPOINTS.hireRequests, body);
   },
+  fetchHireRequest(requestId: string): Promise<ArtisanHireRequestDto> {
+    return apiClient.get<ArtisanHireRequestDto>(ENDPOINTS.hireRequestById(requestId));
+  },
   fetchCustomerHireRequests(): Promise<ArtisanHireRequestDto[]> {
     return apiClient.get<ArtisanHireRequestDto[]>(ENDPOINTS.myHireRequests);
   },
@@ -89,6 +98,11 @@ export const artisansService = {
   },
   fetchAttributedOrders(requestId: string): Promise<OrderDto[]> {
     return apiClient.get<OrderDto[]>(ENDPOINTS.hireRequestOrders(requestId));
+  },
+  searchArtisans(query: ArtisanSearchQuery): Promise<PaginatedArtisanPublicProfilesResponse> {
+    return apiClient.get<PaginatedArtisanPublicProfilesResponse>(ENDPOINTS.search, {
+      params: query,
+    });
   },
   fetchPublicProfile(artisanId: string): Promise<ArtisanPublicProfileDto> {
     return apiClient.get<ArtisanPublicProfileDto>(ENDPOINTS.publicProfile(artisanId));

@@ -15,6 +15,7 @@ export const EMPTY_STATE_MESSAGES = {
   homeVendorsEmpty: 'No top vendors in your area yet.',
   homePendingOrdersEmpty: 'No pending orders.',
   artisanJobsEmpty: 'No jobs yet. Hire requests appear here once an admin approves them for you.',
+  artisanSearchEmpty: 'No verified Ustaads match these filters yet. Try another trade or pincode.',
   customerHireRequestsEmpty: 'You haven’t hired an Ustaad yet.',
   teamEmpty: 'No team members added yet.',
   estimatesEmpty: 'No completion estimates yet.',

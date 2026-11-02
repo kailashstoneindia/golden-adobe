@@ -1,4 +1,5 @@
 export {
+  useArtisanOrderQuery,
   useCancelOrderMutation,
   useCheckoutMutation,
   useOrderQuery,

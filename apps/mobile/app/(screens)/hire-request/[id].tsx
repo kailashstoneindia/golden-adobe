@@ -15,12 +15,11 @@ import {
 } from '../../../src/constants';
 import {
   useAddEstimateMutation,
-  useArtisanHireRequestsQuery,
   useCancelHireRequestMutation,
   useCompleteHireRequestMutation,
-  useCustomerHireRequestsQuery,
   useHireRequestEstimatesQuery,
   useHireRequestOrdersQuery,
+  useHireRequestQuery,
   useStartHireRequestMutation,
 } from '../../../src/hooks/artisans';
 import { useAuth } from '../../../src/hooks/auth';
@@ -38,22 +37,14 @@ import {
   toHireRequestBadgeVariant,
 } from '../../../src/utils';
 
-function ignoreOrderPress(_orderId: string): void {
-  return;
-}
-
 export default function HireRequestDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
   const isArtisan = user?.role === Role.ARTISAN;
-  // There is no GET-by-id endpoint, so the request is read from whichever
-  // list this role can see.
-  const artisanListQuery = useArtisanHireRequestsQuery(isArtisan);
-  const customerListQuery = useCustomerHireRequestsQuery(!isArtisan);
-  const listQuery = isArtisan ? artisanListQuery : customerListQuery;
-  const request = listQuery.data?.find((item) => item.id === id);
+  const requestQuery = useHireRequestQuery(id ?? null);
+  const request = requestQuery.data;
 
-  if (listQuery.isLoading) {
+  if (requestQuery.isLoading) {
     return (
       <DemoScreen title="Hire request" showBack>
         <Text variant="body" color={Colors.inkSoft}>
@@ -197,7 +188,7 @@ function HireRequestDetail({
       ) : null}
 
       <EstimatesSection request={request} isArtisan={isArtisan} />
-      <AttributedOrdersSection request={request} isArtisan={isArtisan} />
+      <AttributedOrdersSection request={request} />
 
       {canCancelHireRequest(status) ? (
         isCancelling ? (
@@ -330,10 +321,7 @@ function EstimatesSection({
   );
 }
 
-function AttributedOrdersSection({
-  request,
-  isArtisan,
-}: Readonly<{ request: ArtisanHireRequestDto; isArtisan: boolean }>) {
+function AttributedOrdersSection({ request }: Readonly<{ request: ArtisanHireRequestDto }>) {
   const canHaveOrders = isBookingAttributable(request.status);
   const ordersQuery = useHireRequestOrdersQuery(request.id, canHaveOrders);
   const orders = ordersQuery.data ?? [];
@@ -351,12 +339,7 @@ function AttributedOrdersSection({
         <EmptyStateCard message={EMPTY_STATE_MESSAGES.attributedOrdersEmpty} />
       ) : (
         orders.map((order) => (
-          <OrderListRow
-            key={order.id}
-            order={order}
-            // Order detail is a customer endpoint; artisans see the summary only.
-            onPress={isArtisan ? ignoreOrderPress : navigateToOrderDetail}
-          />
+          <OrderListRow key={order.id} order={order} onPress={navigateToOrderDetail} />
         ))
       )}
     </>

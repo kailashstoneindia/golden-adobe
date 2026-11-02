@@ -22,6 +22,7 @@ export type {
   AddressCardProps,
   AddressFormProps,
   AddressFormValues,
+  ArtisanOrderDetailProps,
   CustomerOrderDetailProps,
   PendingOrdersPreviewProps,
   CartLineRowProps,
@@ -41,8 +42,10 @@ export type {
 } from './order-ui.types';
 export type {
   ArtisanBankFieldsProps,
+  ArtisanCardProps,
   ArtisanDocumentCardProps,
   ArtisanDocumentFile,
+  ArtisanDocumentPurpose,
   ArtisanDocumentUploadUrl,
   ArtisanProfileFieldsProps,
   ArtisanProfileFormValues,

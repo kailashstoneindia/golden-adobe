@@ -2,8 +2,12 @@ import type {
   ArtisanAccountDetailsInputDto,
   ArtisanHireRequestDto,
   ArtisanProfileDto,
+  ArtisanPublicProfileDto,
   TradeType,
 } from '@golden-abode/types';
+
+/** `lead` is the artisan's own KYC document; `team_member` mints a key for a crew member's documentUrl. */
+export type ArtisanDocumentPurpose = 'lead' | 'team_member';
 
 /** Presigned S3 POST returned by `POST /artisans/me/documents/upload-url`. */
 export type ArtisanDocumentUploadUrl = {
@@ -51,4 +55,9 @@ export type TradeTypeChipsProps = {
 export type HireRequestListRowProps = {
   request: ArtisanHireRequestDto;
   onPress: (requestId: string) => void;
+};
+
+export type ArtisanCardProps = {
+  artisan: ArtisanPublicProfileDto;
+  onPress: (artisanId: string) => void;
 };

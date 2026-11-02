@@ -77,5 +77,6 @@ export const ERROR_MESSAGES = {
   cancelReasonRequired: 'Enter a reason for cancelling.',
   estimateDaysInvalid: 'Enter the estimate as a whole number of days (1 or more).',
   estimateSaveFailed: 'Could not save the estimate. Try again.',
+  artisanSearchFailed: 'Could not load Ustaads. Try again.',
   artisanPublicProfileFailed: 'This Ustaad could not be found or is not verified yet.',
 } as const;
