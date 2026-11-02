@@ -1,6 +1,9 @@
-import { forwardRef, useState } from 'react';
+import { forwardRef, useId, useState } from 'react';
 import {
+  InputAccessoryView,
+  Keyboard,
   Platform,
+  Pressable,
   StyleSheet,
   TextInput as RNTextInput,
   Text as RNText,
@@ -21,15 +24,30 @@ export interface TextInputProps extends RNTextInputProps {
   containerStyle?: StyleProp<ViewStyle>;
 }
 
+// iOS number and phone pads have no return key, so without an accessory bar
+// the keyboard can only be closed by tapping elsewhere.
+const KEYBOARDS_WITHOUT_RETURN_KEY = new Set<RNTextInputProps['keyboardType']>([
+  'number-pad',
+  'decimal-pad',
+  'numeric',
+  'phone-pad',
+]);
+
 /**
  * Themed text field with an optional label. Hairline border by default, sky
  * border on focus, brick border on error. Uses Inter for input text.
  */
 export const TextInput = forwardRef<RNTextInput, TextInputProps>(function TextInput(
-  { label, error, containerStyle, style, onFocus, onBlur, ...rest },
+  { label, error, containerStyle, style, onFocus, onBlur, inputAccessoryViewID, ...rest },
   ref,
 ) {
   const [focused, setFocused] = useState(false);
+  const generatedAccessoryId = `text-input-done-${useId()}`;
+  const needsDoneBar =
+    Platform.OS === 'ios' &&
+    !inputAccessoryViewID &&
+    KEYBOARDS_WITHOUT_RETURN_KEY.has(rest.keyboardType);
+  const accessoryId = needsDoneBar ? generatedAccessoryId : inputAccessoryViewID;
 
   return (
     <View style={[styles.container, containerStyle]}>
@@ -51,9 +69,19 @@ export const TextInput = forwardRef<RNTextInput, TextInputProps>(function TextIn
           setFocused(false);
           onBlur?.(e);
         }}
+        inputAccessoryViewID={accessoryId}
         {...rest}
       />
       {error ? <RNText style={styles.errorText}>{error}</RNText> : null}
+      {needsDoneBar ? (
+        <InputAccessoryView nativeID={generatedAccessoryId}>
+          <View style={styles.doneBar}>
+            <Pressable onPress={Keyboard.dismiss} hitSlop={8} accessibilityRole="button">
+              <RNText style={styles.doneText}>Done</RNText>
+            </Pressable>
+          </View>
+        </InputAccessoryView>
+      ) : null}
     </View>
   );
 });
@@ -90,6 +118,20 @@ const styles = StyleSheet.create({
   },
   inputError: {
     borderColor: Colors.brick,
+  },
+  doneBar: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    backgroundColor: Colors.cream,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Colors.line,
+  },
+  doneText: {
+    fontFamily: FontFamily.inter.semibold,
+    fontSize: 16,
+    color: Colors.sky,
   },
   errorText: {
     fontFamily: FontFamily.inter.medium,

@@ -1,6 +1,7 @@
 import type { VendorOrderGroupDto } from '@golden-abode/types';
 import { ORDER_VENDOR_GROUP_STATUSES, Role } from '@golden-abode/types';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -210,6 +211,17 @@ function VendorHome() {
 
 function ArtisanHome() {
   const profileQuery = useArtisanProfileQuery(true);
+  // Verification is flipped by an admin, so an unverified profile is re-read
+  // each time home gains focus instead of waiting out the stale time.
+  const isAwaitingVerification = profileQuery.data?.isVerified === false;
+  const refetchProfile = profileQuery.refetch;
+  useFocusEffect(
+    useCallback(() => {
+      if (isAwaitingVerification) {
+        void refetchProfile();
+      }
+    }, [isAwaitingVerification, refetchProfile]),
+  );
   const jobsQuery = useArtisanHireRequestsQuery(true);
   const updateProfile = useUpdateArtisanProfileMutation();
   const { showSuccess, showError } = useToast();

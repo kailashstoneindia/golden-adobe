@@ -277,7 +277,7 @@ export default function VendorOnboardScreen() {
               />
               <TextInput
                 label="Account holder name"
-                placeholder="Tarun Jawla"
+                placeholder="Name as on bank account"
                 value={vendorForm.formValues.accountDetails.accountHolderName}
                 onChangeText={(value) =>
                   vendorForm.updateAccountDetailsField('accountHolderName', value)

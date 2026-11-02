@@ -1,7 +1,7 @@
 import { Role, type ArtisanHireRequestDto } from '@golden-abode/types';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 
 import { DemoScreen } from '../../../src/components/demo/DemoScreen';
 import { OrderListRow } from '../../../src/components/orders';
@@ -86,6 +86,22 @@ function HireRequestDetail({
       showError(getApiErrorMessage(error, ERROR_MESSAGES.hireRequestActionFailed)),
   });
 
+  // Completing is final for the customer and cannot be undone, so ask first.
+  const handleComplete = (): void => {
+    Alert.alert(
+      'Mark job as completed?',
+      'The customer will see this job as finished. You cannot undo this.',
+      [
+        { text: 'Not yet', style: 'cancel' },
+        {
+          text: 'Mark completed',
+          onPress: () =>
+            completeWork.mutate(request.id, actionCallbacks(TOAST_MESSAGES.jobCompleted)),
+        },
+      ],
+    );
+  };
+
   const handleConfirmCancel = (): void => {
     const reason = cancelReason.trim();
     if (!reason) {
@@ -167,9 +183,7 @@ function HireRequestDetail({
           title={completeWork.isPending ? 'Saving…' : 'Mark as completed'}
           fullWidth
           disabled={isBusy}
-          onPress={() =>
-            completeWork.mutate(request.id, actionCallbacks(TOAST_MESSAGES.jobCompleted))
-          }
+          onPress={handleComplete}
         />
       ) : null}
 

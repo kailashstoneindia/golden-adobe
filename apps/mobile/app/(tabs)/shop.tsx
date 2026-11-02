@@ -1,11 +1,13 @@
 import { Role } from '@golden-abode/types';
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { DemoScreen } from '../../src/components/demo/DemoScreen';
 import { Button, EmptyStateCard, Text, TextInput } from '../../src/components/ui';
-import { EMPTY_STATE_MESSAGES, ERROR_MESSAGES, TOAST_MESSAGES } from '../../src/constants';
+import { EMPTY_STATE_MESSAGES, ERROR_MESSAGES, ROUTES, TOAST_MESSAGES } from '../../src/constants';
 import { useAuth } from '../../src/hooks/auth';
+import { useLogout } from '../../src/hooks/auth/useLogout';
 import { useToast } from '../../src/hooks/useToast';
 import { useUpdateVendorProfileMutation, useVendorProfileQuery } from '../../src/hooks/vendor';
 import { Colors, Spacing } from '../../src/theme';
@@ -17,6 +19,7 @@ export default function ShopTabScreen() {
   const profileQuery = useVendorProfileQuery(isVendor);
   const updateProfile = useUpdateVendorProfileMutation();
   const { showSuccess, showError } = useToast();
+  const logout = useLogout();
   const [minOrderValue, setMinOrderValue] = useState('');
   const [hasLoadingUnloadingTeam, setHasLoadingUnloadingTeam] = useState<boolean | null>(null);
 
@@ -49,6 +52,28 @@ export default function ShopTabScreen() {
     );
   };
 
+  // Vendors have no You tab, so the shop profile is their only way out.
+  const handleLogout = async (): Promise<void> => {
+    try {
+      await logout.mutateAsync();
+      showSuccess(TOAST_MESSAGES.logoutSuccess);
+      router.replace(ROUTES.auth.login);
+    } catch {
+      showError(ERROR_MESSAGES.generic);
+    }
+  };
+
+  const logoutButton = (
+    <Button
+      title={logout.isPending ? 'Logging out…' : 'Log out'}
+      variant="ghost"
+      fullWidth
+      disabled={logout.isPending}
+      onPress={handleLogout}
+      style={styles.logout}
+    />
+  );
+
   if (!isVendor) {
     return (
       <DemoScreen title="Shop profile">
@@ -77,6 +102,7 @@ export default function ShopTabScreen() {
           title="Shop profile unavailable"
           message={ERROR_MESSAGES.vendorProfileFailed}
         />
+        {logoutButton}
       </DemoScreen>
     );
   }
@@ -128,11 +154,15 @@ export default function ShopTabScreen() {
         disabled={updateProfile.isPending}
         onPress={handleSave}
       />
+      {logoutButton}
     </DemoScreen>
   );
 }
 
 const styles = StyleSheet.create({
+  logout: {
+    marginTop: Spacing.lg,
+  },
   warning: {
     marginTop: Spacing.sm,
   },
