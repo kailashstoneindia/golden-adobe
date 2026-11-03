@@ -217,6 +217,12 @@ describe('RefundsService (decision 0054)', () => {
 
     expect(spy).toHaveBeenCalledTimes(1 + 3);
     expect((await refundRows(o))[0].status).toBe('requested');
+
+    // Resolve the aged row now that Razorpay answers again, so no later test's
+    // syncRefunds picks it up.
+    spy.mockRestore();
+    await service.syncRefunds();
+    expect((await refundRows(o))[0].status).toBe('processed');
   }, 15_000);
 
   it('adopts an existing refund by receipt after the inline attempt fails', async () => {
@@ -708,7 +714,7 @@ describe('RefundsService (decision 0054)', () => {
 
     await service.syncRefunds();
 
-    expect(t.provider.createRefundCalls).toHaveLength(0);
+    expect(t.provider.createRefundCalls.filter((c) => c.paymentId === paymentId)).toHaveLength(0);
     const [fake] = await t.provider.fetchRefunds(paymentId);
     const [row] = await refundRows(o);
     expect(row.status).toBe('submitted');

@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import Razorpay from 'razorpay';
 import {
   CreateProviderOrderResult,
@@ -117,7 +118,7 @@ export class FakePaymentProvider implements PaymentProviderService {
     }
     this.counter += 1;
     const refund: ProviderRefund = {
-      id: `rfnd_fake_${this.counter}`,
+      id: `rfnd_fake_${randomUUID()}`,
       paymentId: params.paymentId,
       amountPaise: params.amountPaise,
       receipt: params.receipt,
