@@ -91,6 +91,12 @@ Order statuses become `pending_payment | confirmed | cancelled | refund_required
 - **Published cancellation and refund policy.** E-Commerce Rules 2020, Rule 4(8) (symmetric cancellation charges) and Rule 4(10) (refund "within a reasonable period"). This needs its own decision record. The proposed SLA is "refund initiated within 2 business days".
 - **COD.** Out of scope here. The `refunds` table allows `rail = 'manual_payout'` so COD can reuse it later.
 - **Checkout retry after a lost response** (a retry gets "cart is empty"). Deferred as D1 in `docs/research/payments/reports/Payment MVP scope.md`.
+- **Fix before live payments:**
+  - **Server-side refund request dedupe.** The admin form blocks a second click while the first request is in flight, but the idempotency key is generated per request on the server. A resubmit after a lost response can still create a second _partial_ refund. Fix: a client-generated request id per form, stored unique.
+  - **Persistent 409 on refund.** Every 409 is treated as "in progress" and retried, so a non-transient 409 leaves the refund `requested` and the order `refund_pending` until someone looks. Add an alert or escalate after a maximum age.
+- **Deferred past merge:**
+  - **Vendors can't see that an order is being refunded.** `OrderVendorGroupDto` doesn't expose the parent order's status, so a vendor sees "Confirmed" under a `refund_pending` order until they press Ship.
+  - **A capture after a cancel whose webhook never arrives** is found only by the weekly reconciliation step that compares Razorpay's payments export. The sweep does not re-check cancelled orders.
 
 ## Sources
 
