@@ -7,12 +7,22 @@ import type {
   RefundDto,
 } from '@golden-abode/types';
 
+// 'done' and 'pending' both mean the refund row exists, so the form is
+// cleared; only 'failed' leaves it as typed for a correction.
+export type RefundOutcome = 'done' | 'pending' | 'failed';
+
+export type RefundNotice = {
+  tone: 'pending' | 'error';
+  text: string;
+};
+
 export type OrderDetailModalProps = {
   order: OrderDto;
   isSubmitting: boolean;
   actionError: string | null;
+  refundNotice: RefundNotice | null;
   onClose: () => void;
-  onRefund: (orderId: string, body: AdminRefundRequest) => Promise<void>;
+  onRefund: (orderId: string, body: AdminRefundRequest) => Promise<RefundOutcome>;
   onCancel: (orderId: string) => Promise<void>;
   onOverrideStatus: (options: {
     groupId: string;

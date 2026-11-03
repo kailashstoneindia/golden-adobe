@@ -7,9 +7,11 @@ import {
   Param,
   Patch,
   Post,
+  Res,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import type { Response } from 'express';
 import { Role } from '@golden-abode/types';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -19,6 +21,7 @@ import { OrdersService } from './orders.service';
 import { RefundsService } from './refunds.service';
 import { AdminOverrideGroupStatusDto } from './dto/admin-override-group-status.dto';
 import { AdminRefundDto } from './dto/admin-refund.dto';
+import { RefundStatus } from './models/refund.model';
 
 // Declared in OrdersModule, not AdminModule — it needs OrdersService, which
 // OrdersModule already owns, and AdminCatalogController sets the same
@@ -62,14 +65,20 @@ export class AdminOrdersController {
     @Param('id') id: string,
     @Body() dto: AdminRefundDto,
     @CurrentUser('sub') adminUserId: string,
+    @Res({ passthrough: true }) res: Response,
   ) {
-    await this.refundsService.requestRefund({
+    const refund = await this.refundsService.requestRefund({
       orderId: id,
       adminUserId,
       reason: dto.reason,
       amountPaise: dto.amountPaise,
       vendorGroupId: dto.vendorGroupId,
     });
+    // Still requested: Razorpay's answer is not confirmed and the sync job
+    // will settle it, so the client must not treat this as a failure or resubmit.
+    if (refund.status === RefundStatus.REQUESTED) {
+      res.status(HttpStatus.ACCEPTED);
+    }
     return this.ordersService.getForAdmin(id);
   }
 

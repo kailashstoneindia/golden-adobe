@@ -18,11 +18,13 @@ import {
   useRefundOrderMutation,
 } from '@/queries/useOrdersQueries';
 import styles from '@/styles/shared.module.css';
+import type { RefundNotice, RefundOutcome } from '@/types/orders.types';
 import { formatDateTime } from '@/utils/date';
 
 export function OrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<OrderDto | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [refundNotice, setRefundNotice] = useState<RefundNotice | null>(null);
   const [statusFilter, setStatusFilter] = useState<OrderStatusFilter>(ORDER_STATUS_FILTERS.ALL);
   const ordersQuery = useOrdersQuery();
   const refundMutation = useRefundOrderMutation();
@@ -31,13 +33,26 @@ export function OrdersPage() {
   const isSubmitting =
     refundMutation.isPending || cancelMutation.isPending || overrideMutation.isPending;
 
-  const handleRefund = async (orderId: string, body: AdminRefundRequest): Promise<void> => {
+  const handleRefund = async (
+    orderId: string,
+    body: AdminRefundRequest,
+  ): Promise<RefundOutcome> => {
     setActionError(null);
+    setRefundNotice(null);
     try {
-      const updated = await refundMutation.mutateAsync({ orderId, body });
+      const { order: updated, pending } = await refundMutation.mutateAsync({ orderId, body });
       setSelectedOrder(updated);
+      if (pending) {
+        setRefundNotice({ tone: 'pending', text: ERROR_MESSAGES.refundPending });
+        return 'pending';
+      }
+      return 'done';
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : ERROR_MESSAGES.refundFailed);
+      setRefundNotice({
+        tone: 'error',
+        text: error instanceof Error ? error.message : ERROR_MESSAGES.refundFailed,
+      });
+      return 'failed';
     }
   };
 
@@ -133,6 +148,7 @@ export function OrdersPage() {
                   className={styles.clickableRow}
                   onClick={() => {
                     setActionError(null);
+                    setRefundNotice(null);
                     setSelectedOrder(order);
                   }}
                 >
@@ -153,6 +169,7 @@ export function OrdersPage() {
           order={selectedOrder}
           isSubmitting={isSubmitting}
           actionError={actionError}
+          refundNotice={refundNotice}
           onClose={() => setSelectedOrder(null)}
           onRefund={handleRefund}
           onCancel={handleCancel}

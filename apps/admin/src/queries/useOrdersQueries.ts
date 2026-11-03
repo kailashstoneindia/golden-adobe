@@ -55,7 +55,9 @@ export function useRefundOrderMutation() {
   return useMutation({
     mutationFn: (options: { orderId: string; body: AdminRefundRequest }) =>
       ordersService.refundOrder(options.orderId, options.body),
-    onSuccess: () => {
+    // Also on error: a refund can be recorded even when the call reports a
+    // problem, so the history and the remaining amount must come from the server.
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEYS.all });
     },
   });

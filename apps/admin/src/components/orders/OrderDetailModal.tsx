@@ -28,6 +28,7 @@ export function OrderDetailModal({
   order,
   isSubmitting,
   actionError,
+  refundNotice,
   onClose,
   onRefund,
   onCancel,
@@ -86,6 +87,11 @@ export function OrderDetailModal({
               isSubmitting={isSubmitting}
               onRefund={onRefund}
             />
+          ) : null}
+          {refundNotice ? (
+            <p className={refundNotice.tone === 'error' ? styles.error : styles.hint}>
+              {refundNotice.text}
+            </p>
           ) : null}
           <RefundHistory refunds={refunds} />
 
@@ -210,10 +216,15 @@ function RefundForm({ order, refunds, isSubmitting, onRefund }: RefundFormProps)
       // A refund_required order must be refunded in full (decision 0054), so
       // the server picks the amount; one is sent only for a deliberate
       // partial refund.
-      await onRefund(order.id, {
+      const outcome = await onRefund(order.id, {
         reason: trimmedReason,
         ...(isLocked ? {} : { amountPaise }),
       });
+      if (outcome !== 'failed') {
+        // Back to the default, which follows the refetched history.
+        setAmountInput(null);
+        setReason('');
+      }
     } finally {
       inFlightRef.current = false;
     }

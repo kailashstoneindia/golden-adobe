@@ -472,6 +472,13 @@
   background: var(--color-white);
   padding: 12px 14px;
   color: var(--color-ink);
+  font: inherit;
+}
+
+.input:disabled {
+  background: var(--color-background);
+  color: var(--color-ink-soft);
+  cursor: not-allowed;
 }
 
 .input:focus {

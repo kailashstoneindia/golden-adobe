@@ -252,14 +252,15 @@ describe('RefundsService (decision 0054)', () => {
     t.provider.refundOutcome({ error: 'client' });
     t.provider.failFetchOnce('network');
 
-    await expect(
-      service.requestRefund({
-        orderId: o.orderId,
-        adminUserId: t.adminUserId,
-        reason: 'cannot verify',
-      }),
-    ).rejects.toMatchObject({ status: 400 });
+    // Not a failure: Razorpay may have created the refund, so the caller is
+    // told it is pending rather than that it failed.
+    const dto = await service.requestRefund({
+      orderId: o.orderId,
+      adminUserId: t.adminUserId,
+      reason: 'cannot verify',
+    });
 
+    expect(dto.status).toBe('requested');
     expect((await refundRows(o))[0].status).toBe('requested');
     expect(await orderStatus(o)).toBe('refund_pending');
   });
@@ -669,6 +670,34 @@ describe('RefundsService (decision 0054)', () => {
   });
 
   describe('HTTP', () => {
+    it('POST /admin/orders/:id/refund answers 202 when Razorpay rejected it and cannot be asked about it', async () => {
+      const { o } = await confirmedOrder();
+      t.provider.refundOutcome({ error: 'client' });
+      t.provider.failFetchOnce('network');
+
+      const res = await request(t.app.getHttpServer())
+        .post(`/api/admin/orders/${o.orderId}/refund`)
+        .set('Authorization', `Bearer ${t.adminToken}`)
+        .send({ reason: 'cannot verify' })
+        .expect(202);
+
+      expect(res.body.data.id).toBe(o.orderId);
+      expect((await refundRows(o))[0].status).toBe('requested');
+    });
+
+    it('POST /admin/orders/:id/refund answers 400 when Razorpay rejected it and holds no such refund', async () => {
+      const { o } = await confirmedOrder();
+      t.provider.refundOutcome({ error: 'client' });
+
+      await request(t.app.getHttpServer())
+        .post(`/api/admin/orders/${o.orderId}/refund`)
+        .set('Authorization', `Bearer ${t.adminToken}`)
+        .send({ reason: 'razorpay says no' })
+        .expect(400);
+
+      expect((await refundRows(o))[0].status).toBe('failed');
+    });
+
     it('POST /admin/orders/:id/refund requires a reason and an admin', async () => {
       const { o } = await confirmedOrder();
       const url = `/api/admin/orders/${o.orderId}/refund`;

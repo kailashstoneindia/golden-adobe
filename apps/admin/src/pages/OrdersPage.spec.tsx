@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { ERROR_MESSAGES } from '@/constants/error.constants';
 import { server } from '@/test/server';
 
 import { OrdersPage } from './OrdersPage';
@@ -50,17 +51,39 @@ function refund(over: Partial<RefundDto> = {}): RefundDto {
 let orders: OrderDto[];
 let refunds: Record<string, RefundDto[]>;
 let refundBodies: unknown[];
+let refundListFetches: number;
+// What the next POST /refund answers, and what it does to the server's refunds.
+let refundReply: {
+  status: number;
+  message?: string;
+  recordRefund?: RefundDto;
+  orderStatus?: string;
+};
 
 function useHandlers() {
   server.use(
     http.get(BASE, () => HttpResponse.json({ success: true, data: orders })),
-    http.get(`${BASE}/:id/refunds`, ({ params }) =>
-      HttpResponse.json({ success: true, data: refunds[String(params.id)] ?? [] }),
-    ),
+    http.get(`${BASE}/:id/refunds`, ({ params }) => {
+      refundListFetches += 1;
+      return HttpResponse.json({ success: true, data: refunds[String(params.id)] ?? [] });
+    }),
     http.post(`${BASE}/:id/refund`, async ({ params, request }) => {
       refundBodies.push(await request.json());
-      const found = orders.find((o) => o.id === params.id);
-      return HttpResponse.json({ success: true, data: { ...found, status: 'refund_pending' } });
+      const id = String(params.id);
+      if (refundReply.recordRefund) {
+        refunds[id] = [...(refunds[id] ?? []), refundReply.recordRefund];
+      }
+      if (refundReply.status >= 400) {
+        return HttpResponse.json(
+          { success: false, message: refundReply.message },
+          { status: refundReply.status },
+        );
+      }
+      const found = orders.find((o) => o.id === id);
+      return HttpResponse.json(
+        { success: true, data: { ...found, status: refundReply.orderStatus ?? 'refund_pending' } },
+        { status: refundReply.status },
+      );
     }),
   );
 }
@@ -90,6 +113,8 @@ describe('OrdersPage refunds', () => {
     ];
     refunds = {};
     refundBodies = [];
+    refundListFetches = 0;
+    refundReply = { status: 200 };
     useHandlers();
   });
 
@@ -261,5 +286,62 @@ describe('OrdersPage refunds', () => {
     expect(items).toHaveLength(2);
     expect(items[0]).toHaveTextContent('₹200.00 · Submitted');
     expect(items[1]).toHaveTextContent('₹100.00 · Processed');
+  });
+
+  describe('refund outcome', () => {
+    async function openConfirmedWithEarlierRefund() {
+      orders = [order({ id: 'o1', status: 'confirmed', grandTotal: 1000 })];
+      refunds = {
+        o1: [refund({ id: 'a', orderId: 'o1', amountPaise: 20000, status: 'processed' })],
+      };
+      renderPage();
+      const user = userEvent.setup();
+      await user.click(await screen.findByText('o1'));
+      await waitFor(() => expect(screen.getByLabelText('Refund amount (₹)')).toHaveValue(800));
+      const amount = screen.getByLabelText('Refund amount (₹)');
+      await user.clear(amount);
+      await user.type(amount, '250.50');
+      await user.type(screen.getByLabelText('Refund reason'), 'Partial return');
+      return user;
+    }
+
+    it('on 202 says the refund is pending under the button, refetches the history and resets the form', async () => {
+      refundReply = {
+        status: 202,
+        orderStatus: 'confirmed',
+        recordRefund: refund({
+          id: 'b',
+          orderId: 'o1',
+          amountPaise: 25050,
+          status: 'requested',
+          createdAt: '2026-11-03T10:00:00.000Z',
+        }),
+      };
+      const user = await openConfirmedWithEarlierRefund();
+      const fetchesBefore = refundListFetches;
+
+      await user.click(screen.getByRole('button', { name: 'Refund' }));
+
+      const notice = await screen.findByText(ERROR_MESSAGES.refundPending);
+      expect(screen.getByRole('button', { name: 'Refund' }).nextElementSibling).toBe(notice);
+      await waitFor(() => expect(refundListFetches).toBeGreaterThan(fetchesBefore));
+      expect(await screen.findByText(/₹250.50 · Requested/)).toBeInTheDocument();
+      await waitFor(() => expect(screen.getByLabelText('Refund amount (₹)')).toHaveValue(549.5));
+      expect(screen.getByLabelText('Refund reason')).toHaveValue('');
+    });
+
+    it('on 400 shows the error under the button, refetches the history and keeps the form', async () => {
+      refundReply = { status: 400, message: 'Razorpay createRefund failed with 404' };
+      const user = await openConfirmedWithEarlierRefund();
+      const fetchesBefore = refundListFetches;
+
+      await user.click(screen.getByRole('button', { name: 'Refund' }));
+
+      const notice = await screen.findByText('Razorpay createRefund failed with 404');
+      expect(screen.getByRole('button', { name: 'Refund' }).nextElementSibling).toBe(notice);
+      await waitFor(() => expect(refundListFetches).toBeGreaterThan(fetchesBefore));
+      expect(screen.getByLabelText('Refund amount (₹)')).toHaveValue(250.5);
+      expect(screen.getByLabelText('Refund reason')).toHaveValue('Partial return');
+    });
   });
 });

@@ -220,7 +220,8 @@ export class RefundsService {
 
   // Sends a requested refund to Razorpay with its stored key. A refund
   // Razorpay turns down is failed and surfaced as a 400, but only after
-  // checking it did not create the refund on an earlier attempt (rule 6).
+  // checking it did not create the refund on an earlier attempt (rule 6). If
+  // that check cannot be made the row stays requested and nothing is thrown.
   private async submit(refund: Refund): Promise<void> {
     let lastError: unknown;
     for (const delayMs of REFUND_SUBMIT_RETRY_DELAYS_MS) {
@@ -247,9 +248,16 @@ export class RefundsService {
             await this.recordProviderRefund(refund, lookup.refund);
             return;
           }
-          if (lookup.listed) {
-            await this.markFailed(refund);
+          if (!lookup.listed) {
+            // Neither "refunded" nor "refused" is known. Reporting a failure
+            // here makes the admin submit again and refund the customer twice;
+            // leave the row for the sync job and let the caller see it pending.
+            this.logger.error(
+              `refund ${refund.id} (order ${refund.orderId}): Razorpay rejected the refund (${err.message}) and the receipt lookup failed; left requested for the sync job`,
+            );
+            return;
           }
+          await this.markFailed(refund);
           throw new BadRequestException(err.message);
         }
         lastError = err;
