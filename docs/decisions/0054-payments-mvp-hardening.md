@@ -1,7 +1,7 @@
 # 0054 — Payments MVP hardening: no rupee the system can't see
 
 - **Date:** 2026-11-03
-- **Status:** Accepted
+- **Status:** Implemented (feat/payments-mvp-hardening, d23847c — pending merge)
 - **Supersedes / Superseded by:** Amends [0041](0041-cart-owner-reservation-and-real-instock.md) rule 3 (the webhook stays a confirmation signal, and Razorpay's fetch API becomes a second one), [0042](0042-cart-and-order-structure.md) (refund behaviour), and [0049](0049-stale-reservation-sweep.md) (the sweep now asks Razorpay before cancelling)
 
 ## Context
@@ -79,7 +79,9 @@ Order statuses become `pending_payment | confirmed | cancelled | refund_required
 - `PaymentProviderService.refundPayment` and the no-op `markCaptured` are removed. The interface gains `fetchOrderPayments`, `createRefund`, `fetchRefunds` and `fetchRefund`.
 - Vendors can't advance a vendor group whose order is `refund_required` or `refund_pending`, the same as for `refunded` and `cancelled`.
 - Customer cancel can now return 400 ("a payment is in progress") or 503 ("could not verify payment status").
-- **One exception to rule 4:** a captured payment that cannot be bound to its order, because the order is already `confirmed` or `refunded` with a different payment id, gets no order status. The `orders` row has one payment column, and Razorpay allows one successful payment per order, so this is practically unreachable. `applyCapture` logs it at error level and returns `ignored`; the webhook is still kept in `payment_events`.
+- **The refundable amount is what Razorpay actually captured.** It is stored in `orders.captured_paise` wherever `razorpay_payment_id` is stored, and falls back to `grand_total` when NULL. The admin `OrderDto` exposes `capturedPaise`.
+- **Razorpay 408 and 429 responses are classified as retryable (`server`).** This is safe because refunds carry a stable idempotency key. Order creation is never retried.
+- **One exception to rule 4:** a captured payment that cannot be bound to its order, because the order is already `confirmed`, `refund_required`, `refund_pending` or `refunded` with a different payment id, gets no order status. The `orders` row has one payment column, and Razorpay allows one successful payment per order, so this is practically unreachable. `applyCapture` logs it at error level and returns `ignored`; the webhook is still kept in `payment_events`.
 - **Live-payment gate:** no live payments until the seven Razorpay test-mode checks in `docs/payments-test-mode-checklist.md` pass. These include capture-window timing measured from order creation and from payment creation.
 - **Ops:** a weekly reconciliation sheet, built from `apps/backend/scripts/payments-recon-export.sql` plus Razorpay's settlement report.
 
