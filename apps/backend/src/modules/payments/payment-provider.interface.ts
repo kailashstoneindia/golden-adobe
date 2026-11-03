@@ -10,14 +10,6 @@ export interface CreateProviderOrderResult {
   providerOrderId: string;
 }
 
-// Decision 0042 rules 8-9. One implementation (RazorpayProviderService)
-// behind this interface, same pattern as StorageService in decision
-// 0024-product-images-gcs.md — a future provider swap, or wiring real
-// credentials, is a config change, not a rewrite of the ordering domain.
-export interface RefundResult {
-  refundId: string;
-}
-
 export type ProviderPaymentStatus = 'created' | 'authorized' | 'captured' | 'refunded' | 'failed';
 
 export interface ProviderPayment {
@@ -65,6 +57,10 @@ export class ProviderRequestError extends Error {
   }
 }
 
+// Decision 0042 rules 8-9. One implementation (RazorpayProviderService)
+// behind this interface, same pattern as StorageService in decision
+// 0024-product-images-gcs.md — a future provider swap, or wiring real
+// credentials, is a config change, not a rewrite of the ordering domain.
 export interface PaymentProviderService {
   createOrder(amountPaise: number, receiptId: string): Promise<CreateProviderOrderResult>;
   verifyWebhookSignature(rawBody: string, signatureHeader: string): boolean;
@@ -72,6 +68,4 @@ export interface PaymentProviderService {
   createRefund(params: CreateRefundParams): Promise<ProviderRefund>;
   fetchRefunds(paymentId: string): Promise<ProviderRefund[]>;
   fetchRefund(paymentId: string, refundId: string): Promise<ProviderRefund>;
-  /** @deprecated removed in Task 5 together with OrdersService.adminRefund */
-  refundPayment(providerPaymentId: string, amountPaise: number): Promise<RefundResult>;
 }

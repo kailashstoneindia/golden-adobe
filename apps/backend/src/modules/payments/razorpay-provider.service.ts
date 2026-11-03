@@ -10,7 +10,6 @@ import {
   ProviderPayment,
   ProviderRefund,
   ProviderRequestError,
-  RefundResult,
 } from './payment-provider.interface';
 import { toProviderPayment, toProviderRefund } from './razorpay-mappers';
 
@@ -251,12 +250,5 @@ export class RazorpayProviderService implements PaymentProviderService {
       client.payments.fetchRefund(paymentId, refundId),
     );
     return toProviderRefund(refund);
-  }
-
-  async refundPayment(providerPaymentId: string, amountPaise: number): Promise<RefundResult> {
-    const refund = await this.getClient().payments.refund(providerPaymentId, {
-      amount: amountPaise,
-    });
-    return { refundId: refund.id };
   }
 }

@@ -8,12 +8,11 @@ import {
   ProviderRefund,
   ProviderRefundStatus,
   ProviderRequestError,
-  RefundResult,
 } from '../payment-provider.interface';
 
 export const TEST_WEBHOOK_SECRET = 'test-webhook-secret';
 
-type ProviderMethod = 'createOrder' | 'refundPayment';
+type ProviderMethod = 'createOrder';
 
 type RefundOutcome =
   | 'pending'
@@ -146,11 +145,5 @@ export class FakePaymentProvider implements PaymentProviderService {
       throw new ProviderRequestError('client', `fake provider has no refund ${refundId}`, 400);
     }
     return { ...refund };
-  }
-
-  async refundPayment(providerPaymentId: string, amountPaise: number): Promise<RefundResult> {
-    this.record('refundPayment', [providerPaymentId, amountPaise]);
-    this.counter += 1;
-    return { refundId: `rfnd_fake_${this.counter}` };
   }
 }

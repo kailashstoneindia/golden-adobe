@@ -41,6 +41,7 @@ import {
 import { CheckoutService } from '../checkout.service';
 import { OrdersService } from '../orders.service';
 import { OrderPaymentService } from '../order-payment.service';
+import { RefundsService } from '../refunds.service';
 import { OrdersController } from '../orders.controller';
 import { WebhooksController } from '../webhooks.controller';
 import { AdminOrdersController } from '../admin-orders.controller';
@@ -163,6 +164,7 @@ export async function createPaymentsTestApp(): Promise<PaymentsTestApp> {
       CheckoutService,
       OrdersService,
       OrderPaymentService,
+      RefundsService,
       { provide: PAYMENT_PROVIDER, useValue: provider },
       { provide: NOTIFICATION_SERVICE, useValue: notifications },
     ],

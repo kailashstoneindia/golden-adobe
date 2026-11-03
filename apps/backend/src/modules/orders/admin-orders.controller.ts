@@ -14,8 +14,11 @@ import { Role } from '@golden-abode/types';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { OrdersService } from './orders.service';
+import { RefundsService } from './refunds.service';
 import { AdminOverrideGroupStatusDto } from './dto/admin-override-group-status.dto';
+import { AdminRefundDto } from './dto/admin-refund.dto';
 
 // Declared in OrdersModule, not AdminModule — it needs OrdersService, which
 // OrdersModule already owns, and AdminCatalogController sets the same
@@ -28,7 +31,10 @@ import { AdminOverrideGroupStatusDto } from './dto/admin-override-group-status.d
 @Roles(Role.ADMIN)
 @ApiBearerAuth()
 export class AdminOrdersController {
-  constructor(private readonly ordersService: OrdersService) {}
+  constructor(
+    private readonly ordersService: OrdersService,
+    private readonly refundsService: RefundsService,
+  ) {}
 
   @Get()
   list() {
@@ -45,10 +51,26 @@ export class AdminOrdersController {
     return this.ordersService.getPaymentEvents(id);
   }
 
+  @Get(':id/refunds')
+  listRefunds(@Param('id') id: string) {
+    return this.refundsService.listForOrder(id);
+  }
+
   @Post(':id/refund')
   @HttpCode(HttpStatus.OK)
-  refund(@Param('id') id: string) {
-    return this.ordersService.adminRefund(id);
+  async refund(
+    @Param('id') id: string,
+    @Body() dto: AdminRefundDto,
+    @CurrentUser('sub') adminUserId: string,
+  ) {
+    await this.refundsService.requestRefund({
+      orderId: id,
+      adminUserId,
+      reason: dto.reason,
+      amountPaise: dto.amountPaise,
+      vendorGroupId: dto.vendorGroupId,
+    });
+    return this.ordersService.getForAdmin(id);
   }
 
   @Patch(':id/cancel')

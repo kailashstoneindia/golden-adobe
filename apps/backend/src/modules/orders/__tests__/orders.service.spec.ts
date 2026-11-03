@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { getModelToken } from '@nestjs/sequelize';
@@ -10,7 +11,6 @@ import { OrderVendorGroup, OrderVendorGroupStatus } from '../models/order-vendor
 import { PaymentEvent } from '../models/payment-event.model';
 import { CustomersService } from '../../customers/customers.service';
 import { NOTIFICATION_SERVICE } from '../../notifications/notification.interface';
-import { PAYMENT_PROVIDER } from '../../payments/payment-provider.interface';
 import { Artisan } from '../../artisans/models/artisan.model';
 import { ArtisanHireRequest } from '../../artisans/models/artisan-hire-request.model';
 
@@ -20,7 +20,6 @@ describe('OrdersService', () => {
   let groupModelMock: { update: jest.Mock; findByPk: jest.Mock; findOne: jest.Mock };
   let paymentEventModelMock: { findAll: jest.Mock };
   let sequelizeMock: { transaction: jest.Mock; query: jest.Mock };
-  let paymentProviderMock: { refundPayment: jest.Mock };
   let notificationsMock: { sendOrderStatusChanged: jest.Mock };
   let customersServiceMock: { resolveCustomerByUserId: jest.Mock };
   let artisanModelMock: { findOne: jest.Mock };
@@ -38,7 +37,6 @@ describe('OrdersService', () => {
     groupModelMock = { update: jest.fn(), findByPk: jest.fn(), findOne: jest.fn() };
     paymentEventModelMock = { findAll: jest.fn() };
     sequelizeMock = { transaction: jest.fn(), query: jest.fn() };
-    paymentProviderMock = { refundPayment: jest.fn() };
     notificationsMock = { sendOrderStatusChanged: jest.fn() };
     customersServiceMock = { resolveCustomerByUserId: jest.fn() };
     artisanModelMock = { findOne: jest.fn() };
@@ -61,7 +59,6 @@ describe('OrdersService', () => {
         { provide: Sequelize, useValue: sequelizeMock },
         { provide: CustomersService, useValue: customersServiceMock },
         { provide: NOTIFICATION_SERVICE, useValue: notificationsMock },
-        { provide: PAYMENT_PROVIDER, useValue: paymentProviderMock },
         { provide: ConfigService, useValue: configServiceMock },
         { provide: OrderPaymentService, useValue: orderPaymentMock },
       ],
@@ -219,98 +216,6 @@ describe('OrdersService', () => {
       await expect(
         service.getForOwner('artisan-user-1', Role.ARTISAN, 'order-1'),
       ).rejects.toThrow();
-    });
-  });
-
-  describe('adminRefund', () => {
-    it('refunds a confirmed order and marks it refunded', async () => {
-      const order = {
-        id: 'order-1',
-        status: OrderStatus.CONFIRMED,
-        razorpayPaymentId: 'pay_abc',
-        grandTotal: 1500,
-        save: jest.fn(),
-      };
-      orderModelMock.findByPk.mockResolvedValue(order);
-      // The claim-first UPDATE: 1 row updated means the claim succeeded.
-      sequelizeMock.query.mockResolvedValueOnce([[], 1]);
-      paymentProviderMock.refundPayment.mockResolvedValue({ refundId: 'rfnd_1' });
-
-      const result = await service.adminRefund('order-1');
-
-      expect(paymentProviderMock.refundPayment).toHaveBeenCalledWith('pay_abc', 150000);
-      expect(result.status).toBe(OrderStatus.REFUNDED);
-    });
-
-    it('rejects refunding an order that was never captured', async () => {
-      orderModelMock.findByPk.mockResolvedValue({
-        id: 'order-1',
-        status: OrderStatus.PENDING_PAYMENT,
-        razorpayPaymentId: null,
-      });
-
-      await expect(service.adminRefund('order-1')).rejects.toThrow(
-        'order has no captured payment to refund',
-      );
-    });
-
-    it('rejects refunding an order that was already refunded', async () => {
-      orderModelMock.findByPk.mockResolvedValue({
-        id: 'order-1',
-        status: OrderStatus.REFUNDED,
-        razorpayPaymentId: 'pay_abc',
-      });
-
-      await expect(service.adminRefund('order-1')).rejects.toThrow(
-        'order has no captured payment to refund',
-      );
-    });
-
-    it('rejects a concurrent double-refund: the claim UPDATE matches zero rows the second time (closes finding 3)', async () => {
-      // Simulates two concurrent adminRefund calls on the same order: both
-      // pass the advisory findByPk check, but only one claim UPDATE can
-      // win (WHERE status = 'confirmed' — the other call already flipped
-      // it to 'refunded'). Without the claim, both calls would call
-      // Razorpay's refund API, and the second would either double-refund
-      // or surface a raw, unhandled Razorpay error.
-      orderModelMock.findByPk.mockResolvedValue({
-        id: 'order-1',
-        status: OrderStatus.CONFIRMED,
-        razorpayPaymentId: 'pay_abc',
-        grandTotal: 1500,
-        save: jest.fn(),
-      });
-      sequelizeMock.query.mockResolvedValueOnce([[], 0]);
-
-      await expect(service.adminRefund('order-1')).rejects.toThrow(
-        'order could not be refunded — its status just changed',
-      );
-      expect(paymentProviderMock.refundPayment).not.toHaveBeenCalled();
-    });
-
-    it('reverts the claimed status back to confirmed if the Razorpay call fails, so the order is refundable on retry', async () => {
-      // Without the revert, a Razorpay failure (network error, Razorpay
-      // outage) leaves the order stuck REFUNDED with no money actually
-      // refunded yet — adminCancel refuses REFUNDED→anything-but-cancel
-      // semantics aside, and nothing else can move a REFUNDED order that
-      // was never actually paid back by Razorpay.
-      orderModelMock.findByPk.mockResolvedValue({
-        id: 'order-1',
-        status: OrderStatus.CONFIRMED,
-        razorpayPaymentId: 'pay_abc',
-        grandTotal: 1500,
-        save: jest.fn(),
-      });
-      sequelizeMock.query
-        .mockResolvedValueOnce([[], 1]) // claim succeeds
-        .mockResolvedValueOnce([[], 1]); // revert succeeds
-      paymentProviderMock.refundPayment.mockRejectedValue(new Error('razorpay unreachable'));
-
-      await expect(service.adminRefund('order-1')).rejects.toThrow('razorpay unreachable');
-
-      expect(sequelizeMock.query).toHaveBeenCalledTimes(2);
-      const revertCall = sequelizeMock.query.mock.calls[1];
-      expect(revertCall[0]).toContain('SET status = :confirmed');
     });
   });
 
@@ -512,7 +417,7 @@ describe('OrdersService', () => {
     });
 
     it('refuses to advance a group whose parent order has been refunded (closes finding 4)', async () => {
-      // adminRefund never touches order_vendor_group rows, so a group can
+      // refunds never touch order_vendor_group rows, so a group can
       // sit at CONFIRMED (or SHIPPED) while its parent order is REFUNDED.
       // The vendor-visibility filter (Op.ne PENDING_PAYMENT) still shows
       // it. Without this guard a vendor could ship/deliver goods for an
@@ -534,6 +439,26 @@ describe('OrdersService', () => {
       );
       expect(group.save).not.toHaveBeenCalled();
     });
+
+    it.each([OrderStatus.REFUND_REQUIRED, OrderStatus.REFUND_PENDING])(
+      'refuses to advance a group whose parent order is %s (decision 0054)',
+      async (orderStatus) => {
+        const group = {
+          id: 'group-1',
+          vendorId: 'vendor-1',
+          status: OrderVendorGroupStatus.CONFIRMED,
+          orderId: 'order-1',
+          order: { status: orderStatus },
+          save: jest.fn(),
+        };
+        groupModelMock.findOne.mockResolvedValue(group);
+
+        await expect(
+          service.updateVendorGroupStatus('vendor-1', 'group-1', OrderVendorGroupStatus.SHIPPED),
+        ).rejects.toThrow(BadRequestException);
+        expect(group.save).not.toHaveBeenCalled();
+      },
+    );
 
     it('refuses to advance a group whose parent order has been cancelled', async () => {
       const group = {

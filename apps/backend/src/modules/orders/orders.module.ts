@@ -11,6 +11,7 @@ import { ArtisanHireRequest } from '../artisans/models/artisan-hire-request.mode
 import { CheckoutService } from './checkout.service';
 import { OrdersService } from './orders.service';
 import { OrderPaymentService } from './order-payment.service';
+import { RefundsService } from './refunds.service';
 import { OrdersController } from './orders.controller';
 import { WebhooksController } from './webhooks.controller';
 import { AdminOrdersController } from './admin-orders.controller';
@@ -39,7 +40,7 @@ import { CatalogModule } from '../catalog/catalog.module';
     CatalogModule,
   ],
   controllers: [OrdersController, WebhooksController, AdminOrdersController],
-  providers: [CheckoutService, OrdersService, OrderPaymentService],
-  exports: [CheckoutService, OrdersService, OrderPaymentService],
+  providers: [CheckoutService, OrdersService, OrderPaymentService, RefundsService],
+  exports: [CheckoutService, OrdersService, OrderPaymentService, RefundsService],
 })
 export class OrdersModule {}
