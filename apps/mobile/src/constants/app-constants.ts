@@ -12,6 +12,10 @@ export const APP_CONSTANTS = {
   orderPaymentPollIntervalMs: 2_000,
   orderPaymentPollMaxAttempts: 30,
   checkoutMerchantName: 'Kailash Stones',
+  // The Checkout sheet closes this long before the order's payment hold runs
+  // out, and is not opened at all with less than the minimum left (decision 0054).
+  paymentSheetCloseBufferSeconds: 60,
+  paymentSheetMinSeconds: 60,
   unsetTaxAmount: 0,
   unsetDiscountAmount: 0,
 } as const;

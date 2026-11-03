@@ -42,7 +42,7 @@ This is an MVP: tens of orders a day and one admin. The full production design h
 
 Build Option B. These rules are binding for all payment code:
 
-1. **Razorpay holds late money, not us.** Every Razorpay order is created with `payment: { capture: 'automatic', capture_options: { automatic_expiry_period: 20, manual_expiry_period: 20, refund_speed: 'normal' } }`. That window and the stale-reservation timeout come from one constant (`PAYMENT_CAPTURE_WINDOW_MINUTES = 20`).
+1. **Razorpay holds late money, not us.** Every Razorpay order is created with `payment: { capture: 'automatic', capture_options: { automatic_expiry_period: 20, manual_expiry_period: 20, refund_speed: 'normal' } }`. That window and the stale-reservation timeout come from one constant (`PAYMENT_HOLD_MINUTES = 20`, in `packages/types`, reused as the backend's `PAYMENT_CAPTURE_WINDOW_MINUTES`). Razorpay counts the window from each payment's creation, not from the order's, so it does not by itself stop a payment started after the sweep cancelled the order. The mobile app therefore also closes the Checkout sheet before the hold expires (Checkout `timeout` = hold less time elapsed less a 60-second buffer; with under 60 seconds of that left the sheet is not opened and the customer is told to place the order again). A payment started after that still lands in `refund_required` (rule 4).
 2. **One capture path.** The webhook, the sweep and both cancel paths confirm a payment only through `OrderPaymentService.applyCapture()`. It confirms only when the payment's `order_id`, `amount` (paise) and `currency` (`INR`) all match the order. Confirmation remains the guarded `UPDATE … WHERE status = 'pending_payment'`.
 3. **Ask before cancelling.** No code cancels a `pending_payment` order that has a `razorpay_order_id` without first fetching that order's payments from Razorpay:
    - Any payment `captured` → `applyCapture()`.
@@ -53,12 +53,14 @@ Build Option B. These rules are binding for all payment code:
 5. **Refunds are admin-triggered and recorded before Razorpay is called.**
    - Each refund is a `refunds` row with its own `idempotency_key`, sent as `X-Refund-Idempotency`. Retries reuse that key and the identical body, and a key is never regenerated for the same refund.
    - Each row also has a unique `receipt`.
+   - The admin's request makes one Razorpay attempt, then the receipt lookup below; the retries (three attempts, 0, 1 and 2 seconds apart) run in the 5-minute sync job, so the request is not held for a minute.
    - Successful refunds never total more than the captured amount, enforced under a row lock on the order.
+   - A refund tagged to a vendor group also cannot exceed that group's subtotal plus loading fee, less the group's non-failed refunds, checked under the same lock.
 6. **Refund status follows money movement.**
    - A full refund puts the order in `refund_pending` until Razorpay reports `processed`, then `refunded`.
    - A failed full refund returns the order to `refund_required`.
    - Partial refunds never change the order status.
-   - A 5-minute job moves refunds from `submitted` to `processed` or `failed` by fetching them from Razorpay. It also re-sends any `requested` refunds with their stored key.
+   - A 5-minute job moves refunds from `submitted` to `processed` or `failed` by fetching them from Razorpay. It also re-sends any `requested` refunds with their stored key, with the full set of retries (rule 5).
    - `POST /admin/orders/:id/refund` answers 202 Accepted, not an error, when the refund is still `requested` (Razorpay's answer could not be confirmed, including a client error whose receipt lookup failed). The admin UI says it is pending and not to resubmit. It answers 400 when the refund ends `failed`: a client error with a receipt lookup that confirms no refund exists (Razorpay's message), or Razorpay reporting the refund as failed ("Razorpay reported this refund as failed."). A failed row stays and the refund can be retried.
 7. **The webhook never fails because of a notification**, and stores `x-razorpay-event-id` under a unique index.
 
@@ -66,7 +68,7 @@ Order statuses become `pending_payment | confirmed | cancelled | refund_required
 
 ## Why
 
-- **Capture window.** Refunding a captured payment costs about 2.36% (2% fee + 18% GST), which Razorpay keeps; that is roughly ₹1,180 on a ₹50,000 order. An authorised payment that is never captured is auto-refunded by Razorpay at no fee. Aligning the two timers turns the most likely loss into a free automatic refund. This is configuration, not code.
+- **Capture window.** Refunding a captured payment costs about 2.36% (2% fee + 18% GST), which Razorpay keeps; that is roughly ₹1,180 on a ₹50,000 order. An authorised payment that is never captured is auto-refunded by Razorpay at no fee. Aligning the two timers turns the most likely loss into a free automatic refund. The window is per payment, though, so a customer whose sheet is still open when the sweep cancels the order (about minute 21) could start a fresh payment that auto-captures. Closing the sheet in the app before the hold expires removes the common way into that case; the rest is the visible, refundable `refund_required` of rule 4, which costs the fee.
 - **Razorpay's API as a second signal.** Razorpay disables a webhook endpoint after 24 hours of failures, keeps delivery logs for only 3 hours, and recommends polling its APIs for business-critical flows. The sweep already runs every 5 minutes, so it doubles as the poller.
 - **No `FOR UPDATE SKIP LOCKED` in the sweep** (an external reviewer suggested it). Concurrent sweeps are already safe, because only one guarded UPDATE can succeed, as 0049 established. Claiming rows with a lock would hold that lock across the Razorpay HTTP call. That is the transaction-across-external-call pattern checkout already avoids, because it exhausts the connection pool.
 - **Direct HTTPS for refunds.** razorpay-node 2.9.8 forwards only the `X-Razorpay-Account` and `Content-Type` headers (`getValidHeaders` in `node_modules/razorpay/dist/api.js`), so it silently drops `X-Refund-Idempotency`. Refund creation is therefore one `fetch` call with HTTP Basic auth. The SDK is still used for everything else.

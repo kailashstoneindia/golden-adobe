@@ -9,6 +9,12 @@ export const ORDER_STATUSES = {
 
 export type OrderStatus = (typeof ORDER_STATUSES)[keyof typeof ORDER_STATUSES];
 
+// How long an unpaid order holds its stock (decision 0054). The backend's
+// stale-reservation sweep and Razorpay's per-payment capture window both use
+// it, and the mobile app closes the Checkout sheet before it runs out, so
+// all three share this one number.
+export const PAYMENT_HOLD_MINUTES = 20;
+
 export const ORDER_VENDOR_GROUP_STATUSES = {
   PENDING: 'pending',
   CONFIRMED: 'confirmed',

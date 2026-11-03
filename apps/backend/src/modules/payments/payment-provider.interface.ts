@@ -1,9 +1,14 @@
+import { PAYMENT_HOLD_MINUTES } from '@golden-abode/types';
+
 export const PAYMENT_PROVIDER = 'PAYMENT_PROVIDER';
 
-// Decision 0054: Razorpay expires an unpaid order's payment attempts after this
-// many minutes (capture_options), so after it passes no new capture can start
-// and a stale reservation can be released safely.
-export const PAYMENT_CAPTURE_WINDOW_MINUTES = 20;
+// Decision 0054: how long a payment attempt may take to capture
+// (capture_options), and how long the stale-reservation sweep waits. Razorpay
+// counts this window from each payment's creation, not from the order's, so it
+// alone does not stop a payment started late: the mobile app closes the
+// Checkout sheet before the hold expires (same constant), and a payment that
+// still lands on a cancelled order ends in refund_required (rule 4).
+export const PAYMENT_CAPTURE_WINDOW_MINUTES = PAYMENT_HOLD_MINUTES;
 export const PROVIDER_TIMEOUT_MS = 15_000;
 
 export interface CreateProviderOrderResult {
