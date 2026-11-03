@@ -48,10 +48,18 @@ type LockedOrder = {
   customer_id: string;
   status: OrderStatus;
   grand_total: string;
+  captured_paise: string | null;
   razorpay_payment_id: string | null;
 };
 
 type Transition = { orderId: string; customerId: string; from: OrderStatus; to: OrderStatus };
+
+// What Razorpay actually took. captured_paise is NULL only for orders captured
+// before it was recorded, where the capture check had already proven it equal
+// to grand_total.
+function capturedPaiseOf(order: LockedOrder): number {
+  return order.captured_paise === null ? toPaise(order.grand_total) : Number(order.captured_paise);
+}
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
@@ -91,7 +99,7 @@ export class RefundsService {
         throw new BadRequestException('order has no captured payment to refund');
       }
 
-      const capturedPaise = toPaise(order.grand_total);
+      const capturedPaise = capturedPaiseOf(order);
       const [totals] = await this.sequelize.query<{ taken: string; total: string }>(
         `SELECT COALESCE(SUM(amount_paise) FILTER (WHERE status <> :failed), 0) AS taken,
                 COUNT(*) AS total
@@ -108,8 +116,10 @@ export class RefundsService {
         throw new BadRequestException(REFUND_EXCEEDS_MESSAGE);
       }
       // A late payment has no order to keep partially intact (decision 0054
-      // rule 4), so only a full refund settles it.
-      if (order.status === OrderStatus.REFUND_REQUIRED && amountPaise !== capturedPaise) {
+      // rule 4), so it is refunded in one go: whatever is still refundable.
+      // That is the whole capture unless a partial refund already settled
+      // part of it, in which case a failed full refund leaves only the rest.
+      if (order.status === OrderStatus.REFUND_REQUIRED && amountPaise !== remainingPaise) {
         throw new BadRequestException('a late payment must be refunded in full');
       }
       if (input.vendorGroupId) {
@@ -140,7 +150,7 @@ export class RefundsService {
           status: RefundStatus.REQUESTED,
           reason: input.reason,
           createdBy: input.adminUserId,
-        } as never,
+        },
         { transaction: t },
       );
       const projected = await this.project(order, t);
@@ -270,57 +280,50 @@ export class RefundsService {
       refund.razorpayRefundId,
     );
     if (current.status === 'processed' || current.status === 'failed') {
-      await this.setStatus(refund, RefundStatus.SUBMITTED, current.status as RefundStatus);
+      await this.transitionRefund(refund, RefundStatus.SUBMITTED, current.status as RefundStatus);
     }
   }
 
   private async recordProviderRefund(refund: Refund, result: ProviderRefund): Promise<void> {
-    // Guarded on 'requested': a concurrent submit or sync that got here first
-    // has already recorded this same refund.
     const next =
       result.status === 'processed'
         ? RefundStatus.PROCESSED
         : result.status === 'failed'
           ? RefundStatus.FAILED
           : RefundStatus.SUBMITTED;
-    const [, updated] = await this.sequelize.query(
-      `UPDATE refunds SET razorpay_refund_id = :providerRefundId, status = :next, updated_at = now()
-       WHERE id = :id AND status = :requested`,
-      {
-        replacements: {
-          id: refund.id,
-          providerRefundId: result.id,
-          next,
-          requested: RefundStatus.REQUESTED,
-        },
-        type: QueryTypes.UPDATE,
-      },
-    );
-    if (updated > 0) {
-      await this.reproject(refund.orderId);
-    }
+    await this.transitionRefund(refund, RefundStatus.REQUESTED, next, result.id);
   }
 
   private async markFailed(refund: Refund): Promise<void> {
-    await this.setStatus(refund, RefundStatus.REQUESTED, RefundStatus.FAILED);
+    await this.transitionRefund(refund, RefundStatus.REQUESTED, RefundStatus.FAILED);
   }
 
-  // Guarded status change followed by re-projecting the order. updated_at is
-  // set by hand because the sync job reads it as "time since last change".
-  private async setStatus(refund: Refund, from: RefundStatus, to: RefundStatus): Promise<void> {
-    const [, updated] = await this.sequelize.query(
-      `UPDATE refunds SET status = :to, updated_at = now() WHERE id = :id AND status = :from`,
-      { replacements: { id: refund.id, from, to }, type: QueryTypes.UPDATE },
-    );
-    if (updated > 0) {
-      await this.reproject(refund.orderId);
-    }
-  }
-
-  private async reproject(orderId: string): Promise<void> {
+  // The refund's status change and the order projection it implies commit
+  // together under the order's row lock (decision 0054 rule 6). In two
+  // transactions, a failure in between would leave a processed or failed
+  // refund that the sync job never selects again, and an order that never
+  // follows it. The refund UPDATE is guarded on its current status, so a concurrent
+  // submit or sync that got here first makes this a no-op. updated_at is set
+  // by hand because the sync job reads it as "time since last change".
+  private async transitionRefund(
+    refund: Refund,
+    from: RefundStatus,
+    to: RefundStatus,
+    providerRefundId?: string,
+  ): Promise<void> {
     const transition = await this.sequelize.transaction(async (t) => {
-      const order = await this.lockOrder(orderId, t);
-      return order ? this.project(order, t) : null;
+      const order = await this.lockOrder(refund.orderId, t);
+      const [, updated] = await this.sequelize.query(
+        `UPDATE refunds SET status = :to, updated_at = now(),
+                razorpay_refund_id = COALESCE(:providerRefundId, razorpay_refund_id)
+         WHERE id = :id AND status = :from`,
+        {
+          replacements: { id: refund.id, from, to, providerRefundId: providerRefundId ?? null },
+          type: QueryTypes.UPDATE,
+          transaction: t,
+        },
+      );
+      return order && updated > 0 ? this.project(order, t) : null;
     });
     if (transition) {
       await this.notifyIfRefunded(transition);
@@ -330,7 +333,7 @@ export class RefundsService {
   private lockOrder(orderId: string, t: Transaction): Promise<LockedOrder | undefined> {
     return this.sequelize
       .query<LockedOrder>(
-        `SELECT id, customer_id, status, grand_total, razorpay_payment_id
+        `SELECT id, customer_id, status, grand_total, captured_paise, razorpay_payment_id
          FROM orders WHERE id = :orderId FOR UPDATE`,
         { replacements: { orderId }, type: QueryTypes.SELECT, transaction: t },
       )
@@ -356,7 +359,7 @@ export class RefundsService {
     );
     const next = projectOrderStatus(
       order.status,
-      toPaise(order.grand_total),
+      capturedPaiseOf(order),
       Number(sums.processed),
       Number(sums.open),
     );

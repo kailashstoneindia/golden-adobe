@@ -55,6 +55,7 @@ export class OrderPaymentService {
         const applied = await this.cancelPending(order.id, {
           status: OrderStatus.REFUND_REQUIRED,
           paymentId: payment.id,
+          amountPaise: payment.amountPaise,
         });
         if (applied) {
           await this.notifyRefundRequired(order);
@@ -62,10 +63,10 @@ export class OrderPaymentService {
         }
         // Lost a race (confirmed or cancelled meanwhile): fall through.
       }
-      return this.refundRequired(order, payment.id);
+      return this.refundRequired(order, payment.id, payment.amountPaise);
     }
 
-    const confirmedGroups = await this.confirmOrder(order.id, payment.id);
+    const confirmedGroups = await this.confirmOrder(order.id, payment.id, payment.amountPaise);
     if (confirmedGroups) {
       await this.notifyConfirmed(order, confirmedGroups);
       return 'confirmed';
@@ -77,7 +78,7 @@ export class OrderPaymentService {
       current &&
       (current.status === OrderStatus.CANCELLED || current.status === OrderStatus.REFUND_REQUIRED)
     ) {
-      return this.refundRequired(current, payment.id);
+      return this.refundRequired(current, payment.id, payment.amountPaise);
     }
     if (current?.status === OrderStatus.CONFIRMED && current.razorpayPaymentId === payment.id) {
       return 'already_confirmed';
@@ -122,7 +123,11 @@ export class OrderPaymentService {
   // false if the order was not actually PENDING_PAYMENT at the moment of
   // the guarded UPDATE (lost a race, or was already cancelled/confirmed).
   async releaseAndCancel(orderId: string): Promise<boolean> {
-    return this.cancelPending(orderId, { status: OrderStatus.CANCELLED, paymentId: null });
+    return this.cancelPending(orderId, {
+      status: OrderStatus.CANCELLED,
+      paymentId: null,
+      amountPaise: null,
+    });
   }
 
   // Shared body of releaseAndCancel and the mismatch path of applyCapture.
@@ -134,8 +139,8 @@ export class OrderPaymentService {
   private async cancelPending(
     orderId: string,
     target:
-      | { status: OrderStatus.CANCELLED; paymentId: null }
-      | { status: OrderStatus.REFUND_REQUIRED; paymentId: string },
+      | { status: OrderStatus.CANCELLED; paymentId: null; amountPaise: null }
+      | { status: OrderStatus.REFUND_REQUIRED; paymentId: string; amountPaise: number },
   ): Promise<boolean> {
     return this.sequelize.transaction(async (t) => {
       // Sequelize's QueryTypes.UPDATE return shape for Postgres is
@@ -146,13 +151,15 @@ export class OrderPaymentService {
       // always false and this guard never actually fired — found while
       // verifying the fix-pass's own fixes, not by reading docs.
       const [, updatedCount] = await this.sequelize.query(
-        `UPDATE orders SET status = :target, razorpay_payment_id = COALESCE(:paymentId, razorpay_payment_id)
+        `UPDATE orders SET status = :target, razorpay_payment_id = COALESCE(:paymentId, razorpay_payment_id),
+             captured_paise = COALESCE(:amountPaise, captured_paise)
          WHERE id = :orderId AND status = :pending`,
         {
           replacements: {
             orderId,
             target: target.status,
             paymentId: target.paymentId,
+            amountPaise: target.amountPaise,
             pending: OrderStatus.PENDING_PAYMENT,
           },
           type: QueryTypes.UPDATE,
@@ -210,14 +217,22 @@ export class OrderPaymentService {
   // Decision 0054 rule 4. Guarded on status and an empty payment id: a
   // cancelled order that already carries a payment id has had its money
   // accounted for, and must not be overwritten by a different payment's id.
-  async markRefundRequired(orderId: string, paymentId: string): Promise<boolean> {
+  // captured_paise records what Razorpay actually took, which is what a refund
+  // can return (it differs from grand_total for an amount-mismatch capture).
+  async markRefundRequired(
+    orderId: string,
+    paymentId: string,
+    amountPaise: number,
+  ): Promise<boolean> {
     const [, updatedCount] = await this.sequelize.query(
-      `UPDATE orders SET status = :refundRequired, razorpay_payment_id = :paymentId
+      `UPDATE orders SET status = :refundRequired, razorpay_payment_id = :paymentId,
+           captured_paise = :amountPaise
        WHERE id = :orderId AND status = :cancelled AND razorpay_payment_id IS NULL`,
       {
         replacements: {
           orderId,
           paymentId,
+          amountPaise,
           refundRequired: OrderStatus.REFUND_REQUIRED,
           cancelled: OrderStatus.CANCELLED,
         },
@@ -227,8 +242,12 @@ export class OrderPaymentService {
     return updatedCount > 0;
   }
 
-  private async refundRequired(order: Order, paymentId: string): Promise<CaptureOutcome> {
-    if (await this.markRefundRequired(order.id, paymentId)) {
+  private async refundRequired(
+    order: Order,
+    paymentId: string,
+    amountPaise: number,
+  ): Promise<CaptureOutcome> {
+    if (await this.markRefundRequired(order.id, paymentId, amountPaise)) {
       await this.notifyRefundRequired(order);
       return 'refund_required';
     }
@@ -302,6 +321,7 @@ export class OrderPaymentService {
   private async confirmOrder(
     orderId: string,
     providerPaymentId: string,
+    amountPaise: number,
   ): Promise<OrderVendorGroup[] | null> {
     return this.sequelize.transaction(async (t) => {
       // Sequelize's QueryTypes.UPDATE return shape for Postgres is
@@ -314,13 +334,14 @@ export class OrderPaymentService {
       // twice during the fix pass's own verification and seeing inventory
       // drop a second time.
       const [, updatedCount] = await this.sequelize.query(
-        `UPDATE orders SET status = :confirmed, razorpay_payment_id = :paymentId WHERE id = :orderId AND status = :pending`,
+        `UPDATE orders SET status = :confirmed, razorpay_payment_id = :paymentId, captured_paise = :amountPaise WHERE id = :orderId AND status = :pending`,
         {
           replacements: {
             orderId,
             confirmed: OrderStatus.CONFIRMED,
             pending: OrderStatus.PENDING_PAYMENT,
             paymentId: providerPaymentId,
+            amountPaise,
           },
           type: QueryTypes.UPDATE,
           transaction: t,

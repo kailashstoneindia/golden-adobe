@@ -14,11 +14,27 @@ export enum RefundRail {
   MANUAL_PAYOUT = 'manual_payout',
 }
 
+// What a caller supplies to create a refund; everything else is defaulted or
+// filled in later (razorpayRefundId, payoutReference).
+export type RefundCreationAttributes = Pick<
+  Refund,
+  | 'orderId'
+  | 'orderVendorGroupId'
+  | 'rail'
+  | 'razorpayPaymentId'
+  | 'amountPaise'
+  | 'idempotencyKey'
+  | 'receipt'
+  | 'status'
+  | 'reason'
+  | 'createdBy'
+>;
+
 // Decision 0054. One row per refund attempt; the row is written before
 // Razorpay is called so a crash or timeout leaves something to retry from.
 // receipt and idempotencyKey are generated once and never regenerated.
 @Table({ tableName: 'refunds', timestamps: true, underscored: true })
-export class Refund extends Model<Refund> {
+export class Refund extends Model<Refund, RefundCreationAttributes> {
   @Column({ type: DataType.UUID, defaultValue: DataType.UUIDV4, primaryKey: true })
   declare id: string;
 

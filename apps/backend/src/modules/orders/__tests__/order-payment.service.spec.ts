@@ -48,6 +48,12 @@ describe('OrderPaymentService (decision 0054)', () => {
       expect(await service.applyCapture(await load(o), p)).toBe('confirmed');
       expect(await service.applyCapture(await load(o), p)).toBe('already_confirmed');
       expect(await status(o)).toBe('confirmed');
+      // Decision 0054: what Razorpay captured is stored for refunds to use.
+      const [row] = await t.query<{ captured_paise: string }>(
+        `SELECT captured_paise FROM orders WHERE id = :id`,
+        { id: o.orderId },
+      );
+      expect(Number(row.captured_paise)).toBe(o.grandTotalPaise);
     });
 
     it('ignores a second, different payment on an already confirmed order', async () => {
@@ -277,12 +283,12 @@ describe('OrderPaymentService (decision 0054)', () => {
   describe('markRefundRequired', () => {
     it('only applies to a cancelled order that has no payment id yet', async () => {
       const o = await t.seedPendingOrder();
-      expect(await service.markRefundRequired(o.orderId, 'pay_x')).toBe(false);
+      expect(await service.markRefundRequired(o.orderId, 'pay_x', 1000)).toBe(false);
 
       await service.releaseAndCancel(o.orderId);
       const paymentId = `pay_${randomUUID().slice(0, 10)}`;
-      expect(await service.markRefundRequired(o.orderId, paymentId)).toBe(true);
-      expect(await service.markRefundRequired(o.orderId, 'pay_other')).toBe(false);
+      expect(await service.markRefundRequired(o.orderId, paymentId, 1000)).toBe(true);
+      expect(await service.markRefundRequired(o.orderId, 'pay_other', 1000)).toBe(false);
       expect(await status(o)).toBe('refund_required');
     });
   });

@@ -49,6 +49,20 @@ export class Order extends Model<Order> {
   @Column({ type: DataType.STRING(128), allowNull: true, field: 'razorpay_payment_id' })
   declare razorpayPaymentId: string | null;
 
+  // Decision 0054: what Razorpay actually captured, in paise. BIGINT comes
+  // back from pg as a string, so the getter keeps this a number (or null for
+  // orders captured before the column existed).
+  @Column({
+    type: DataType.BIGINT,
+    allowNull: true,
+    field: 'captured_paise',
+    get(this: Order) {
+      const raw = this.getDataValue('capturedPaise');
+      return raw === null || raw === undefined ? null : Number(raw);
+    },
+  })
+  declare capturedPaise: number | null;
+
   // Decision 0045: NULL for a direct order (Path A), set to the
   // ArtisanHireRequest this checkout was attributed to (Path B). The hire
   // request is the booking — there is no separate service_bookings table.

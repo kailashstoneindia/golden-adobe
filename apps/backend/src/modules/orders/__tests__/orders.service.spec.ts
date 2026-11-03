@@ -435,7 +435,7 @@ describe('OrdersService', () => {
       await expect(
         service.updateVendorGroupStatus('vendor-1', 'group-1', OrderVendorGroupStatus.SHIPPED),
       ).rejects.toThrow(
-        'order has been refunded or cancelled and its groups can no longer be updated',
+        'order is refunded, being refunded or cancelled, and its groups can no longer be updated',
       );
       expect(group.save).not.toHaveBeenCalled();
     });
@@ -474,7 +474,7 @@ describe('OrdersService', () => {
       await expect(
         service.updateVendorGroupStatus('vendor-1', 'group-1', OrderVendorGroupStatus.SHIPPED),
       ).rejects.toThrow(
-        'order has been refunded or cancelled and its groups can no longer be updated',
+        'order is refunded, being refunded or cancelled, and its groups can no longer be updated',
       );
       expect(group.save).not.toHaveBeenCalled();
     });

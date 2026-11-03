@@ -52,6 +52,8 @@ import {
 // given up is auto-refunded by Razorpay instead of captured.
 const STALE_RESERVATION_TIMEOUT_MS = PAYMENT_CAPTURE_WINDOW_MINUTES * 60_000;
 
+const GROUP_LOCKED_MESSAGE =
+  'order is refunded, being refunded or cancelled, and its groups can no longer be updated';
 const IN_FLIGHT_PAYMENT_MESSAGE =
   'A payment is in progress for this order. Try again in a few minutes.';
 const PAYMENT_STATUS_UNVERIFIED_MESSAGE = 'Could not verify payment status. Try again shortly.';
@@ -361,9 +363,7 @@ export class OrdersService {
       group.order.status === OrderStatus.REFUND_REQUIRED ||
       group.order.status === OrderStatus.REFUND_PENDING
     ) {
-      throw new BadRequestException(
-        'order has been refunded or cancelled and its groups can no longer be updated',
-      );
+      throw new BadRequestException(GROUP_LOCKED_MESSAGE);
     }
     // Valid forward transitions only — a vendor cannot jump PENDING
     // straight to DELIVERED, and cannot move a CANCELLED group anywhere.

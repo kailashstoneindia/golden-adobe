@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import request from 'supertest';
+import { Logger } from '@nestjs/common';
 import { createPaymentsTestApp, PaymentsTestApp, SeededOrder } from './payments-test-app';
 import { RefundsService } from '../refunds.service';
 import { OrdersService } from '../orders.service';
@@ -20,6 +21,12 @@ describe('RefundsService (decision 0054)', () => {
 
   afterAll(async () => {
     await t.close();
+  });
+
+  // The error paths below log on purpose (decision 0054); keep the output clean.
+  beforeEach(() => {
+    jest.spyOn(Logger.prototype, 'error').mockImplementation();
+    jest.spyOn(Logger.prototype, 'warn').mockImplementation();
   });
 
   afterEach(() => {
@@ -55,19 +62,21 @@ describe('RefundsService (decision 0054)', () => {
   }
 
   // A payment that cannot confirm its order: the order lands on refund_required.
-  async function lateOrder(): Promise<{ o: SeededOrder; paymentId: string }> {
+  async function lateOrder(
+    deltaPaise = -1,
+  ): Promise<{ o: SeededOrder; paymentId: string; capturedPaise: number }> {
     const o = await t.seedPendingOrder();
     const paymentId = `pay_${randomUUID().replace(/-/g, '').slice(0, 14)}`;
     const order = (await Order.findByPk(o.orderId))!;
     const outcome = await t.moduleRef.get(OrderPaymentService).applyCapture(order, {
       id: paymentId,
       orderId: o.razorpayOrderId,
-      amountPaise: o.grandTotalPaise - 1,
+      amountPaise: o.grandTotalPaise + deltaPaise,
       currency: 'INR',
       status: 'captured',
     });
     expect(outcome).toBe('refund_required');
-    return { o, paymentId };
+    return { o, paymentId, capturedPaise: o.grandTotalPaise + deltaPaise };
   }
 
   async function orderStatus(o: SeededOrder): Promise<string> {
@@ -314,19 +323,107 @@ describe('RefundsService (decision 0054)', () => {
     expect(await refundRows(o)).toHaveLength(0);
   });
 
-  it('refunds a late payment in full and moves it to refunded', async () => {
-    const { o, paymentId } = await lateOrder();
+  it.each([
+    ['underpaid', -1],
+    ['overpaid', 1],
+  ])(
+    'refunds exactly what Razorpay captured for an %s late payment, then settles after sync',
+    async (_label, delta) => {
+      const { o, paymentId, capturedPaise } = await lateOrder(delta);
+      const [{ captured_paise }] = await t.query<{ captured_paise: string }>(
+        `SELECT captured_paise FROM orders WHERE id = :id`,
+        { id: o.orderId },
+      );
+      expect(Number(captured_paise)).toBe(capturedPaise);
+      t.provider.refundOutcome('pending');
 
+      await service.requestRefund({
+        orderId: o.orderId,
+        adminUserId: t.adminUserId,
+        reason: 'late payment',
+      });
+
+      expect(t.provider.createRefundCalls.at(-1)).toMatchObject({
+        paymentId,
+        amountPaise: capturedPaise,
+      });
+      expect(await orderStatus(o)).toBe('refund_pending');
+      const [row] = await refundRows(o);
+      t.provider.setRefundStatus(row.razorpay_refund_id!, 'processed');
+      await ageRefunds(o);
+
+      await service.syncRefunds();
+
+      expect(await orderStatus(o)).toBe('refunded');
+    },
+  );
+
+  it('lets a failed full refund be retried for the part a partial refund left', async () => {
+    const { o } = await confirmedOrder();
+    // 20000 is refunded and settled; the order stays confirmed.
     await service.requestRefund({
       orderId: o.orderId,
       adminUserId: t.adminUserId,
-      reason: 'late payment',
+      reason: 'damaged item',
+      amountPaise: 20000,
+    });
+    expect(await orderStatus(o)).toBe('confirmed');
+    // The rest is refunded, then Razorpay fails it.
+    t.provider.refundOutcome('pending');
+    await service.requestRefund({
+      orderId: o.orderId,
+      adminUserId: t.adminUserId,
+      reason: 'cancel the order',
+    });
+    const rows = await refundRows(o);
+    expect(Number(rows[1].amount_paise)).toBe(o.grandTotalPaise - 20000);
+    t.provider.setRefundStatus(rows[1].razorpay_refund_id!, 'failed');
+    await ageRefunds(o);
+    await service.syncRefunds();
+    expect(await orderStatus(o)).toBe('refund_required');
+
+    await expect(
+      service.requestRefund({
+        orderId: o.orderId,
+        adminUserId: t.adminUserId,
+        reason: 'wrong amount',
+        amountPaise: 1000,
+      }),
+    ).rejects.toThrow('a late payment must be refunded in full');
+    t.provider.refundOutcome('pending');
+    const retry = await service.requestRefund({
+      orderId: o.orderId,
+      adminUserId: t.adminUserId,
+      reason: 'try again',
     });
 
-    expect(t.provider.createRefundCalls.at(-1)).toMatchObject({
-      paymentId,
-      amountPaise: o.grandTotalPaise,
+    expect(retry.amountPaise).toBe(o.grandTotalPaise - 20000);
+    expect(await orderStatus(o)).toBe('refund_pending');
+  });
+
+  it('rolls the refund status back when the order projection fails, so the next sync retries', async () => {
+    const { o } = await confirmedOrder();
+    t.provider.refundOutcome('pending');
+    await service.requestRefund({
+      orderId: o.orderId,
+      adminUserId: t.adminUserId,
+      reason: 'projection blip',
     });
+    const [row] = await refundRows(o);
+    t.provider.setRefundStatus(row.razorpay_refund_id!, 'processed');
+    await ageRefunds(o);
+    jest
+      .spyOn(service as unknown as { project: () => Promise<unknown> }, 'project')
+      .mockRejectedValueOnce(new Error('db blip'));
+
+    await service.syncRefunds();
+
+    expect((await refundRows(o))[0].status).toBe('submitted');
+    expect(await orderStatus(o)).toBe('refund_pending');
+
+    await service.syncRefunds();
+
+    expect((await refundRows(o))[0].status).toBe('processed');
     expect(await orderStatus(o)).toBe('refunded');
   });
 
