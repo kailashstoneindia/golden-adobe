@@ -120,8 +120,9 @@ export class RazorpayProviderService implements PaymentProviderService {
       return new ProviderRequestError('server', message, status, code);
     }
     // Razorpay answers 409 while the first request carrying the same
-    // X-Refund-Idempotency key is still being processed (decision 0054).
-    if (status === 409 && /in progress/i.test(message)) {
+    // X-Refund-Idempotency key is still being processed (decision 0054). The
+    // exact description is unverified, so every 409 counts.
+    if (status === 409) {
       return new ProviderRequestError('conflict_in_progress', message, status, code);
     }
     return new ProviderRequestError('client', message, status, code);
@@ -136,6 +137,8 @@ export class RazorpayProviderService implements PaymentProviderService {
     }
   }
 
+  // Never retry this without an order-level idempotency strategy: 429 and 408
+  // are classified retryable (for refunds, which carry a stable key).
   async createOrder(amountPaise: number, receiptId: string): Promise<CreateProviderOrderResult> {
     const order = await this.callSdk('createOrder', (client) =>
       client.orders.create({

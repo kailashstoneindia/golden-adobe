@@ -31,7 +31,7 @@
   - In-flight payment: `A payment is in progress for this order. Try again in a few minutes.`
   - Razorpay unreachable: `Could not verify payment status. Try again shortly.`
   - Refund over the limit: `refund exceeds the refundable amount`
-  - Partial refund on a late payment: `a late payment must be refunded in full`
+  - Partial refund on a refund_required order (a late payment, or one whose full refund failed): `this order must be refunded in full`
 - Integration specs use a real Postgres test app, following `apps/backend/src/modules/vendors/__tests__/vendors-test-app.ts`, and must run in CI (`.github/workflows/ci.yml` migrates `golden_abode_test`, then runs `pnpm run test`).
 - `pnpm run format:check` runs Prettier over `**/*.{ts,tsx,js,json,md}`. Run `pnpm exec prettier --write <changed files>` before each commit.
 - Comments: only where the reason is non-obvious, citing "decision 0054". Match the existing guarded-update comment style; don't restate code.
@@ -595,7 +595,7 @@ it(
   'ignores failed refunds when computing the refundable amount' /* failed 100000 row → new 100000 allowed */,
 );
 it(
-  'requires a late payment to be refunded in full' /* refund_required order, amountPaise 1000 → 400 'a late payment must be refunded in full' */,
+  'requires a late payment to be refunded in full' /* refund_required order, amountPaise 1000 → 400 'this order must be refunded in full' */,
 );
 it(
   'marks a client-rejected refund failed and returns the order to refund_required' /* refundOutcome({ error:'client' }) → 400; row failed; order refund_required */,

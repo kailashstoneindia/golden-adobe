@@ -204,11 +204,13 @@ describe('RazorpayProviderService (decision 0054 provider surface)', () => {
       { error: { code: 'BAD_REQUEST_ERROR', description: 'bad amount' } },
       'client',
     ],
+    // Razorpay's exact 409 wording is unverified (checklist T5), so every 409
+    // is treated as the keyed request still being processed.
     [
-      'a 409 that is not in progress to client',
+      'a 409 with any other description to conflict_in_progress',
       409,
       { error: { code: 'BAD_REQUEST_ERROR', description: 'already refunded' } },
-      'client',
+      'conflict_in_progress',
     ],
     // Decision 0054: transient and safe to retry under a stable idempotency key.
     [

@@ -1,7 +1,7 @@
 # 0054 — Payments MVP hardening: no rupee the system can't see
 
 - **Date:** 2026-11-03
-- **Status:** Implemented (feat/payments-mvp-hardening, d23847c — pending merge)
+- **Status:** Implemented (feat/payments-mvp-hardening — pending merge)
 - **Supersedes / Superseded by:** Amends [0041](0041-cart-owner-reservation-and-real-instock.md) rule 3 (the webhook stays a confirmation signal, and Razorpay's fetch API becomes a second one), [0042](0042-cart-and-order-structure.md) (refund behaviour), and [0049](0049-stale-reservation-sweep.md) (the sweep now asks Razorpay before cancelling)
 
 ## Context

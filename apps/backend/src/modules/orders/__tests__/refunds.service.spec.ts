@@ -222,6 +222,48 @@ describe('RefundsService (decision 0054)', () => {
     expect(await orderStatus(o)).toBe('refund_pending');
   }, 15_000);
 
+  it('adopts the refund Razorpay already created when a later attempt gets a client error', async () => {
+    const { o, paymentId } = await confirmedOrder();
+    // Attempt 1 times out after Razorpay created the refund; attempt 2 is
+    // answered with an error whose wording we do not recognise as a conflict.
+    t.provider.refundOutcome({ error: 'timeout', afterProcessing: true });
+    const real = t.provider.createRefund.bind(t.provider);
+    jest
+      .spyOn(t.provider, 'createRefund')
+      .mockImplementationOnce(real)
+      .mockRejectedValue(new ProviderRequestError('client', 'something unexpected', 400));
+
+    const dto = await service.requestRefund({
+      orderId: o.orderId,
+      adminUserId: t.adminUserId,
+      reason: 'timeout then client error',
+    });
+
+    const [fake] = await t.provider.fetchRefunds(paymentId);
+    const [row] = await refundRows(o);
+    expect(row.status).toBe('processed');
+    expect(row.razorpay_refund_id).toBe(fake.id);
+    expect(dto.status).toBe('processed');
+    expect(await orderStatus(o)).toBe('refunded');
+  });
+
+  it('keeps a client-rejected refund requested when Razorpay cannot be asked about it', async () => {
+    const { o } = await confirmedOrder();
+    t.provider.refundOutcome({ error: 'client' });
+    t.provider.failFetchOnce('network');
+
+    await expect(
+      service.requestRefund({
+        orderId: o.orderId,
+        adminUserId: t.adminUserId,
+        reason: 'cannot verify',
+      }),
+    ).rejects.toMatchObject({ status: 400 });
+
+    expect((await refundRows(o))[0].status).toBe('requested');
+    expect(await orderStatus(o)).toBe('refund_pending');
+  });
+
   it('leaves the row requested when Razorpay never answers', async () => {
     const { o } = await confirmedOrder();
     jest.spyOn(t.provider, 'createRefund').mockRejectedValue(serverError());
@@ -319,7 +361,7 @@ describe('RefundsService (decision 0054)', () => {
         reason: 'late payment',
         amountPaise: 1000,
       }),
-    ).rejects.toThrow('a late payment must be refunded in full');
+    ).rejects.toThrow('this order must be refunded in full');
     expect(await refundRows(o)).toHaveLength(0);
   });
 
@@ -389,7 +431,7 @@ describe('RefundsService (decision 0054)', () => {
         reason: 'wrong amount',
         amountPaise: 1000,
       }),
-    ).rejects.toThrow('a late payment must be refunded in full');
+    ).rejects.toThrow('this order must be refunded in full');
     t.provider.refundOutcome('pending');
     const retry = await service.requestRefund({
       orderId: o.orderId,
@@ -551,6 +593,39 @@ describe('RefundsService (decision 0054)', () => {
     const [after] = await refundRows(o);
     expect(after.status).toBe('processed');
     expect(await orderStatus(o)).toBe('refunded');
+  }, 15_000);
+
+  it('sync adopts a refund Razorpay already holds instead of re-sending a requested row', async () => {
+    const { o, paymentId } = await confirmedOrder();
+    const real = t.provider.createRefund.bind(t.provider);
+    // The refund exists at Razorpay but every response was lost and the
+    // receipt lookup at submit time failed too.
+    const createSpy = jest
+      .spyOn(t.provider, 'createRefund')
+      .mockImplementationOnce(async (params) => {
+        await real(params);
+        throw serverError();
+      })
+      .mockRejectedValue(serverError());
+    t.provider.refundOutcome('pending');
+    t.provider.failFetchOnce('network');
+    await service.requestRefund({
+      orderId: o.orderId,
+      adminUserId: t.adminUserId,
+      reason: 'lost responses',
+    });
+    expect((await refundRows(o))[0].status).toBe('requested');
+    await ageRefunds(o);
+    createSpy.mockRestore();
+    t.provider.createRefundCalls.length = 0;
+
+    await service.syncRefunds();
+
+    expect(t.provider.createRefundCalls).toHaveLength(0);
+    const [fake] = await t.provider.fetchRefunds(paymentId);
+    const [row] = await refundRows(o);
+    expect(row.status).toBe('submitted');
+    expect(row.razorpay_refund_id).toBe(fake.id);
   }, 15_000);
 
   it('sync does nothing when this process is api-only', async () => {

@@ -599,10 +599,13 @@ export class OrdersService {
     // dead order, so it is still allowed.
     const order = await this.orderModel.findByPk(group.orderId);
     const parentIsClosed =
-      order?.status === OrderStatus.REFUNDED || order?.status === OrderStatus.CANCELLED;
+      order?.status === OrderStatus.REFUNDED ||
+      order?.status === OrderStatus.CANCELLED ||
+      order?.status === OrderStatus.REFUND_REQUIRED ||
+      order?.status === OrderStatus.REFUND_PENDING;
     if (parentIsClosed && status !== OrderVendorGroupStatus.CANCELLED) {
       throw new BadRequestException(
-        'cannot override a group whose parent order is refunded or cancelled',
+        'cannot override a group whose parent order is refunded, being refunded or cancelled',
       );
     }
 

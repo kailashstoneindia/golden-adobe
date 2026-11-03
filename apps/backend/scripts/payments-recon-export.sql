@@ -10,6 +10,8 @@
 --   docker exec -i golden-abode-postgres psql -U postgres -d golden_abode_test \
 --     -v from=2026-10-26 -v to=2026-11-02 < apps/backend/scripts/payments-recon-export.sql
 -- For a CSV, add --csv to psql (or \copy the result).
+-- The date bounds are cast in the session timezone; for IST days use
+-- (:'from' || ' 00:00 Asia/Kolkata')::timestamptz in the WHERE clause below.
 --
 -- captured_paise is what Razorpay actually captured (orders.captured_paise),
 -- falling back to grand_total when it is NULL. difference_paise is

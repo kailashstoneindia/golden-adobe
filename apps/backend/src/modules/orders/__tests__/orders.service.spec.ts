@@ -497,9 +497,36 @@ describe('OrdersService', () => {
           OrderVendorGroupStatus.SHIPPED,
           'trying to bring back a refunded order',
         ),
-      ).rejects.toThrow('cannot override a group whose parent order is refunded or cancelled');
+      ).rejects.toThrow(
+        'cannot override a group whose parent order is refunded, being refunded or cancelled',
+      );
       expect(group.save).not.toHaveBeenCalled();
     });
+
+    it.each([OrderStatus.REFUND_REQUIRED, OrderStatus.REFUND_PENDING])(
+      'refuses to override a group whose parent order is %s (decision 0054)',
+      async (orderStatus) => {
+        const group = {
+          id: 'group-1',
+          status: OrderVendorGroupStatus.CONFIRMED,
+          orderId: 'order-1',
+          save: jest.fn(),
+        };
+        groupModelMock.findByPk.mockResolvedValue(group);
+        orderModelMock.findByPk.mockResolvedValue({ id: 'order-1', status: orderStatus });
+
+        await expect(
+          service.adminOverrideVendorGroupStatus(
+            'group-1',
+            OrderVendorGroupStatus.SHIPPED,
+            'trying to ship an order being refunded',
+          ),
+        ).rejects.toThrow(
+          'cannot override a group whose parent order is refunded, being refunded or cancelled',
+        );
+        expect(group.save).not.toHaveBeenCalled();
+      },
+    );
 
     it('still allows cancelling a group under a refunded order (the one safe target)', async () => {
       const group = {

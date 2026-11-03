@@ -32,6 +32,7 @@ const RETRYABLE_KINDS: ProviderErrorKind[] = [
 ];
 
 const REFUND_EXCEEDS_MESSAGE = 'refund exceeds the refundable amount';
+const MUST_REFUND_IN_FULL_MESSAGE = 'this order must be refunded in full';
 
 // An order in any of these has (or had) a captured payment attached. The
 // pending and refunded ones are let through so the amount check below gives
@@ -115,12 +116,12 @@ export class RefundsService {
       if (amountPaise <= 0 || amountPaise > remainingPaise) {
         throw new BadRequestException(REFUND_EXCEEDS_MESSAGE);
       }
-      // A late payment has no order to keep partially intact (decision 0054
-      // rule 4), so it is refunded in one go: whatever is still refundable.
-      // That is the whole capture unless a partial refund already settled
-      // part of it, in which case a failed full refund leaves only the rest.
+      // A refund_required order (a late payment, or one whose full refund
+      // failed) has no order to keep partially intact (decision 0054 rule 4),
+      // so it is refunded in one go: whatever is still refundable. That is the
+      // whole capture unless a partial refund already settled part of it.
       if (order.status === OrderStatus.REFUND_REQUIRED && amountPaise !== remainingPaise) {
-        throw new BadRequestException('a late payment must be refunded in full');
+        throw new BadRequestException(MUST_REFUND_IN_FULL_MESSAGE);
       }
       if (input.vendorGroupId) {
         const groups = await this.sequelize.query(
@@ -197,7 +198,14 @@ export class RefundsService {
     for (const refund of open) {
       try {
         if (refund.status === RefundStatus.REQUESTED) {
-          await this.submit(refund);
+          // The earlier attempt may have reached Razorpay with its response
+          // lost; adopt that refund rather than sending again.
+          const existing = await this.findByReceipt(refund);
+          if (existing) {
+            await this.recordProviderRefund(refund, existing);
+          } else {
+            await this.submit(refund);
+          }
         } else {
           await this.syncSubmitted(refund);
         }
@@ -211,7 +219,8 @@ export class RefundsService {
   }
 
   // Sends a requested refund to Razorpay with its stored key. A refund
-  // Razorpay turns down is failed and surfaced as a 400.
+  // Razorpay turns down is failed and surfaced as a 400, but only after
+  // checking it did not create the refund on an earlier attempt (rule 6).
   private async submit(refund: Refund): Promise<void> {
     let lastError: unknown;
     for (const delayMs of REFUND_SUBMIT_RETRY_DELAYS_MS) {
@@ -229,7 +238,18 @@ export class RefundsService {
         });
       } catch (err) {
         if (err instanceof ProviderRequestError && err.kind === 'client') {
-          await this.markFailed(refund);
+          // An earlier attempt may have created the refund before this error
+          // came back (a timeout, then an error with unrecognised wording).
+          // Failing the row then would hide a live refund and invite a
+          // second one, so only a receipt lookup that finds nothing fails it.
+          const lookup = await this.lookUpByReceipt(refund);
+          if (lookup.listed && lookup.refund) {
+            await this.recordProviderRefund(refund, lookup.refund);
+            return;
+          }
+          if (lookup.listed) {
+            await this.markFailed(refund);
+          }
           throw new BadRequestException(err.message);
         }
         lastError = err;
@@ -258,16 +278,24 @@ export class RefundsService {
   }
 
   private async findByReceipt(refund: Refund): Promise<ProviderRefund | undefined> {
+    return (await this.lookUpByReceipt(refund)).refund;
+  }
+
+  // listed is false when Razorpay could not be asked, which is not the same
+  // as "no refund exists".
+  private async lookUpByReceipt(
+    refund: Refund,
+  ): Promise<{ listed: boolean; refund?: ProviderRefund }> {
     try {
       const existing = await this.paymentProvider.fetchRefunds(refund.razorpayPaymentId!);
-      return existing.find((r) => r.receipt === refund.receipt);
+      return { listed: true, refund: existing.find((r) => r.receipt === refund.receipt) };
     } catch (err) {
       this.logger.warn(
         `refund ${refund.id}: could not list Razorpay refunds: ${
           err instanceof Error ? err.message : String(err)
         }`,
       );
-      return undefined;
+      return { listed: false };
     }
   }
 
