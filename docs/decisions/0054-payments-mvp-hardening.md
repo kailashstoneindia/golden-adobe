@@ -79,6 +79,7 @@ Order statuses become `pending_payment | confirmed | cancelled | refund_required
 - `PaymentProviderService.refundPayment` and the no-op `markCaptured` are removed. The interface gains `fetchOrderPayments`, `createRefund`, `fetchRefunds` and `fetchRefund`.
 - Vendors can't advance a vendor group whose order is `refund_required` or `refund_pending`, the same as for `refunded` and `cancelled`.
 - Customer cancel can now return 400 ("a payment is in progress") or 503 ("could not verify payment status").
+- **One exception to rule 4:** a captured payment that cannot be bound to its order, because the order is already `confirmed` or `refunded` with a different payment id, gets no order status. The `orders` row has one payment column, and Razorpay allows one successful payment per order, so this is practically unreachable. `applyCapture` logs it at error level and returns `ignored`; the webhook is still kept in `payment_events`.
 - **Live-payment gate:** no live payments until the seven Razorpay test-mode checks in `docs/payments-test-mode-checklist.md` pass. These include capture-window timing measured from order creation and from payment creation.
 - **Ops:** a weekly reconciliation sheet, built from `apps/backend/scripts/payments-recon-export.sql` plus Razorpay's settlement report.
 

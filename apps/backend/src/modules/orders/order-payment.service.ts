@@ -21,9 +21,11 @@ export type ProviderCheck =
   | { kind: 'unavailable' };
 
 // Decision 0054 rules 2-4. Every path that learns of a captured payment (the
-// webhook now; the sweep and both cancel paths via checkProviderPayments)
-// confirms the order only through applyCapture, and a capture that cannot
-// confirm its order always ends in refund_required rather than a log line.
+// webhook now; the sweep and both cancel paths later, via checkProviderPayments)
+// confirms the order only through applyCapture. A capture that cannot confirm
+// its order ends in refund_required, except when the order already holds a
+// different payment (see the decision's Consequences), which is logged at
+// error level and left in payment_events.
 @Injectable()
 export class OrderPaymentService {
   private readonly logger = new Logger(OrderPaymentService.name);
@@ -49,8 +51,16 @@ export class OrderPaymentService {
       );
       if (order.status === OrderStatus.PENDING_PAYMENT) {
         // The money is not for this order's price, so the stock hold must go
-        // too; markRefundRequired only applies to a cancelled order.
-        await this.releaseAndCancel(order.id);
+        // too — released and marked in one transaction (see cancelPending).
+        const applied = await this.cancelPending(order.id, {
+          status: OrderStatus.REFUND_REQUIRED,
+          paymentId: payment.id,
+        });
+        if (applied) {
+          await this.notifyRefundRequired(order);
+          return 'refund_required';
+        }
+        // Lost a race (confirmed or cancelled meanwhile): fall through.
       }
       return this.refundRequired(order, payment.id);
     }
@@ -63,7 +73,10 @@ export class OrderPaymentService {
 
     // The guarded UPDATE did not apply, so look at where the order is now.
     const current = await this.orderModel.findByPk(order.id);
-    if (current?.status === OrderStatus.CANCELLED) {
+    if (
+      current &&
+      (current.status === OrderStatus.CANCELLED || current.status === OrderStatus.REFUND_REQUIRED)
+    ) {
       return this.refundRequired(current, payment.id);
     }
     if (current?.status === OrderStatus.CONFIRMED && current.razorpayPaymentId === payment.id) {
@@ -109,6 +122,21 @@ export class OrderPaymentService {
   // false if the order was not actually PENDING_PAYMENT at the moment of
   // the guarded UPDATE (lost a race, or was already cancelled/confirmed).
   async releaseAndCancel(orderId: string): Promise<boolean> {
+    return this.cancelPending(orderId, { status: OrderStatus.CANCELLED, paymentId: null });
+  }
+
+  // Shared body of releaseAndCancel and the mismatch path of applyCapture.
+  // Decision 0054 rule 4: the mismatch path lands the order straight on
+  // refund_required with its payment id in this same transaction, so there is
+  // no committed "cancelled, stock released, money unrecorded" state for a
+  // crash to strand (the sweep only selects pending_payment, so nothing would
+  // ever revisit it).
+  private async cancelPending(
+    orderId: string,
+    target:
+      | { status: OrderStatus.CANCELLED; paymentId: null }
+      | { status: OrderStatus.REFUND_REQUIRED; paymentId: string },
+  ): Promise<boolean> {
     return this.sequelize.transaction(async (t) => {
       // Sequelize's QueryTypes.UPDATE return shape for Postgres is
       // [results, affectedRowCount] — results is always an empty array,
@@ -118,11 +146,13 @@ export class OrderPaymentService {
       // always false and this guard never actually fired — found while
       // verifying the fix-pass's own fixes, not by reading docs.
       const [, updatedCount] = await this.sequelize.query(
-        `UPDATE orders SET status = :cancelled WHERE id = :orderId AND status = :pending`,
+        `UPDATE orders SET status = :target, razorpay_payment_id = COALESCE(:paymentId, razorpay_payment_id)
+         WHERE id = :orderId AND status = :pending`,
         {
           replacements: {
             orderId,
-            cancelled: OrderStatus.CANCELLED,
+            target: target.status,
+            paymentId: target.paymentId,
             pending: OrderStatus.PENDING_PAYMENT,
           },
           type: QueryTypes.UPDATE,
@@ -198,15 +228,28 @@ export class OrderPaymentService {
   }
 
   private async refundRequired(order: Order, paymentId: string): Promise<CaptureOutcome> {
-    const marked = await this.markRefundRequired(order.id, paymentId);
-    if (!marked) {
-      // Not cancelled, or it already records another payment: nothing here
-      // can safely attach this payment to the order, so someone must look.
-      this.logger.error(
-        `order ${order.id}: payment ${paymentId} needs a refund but the order could not be marked refund_required — reconcile manually`,
-      );
-      return 'ignored';
+    if (await this.markRefundRequired(order.id, paymentId)) {
+      await this.notifyRefundRequired(order);
+      return 'refund_required';
     }
+    // A replay, or a concurrent duplicate that lost the race to mark it:
+    // already recorded for this very payment, nothing more to do or send.
+    const current = await this.orderModel.findByPk(order.id);
+    if (
+      current?.status === OrderStatus.REFUND_REQUIRED &&
+      current.razorpayPaymentId === paymentId
+    ) {
+      return 'refund_required';
+    }
+    // Not cancelled, or it already records another payment: nothing here
+    // can safely attach this payment to the order, so someone must look.
+    this.logger.error(
+      `order ${order.id}: payment ${paymentId} needs a refund but the order (${current?.status ?? 'missing'}, payment ${current?.razorpayPaymentId ?? 'none'}) could not be marked refund_required — reconcile manually`,
+    );
+    return 'ignored';
+  }
+
+  private async notifyRefundRequired(order: Order): Promise<void> {
     try {
       await this.notifications.sendOrderStatusChanged(
         order.customerId,
@@ -220,7 +263,6 @@ export class OrderPaymentService {
         }`,
       );
     }
-    return 'refund_required';
   }
 
   // Fired AFTER the confirming transaction commits, not inside it: a slow or
@@ -351,9 +393,9 @@ export class OrderPaymentService {
       }
 
       // WHERE also pins status: PENDING, defensively — see the matching
-      // comment in OrdersService.cancel for why this invariant already
-      // holds, and why it's asserted here anyway rather than relied on
-      // solely from this file.
+      // comment on the group update in cancelPending for why this
+      // invariant already holds, and why it's asserted here anyway rather
+      // than relied on solely from this file.
       await this.groupModel.update(
         { status: OrderVendorGroupStatus.CONFIRMED },
         { where: { orderId, status: OrderVendorGroupStatus.PENDING }, transaction: t },

@@ -76,6 +76,124 @@ describe('OrderPaymentService (decision 0054)', () => {
       expect(row.razorpay_payment_id).toBe(bad.id);
     });
 
+    it('lands a mismatched capture on a pending order on refund_required in one step', async () => {
+      const o = await t.seedPendingOrder();
+      const bad = { ...payment(o, 'captured'), amountPaise: o.grandTotalPaise + 1 };
+      // The separate cancelled -> refund_required step is what a crash could
+      // strand; the pending path must not use it at all.
+      const separateMark = jest.spyOn(service, 'markRefundRequired');
+
+      try {
+        expect(await service.applyCapture(await load(o), bad)).toBe('refund_required');
+        expect(separateMark).not.toHaveBeenCalled();
+      } finally {
+        separateMark.mockRestore();
+      }
+
+      const [row] = await t.query<{ status: string; razorpay_payment_id: string }>(
+        `SELECT status, razorpay_payment_id FROM orders WHERE id = :id`,
+        { id: o.orderId },
+      );
+      expect(row).toEqual({ status: 'refund_required', razorpay_payment_id: bad.id });
+      const [inv] = await t.query<{ quantity_available: number; quantity_reserved: number }>(
+        `SELECT quantity_available, quantity_reserved FROM inventory WHERE vendor_listing_id = :id`,
+        { id: o.listingId },
+      );
+      expect([Number(inv.quantity_available), Number(inv.quantity_reserved)]).toEqual([10, 0]);
+      const groups = await t.query<{ status: string }>(
+        `SELECT status FROM order_vendor_group WHERE order_id = :id`,
+        { id: o.orderId },
+      );
+      expect(groups.map((g) => g.status)).toEqual(['cancelled']);
+    });
+
+    it('is idempotent for a replayed refund_required capture: same outcome, one notification, no error', async () => {
+      const mismatched = await t.seedPendingOrder();
+      const bad = {
+        ...payment(mismatched, 'captured'),
+        amountPaise: mismatched.grandTotalPaise + 1,
+      };
+      const late = await t.seedPendingOrder();
+      await service.releaseAndCancel(late.orderId);
+      const latePayment = payment(late, 'captured');
+      const sent = () =>
+        t.notifications
+          .callsTo('sendOrderStatusChanged')
+          .filter((c) => c.args[1] === mismatched.orderId || c.args[1] === late.orderId).length;
+      const before = sent();
+      const errors = jest.spyOn((service as any).logger, 'error').mockImplementation(() => {});
+
+      try {
+        expect(await service.applyCapture(await load(mismatched), bad)).toBe('refund_required');
+        expect(await service.applyCapture(await load(late), latePayment)).toBe('refund_required');
+        errors.mockClear();
+        // Replays: the order is already refund_required for this very payment.
+        expect(await service.applyCapture(await load(mismatched), bad)).toBe('refund_required');
+        expect(await service.applyCapture(await load(late), latePayment)).toBe('refund_required');
+        // The mismatch itself is still reported on every delivery, but a
+        // replay must not be mistaken for an unrecordable payment.
+        expect(
+          errors.mock.calls.filter(([msg]) => String(msg).includes('reconcile manually')),
+        ).toHaveLength(0);
+      } finally {
+        errors.mockRestore();
+      }
+      expect(sent() - before).toBe(2);
+    });
+
+    it('handles concurrent duplicate deliveries of a mismatched capture without a false error', async () => {
+      const o = await t.seedPendingOrder();
+      const bad = { ...payment(o, 'captured'), amountPaise: o.grandTotalPaise + 1 };
+      const notified = () =>
+        t.notifications.callsTo('sendOrderStatusChanged').filter((c) => c.args[1] === o.orderId)
+          .length;
+      const before = notified();
+      const errors = jest.spyOn((service as any).logger, 'error').mockImplementation(() => {});
+      const stale = await load(o);
+
+      try {
+        const outcomes = await Promise.all([
+          service.applyCapture(stale, bad),
+          service.applyCapture(stale, bad),
+        ]);
+        expect(outcomes).toEqual(['refund_required', 'refund_required']);
+        expect(
+          errors.mock.calls.filter(([msg]) => String(msg).includes('reconcile manually')),
+        ).toHaveLength(0);
+      } finally {
+        errors.mockRestore();
+      }
+      expect(notified() - before).toBe(1);
+    });
+
+    it('resolves a capture racing a cancellation to exactly one consistent outcome', async () => {
+      for (let i = 0; i < 5; i++) {
+        const o = await t.seedPendingOrder();
+        const p = payment(o, 'captured');
+        const pending = await load(o);
+
+        const [outcome] = await Promise.all([
+          service.applyCapture(pending, p),
+          service.releaseAndCancel(o.orderId),
+        ]);
+
+        const [row] = await t.query<{ status: string; razorpay_payment_id: string | null }>(
+          `SELECT status, razorpay_payment_id FROM orders WHERE id = :id`,
+          { id: o.orderId },
+        );
+        const [inv] = await t.query<{ quantity_available: number; quantity_reserved: number }>(
+          `SELECT quantity_available, quantity_reserved FROM inventory WHERE vendor_listing_id = :id`,
+          { id: o.listingId },
+        );
+        const stock = [Number(inv.quantity_available), Number(inv.quantity_reserved)];
+        expect(['confirmed', 'refund_required']).toContain(row.status);
+        expect(row.razorpay_payment_id).toBe(p.id);
+        expect(outcome).toBe(row.status);
+        // Confirmed consumed the unit; refund_required released it untouched.
+        expect(stock).toEqual(row.status === 'confirmed' ? [10 - o.quantity, 0] : [10, 0]);
+      }
+    });
+
     it('tells the customer when a late capture needs a refund', async () => {
       const o = await t.seedPendingOrder();
       await service.releaseAndCancel(o.orderId);

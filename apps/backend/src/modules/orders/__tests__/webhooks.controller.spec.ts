@@ -61,6 +61,14 @@ describe('POST /webhooks/razorpay (decision 0054)', () => {
     return row;
   }
 
+  async function groupStatuses(orderId: string) {
+    const rows = await t.query<{ status: string }>(
+      `SELECT status FROM order_vendor_group WHERE order_id = :orderId`,
+      { orderId },
+    );
+    return rows.map((r) => r.status);
+  }
+
   async function inventory(listingId: string) {
     const [row] = await t.query<{ quantity_available: number; quantity_reserved: number }>(
       `SELECT quantity_available, quantity_reserved FROM inventory WHERE vendor_listing_id = :listingId`,
@@ -81,6 +89,7 @@ describe('POST /webhooks/razorpay (decision 0054)', () => {
     }
 
     expect((await orderRow(o.orderId)).status).toBe('confirmed');
+    expect(await groupStatuses(o.orderId)).toEqual(['confirmed']);
     expect(await inventory(o.listingId)).toEqual({ available: 10 - o.quantity, reserved: 0 });
     const events = await t.query(`SELECT 1 FROM payment_events WHERE event_id = :eventId`, {
       eventId,
@@ -114,6 +123,7 @@ describe('POST /webhooks/razorpay (decision 0054)', () => {
     expect(res.status).toBeLessThan(300);
     expect((await orderRow(o.orderId)).status).toBe('refund_required');
     expect((await orderRow(o.orderId)).razorpay_payment_id).not.toBeNull();
+    expect(await groupStatuses(o.orderId)).toEqual(['cancelled']);
     expect(await inventory(o.listingId)).toEqual({ available: 10, reserved: 0 });
   });
 
@@ -207,10 +217,15 @@ describe('POST /webhooks/razorpay (decision 0054)', () => {
   it('acks an unknown Razorpay order id without changing anything', async () => {
     const o = await t.seedPendingOrder();
 
-    const res = await post(capturedBody(o, { order_id: 'order_does_not_exist' }));
+    const eventId = `evt_${randomUUID().replace(/-/g, '')}`;
+
+    const res = await post(capturedBody(o, { order_id: 'order_does_not_exist' }), { eventId });
 
     expect(res.status).toBeLessThan(300);
     expect((await orderRow(o.orderId)).status).toBe('pending_payment');
+    expect(
+      await t.query(`SELECT 1 FROM payment_events WHERE event_id = :eventId`, { eventId }),
+    ).toHaveLength(0);
   });
 
   it('leaves the order pending on payment.failed', async () => {
