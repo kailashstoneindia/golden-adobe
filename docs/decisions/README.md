@@ -62,6 +62,7 @@ valid when circumstances change.
 | [0051](0051-mobile-dev-artisan-gaps-batch-a.md)              | Mobile-dev artisan gaps, Batch A (contained backend fixes)                                       | 2026-11-01 | Implemented                                                   |
 | [0052](0052-mobile-dev-artisan-gaps-batch-b.md)              | Mobile-dev artisan gaps, Batch B (browse/search, team document upload)                           | 2026-11-01 | Implemented                                                   |
 | [0053](0053-vendor-single-listing-creation.md)               | Vendor single-listing creation: the last Phase 2 gap (0037 Batch 2)                              | 2026-11-02 | Implemented                                                   |
+| [0054](0054-payments-mvp-hardening.md)                       | Payments MVP hardening: no rupee the system can't see                                            | 2026-11-03 | Accepted                                                      |
 
 **Numbering note (corrected 2026-10-19):** 0034 was written 2026-10-15 but existed only as an
 uncommitted file until recovered and committed here alongside 0035–0037 — it was never missing
