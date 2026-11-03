@@ -175,7 +175,9 @@ describe('RefundsService (decision 0054)', () => {
     expect(await refundRows(o)).toHaveLength(1);
   });
 
-  it('retries a timed-out refund with the same key and body', async () => {
+  // Decision 0054 rule 5: the admin's request makes one attempt (so it is not
+  // held for a minute); the retries run in the sync job.
+  it('makes one attempt inline, then adopts the refund Razorpay created by its receipt', async () => {
     const { o, paymentId } = await confirmedOrder();
     t.provider.refundOutcome({ error: 'timeout', afterProcessing: true });
 
@@ -186,17 +188,38 @@ describe('RefundsService (decision 0054)', () => {
     });
 
     const calls = t.provider.createRefundCalls.filter((c) => c.paymentId === paymentId);
-    expect(calls).toHaveLength(2);
-    expect(calls[1]).toEqual(calls[0]);
+    expect(calls).toHaveLength(1);
     const fakeRefunds = await t.provider.fetchRefunds(paymentId);
     expect(fakeRefunds).toHaveLength(1);
     const [row] = await refundRows(o);
     // The fake reports an afterProcessing refund as already processed.
     expect(row.status).toBe('processed');
     expect(row.razorpay_refund_id).toBe(fakeRefunds[0].id);
+  });
+
+  it('answers 202 after one inline attempt when Razorpay times out, and the sync job retries three times', async () => {
+    const { o } = await confirmedOrder();
+    const spy = jest
+      .spyOn(t.provider, 'createRefund')
+      .mockRejectedValue(new ProviderRequestError('timeout', 'razorpay timed out'));
+
+    await request(t.app.getHttpServer())
+      .post(`/api/admin/orders/${o.orderId}/refund`)
+      .set('Authorization', `Bearer ${t.adminToken}`)
+      .send({ reason: 'single timeout' })
+      .expect(202);
+
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect((await refundRows(o))[0].status).toBe('requested');
+    await ageRefunds(o);
+
+    await service.syncRefunds();
+
+    expect(spy).toHaveBeenCalledTimes(1 + 3);
+    expect((await refundRows(o))[0].status).toBe('requested');
   }, 15_000);
 
-  it('adopts an existing refund by receipt when retries are exhausted', async () => {
+  it('adopts an existing refund by receipt after the inline attempt fails', async () => {
     const { o, paymentId } = await confirmedOrder();
     // Razorpay holds a refund carrying our receipt although every response was lost.
     const existing = await t.provider.createRefund({
@@ -215,34 +238,37 @@ describe('RefundsService (decision 0054)', () => {
       reason: 'lost responses',
     });
 
-    expect(spy).toHaveBeenCalledTimes(3);
+    expect(spy).toHaveBeenCalledTimes(1);
     const [row] = await refundRows(o);
     expect(row.status).toBe('submitted');
     expect(row.razorpay_refund_id).toBe(existing.id);
     expect(await orderStatus(o)).toBe('refund_pending');
-  }, 15_000);
+  });
 
-  it('adopts the refund Razorpay already created when a later attempt gets a client error', async () => {
+  it('adopts the refund Razorpay already created when the attempt gets a client error', async () => {
     const { o, paymentId } = await confirmedOrder();
-    // Attempt 1 times out after Razorpay created the refund; attempt 2 is
-    // answered with an error whose wording we do not recognise as a conflict.
-    t.provider.refundOutcome({ error: 'timeout', afterProcessing: true });
-    const real = t.provider.createRefund.bind(t.provider);
+    // An earlier attempt created the refund; this one is answered with an
+    // error whose wording we do not recognise as a conflict.
+    const existing = await t.provider.createRefund({
+      paymentId,
+      amountPaise: o.grandTotalPaise,
+      receipt: `rf_${o.orderId.replace(/-/g, '')}_1`,
+      idempotencyKey: 'b'.repeat(32),
+      notes: {},
+    });
     jest
       .spyOn(t.provider, 'createRefund')
-      .mockImplementationOnce(real)
       .mockRejectedValue(new ProviderRequestError('client', 'something unexpected', 400));
 
     const dto = await service.requestRefund({
       orderId: o.orderId,
       adminUserId: t.adminUserId,
-      reason: 'timeout then client error',
+      reason: 'client error after create',
     });
 
-    const [fake] = await t.provider.fetchRefunds(paymentId);
     const [row] = await refundRows(o);
     expect(row.status).toBe('processed');
-    expect(row.razorpay_refund_id).toBe(fake.id);
+    expect(row.razorpay_refund_id).toBe(existing.id);
     expect(dto.status).toBe('processed');
     expect(await orderStatus(o)).toBe('refunded');
   });
@@ -325,6 +351,66 @@ describe('RefundsService (decision 0054)', () => {
         vendorGroupId: other.groupId,
       }),
     ).rejects.toThrow('vendor group does not belong to this order');
+  });
+
+  // Decision 0054 rule 5: a refund tagged to a vendor group cannot exceed what
+  // that group was paid, even when the order as a whole has more left.
+  it("caps a vendor-group refund at the group's share of the order", async () => {
+    const { o } = await confirmedOrder();
+    await t.query(
+      `UPDATE order_vendor_group SET subtotal = 200, loading_unloading_fee = 0 WHERE id = :id`,
+      { id: o.groupId },
+    );
+    t.provider.refundOutcome('pending');
+    const refund = (amountPaise: number) =>
+      service.requestRefund({
+        orderId: o.orderId,
+        adminUserId: t.adminUserId,
+        reason: 'group cap',
+        amountPaise,
+        vendorGroupId: o.groupId,
+      });
+
+    await expect(refund(70000)).rejects.toThrow(
+      "refund exceeds this vendor group's refundable amount",
+    );
+    expect(await refundRows(o)).toHaveLength(0);
+
+    await expect(refund(20000)).resolves.toMatchObject({ amountPaise: 20000 });
+    await expect(refund(100)).rejects.toThrow(
+      "refund exceeds this vendor group's refundable amount",
+    );
+    expect(await refundRows(o)).toHaveLength(1);
+  });
+
+  it("counts the group's loading fee in its cap and ignores its failed refunds", async () => {
+    const { o } = await confirmedOrder();
+    await t.query(
+      `UPDATE order_vendor_group SET subtotal = 200, loading_unloading_fee = 50 WHERE id = :id`,
+      { id: o.groupId },
+    );
+    t.provider.refundOutcome({ error: 'client' });
+    await expect(
+      service.requestRefund({
+        orderId: o.orderId,
+        adminUserId: t.adminUserId,
+        reason: 'will fail',
+        amountPaise: 25000,
+        vendorGroupId: o.groupId,
+      }),
+    ).rejects.toMatchObject({ status: 400 });
+    expect((await refundRows(o))[0].status).toBe('failed');
+    t.provider.refundOutcome('pending');
+
+    await expect(
+      service.requestRefund({
+        orderId: o.orderId,
+        adminUserId: t.adminUserId,
+        reason: 'full group share',
+        amountPaise: 25000,
+        vendorGroupId: o.groupId,
+      }),
+    ).resolves.toMatchObject({ amountPaise: 25000 });
   });
 
   it('ignores failed refunds when computing the refundable amount', async () => {

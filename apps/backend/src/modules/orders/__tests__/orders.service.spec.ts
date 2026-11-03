@@ -220,27 +220,20 @@ describe('OrdersService', () => {
   });
 
   describe('adminCancel', () => {
-    it('cancels a pending_payment order directly, releasing reservations', async () => {
+    it('cancels a pending_payment order through the shared release, which frees its reservations', async () => {
       orderModelMock.findByPk.mockResolvedValue({
         id: 'order-1',
         status: OrderStatus.PENDING_PAYMENT,
       });
-      sequelizeMock.transaction.mockImplementation(async (cb: any) => cb(mockTransaction));
-      sequelizeMock.query
-        // 1: SELECT ... FOR UPDATE locks the row and reads its real status
-        .mockResolvedValueOnce([{ status: OrderStatus.PENDING_PAYMENT }])
-        // 2: UPDATE orders SET status = cancelled
-        .mockResolvedValueOnce([[], 1])
-        // 3: SELECT order_items for the inventory release (only runs because
-        // the locked status was pending_payment)
-        .mockResolvedValueOnce([{ vendor_listing_id: 'vl-1', quantity: '2' }]);
+      orderPaymentMock.releaseAndCancel.mockResolvedValue(true);
 
       const result = await service.adminCancel('order-1');
 
       expect(result.status).toBe(OrderStatus.CANCELLED);
-      // The 4th call is the per-item inventory UPDATE — confirms the
-      // release loop actually ran for a pending_payment cancellation.
-      expect(sequelizeMock.query).toHaveBeenCalledTimes(4);
+      expect(orderPaymentMock.releaseAndCancel).toHaveBeenCalledWith('order-1');
+      // The release itself is OrderPaymentService's (covered against real
+      // Postgres in payment-cancellation.spec); nothing is released here.
+      expect(sequelizeMock.query).not.toHaveBeenCalled();
     });
 
     it('rejects cancelling a confirmed order that has not been refunded', async () => {
@@ -274,21 +267,29 @@ describe('OrdersService', () => {
       expect(sequelizeMock.query).toHaveBeenCalledTimes(2);
     });
 
-    it('rejects cancelling an order whose status changed to confirmed between the advisory read and the row lock', async () => {
-      // Simulates: advisory read above sees pending_payment, but a
-      // concurrent webhook confirms the order before this transaction's
-      // SELECT ... FOR UPDATE acquires the row's lock. The lock-read must
-      // see the REAL current status and refuse — if it doesn't (the
-      // pre-fix bug), a paid order gets silently cancelled with no refund
-      // path back.
+    it('rejects cancelling a pending_payment order that was confirmed after the advisory read', async () => {
+      // The advisory read sees pending_payment, but a concurrent webhook
+      // confirms the order first, so the guarded release applies to no row.
+      // If that were not refused, a paid order would be silently cancelled
+      // with no refund path back.
       orderModelMock.findByPk.mockResolvedValue({
         id: 'order-1',
         status: OrderStatus.PENDING_PAYMENT,
       });
+      orderPaymentMock.releaseAndCancel.mockResolvedValue(false);
+
+      await expect(service.adminCancel('order-1')).rejects.toThrow(
+        'order could not be cancelled — its status just changed',
+      );
+      expect(notificationsMock.sendOrderStatusChanged).not.toHaveBeenCalled();
+    });
+
+    it('rejects cancelling a refunded order whose status changed between the advisory read and the row lock', async () => {
+      orderModelMock.findByPk.mockResolvedValue({
+        id: 'order-1',
+        status: OrderStatus.REFUNDED,
+      });
       sequelizeMock.transaction.mockImplementation(async (cb: any) => cb(mockTransaction));
-      // The lock-read itself returns the REAL status: confirmed by a
-      // concurrent webhook after the advisory read above but before this
-      // transaction started.
       sequelizeMock.query.mockResolvedValueOnce([{ status: OrderStatus.CONFIRMED }]);
 
       await expect(service.adminCancel('order-1')).rejects.toThrow(

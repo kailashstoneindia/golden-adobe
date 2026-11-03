@@ -83,7 +83,7 @@ export class OrderPaymentService {
     if (current?.status === OrderStatus.CONFIRMED && current.razorpayPaymentId === payment.id) {
       return 'already_confirmed';
     }
-    this.logger.warn(
+    this.logger.error(
       `order ${order.id}: capture ${payment.id} did not apply (order is ${current?.status ?? 'missing'}, payment ${current?.razorpayPaymentId ?? 'none'})`,
     );
     return 'ignored';

@@ -9,7 +9,7 @@ import type { RefundDto } from '@golden-abode/types';
 import { Order, OrderStatus } from './models/order.model';
 import { Refund, RefundRail, RefundStatus } from './models/refund.model';
 import { toRefundDto } from './order-display.mapper';
-import { projectOrderStatus } from './refund-status';
+import { projectOrderStatus, REFUNDABLE_ORDER_STATUSES } from './refund-status';
 import { NOTIFICATION_SERVICE, NotificationService } from '../notifications/notification.interface';
 import {
   PAYMENT_PROVIDER,
@@ -32,17 +32,8 @@ const RETRYABLE_KINDS: ProviderErrorKind[] = [
 ];
 
 const REFUND_EXCEEDS_MESSAGE = 'refund exceeds the refundable amount';
+const GROUP_REFUND_EXCEEDS_MESSAGE = "refund exceeds this vendor group's refundable amount";
 const MUST_REFUND_IN_FULL_MESSAGE = 'this order must be refunded in full';
-
-// An order in any of these has (or had) a captured payment attached. The
-// pending and refunded ones are let through so the amount check below gives
-// the honest answer: nothing left to refund.
-const REFUNDABLE_ORDER_STATUSES: string[] = [
-  OrderStatus.CONFIRMED,
-  OrderStatus.REFUND_REQUIRED,
-  OrderStatus.REFUND_PENDING,
-  OrderStatus.REFUNDED,
-];
 
 type LockedOrder = {
   id: string;
@@ -124,8 +115,9 @@ export class RefundsService {
         throw new BadRequestException(MUST_REFUND_IN_FULL_MESSAGE);
       }
       if (input.vendorGroupId) {
-        const groups = await this.sequelize.query(
-          `SELECT 1 FROM order_vendor_group WHERE id = :groupId AND order_id = :orderId`,
+        const groups = await this.sequelize.query<{ subtotal: string; fee: string }>(
+          `SELECT subtotal, loading_unloading_fee AS fee
+           FROM order_vendor_group WHERE id = :groupId AND order_id = :orderId`,
           {
             replacements: { groupId: input.vendorGroupId, orderId: order.id },
             type: QueryTypes.SELECT,
@@ -134,6 +126,22 @@ export class RefundsService {
         );
         if (groups.length === 0) {
           throw new BadRequestException('vendor group does not belong to this order');
+        }
+        // Decision 0054 rule 5: a group's refunds cannot exceed what that
+        // group was paid, even if the order as a whole has more left. Read
+        // under the order's row lock, like the order-level total above.
+        const [groupTaken] = await this.sequelize.query<{ taken: string }>(
+          `SELECT COALESCE(SUM(amount_paise), 0) AS taken
+           FROM refunds WHERE order_vendor_group_id = :groupId AND status <> :failed`,
+          {
+            replacements: { groupId: input.vendorGroupId, failed: RefundStatus.FAILED },
+            type: QueryTypes.SELECT,
+            transaction: t,
+          },
+        );
+        const groupShare = toPaise(groups[0].subtotal) + toPaise(groups[0].fee);
+        if (amountPaise > groupShare - Number(groupTaken.taken)) {
+          throw new BadRequestException(GROUP_REFUND_EXCEEDS_MESSAGE);
         }
       }
 
@@ -159,8 +167,10 @@ export class RefundsService {
     });
     await this.notifyIfRefunded(transition);
 
-    // Step B: Razorpay, with no transaction held.
-    await this.submit(refund);
+    // Step B: Razorpay, with no transaction held. One attempt only: the retries
+    // run in the sync job, so the admin is not held for a minute (decision 0054
+    // rule 5).
+    await this.submit(refund, 1);
 
     const latest = await this.refundModel.findByPk(refund.id);
     return toRefundDto(latest ?? refund);
@@ -204,7 +214,7 @@ export class RefundsService {
           if (existing) {
             await this.recordProviderRefund(refund, existing);
           } else {
-            await this.submit(refund);
+            await this.submit(refund, REFUND_SUBMIT_RETRY_DELAYS_MS.length);
           }
         } else {
           await this.syncSubmitted(refund);
@@ -222,9 +232,9 @@ export class RefundsService {
   // Razorpay turns down is failed and surfaced as a 400, but only after
   // checking it did not create the refund on an earlier attempt (rule 6). If
   // that check cannot be made the row stays requested and nothing is thrown.
-  private async submit(refund: Refund): Promise<void> {
+  private async submit(refund: Refund, attempts: number): Promise<void> {
     let lastError: unknown;
-    for (const delayMs of REFUND_SUBMIT_RETRY_DELAYS_MS) {
+    for (const delayMs of REFUND_SUBMIT_RETRY_DELAYS_MS.slice(0, attempts)) {
       if (delayMs > 0) {
         await sleep(delayMs);
       }
@@ -270,7 +280,7 @@ export class RefundsService {
       return;
     }
 
-    // Retries are spent. The last response may have been lost after Razorpay
+    // Attempts are spent. The last response may have been lost after Razorpay
     // created the refund, so look for one carrying our receipt before leaving
     // the row for the sync job.
     const adopted = await this.findByReceipt(refund);

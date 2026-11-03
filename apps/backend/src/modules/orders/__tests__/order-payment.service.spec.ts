@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import { Logger } from '@nestjs/common';
 import { createPaymentsTestApp, PaymentsTestApp, SeededOrder } from './payments-test-app';
 import { OrderPaymentService } from '../order-payment.service';
 import { Order } from '../models/order.model';
@@ -59,9 +60,22 @@ describe('OrderPaymentService (decision 0054)', () => {
     it('ignores a second, different payment on an already confirmed order', async () => {
       const o = await t.seedPendingOrder();
       await service.applyCapture(await load(o), payment(o, 'captured'));
+      const errorLog = jest.spyOn(Logger.prototype, 'error').mockImplementation();
+      const warnLog = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+      const second = payment(o, 'captured');
 
-      expect(await service.applyCapture(await load(o), payment(o, 'captured'))).toBe('ignored');
-      expect(await status(o)).toBe('confirmed');
+      try {
+        expect(await service.applyCapture(await load(o), second)).toBe('ignored');
+        expect(await status(o)).toBe('confirmed');
+        // Decision 0054 Consequences: a second captured payment is logged at
+        // error level, with the payment and order ids, so it gets noticed.
+        expect(errorLog).toHaveBeenCalledWith(expect.stringContaining(second.id));
+        expect(errorLog).toHaveBeenCalledWith(expect.stringContaining(o.orderId));
+        expect(warnLog).not.toHaveBeenCalled();
+      } finally {
+        errorLog.mockRestore();
+        warnLog.mockRestore();
+      }
     });
 
     it('releases the reservation of a pending order whose payment does not match', async () => {

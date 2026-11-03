@@ -14,6 +14,7 @@ import {
 import { toProviderPayment, toProviderRefund } from './razorpay-mappers';
 
 const RAZORPAY_API_BASE = 'https://api.razorpay.com/v1';
+const REFUND_PAGE_SIZE = 100;
 
 // No real Razorpay merchant account exists in this project as of 2026-10-09
 // (decision 0042, rules 8-9). This implementation is written and
@@ -242,10 +243,19 @@ export class RazorpayProviderService implements PaymentProviderService {
   }
 
   async fetchRefunds(paymentId: string): Promise<ProviderRefund[]> {
-    const res = await this.callSdk('fetchRefunds', (client) =>
-      client.payments.fetchMultipleRefund(paymentId),
-    );
-    return res.items.map(toProviderRefund);
+    // Razorpay returns 10 by default; a receipt lookup that only saw the first
+    // page could miss an existing refund and let the admin refund twice
+    // (decision 0054 rule 6).
+    const all: ProviderRefund[] = [];
+    for (let skip = 0; ; skip += REFUND_PAGE_SIZE) {
+      const res = await this.callSdk('fetchRefunds', (client) =>
+        client.payments.fetchMultipleRefund(paymentId, { count: REFUND_PAGE_SIZE, skip }),
+      );
+      all.push(...res.items.map(toProviderRefund));
+      if (res.items.length < REFUND_PAGE_SIZE) {
+        return all;
+      }
+    }
   }
 
   async fetchRefund(paymentId: string, refundId: string): Promise<ProviderRefund> {

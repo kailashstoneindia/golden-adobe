@@ -338,8 +338,34 @@ describe('RazorpayProviderService (decision 0054 provider surface)', () => {
 
     await expect(service.fetchRefunds('pay_1')).resolves.toEqual([mapped]);
     await expect(service.fetchRefund('pay_1', 'rfnd_1')).resolves.toEqual(mapped);
-    expect(fetchMultipleRefund).toHaveBeenCalledWith('pay_1');
+    expect(fetchMultipleRefund).toHaveBeenCalledWith('pay_1', { count: 100, skip: 0 });
     expect(fetchRefund).toHaveBeenCalledWith('pay_1', 'rfnd_1');
+  });
+
+  // Decision 0054 rule 6: the receipt lookup is what stops a lost response
+  // turning into a second refund, so it has to see every refund, not page one.
+  it('fetchRefunds pages through every refund', async () => {
+    const raw = (n: number) => ({
+      id: `rfnd_${n}`,
+      payment_id: 'pay_1',
+      amount: 100,
+      receipt: `rf_${n}`,
+      status: 'processed',
+    });
+    const page1 = Array.from({ length: 100 }, (_, i) => raw(i));
+    const page2 = Array.from({ length: 5 }, (_, i) => raw(100 + i));
+    const fetchMultipleRefund = jest
+      .fn()
+      .mockResolvedValueOnce({ items: page1 })
+      .mockResolvedValueOnce({ items: page2 });
+    (service as any).client = { payments: { fetchMultipleRefund } };
+
+    const refunds = await service.fetchRefunds('pay_1');
+
+    expect(refunds).toHaveLength(105);
+    expect(fetchMultipleRefund).toHaveBeenCalledTimes(2);
+    expect(fetchMultipleRefund).toHaveBeenNthCalledWith(1, 'pay_1', { count: 100, skip: 0 });
+    expect(fetchMultipleRefund).toHaveBeenNthCalledWith(2, 'pay_1', { count: 100, skip: 100 });
   });
 
   it('wraps SDK calls in the 15s timeout', async () => {
