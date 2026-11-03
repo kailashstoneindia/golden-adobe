@@ -246,6 +246,19 @@ describe('RazorpayProviderService (decision 0054 provider surface)', () => {
       { error: { code: 'BAD_REQUEST_ERROR', description: 'already refunded' } },
       'client',
     ],
+    // Decision 0054: transient and safe to retry under a stable idempotency key.
+    [
+      'a 429 to server',
+      429,
+      { error: { code: 'BAD_REQUEST_ERROR', description: 'rate limited' } },
+      'server',
+    ],
+    [
+      'a 408 to server',
+      408,
+      { error: { code: 'BAD_REQUEST_ERROR', description: 'request timeout' } },
+      'server',
+    ],
   ])('maps fetch %s', async (_label, status, body, kind) => {
     global.fetch = jest
       .fn()
@@ -275,6 +288,8 @@ describe('RazorpayProviderService (decision 0054 provider surface)', () => {
       { statusCode: 400, error: { code: 'BAD_REQUEST_ERROR', description: 'bad' } },
       'client',
     ],
+    ['a 429 to server', { statusCode: 429, error: { description: 'rate limited' } }, 'server'],
+    ['a 408 to server', { statusCode: 408, error: { description: 'timeout' } }, 'server'],
     ['an error with no status code to network', new Error('ECONNRESET'), 'network'],
   ])('maps SDK %s', async (_label, sdkError, kind) => {
     const fetchPayments = jest.fn().mockRejectedValue(sdkError);
@@ -283,6 +298,56 @@ describe('RazorpayProviderService (decision 0054 provider surface)', () => {
     await expect(service.fetchOrderPayments('order_1')).rejects.toMatchObject({
       name: 'ProviderRequestError',
       kind,
+    });
+  });
+
+  it('maps a 502 with an HTML body to server', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 502,
+      json: async () => {
+        throw new SyntaxError('Unexpected token < in JSON');
+      },
+    }) as unknown as typeof fetch;
+
+    await expect(service.createRefund(refundParams)).rejects.toMatchObject({
+      name: 'ProviderRequestError',
+      kind: 'server',
+      status: 502,
+    });
+  });
+
+  // The refund may exist at Razorpay already; the stable idempotency key makes
+  // a retry safe, so an unusable 2xx body must be retryable, not a TypeError.
+  it.each([
+    ['a non-JSON body', async () => Promise.reject(new SyntaxError('Unexpected token <'))],
+    ['a null body', async () => null],
+    ['a body with no refund id', async () => ({})],
+  ])('maps a 200 with %s to network', async (_label, json) => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValue({ ok: true, status: 200, json }) as unknown as typeof fetch;
+
+    await expect(service.createRefund(refundParams)).rejects.toMatchObject({
+      name: 'ProviderRequestError',
+      kind: 'network',
+    });
+  });
+
+  it('keeps kind timeout when the body read is aborted', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => {
+        throw Object.assign(new Error('The operation was aborted due to timeout'), {
+          name: 'TimeoutError',
+        });
+      },
+    }) as unknown as typeof fetch;
+
+    await expect(service.createRefund(refundParams)).rejects.toMatchObject({
+      name: 'ProviderRequestError',
+      kind: 'timeout',
     });
   });
 

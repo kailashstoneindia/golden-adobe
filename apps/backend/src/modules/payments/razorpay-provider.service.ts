@@ -115,7 +115,9 @@ export class RazorpayProviderService implements PaymentProviderService {
     if (status === undefined) {
       return new ProviderRequestError('network', message, undefined, code);
     }
-    if (status >= 500) {
+    // 408/429 are transient, so they retry like a 5xx; the stable idempotency
+    // key makes that safe (decision 0054).
+    if (status >= 500 || status === 408 || status === 429) {
       return new ProviderRequestError('server', message, status, code);
     }
     // Razorpay answers 409 while the first request carrying the same
@@ -202,7 +204,19 @@ export class RazorpayProviderService implements PaymentProviderService {
       }
       throw new ProviderRequestError('network', (err as Error)?.message ?? 'fetch failed');
     }
-    const body = await res.json().catch(() => undefined);
+    let body: unknown;
+    try {
+      body = await res.json();
+    } catch (err) {
+      const name = (err as Error)?.name;
+      if (name === 'AbortError' || name === 'TimeoutError') {
+        throw new ProviderRequestError(
+          'timeout',
+          `Razorpay createRefund timed out after ${PROVIDER_TIMEOUT_MS}ms`,
+        );
+      }
+      body = undefined;
+    }
     if (!res.ok) {
       const error = (body as { error?: { code?: string; description?: string } } | undefined)
         ?.error;
@@ -210,6 +224,16 @@ export class RazorpayProviderService implements PaymentProviderService {
         res.status,
         error?.description ?? `Razorpay createRefund failed with ${res.status}`,
         error?.code,
+      );
+    }
+    // A 2xx whose body is unusable means the refund may exist at Razorpay but
+    // we cannot tell. Retryable: the stable idempotency key returns the same
+    // refund (decision 0054).
+    if (!body || typeof body !== 'object' || typeof (body as { id?: unknown }).id !== 'string') {
+      throw new ProviderRequestError(
+        'network',
+        `Razorpay createRefund returned ${res.status} with an unusable body`,
+        res.status,
       );
     }
     return toProviderRefund(body as Parameters<typeof toProviderRefund>[0]);
