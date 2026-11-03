@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Razorpay from 'razorpay';
 import {
@@ -15,6 +15,9 @@ import { toProviderPayment, toProviderRefund } from './razorpay-mappers';
 
 const RAZORPAY_API_BASE = 'https://api.razorpay.com/v1';
 const REFUND_PAGE_SIZE = 100;
+// Loop guard for fetchRefunds: a payment never has 5000 refunds, so reaching
+// this many pages means the API is not honouring `skip`.
+const REFUND_MAX_PAGES = 50;
 
 // No real Razorpay merchant account exists in this project as of 2026-10-09
 // (decision 0042, rules 8-9). This implementation is written and
@@ -41,6 +44,7 @@ export class RazorpayProviderService implements PaymentProviderService {
   private readonly keyId: string;
   private readonly keySecret: string;
   private readonly webhookSecret: string;
+  private readonly logger = new Logger(RazorpayProviderService.name);
   private client: Razorpay | null = null;
 
   constructor(private readonly configService: ConfigService) {
@@ -146,8 +150,10 @@ export class RazorpayProviderService implements PaymentProviderService {
         amount: amountPaise,
         currency: 'INR',
         receipt: receiptId,
-        // Decision 0054: bounds how long a payment attempt on this order can
-        // still succeed, which is what makes the stale-reservation sweep safe.
+        // Decision 0054: the window runs per payment, from its creation. The app
+        // closes the Checkout sheet before the order's hold expires, so a payment
+        // can only start in time; anything captured later lands in
+        // refund_required instead of being silently cancelled.
         payment: {
           capture: 'automatic',
           capture_options: {
@@ -247,15 +253,31 @@ export class RazorpayProviderService implements PaymentProviderService {
     // page could miss an existing refund and let the admin refund twice
     // (decision 0054 rule 6).
     const all: ProviderRefund[] = [];
-    for (let skip = 0; ; skip += REFUND_PAGE_SIZE) {
+    let previousLastId: string | undefined;
+    for (let page = 0; page < REFUND_MAX_PAGES; page += 1) {
+      const skip = page * REFUND_PAGE_SIZE;
       const res = await this.callSdk('fetchRefunds', (client) =>
         client.payments.fetchMultipleRefund(paymentId, { count: REFUND_PAGE_SIZE, skip }),
       );
-      all.push(...res.items.map(toProviderRefund));
-      if (res.items.length < REFUND_PAGE_SIZE) {
+      const refunds = res.items.map(toProviderRefund);
+      const lastId = refunds[refunds.length - 1]?.id;
+      if (lastId !== undefined && lastId === previousLastId) {
+        // The API ignored `skip` and returned the previous page again.
+        this.logger.warn(
+          `fetchRefunds(${paymentId}) stopped: page ${page + 1} repeated the previous page`,
+        );
         return all;
       }
+      all.push(...refunds);
+      if (refunds.length < REFUND_PAGE_SIZE) {
+        return all;
+      }
+      previousLastId = lastId;
     }
+    this.logger.warn(
+      `fetchRefunds(${paymentId}) stopped after ${REFUND_MAX_PAGES} pages; the list may be incomplete`,
+    );
+    return all;
   }
 
   async fetchRefund(paymentId: string, refundId: string): Promise<ProviderRefund> {

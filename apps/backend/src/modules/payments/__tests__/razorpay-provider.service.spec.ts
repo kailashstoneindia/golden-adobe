@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
@@ -366,6 +367,52 @@ describe('RazorpayProviderService (decision 0054 provider surface)', () => {
     expect(fetchMultipleRefund).toHaveBeenCalledTimes(2);
     expect(fetchMultipleRefund).toHaveBeenNthCalledWith(1, 'pay_1', { count: 100, skip: 0 });
     expect(fetchMultipleRefund).toHaveBeenNthCalledWith(2, 'pay_1', { count: 100, skip: 100 });
+  });
+
+  it('fetchRefunds stops and warns when a page repeats the previous page', async () => {
+    const raw = (n: number) => ({
+      id: `rfnd_${n}`,
+      payment_id: 'pay_1',
+      amount: 100,
+      receipt: `rf_${n}`,
+      status: 'processed',
+    });
+    const page = Array.from({ length: 100 }, (_, i) => raw(i));
+    const fetchMultipleRefund = jest.fn().mockResolvedValue({ items: page });
+    (service as any).client = { payments: { fetchMultipleRefund } };
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+
+    const refunds = await service.fetchRefunds('pay_1');
+
+    expect(fetchMultipleRefund).toHaveBeenCalledTimes(2);
+    expect(refunds).toHaveLength(100);
+    expect(warn).toHaveBeenCalledTimes(1);
+    warn.mockRestore();
+  });
+
+  it('fetchRefunds stops after 50 pages', async () => {
+    let call = 0;
+    const fetchMultipleRefund = jest.fn().mockImplementation(async () => {
+      const pageNo = call++;
+      return {
+        items: Array.from({ length: 100 }, (_, i) => ({
+          id: `rfnd_${pageNo}_${i}`,
+          payment_id: 'pay_1',
+          amount: 100,
+          receipt: null,
+          status: 'processed',
+        })),
+      };
+    });
+    (service as any).client = { payments: { fetchMultipleRefund } };
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+
+    const refunds = await service.fetchRefunds('pay_1');
+
+    expect(fetchMultipleRefund).toHaveBeenCalledTimes(50);
+    expect(refunds).toHaveLength(5000);
+    expect(warn).toHaveBeenCalledTimes(1);
+    warn.mockRestore();
   });
 
   it('wraps SDK calls in the 15s timeout', async () => {
