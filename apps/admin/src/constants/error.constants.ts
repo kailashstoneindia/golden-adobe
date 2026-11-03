@@ -13,6 +13,7 @@ export const ERROR_MESSAGES = {
   approvalFailed: 'Could not update approval status.',
   loadOrdersFailed: 'Could not load orders.',
   refundFailed: 'Could not refund this order.',
+  refundHistoryLoadFailed: 'Could not load refund history — refunds are disabled until it loads.',
   refundMaybeRecorded:
     'The refund may have been recorded — check the refund history below before submitting again.',
   refundPending:

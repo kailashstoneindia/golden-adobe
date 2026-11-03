@@ -42,6 +42,7 @@ export type PaymentEventsListProps = {
 export type RefundFormProps = {
   order: OrderDto;
   refunds: RefundDto[];
+  historyStatus: 'loading' | 'loaded' | 'failed';
   isSubmitting: boolean;
   onRefund: OrderDetailModalProps['onRefund'];
 };

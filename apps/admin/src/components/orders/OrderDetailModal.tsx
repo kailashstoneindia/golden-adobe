@@ -84,6 +84,9 @@ export function OrderDetailModal({
               key={order.updatedAt}
               order={order}
               refunds={refunds}
+              historyStatus={
+                refundsQuery.isSuccess ? 'loaded' : refundsQuery.isError ? 'failed' : 'loading'
+              }
               isSubmitting={isSubmitting}
               onRefund={onRefund}
             />
@@ -182,13 +185,16 @@ export function OrderDetailModal({
   );
 }
 
-function RefundForm({ order, refunds, isSubmitting, onRefund }: RefundFormProps) {
+function RefundForm({ order, refunds, historyStatus, isSubmitting, onRefund }: RefundFormProps) {
   const [amountInput, setAmountInput] = useState<string | null>(null);
   const [reason, setReason] = useState('');
   // Two clicks can land before the button re-renders as disabled; a refund
   // submitted twice would be a second refund.
   const inFlightRef = useRef(false);
   const isLocked = order.status === ORDER_STATUSES.REFUND_REQUIRED;
+  // The refundable amount is the captured total less the refund history, so
+  // the form is unusable until that history is known (decision 0054 rule 5).
+  const isHistoryLoaded = historyStatus === 'loaded';
 
   const takenPaise = refunds
     .filter((refund) => refund.status !== 'failed')
@@ -205,7 +211,10 @@ function RefundForm({ order, refunds, isSubmitting, onRefund }: RefundFormProps)
       amountPaise <= remainingPaise);
   const trimmedReason = reason.trim();
   const canSubmit =
-    !isSubmitting && isAmountValid && trimmedReason.length >= REFUND_REASON_MIN_LENGTH;
+    isHistoryLoaded &&
+    !isSubmitting &&
+    isAmountValid &&
+    trimmedReason.length >= REFUND_REASON_MIN_LENGTH;
 
   const handleSubmit = async (): Promise<void> => {
     if (inFlightRef.current) {
@@ -243,7 +252,7 @@ function RefundForm({ order, refunds, isSubmitting, onRefund }: RefundFormProps)
         min={REFUND_MIN_AMOUNT_PAISE / 100}
         max={remainingPaise / 100}
         step="0.01"
-        disabled={isLocked}
+        disabled={isLocked || !isHistoryLoaded}
         value={amountValue}
         onChange={(event) => setAmountInput(event.target.value)}
       />
@@ -255,6 +264,7 @@ function RefundForm({ order, refunds, isSubmitting, onRefund }: RefundFormProps)
         className={styles.input}
         placeholder={ERROR_MESSAGES.refundReasonRequired}
         maxLength={REFUND_REASON_MAX_LENGTH}
+        disabled={!isHistoryLoaded}
         value={reason}
         onChange={(event) => setReason(event.target.value)}
         rows={3}
@@ -269,6 +279,9 @@ function RefundForm({ order, refunds, isSubmitting, onRefund }: RefundFormProps)
       >
         Refund
       </button>
+      {historyStatus === 'failed' ? (
+        <p className={styles.error}>{ERROR_MESSAGES.refundHistoryLoadFailed}</p>
+      ) : null}
     </>
   );
 }

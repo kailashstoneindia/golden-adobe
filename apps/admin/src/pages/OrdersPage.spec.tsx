@@ -52,6 +52,9 @@ let orders: OrderDto[];
 let refunds: Record<string, RefundDto[]>;
 let refundBodies: unknown[];
 let refundListFetches: number;
+// Holds GET /refunds open until released, or answers it with an error.
+let refundsGate: Promise<void> | null;
+let refundsListFails: boolean;
 // What the next POST /refund answers, and what it does to the server's refunds.
 let refundReply: {
   status: number;
@@ -64,8 +67,14 @@ let refundReply: {
 function useHandlers() {
   server.use(
     http.get(BASE, () => HttpResponse.json({ success: true, data: orders })),
-    http.get(`${BASE}/:id/refunds`, ({ params }) => {
+    http.get(`${BASE}/:id/refunds`, async ({ params }) => {
       refundListFetches += 1;
+      if (refundsGate) {
+        await refundsGate;
+      }
+      if (refundsListFails) {
+        return HttpResponse.json({ success: false, message: 'boom' }, { status: 500 });
+      }
       return HttpResponse.json({ success: true, data: refunds[String(params.id)] ?? [] });
     }),
     http.post(`${BASE}/:id/refund`, async ({ params, request }) => {
@@ -73,6 +82,15 @@ function useHandlers() {
       const id = String(params.id);
       if (refundReply.recordRefund) {
         refunds[id] = [...(refunds[id] ?? []), refundReply.recordRefund];
+      }
+      // What the server did to the order before it answered; the list
+      // refetch then reports it.
+      if (refundReply.orderStatus) {
+        orders = orders.map((o) =>
+          o.id === id
+            ? { ...o, status: refundReply.orderStatus as OrderDto['status'], updatedAt: 'later' }
+            : o,
+        );
       }
       if (refundReply.networkError) {
         return HttpResponse.error();
@@ -118,6 +136,8 @@ describe('OrdersPage refunds', () => {
     refunds = {};
     refundBodies = [];
     refundListFetches = 0;
+    refundsGate = null;
+    refundsListFails = false;
     refundReply = { status: 200 };
     useHandlers();
   });
@@ -173,8 +193,8 @@ describe('OrdersPage refunds', () => {
     await user.click(await screen.findByText('o2'));
 
     const amount = screen.getByLabelText('Refund amount (₹)');
+    await waitFor(() => expect(amount).toHaveValue(300));
     expect(amount).toBeDisabled();
-    expect(amount).toHaveValue(300);
   });
 
   it('locks a refund_required order to the captured amount when it differs from the total', async () => {
@@ -211,6 +231,7 @@ describe('OrdersPage refunds', () => {
     renderPage();
     const user = userEvent.setup();
     await user.click(await screen.findByText('o1'));
+    await waitFor(() => expect(screen.getByLabelText('Refund reason')).toBeEnabled());
 
     const submit = screen.getByRole('button', { name: 'Refund' });
     expect(submit).toBeDisabled();
@@ -223,6 +244,7 @@ describe('OrdersPage refunds', () => {
     renderPage();
     const user = userEvent.setup();
     await user.click(await screen.findByText('o1'));
+    await waitFor(() => expect(screen.getByLabelText('Refund reason')).toBeEnabled());
 
     const amount = screen.getByLabelText('Refund amount (₹)');
     await user.clear(amount);
@@ -238,6 +260,7 @@ describe('OrdersPage refunds', () => {
     renderPage();
     const user = userEvent.setup();
     await user.click(await screen.findByText('o2'));
+    await waitFor(() => expect(screen.getByLabelText('Refund reason')).toBeEnabled());
 
     await user.type(screen.getByLabelText('Refund reason'), 'Late payment');
     await user.click(screen.getByRole('button', { name: 'Refund' }));
@@ -250,6 +273,7 @@ describe('OrdersPage refunds', () => {
     renderPage();
     const user = userEvent.setup();
     await user.click(await screen.findByText('o2'));
+    await waitFor(() => expect(screen.getByLabelText('Refund reason')).toBeEnabled());
     await user.type(screen.getByLabelText('Refund reason'), 'Late payment');
     const submit = screen.getByRole('button', { name: 'Refund' });
 
@@ -290,6 +314,45 @@ describe('OrdersPage refunds', () => {
     expect(items).toHaveLength(2);
     expect(items[0]).toHaveTextContent('₹200.00 · Submitted');
     expect(items[1]).toHaveTextContent('₹100.00 · Processed');
+  });
+
+  // Decision 0054 rule 5: the remaining amount comes from the refund history,
+  // so the form must not be usable on an empty default.
+  it('disables the whole refund form until the refund history has loaded', async () => {
+    let release!: () => void;
+    refundsGate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    refunds = {
+      o1: [refund({ id: 'a', orderId: 'o1', amountPaise: 20000, status: 'processed' })],
+    };
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByText('o1'));
+
+    expect(screen.getByLabelText('Refund amount (₹)')).toBeDisabled();
+    expect(screen.getByLabelText('Refund reason')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Refund' })).toBeDisabled();
+
+    release();
+
+    await waitFor(() => expect(screen.getByLabelText('Refund amount (₹)')).toBeEnabled());
+    expect(screen.getByLabelText('Refund amount (₹)')).toHaveValue(300);
+    expect(screen.getByLabelText('Refund reason')).toBeEnabled();
+  });
+
+  it('keeps the refund form disabled and says why when the refund history fails to load', async () => {
+    refundsListFails = true;
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByText('o1'));
+
+    expect(await screen.findByText(ERROR_MESSAGES.refundHistoryLoadFailed)).toBeInTheDocument();
+    expect(screen.getByLabelText('Refund amount (₹)')).toBeDisabled();
+    expect(screen.getByLabelText('Refund reason')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Refund' })).toBeDisabled();
   });
 
   describe('refund outcome', () => {
@@ -364,6 +427,37 @@ describe('OrdersPage refunds', () => {
         expect(screen.getByRole('button', { name: 'Refund' })).toBeDisabled();
       },
     );
+
+    it('on 400 shows the status the server moved the order to, with the amount locked', async () => {
+      refundReply = {
+        status: 400,
+        message: 'Razorpay reported this refund as failed.',
+        orderStatus: 'refund_required',
+      };
+      const user = await openConfirmedWithEarlierRefund();
+      const dialog = screen.getByRole('dialog');
+      expect(dialog).toHaveTextContent('Confirmed');
+
+      await user.click(screen.getByRole('button', { name: 'Refund' }));
+
+      await screen.findByText('Razorpay reported this refund as failed.');
+      await waitFor(() => expect(dialog).toHaveTextContent('Refund required'));
+      expect(screen.getByLabelText('Refund amount (₹)')).toBeDisabled();
+      expect(screen.getByLabelText('Refund amount (₹)')).toHaveValue(800);
+    });
+
+    it('on a lost response shows the status the server moved the order to', async () => {
+      refundReply = { status: 504, message: 'Gateway Timeout', orderStatus: 'refund_pending' };
+      const user = await openConfirmedWithEarlierRefund();
+
+      await user.click(screen.getByRole('button', { name: 'Refund' }));
+
+      await screen.findByText(ERROR_MESSAGES.refundMaybeRecorded);
+      await waitFor(() =>
+        expect(screen.getByRole('dialog')).toHaveTextContent('Refund in progress'),
+      );
+      expect(screen.queryByLabelText('Refund amount (₹)')).not.toBeInTheDocument();
+    });
 
     it('on 400 shows the error under the button, refetches the history and keeps the form', async () => {
       refundReply = { status: 400, message: 'Razorpay createRefund failed with 404' };

@@ -34,6 +34,23 @@ export function OrdersPage() {
   const isSubmitting =
     refundMutation.isPending || cancelMutation.isPending || overrideMutation.isPending;
 
+  // After any refund outcome the server may have moved the order (a failed
+  // refund returns it to refund_required, a lost response may have recorded
+  // one), so the open modal takes its status from the refreshed list rather
+  // than the copy it was opened with.
+  const refreshSelectedOrder = async (orderId: string): Promise<void> => {
+    try {
+      const refreshed = await ordersQuery.refetch();
+      const nextOrder = refreshed.data?.find((order) => order.id === orderId);
+      if (nextOrder) {
+        setSelectedOrder(nextOrder);
+      }
+    } catch {
+      // The refund outcome below is what the admin must see; a failed refetch
+      // only leaves the modal on the order it already had.
+    }
+  };
+
   const handleRefund = async (
     orderId: string,
     body: AdminRefundRequest,
@@ -43,12 +60,14 @@ export function OrdersPage() {
     try {
       const { order: updated, pending } = await refundMutation.mutateAsync({ orderId, body });
       setSelectedOrder(updated);
+      await refreshSelectedOrder(orderId);
       if (pending) {
         setRefundNotice({ tone: 'pending', text: ERROR_MESSAGES.refundPending });
         return 'pending';
       }
       return 'done';
     } catch (error) {
+      await refreshSelectedOrder(orderId);
       // Only a 4xx proves the server refused the refund. A 5xx, a gateway
       // timeout or a dropped connection can arrive after the refund row was
       // written, so resubmitting could refund twice.
