@@ -58,6 +58,7 @@ let refundReply: {
   message?: string;
   recordRefund?: RefundDto;
   orderStatus?: string;
+  networkError?: boolean;
 };
 
 function useHandlers() {
@@ -72,6 +73,9 @@ function useHandlers() {
       const id = String(params.id);
       if (refundReply.recordRefund) {
         refunds[id] = [...(refunds[id] ?? []), refundReply.recordRefund];
+      }
+      if (refundReply.networkError) {
+        return HttpResponse.error();
       }
       if (refundReply.status >= 400) {
         return HttpResponse.json(
@@ -329,6 +333,37 @@ describe('OrdersPage refunds', () => {
       await waitFor(() => expect(screen.getByLabelText('Refund amount (₹)')).toHaveValue(549.5));
       expect(screen.getByLabelText('Refund reason')).toHaveValue('');
     });
+
+    it.each([
+      ['a 504 from the gateway', { status: 504, message: 'Gateway Timeout' }],
+      ['a dropped connection', { status: 0, networkError: true }],
+    ])(
+      'on %s says the refund may be recorded, refetches and clears the form so it cannot be sent twice',
+      async (_label, reply) => {
+        refundReply = {
+          ...reply,
+          recordRefund: refund({
+            id: 'b',
+            orderId: 'o1',
+            amountPaise: 25050,
+            status: 'requested',
+            createdAt: '2026-11-03T10:00:00.000Z',
+          }),
+        };
+        const user = await openConfirmedWithEarlierRefund();
+        const fetchesBefore = refundListFetches;
+
+        await user.click(screen.getByRole('button', { name: 'Refund' }));
+
+        const notice = await screen.findByText(ERROR_MESSAGES.refundMaybeRecorded);
+        expect(screen.getByRole('button', { name: 'Refund' }).nextElementSibling).toBe(notice);
+        await waitFor(() => expect(refundListFetches).toBeGreaterThan(fetchesBefore));
+        expect(await screen.findByText(/₹250.50 · Requested/)).toBeInTheDocument();
+        await waitFor(() => expect(screen.getByLabelText('Refund amount (₹)')).toHaveValue(549.5));
+        expect(screen.getByLabelText('Refund reason')).toHaveValue('');
+        expect(screen.getByRole('button', { name: 'Refund' })).toBeDisabled();
+      },
+    );
 
     it('on 400 shows the error under the button, refetches the history and keeps the form', async () => {
       refundReply = { status: 400, message: 'Razorpay createRefund failed with 404' };

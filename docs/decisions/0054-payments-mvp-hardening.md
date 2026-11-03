@@ -59,7 +59,7 @@ Build Option B. These rules are binding for all payment code:
    - A failed full refund returns the order to `refund_required`.
    - Partial refunds never change the order status.
    - A 5-minute job moves refunds from `submitted` to `processed` or `failed` by fetching them from Razorpay. It also re-sends any `requested` refunds with their stored key.
-   - `POST /admin/orders/:id/refund` answers 202 Accepted, not an error, when the refund is still `requested` (Razorpay's answer could not be confirmed, including a client error whose receipt lookup failed). The admin UI says it is pending and not to resubmit. Only a client error with a receipt lookup that confirms no refund exists marks the row `failed` and answers 400.
+   - `POST /admin/orders/:id/refund` answers 202 Accepted, not an error, when the refund is still `requested` (Razorpay's answer could not be confirmed, including a client error whose receipt lookup failed). The admin UI says it is pending and not to resubmit. It answers 400 when the refund ends `failed`: a client error with a receipt lookup that confirms no refund exists (Razorpay's message), or Razorpay reporting the refund as failed ("Razorpay reported this refund as failed."). A failed row stays and the refund can be retried.
 7. **The webhook never fails because of a notification**, and stores `x-razorpay-event-id` under a unique index.
 
 Order statuses become `pending_payment | confirmed | cancelled | refund_required | refund_pending | refunded`, enforced by a CHECK constraint.

@@ -475,6 +475,12 @@
   font: inherit;
 }
 
+/* A scrolling modal body squeezes grid rows; a textarea would shrink to its padding. */
+textarea.input {
+  height: auto;
+  min-height: 92px;
+}
+
 .input:disabled {
   background: var(--color-background);
   color: var(--color-ink-soft);

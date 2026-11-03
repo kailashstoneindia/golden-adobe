@@ -698,6 +698,27 @@ describe('RefundsService (decision 0054)', () => {
       expect((await refundRows(o))[0].status).toBe('failed');
     });
 
+    it('POST /admin/orders/:id/refund answers 400 when Razorpay reports the refund as failed', async () => {
+      const { o, paymentId } = await confirmedOrder();
+      jest.spyOn(t.provider, 'createRefund').mockResolvedValue({
+        id: 'rfnd_failed',
+        paymentId,
+        amountPaise: o.grandTotalPaise,
+        receipt: null,
+        status: 'failed',
+      });
+
+      const res = await request(t.app.getHttpServer())
+        .post(`/api/admin/orders/${o.orderId}/refund`)
+        .set('Authorization', `Bearer ${t.adminToken}`)
+        .send({ reason: 'razorpay reports failure' })
+        .expect(400);
+
+      expect(res.body.message).toBe('Razorpay reported this refund as failed.');
+      expect((await refundRows(o))[0].status).toBe('failed');
+      expect(await orderStatus(o)).toBe('refund_required');
+    });
+
     it('POST /admin/orders/:id/refund requires a reason and an admin', async () => {
       const { o } = await confirmedOrder();
       const url = `/api/admin/orders/${o.orderId}/refund`;

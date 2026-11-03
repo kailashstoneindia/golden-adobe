@@ -17,6 +17,7 @@ import {
   useOverrideVendorGroupStatusMutation,
   useRefundOrderMutation,
 } from '@/queries/useOrdersQueries';
+import { ApiClientError } from '@/services/api/apiClient';
 import styles from '@/styles/shared.module.css';
 import type { RefundNotice, RefundOutcome } from '@/types/orders.types';
 import { formatDateTime } from '@/utils/date';
@@ -48,11 +49,15 @@ export function OrdersPage() {
       }
       return 'done';
     } catch (error) {
-      setRefundNotice({
-        tone: 'error',
-        text: error instanceof Error ? error.message : ERROR_MESSAGES.refundFailed,
-      });
-      return 'failed';
+      // Only a 4xx proves the server refused the refund. A 5xx, a gateway
+      // timeout or a dropped connection can arrive after the refund row was
+      // written, so resubmitting could refund twice.
+      if (error instanceof ApiClientError && error.statusCode >= 400 && error.statusCode < 500) {
+        setRefundNotice({ tone: 'error', text: error.message });
+        return 'failed';
+      }
+      setRefundNotice({ tone: 'pending', text: ERROR_MESSAGES.refundMaybeRecorded });
+      return 'pending';
     }
   };
 

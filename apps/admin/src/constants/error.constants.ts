@@ -13,6 +13,8 @@ export const ERROR_MESSAGES = {
   approvalFailed: 'Could not update approval status.',
   loadOrdersFailed: 'Could not load orders.',
   refundFailed: 'Could not refund this order.',
+  refundMaybeRecorded:
+    'The refund may have been recorded — check the refund history below before submitting again.',
   refundPending:
     'Refund recorded but not yet confirmed by Razorpay. It will be retried automatically — do not submit it again.',
   cancelFailed: 'Could not cancel this order.',

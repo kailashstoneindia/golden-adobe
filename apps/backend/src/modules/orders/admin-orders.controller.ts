@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -10,7 +11,7 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { Role } from '@golden-abode/types';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -61,6 +62,11 @@ export class AdminOrdersController {
 
   @Post(':id/refund')
   @HttpCode(HttpStatus.OK)
+  @ApiResponse({ status: 202, description: 'Refund recorded but not yet confirmed by Razorpay' })
+  @ApiResponse({
+    status: 400,
+    description: 'Refund not allowed, or Razorpay rejected or reported it as failed',
+  })
   async refund(
     @Param('id') id: string,
     @Body() dto: AdminRefundDto,
@@ -74,6 +80,10 @@ export class AdminOrdersController {
       amountPaise: dto.amountPaise,
       vendorGroupId: dto.vendorGroupId,
     });
+    // The row is kept (failed, and retryable); the order has already followed it.
+    if (refund.status === RefundStatus.FAILED) {
+      throw new BadRequestException('Razorpay reported this refund as failed.');
+    }
     // Still requested: Razorpay's answer is not confirmed and the sync job
     // will settle it, so the client must not treat this as a failure or resubmit.
     if (refund.status === RefundStatus.REQUESTED) {
