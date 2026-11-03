@@ -55,6 +55,9 @@ let refundListFetches: number;
 // Holds GET /refunds open until released, or answers it with an error.
 let refundsGate: Promise<void> | null;
 let refundsListFails: boolean;
+// Holds POST /refund open until released.
+let refundPostGate: Promise<void> | null;
+let ordersListFetches: number;
 // What the next POST /refund answers, and what it does to the server's refunds.
 let refundReply: {
   status: number;
@@ -66,7 +69,10 @@ let refundReply: {
 
 function useHandlers() {
   server.use(
-    http.get(BASE, () => HttpResponse.json({ success: true, data: orders })),
+    http.get(BASE, () => {
+      ordersListFetches += 1;
+      return HttpResponse.json({ success: true, data: orders });
+    }),
     http.get(`${BASE}/:id/refunds`, async ({ params }) => {
       refundListFetches += 1;
       if (refundsGate) {
@@ -79,6 +85,9 @@ function useHandlers() {
     }),
     http.post(`${BASE}/:id/refund`, async ({ params, request }) => {
       refundBodies.push(await request.json());
+      if (refundPostGate) {
+        await refundPostGate;
+      }
       const id = String(params.id);
       if (refundReply.recordRefund) {
         refunds[id] = [...(refunds[id] ?? []), refundReply.recordRefund];
@@ -138,6 +147,8 @@ describe('OrdersPage refunds', () => {
     refundListFetches = 0;
     refundsGate = null;
     refundsListFails = false;
+    refundPostGate = null;
+    ordersListFetches = 0;
     refundReply = { status: 200 };
     useHandlers();
   });
@@ -356,6 +367,55 @@ describe('OrdersPage refunds', () => {
   });
 
   describe('refund outcome', () => {
+    // The admin may close the modal (or open another order) while a refund is
+    // in flight; the late response must not bring the first order back.
+    it('keeps the modal closed when the response arrives after the admin closed it', async () => {
+      let release!: () => void;
+      refundPostGate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      refundReply = { status: 200, orderStatus: 'refund_pending' };
+      renderPage();
+      const user = userEvent.setup();
+      await user.click(await screen.findByText('o1'));
+      await waitFor(() => expect(screen.getByLabelText('Refund reason')).toBeEnabled());
+      await user.type(screen.getByLabelText('Refund reason'), 'Vendor cancelled');
+      await user.click(screen.getByRole('button', { name: 'Refund' }));
+      await waitFor(() => expect(refundBodies).toHaveLength(1));
+
+      await user.click(screen.getByRole('button', { name: 'Close' }));
+      const fetchesBefore = ordersListFetches;
+      release();
+
+      await waitFor(() => expect(ordersListFetches).toBeGreaterThan(fetchesBefore));
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    it('does not switch to another order the admin opened while the refund was in flight', async () => {
+      let release!: () => void;
+      refundPostGate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      refundReply = { status: 200, orderStatus: 'refund_pending' };
+      renderPage();
+      const user = userEvent.setup();
+      await user.click(await screen.findByText('o1'));
+      await waitFor(() => expect(screen.getByLabelText('Refund reason')).toBeEnabled());
+      await user.type(screen.getByLabelText('Refund reason'), 'Vendor cancelled');
+      await user.click(screen.getByRole('button', { name: 'Refund' }));
+      await waitFor(() => expect(refundBodies).toHaveLength(1));
+
+      await user.click(screen.getByRole('button', { name: 'Close' }));
+      await user.click(screen.getByText('o3'));
+      const fetchesBefore = ordersListFetches;
+      release();
+
+      await waitFor(() => expect(ordersListFetches).toBeGreaterThan(fetchesBefore));
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(screen.getByRole('dialog')).toHaveTextContent('Pending payment');
+    });
+
     async function openConfirmedWithEarlierRefund() {
       orders = [order({ id: 'o1', status: 'confirmed', grandTotal: 1000 })];
       refunds = {

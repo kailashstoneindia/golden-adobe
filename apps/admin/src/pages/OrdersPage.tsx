@@ -1,7 +1,7 @@
 import type { AdminRefundRequest, OrderDto, OrderVendorGroupStatus } from '@golden-abode/types';
 import { ORDER_STATUSES } from '@golden-abode/types';
 import { isEmpty } from 'lodash';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import { OrderDetailModal } from '@/components/orders/OrderDetailModal';
 import { ERROR_MESSAGES } from '@/constants/error.constants';
@@ -23,7 +23,20 @@ import type { RefundNotice, RefundOutcome } from '@/types/orders.types';
 import { formatDateTime } from '@/utils/date';
 
 export function OrdersPage() {
-  const [selectedOrder, setSelectedOrder] = useState<OrderDto | null>(null);
+  const [selectedOrder, setSelectedOrderState] = useState<OrderDto | null>(null);
+  // Mirrors selectedOrder so an async handler can ask, when its response
+  // arrives, whether its order is still the one open.
+  const selectedOrderIdRef = useRef<string | null>(null);
+  const setSelectedOrder = (order: OrderDto | null): void => {
+    selectedOrderIdRef.current = order?.id ?? null;
+    setSelectedOrderState(order);
+  };
+  // A late response must never re-open a closed modal or replace another order.
+  const updateSelectedOrderIfOpen = (order: OrderDto): void => {
+    if (selectedOrderIdRef.current === order.id) {
+      setSelectedOrder(order);
+    }
+  };
   const [actionError, setActionError] = useState<string | null>(null);
   const [refundNotice, setRefundNotice] = useState<RefundNotice | null>(null);
   const [statusFilter, setStatusFilter] = useState<OrderStatusFilter>(ORDER_STATUS_FILTERS.ALL);
@@ -43,7 +56,7 @@ export function OrdersPage() {
       const refreshed = await ordersQuery.refetch();
       const nextOrder = refreshed.data?.find((order) => order.id === orderId);
       if (nextOrder) {
-        setSelectedOrder(nextOrder);
+        updateSelectedOrderIfOpen(nextOrder);
       }
     } catch {
       // The refund outcome below is what the admin must see; a failed refetch
@@ -59,7 +72,7 @@ export function OrdersPage() {
     setRefundNotice(null);
     try {
       const { order: updated, pending } = await refundMutation.mutateAsync({ orderId, body });
-      setSelectedOrder(updated);
+      updateSelectedOrderIfOpen(updated);
       await refreshSelectedOrder(orderId);
       if (pending) {
         setRefundNotice({ tone: 'pending', text: ERROR_MESSAGES.refundPending });
