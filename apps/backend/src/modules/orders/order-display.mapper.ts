@@ -24,6 +24,7 @@ export function toOrderDto(order: Order, includeDeliveryAddress: boolean): Order
     customerId: order.customerId,
     deliveryAddressId: order.deliveryAddressId,
     grandTotal: toFiniteNumber(order.grandTotal),
+    capturedPaise: order.capturedPaise ?? null,
     status: order.status as OrderStatus,
     razorpayOrderId: order.razorpayOrderId,
     razorpayPaymentId: order.razorpayPaymentId,

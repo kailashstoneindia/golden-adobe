@@ -158,6 +158,10 @@ export type OrderDto = {
   customerId: string;
   deliveryAddressId: string;
   grandTotal: number;
+  // Decision 0054: what Razorpay actually captured, in paise. Differs from
+  // grandTotal for a mismatched late payment; null for orders captured
+  // before the column existed.
+  capturedPaise: number | null;
   status: OrderStatus;
   razorpayOrderId: string | null;
   razorpayPaymentId: string | null;

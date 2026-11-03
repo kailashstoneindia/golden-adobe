@@ -1,8 +1,10 @@
 import type {
+  AdminRefundRequest,
   OrderDto,
   OrderVendorGroupDto,
   OrderVendorGroupStatus,
   PaymentEventDto,
+  RefundDto,
 } from '@golden-abode/types';
 
 export type OrderDetailModalProps = {
@@ -10,7 +12,7 @@ export type OrderDetailModalProps = {
   isSubmitting: boolean;
   actionError: string | null;
   onClose: () => void;
-  onRefund: (orderId: string) => Promise<void>;
+  onRefund: (orderId: string, body: AdminRefundRequest) => Promise<void>;
   onCancel: (orderId: string) => Promise<void>;
   onOverrideStatus: (options: {
     groupId: string;
@@ -25,4 +27,15 @@ export type VendorGroupBlockProps = {
 
 export type PaymentEventsListProps = {
   events: PaymentEventDto[];
+};
+
+export type RefundFormProps = {
+  order: OrderDto;
+  refunds: RefundDto[];
+  isSubmitting: boolean;
+  onRefund: OrderDetailModalProps['onRefund'];
+};
+
+export type RefundHistoryProps = {
+  refunds: RefundDto[];
 };

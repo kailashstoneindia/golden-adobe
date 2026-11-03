@@ -1,10 +1,16 @@
-import type { OrderDto, OrderVendorGroupStatus } from '@golden-abode/types';
+import type { AdminRefundRequest, OrderDto, OrderVendorGroupStatus } from '@golden-abode/types';
+import { ORDER_STATUSES } from '@golden-abode/types';
 import { isEmpty } from 'lodash';
 import { useState } from 'react';
 
 import { OrderDetailModal } from '@/components/orders/OrderDetailModal';
 import { ERROR_MESSAGES } from '@/constants/error.constants';
-import { ORDER_STATUS_LABELS } from '@/constants/order.constants';
+import {
+  ORDER_STATUS_FILTER_OPTIONS,
+  ORDER_STATUS_FILTERS,
+  ORDER_STATUS_LABELS,
+} from '@/constants/order.constants';
+import type { OrderStatusFilter } from '@/constants/order.constants';
 import {
   useCancelAdminOrderMutation,
   useOrdersQuery,
@@ -17,6 +23,7 @@ import { formatDateTime } from '@/utils/date';
 export function OrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<OrderDto | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<OrderStatusFilter>(ORDER_STATUS_FILTERS.ALL);
   const ordersQuery = useOrdersQuery();
   const refundMutation = useRefundOrderMutation();
   const cancelMutation = useCancelAdminOrderMutation();
@@ -24,10 +31,10 @@ export function OrdersPage() {
   const isSubmitting =
     refundMutation.isPending || cancelMutation.isPending || overrideMutation.isPending;
 
-  const handleRefund = async (orderId: string): Promise<void> => {
+  const handleRefund = async (orderId: string, body: AdminRefundRequest): Promise<void> => {
     setActionError(null);
     try {
-      const updated = await refundMutation.mutateAsync(orderId);
+      const updated = await refundMutation.mutateAsync({ orderId, body });
       setSelectedOrder(updated);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : ERROR_MESSAGES.refundFailed);
@@ -76,7 +83,7 @@ export function OrdersPage() {
     return <p className={styles.error}>{ERROR_MESSAGES.loadOrdersFailed}</p>;
   }
 
-  const orders = ordersQuery.data ?? [];
+  const orders = filterOrders(ordersQuery.data ?? [], statusFilter);
 
   return (
     <section>
@@ -85,8 +92,28 @@ export function OrdersPage() {
         Refund, cancel, and override fulfilment for customer orders.
       </p>
 
+      <label className={styles.label} htmlFor="order-status-filter">
+        Status filter
+      </label>
+      <select
+        id="order-status-filter"
+        className={styles.input}
+        value={statusFilter}
+        onChange={(event) => setStatusFilter(parseStatusFilter(event.target.value))}
+      >
+        {ORDER_STATUS_FILTER_OPTIONS.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+
       {isEmpty(orders) ? (
-        <div className={styles.empty}>No orders yet.</div>
+        <div className={styles.empty}>
+          {statusFilter === ORDER_STATUS_FILTERS.ALL
+            ? 'No orders yet.'
+            : 'No orders match this filter.'}
+        </div>
       ) : (
         <div className={styles.tableWrap}>
           <table className={styles.table}>
@@ -134,4 +161,22 @@ export function OrdersPage() {
       ) : null}
     </section>
   );
+}
+
+// "Needs refund" is a work queue, so the longest-waiting order comes first.
+function filterOrders(orders: OrderDto[], filter: OrderStatusFilter): OrderDto[] {
+  if (filter === ORDER_STATUS_FILTERS.NEEDS_REFUND) {
+    return orders
+      .filter((order) => order.status === ORDER_STATUSES.REFUND_REQUIRED)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  }
+  if (filter === ORDER_STATUS_FILTERS.REFUND_IN_PROGRESS) {
+    return orders.filter((order) => order.status === ORDER_STATUSES.REFUND_PENDING);
+  }
+  return orders;
+}
+
+function parseStatusFilter(value: string): OrderStatusFilter {
+  const match = ORDER_STATUS_FILTER_OPTIONS.find((option) => option.value === value);
+  return match?.value ?? ORDER_STATUS_FILTERS.ALL;
 }

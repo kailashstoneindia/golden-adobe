@@ -22,6 +22,7 @@ export const API_ENDPOINTS = {
     orders: '/admin/orders',
     orderById: (orderId: string) => `/admin/orders/${orderId}`,
     orderRefund: (orderId: string) => `/admin/orders/${orderId}/refund`,
+    orderRefunds: (orderId: string) => `/admin/orders/${orderId}/refunds`,
     orderCancel: (orderId: string) => `/admin/orders/${orderId}/cancel`,
     orderPaymentEvents: (orderId: string) => `/admin/orders/${orderId}/payment-events`,
     overrideVendorGroupStatus: (groupId: string) =>

@@ -1,7 +1,9 @@
 import type {
   AdminOverrideVendorGroupStatusRequest,
+  AdminRefundRequest,
   OrderDto,
   PaymentEventDto,
+  RefundDto,
 } from '@golden-abode/types';
 
 import { API_ENDPOINTS } from '@/constants/apiEndpoints';
@@ -16,11 +18,15 @@ export const ordersService = {
     return getRequest<OrderDto>(API_ENDPOINTS.admin.orderById(orderId));
   },
 
-  refundOrder(orderId: string): Promise<OrderDto> {
-    return postRequest<OrderDto, Record<string, never>>(
+  refundOrder(orderId: string, body: AdminRefundRequest): Promise<OrderDto> {
+    return postRequest<OrderDto, AdminRefundRequest>(
       API_ENDPOINTS.admin.orderRefund(orderId),
-      {},
+      body,
     );
+  },
+
+  listRefunds(orderId: string): Promise<RefundDto[]> {
+    return getRequest<RefundDto[]>(API_ENDPOINTS.admin.orderRefunds(orderId));
   },
 
   cancelOrder(orderId: string): Promise<OrderDto> {

@@ -15,5 +15,6 @@ export const ERROR_MESSAGES = {
   refundFailed: 'Could not refund this order.',
   cancelFailed: 'Could not cancel this order.',
   overrideStatusFailed: 'Could not override vendor group status.',
+  refundReasonRequired: 'Enter a reason for this refund.',
   overrideReasonRequired: 'Enter a reason for the status override.',
 } as const;
