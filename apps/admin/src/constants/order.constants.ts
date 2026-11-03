@@ -5,6 +5,8 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   [ORDER_STATUSES.PENDING_PAYMENT]: 'Pending payment',
   [ORDER_STATUSES.CONFIRMED]: 'Confirmed',
   [ORDER_STATUSES.CANCELLED]: 'Cancelled',
+  [ORDER_STATUSES.REFUND_REQUIRED]: 'Refund required',
+  [ORDER_STATUSES.REFUND_PENDING]: 'Refund in progress',
   [ORDER_STATUSES.REFUNDED]: 'Refunded',
 };
 

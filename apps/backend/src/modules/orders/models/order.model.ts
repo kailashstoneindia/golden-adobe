@@ -15,6 +15,8 @@ export enum OrderStatus {
   PENDING_PAYMENT = 'pending_payment',
   CONFIRMED = 'confirmed',
   CANCELLED = 'cancelled',
+  REFUND_REQUIRED = 'refund_required',
+  REFUND_PENDING = 'refund_pending',
   REFUNDED = 'refunded',
 }
 

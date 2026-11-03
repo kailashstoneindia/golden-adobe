@@ -2,6 +2,8 @@ export const ORDER_STATUSES = {
   PENDING_PAYMENT: 'pending_payment',
   CONFIRMED: 'confirmed',
   CANCELLED: 'cancelled',
+  REFUND_REQUIRED: 'refund_required',
+  REFUND_PENDING: 'refund_pending',
   REFUNDED: 'refunded',
 } as const;
 
@@ -183,4 +185,28 @@ export type PaymentEventDto = {
   eventType: string;
   rawPayload: Record<string, unknown>;
   createdAt: string;
+};
+
+export type RefundStatus = 'requested' | 'submitted' | 'processed' | 'failed';
+
+export type RefundRail = 'razorpay' | 'manual_payout';
+
+export type RefundDto = {
+  id: string;
+  orderId: string;
+  orderVendorGroupId: string | null;
+  rail: RefundRail;
+  amountPaise: number;
+  receipt: string;
+  razorpayRefundId: string | null;
+  status: RefundStatus;
+  reason: string;
+  createdBy: string;
+  createdAt: string;
+};
+
+export type AdminRefundRequest = {
+  reason: string;
+  amountPaise?: number;
+  vendorGroupId?: string;
 };
