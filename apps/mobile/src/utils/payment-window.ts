@@ -12,7 +12,9 @@ export function getCheckoutTimeoutSeconds(
   orderCreatedAt: string,
   nowMs: number = Date.now(),
 ): number | null {
-  const elapsedSeconds = (nowMs - new Date(orderCreatedAt).getTime()) / 1000;
+  // Clamped at 0: a phone clock behind the server must never yield a timeout
+  // longer than the hold minus the buffer. NaN stays NaN and fails the check below.
+  const elapsedSeconds = Math.max(0, (nowMs - new Date(orderCreatedAt).getTime()) / 1000);
   const remainingSeconds = Math.floor(
     PAYMENT_HOLD_MINUTES * 60 - elapsedSeconds - APP_CONSTANTS.paymentSheetCloseBufferSeconds,
   );
