@@ -40,6 +40,7 @@ import {
 } from '../../payments/__tests__/fake-payment-provider';
 import { CheckoutService } from '../checkout.service';
 import { OrdersService } from '../orders.service';
+import { OrderPaymentService } from '../order-payment.service';
 import { OrdersController } from '../orders.controller';
 import { WebhooksController } from '../webhooks.controller';
 import { AdminOrdersController } from '../admin-orders.controller';
@@ -161,6 +162,7 @@ export async function createPaymentsTestApp(): Promise<PaymentsTestApp> {
       CartService,
       CheckoutService,
       OrdersService,
+      OrderPaymentService,
       { provide: PAYMENT_PROVIDER, useValue: provider },
       { provide: NOTIFICATION_SERVICE, useValue: notifications },
     ],

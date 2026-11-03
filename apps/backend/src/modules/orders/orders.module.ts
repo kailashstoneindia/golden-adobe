@@ -10,6 +10,7 @@ import { Artisan } from '../artisans/models/artisan.model';
 import { ArtisanHireRequest } from '../artisans/models/artisan-hire-request.model';
 import { CheckoutService } from './checkout.service';
 import { OrdersService } from './orders.service';
+import { OrderPaymentService } from './order-payment.service';
 import { OrdersController } from './orders.controller';
 import { WebhooksController } from './webhooks.controller';
 import { AdminOrdersController } from './admin-orders.controller';
@@ -38,7 +39,7 @@ import { CatalogModule } from '../catalog/catalog.module';
     CatalogModule,
   ],
   controllers: [OrdersController, WebhooksController, AdminOrdersController],
-  providers: [CheckoutService, OrdersService],
-  exports: [CheckoutService, OrdersService],
+  providers: [CheckoutService, OrdersService, OrderPaymentService],
+  exports: [CheckoutService, OrdersService, OrderPaymentService],
 })
 export class OrdersModule {}

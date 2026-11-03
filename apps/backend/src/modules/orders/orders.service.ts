@@ -16,6 +16,7 @@ import { OrderVendorGroup, OrderVendorGroupStatus } from './models/order-vendor-
 import { PaymentEvent } from './models/payment-event.model';
 import { CustomersService } from '../customers/customers.service';
 import { NOTIFICATION_SERVICE, NotificationService } from '../notifications/notification.interface';
+import { OrderPaymentService } from './order-payment.service';
 import { PAYMENT_PROVIDER, PaymentProviderService } from '../payments/payment-provider.interface';
 import { Artisan } from '../artisans/models/artisan.model';
 import { ArtisanHireRequest } from '../artisans/models/artisan-hire-request.model';
@@ -54,6 +55,7 @@ export class OrdersService {
     @Inject(NOTIFICATION_SERVICE) private readonly notifications: NotificationService,
     @Inject(PAYMENT_PROVIDER) private readonly paymentProvider: PaymentProviderService,
     private readonly configService: ConfigService,
+    private readonly orderPayment: OrderPaymentService,
   ) {}
 
   async listForCustomer(userId: string): Promise<OrderDto[]> {
@@ -162,7 +164,7 @@ export class OrdersService {
       throw new BadRequestException(`order cannot be cancelled from status ${order.status}`);
     }
 
-    const cancelled = await this.releaseAndCancel(order.id);
+    const cancelled = await this.orderPayment.releaseAndCancel(order.id);
 
     if (!cancelled) {
       // Lost a race against a concurrent transition (e.g. the webhook
@@ -174,77 +176,6 @@ export class OrdersService {
     order.status = OrderStatus.CANCELLED;
     await this.notifications.sendOrderStatusChanged(customer.id, order.id, OrderStatus.CANCELLED);
     return this.getForCustomer(userId, orderId);
-  }
-
-  // Decision 0049. Extracted from cancel()'s own transaction body —
-  // guarded status UPDATE, inventory reservation release, vendor-group
-  // cancellation — so the stale-reservation sweep reuses the exact same
-  // release logic rather than a second, possibly-drifting copy. Returns
-  // false if the order was not actually PENDING_PAYMENT at the moment of
-  // the guarded UPDATE (lost a race, or was already cancelled/confirmed).
-  private async releaseAndCancel(orderId: string): Promise<boolean> {
-    return this.sequelize.transaction(async (t) => {
-      // Sequelize's QueryTypes.UPDATE return shape for Postgres is
-      // [results, affectedRowCount] — results is always an empty array,
-      // the count is the SECOND element. Verified empirically (not
-      // assumed): a prior version of this destructured [updatedCount]
-      // (the first element, always []), so `updatedCount === 0` was
-      // always false and this guard never actually fired — found while
-      // verifying the fix-pass's own fixes, not by reading docs.
-      const [, updatedCount] = await this.sequelize.query(
-        `UPDATE orders SET status = :cancelled WHERE id = :orderId AND status = :pending`,
-        {
-          replacements: {
-            orderId,
-            cancelled: OrderStatus.CANCELLED,
-            pending: OrderStatus.PENDING_PAYMENT,
-          },
-          type: QueryTypes.UPDATE,
-          transaction: t,
-        },
-      );
-      if (updatedCount === 0) {
-        return false;
-      }
-
-      const items = await this.sequelize.query<{ vendor_listing_id: string; quantity: string }>(
-        `
-        SELECT oi.vendor_listing_id, oi.quantity
-        FROM order_items oi
-        JOIN order_vendor_group ovg ON ovg.id = oi.order_vendor_group_id
-        WHERE ovg.order_id = :orderId
-        `,
-        { replacements: { orderId }, type: QueryTypes.SELECT, transaction: t },
-      );
-      for (const item of items) {
-        await this.sequelize.query(
-          `
-          UPDATE inventory
-          SET quantity_reserved = quantity_reserved - :qty
-          WHERE vendor_listing_id = :listingId AND warehouse_id IS NULL
-          `,
-          {
-            replacements: { listingId: item.vendor_listing_id, qty: item.quantity },
-            type: QueryTypes.UPDATE,
-            transaction: t,
-          },
-        );
-      }
-      // WHERE also pins status: PENDING, defensively — the UPDATE ...
-      // WHERE status = 'pending_payment' above already guarantees no
-      // vendor could have advanced any group's status (updateVendorGroupStatus
-      // excludes pending_payment orders entirely as of the final review's
-      // finding #8 fix), but costs nothing to assert here too rather than
-      // rely solely on a invariant enforced three files away.
-      await this.groupModel.update(
-        { status: OrderVendorGroupStatus.CANCELLED },
-        {
-          where: { orderId, status: OrderVendorGroupStatus.PENDING },
-          transaction: t,
-        },
-      );
-      return true;
-    });
   }
 
   // Decision 0049. A customer who reaches the Razorpay payment sheet and
@@ -275,7 +206,7 @@ export class OrdersService {
     });
 
     for (const order of stale) {
-      const released = await this.releaseAndCancel(order.id);
+      const released = await this.orderPayment.releaseAndCancel(order.id);
       if (!released) {
         continue;
       }
