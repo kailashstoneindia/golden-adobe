@@ -1,6 +1,6 @@
 import type { OrderVendorGroupStatus } from '@golden-abode/types';
 import { ORDER_STATUSES } from '@golden-abode/types';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import {
   ORDER_STATUS_LABELS,
@@ -179,6 +179,9 @@ export function OrderDetailModal({
 function RefundForm({ order, refunds, isSubmitting, onRefund }: RefundFormProps) {
   const [amountInput, setAmountInput] = useState<string | null>(null);
   const [reason, setReason] = useState('');
+  // Two clicks can land before the button re-renders as disabled; a refund
+  // submitted twice would be a second refund.
+  const inFlightRef = useRef(false);
   const isLocked = order.status === ORDER_STATUSES.REFUND_REQUIRED;
 
   const takenPaise = refunds
@@ -199,12 +202,21 @@ function RefundForm({ order, refunds, isSubmitting, onRefund }: RefundFormProps)
     !isSubmitting && isAmountValid && trimmedReason.length >= REFUND_REASON_MIN_LENGTH;
 
   const handleSubmit = async (): Promise<void> => {
-    // A late payment must be refunded in full (decision 0054), so the server
-    // picks the amount; one is sent only for a deliberate partial refund.
-    await onRefund(order.id, {
-      reason: trimmedReason,
-      ...(isLocked ? {} : { amountPaise }),
-    });
+    if (inFlightRef.current) {
+      return;
+    }
+    inFlightRef.current = true;
+    try {
+      // A refund_required order must be refunded in full (decision 0054), so
+      // the server picks the amount; one is sent only for a deliberate
+      // partial refund.
+      await onRefund(order.id, {
+        reason: trimmedReason,
+        ...(isLocked ? {} : { amountPaise }),
+      });
+    } finally {
+      inFlightRef.current = false;
+    }
   };
 
   return (

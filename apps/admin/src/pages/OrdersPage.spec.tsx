@@ -1,6 +1,6 @@
 import type { OrderDto, RefundDto } from '@golden-abode/types';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -215,6 +215,24 @@ describe('OrdersPage refunds', () => {
 
     await waitFor(() => expect(refundBodies).toHaveLength(1));
     expect(refundBodies[0]).toEqual({ reason: 'Late payment' });
+  });
+
+  it('sends one request when Refund is clicked twice before the first settles', async () => {
+    renderPage();
+    const user = userEvent.setup();
+    await user.click(await screen.findByText('o2'));
+    await user.type(screen.getByLabelText('Refund reason'), 'Late payment');
+    const submit = screen.getByRole('button', { name: 'Refund' });
+
+    // Both clicks land before React re-renders the button as disabled.
+    act(() => {
+      submit.click();
+      submit.click();
+    });
+
+    await waitFor(() => expect(refundBodies).toHaveLength(1));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(refundBodies).toHaveLength(1);
   });
 
   it('lists existing refunds with amount and status, newest first', async () => {
