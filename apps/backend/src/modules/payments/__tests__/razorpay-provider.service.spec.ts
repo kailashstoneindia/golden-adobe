@@ -82,3 +82,246 @@ describe('RazorpayProviderService.refundPayment', () => {
     );
   });
 });
+
+describe('RazorpayProviderService (decision 0054 provider surface)', () => {
+  let service: RazorpayProviderService;
+  const originalFetch = global.fetch;
+
+  beforeEach(async () => {
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        RazorpayProviderService,
+        {
+          provide: ConfigService,
+          useValue: {
+            get: (key: string) => {
+              if (key === 'RAZORPAY_KEY_ID') return 'test-key-id';
+              if (key === 'RAZORPAY_KEY_SECRET') return 'test-key-secret';
+              return '';
+            },
+          },
+        },
+      ],
+    }).compile();
+    service = moduleRef.get(RazorpayProviderService);
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+    jest.useRealTimers();
+  });
+
+  const jsonResponse = (status: number, body: unknown): Response =>
+    ({ ok: status >= 200 && status < 300, status, json: async () => body }) as Response;
+
+  const refundParams = {
+    paymentId: 'pay_1',
+    amountPaise: 5000,
+    receipt: 'rf_x_1',
+    idempotencyKey: 'k'.repeat(32),
+    notes: { order_id: 'o1' },
+  };
+
+  it('creates the order with a 20-minute capture window', async () => {
+    const create = jest.fn().mockResolvedValue({ id: 'order_1' });
+    (service as any).client = { orders: { create } };
+
+    const result = await service.createOrder(150000, 'order-1');
+
+    expect(result).toEqual({ providerOrderId: 'order_1' });
+    expect(create).toHaveBeenCalledWith({
+      amount: 150000,
+      currency: 'INR',
+      receipt: 'order-1',
+      payment: {
+        capture: 'automatic',
+        capture_options: {
+          automatic_expiry_period: 20,
+          manual_expiry_period: 20,
+          refund_speed: 'normal',
+        },
+      },
+    });
+  });
+
+  it('maps order payments to ProviderPayment', async () => {
+    const fetchPayments = jest.fn().mockResolvedValue({
+      items: [
+        { id: 'pay_1', order_id: 'order_1', amount: 150000, currency: 'INR', status: 'captured' },
+      ],
+    });
+    (service as any).client = { orders: { fetchPayments } };
+
+    const result = await service.fetchOrderPayments('order_1');
+
+    expect(fetchPayments).toHaveBeenCalledWith('order_1');
+    expect(result).toEqual([
+      { id: 'pay_1', orderId: 'order_1', amountPaise: 150000, currency: 'INR', status: 'captured' },
+    ]);
+  });
+
+  it('sends X-Refund-Idempotency over HTTPS with basic auth', async () => {
+    const fetchMock = jest.fn().mockResolvedValue(
+      jsonResponse(200, {
+        id: 'rfnd_1',
+        payment_id: 'pay_1',
+        amount: 5000,
+        receipt: 'rf_x_1',
+        status: 'pending',
+      }),
+    );
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const result = await service.createRefund(refundParams);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.razorpay.com/v1/payments/pay_1/refund',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          Authorization: `Basic ${Buffer.from('test-key-id:test-key-secret').toString('base64')}`,
+          'Content-Type': 'application/json',
+          'X-Refund-Idempotency': 'k'.repeat(32),
+        }),
+        body: JSON.stringify({
+          amount: 5000,
+          speed: 'normal',
+          receipt: 'rf_x_1',
+          notes: { order_id: 'o1' },
+        }),
+      }),
+    );
+    expect(result).toEqual({
+      id: 'rfnd_1',
+      paymentId: 'pay_1',
+      amountPaise: 5000,
+      receipt: 'rf_x_1',
+      status: 'pending',
+    });
+  });
+
+  it('throws if Razorpay is not configured when creating a refund', async () => {
+    (service as any).keyId = '';
+    await expect(service.createRefund(refundParams)).rejects.toThrow('Razorpay is not configured');
+  });
+
+  it.each([
+    [
+      'an aborted request to timeout',
+      () => Object.assign(new Error('aborted'), { name: 'TimeoutError' }),
+      'timeout',
+    ],
+    [
+      'an AbortError to timeout',
+      () => Object.assign(new Error('aborted'), { name: 'AbortError' }),
+      'timeout',
+    ],
+    ['a connection failure to network', () => new TypeError('fetch failed'), 'network'],
+  ])('maps fetch %s', async (_label, makeError, kind) => {
+    global.fetch = jest.fn().mockRejectedValue(makeError()) as unknown as typeof fetch;
+
+    await expect(service.createRefund(refundParams)).rejects.toMatchObject({
+      name: 'ProviderRequestError',
+      kind,
+    });
+  });
+
+  it.each([
+    ['a 500 to server', 500, { error: { code: 'SERVER_ERROR', description: 'boom' } }, 'server'],
+    [
+      'a 409 still in progress to conflict_in_progress',
+      409,
+      { error: { code: 'BAD_REQUEST_ERROR', description: 'Request in progress for same key' } },
+      'conflict_in_progress',
+    ],
+    [
+      'a 400 to client',
+      400,
+      { error: { code: 'BAD_REQUEST_ERROR', description: 'bad amount' } },
+      'client',
+    ],
+    [
+      'a 409 that is not in progress to client',
+      409,
+      { error: { code: 'BAD_REQUEST_ERROR', description: 'already refunded' } },
+      'client',
+    ],
+  ])('maps fetch %s', async (_label, status, body, kind) => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValue(jsonResponse(status, body)) as unknown as typeof fetch;
+
+    await expect(service.createRefund(refundParams)).rejects.toMatchObject({
+      name: 'ProviderRequestError',
+      kind,
+      status,
+      code: body.error.code,
+    });
+  });
+
+  it.each([
+    [
+      'a 500 to server',
+      { statusCode: 500, error: { code: 'SERVER_ERROR', description: 'boom' } },
+      'server',
+    ],
+    [
+      'a 409 still in progress to conflict_in_progress',
+      { statusCode: 409, error: { code: 'BAD_REQUEST_ERROR', description: 'Refund in progress' } },
+      'conflict_in_progress',
+    ],
+    [
+      'a 400 to client',
+      { statusCode: 400, error: { code: 'BAD_REQUEST_ERROR', description: 'bad' } },
+      'client',
+    ],
+    ['an error with no status code to network', new Error('ECONNRESET'), 'network'],
+  ])('maps SDK %s', async (_label, sdkError, kind) => {
+    const fetchPayments = jest.fn().mockRejectedValue(sdkError);
+    (service as any).client = { orders: { fetchPayments } };
+
+    await expect(service.fetchOrderPayments('order_1')).rejects.toMatchObject({
+      name: 'ProviderRequestError',
+      kind,
+    });
+  });
+
+  it('fetchRefunds and fetchRefund map Razorpay refunds', async () => {
+    const raw = {
+      id: 'rfnd_1',
+      payment_id: 'pay_1',
+      amount: 5000,
+      receipt: null,
+      status: 'processed',
+    };
+    const fetchMultipleRefund = jest.fn().mockResolvedValue({ items: [raw] });
+    const fetchRefund = jest.fn().mockResolvedValue(raw);
+    (service as any).client = { payments: { fetchMultipleRefund, fetchRefund } };
+    const mapped = {
+      id: 'rfnd_1',
+      paymentId: 'pay_1',
+      amountPaise: 5000,
+      receipt: null,
+      status: 'processed',
+    };
+
+    await expect(service.fetchRefunds('pay_1')).resolves.toEqual([mapped]);
+    await expect(service.fetchRefund('pay_1', 'rfnd_1')).resolves.toEqual(mapped);
+    expect(fetchMultipleRefund).toHaveBeenCalledWith('pay_1');
+    expect(fetchRefund).toHaveBeenCalledWith('pay_1', 'rfnd_1');
+  });
+
+  it('wraps SDK calls in the 15s timeout', async () => {
+    jest.useFakeTimers();
+    const fetchPayments = jest.fn().mockReturnValue(new Promise(() => undefined));
+    (service as any).client = { orders: { fetchPayments } };
+
+    const outcome = service.fetchOrderPayments('order_1').then(
+      () => null,
+      (e: unknown) => e,
+    );
+    await jest.advanceTimersByTimeAsync(15_000);
+
+    await expect(outcome).resolves.toMatchObject({ name: 'ProviderRequestError', kind: 'timeout' });
+  });
+});
