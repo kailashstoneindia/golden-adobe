@@ -71,5 +71,9 @@ function notifyPaymentResult(
     showSuccess(TOAST_MESSAGES.paymentConfirmed);
     return;
   }
+  if (status === ORDER_STATUSES.REFUND_REQUIRED || status === ORDER_STATUSES.REFUND_PENDING) {
+    showWarning(TOAST_MESSAGES.paymentArrivedAfterExpiry);
+    return;
+  }
   showWarning(TOAST_MESSAGES.paymentPending);
 }
