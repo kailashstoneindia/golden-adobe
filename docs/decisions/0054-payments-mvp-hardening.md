@@ -96,6 +96,7 @@ Order statuses become `pending_payment | confirmed | cancelled | refund_required
 - **Checkout retry after a lost response** (a retry gets "cart is empty"). Deferred as D1 in `docs/research/payments/reports/Payment MVP scope.md`.
 - **Fix before live payments:**
   - **Server-side refund request dedupe.** The admin form blocks a second click while the first request is in flight, but the idempotency key is generated per request on the server. A resubmit after a lost response can still create a second _partial_ refund. Fix: a client-generated request id per form, stored unique.
+  - **Failed partial refunds need an admin work queue.** When the sync marks a partial refund `failed`, the order stays `confirmed` and the failure shows only in that order's refund history and a log line. Add a "Refund failed" filter (or equivalent queue) on the admin orders page. Interim control: the weekly recon export's `refunds_failed_paise` column (a nonzero amount with no later processed refund is a promised refund that did not happen).
   - **Persistent 409 on refund.** Every 409 is treated as "in progress" and retried, so a non-transient 409 leaves the refund `requested` and the order `refund_pending` until someone looks. Add an alert or escalate after a maximum age.
 - **Deferred past merge:**
   - **Vendors can't see that an order is being refunded.** `OrderVendorGroupDto` doesn't expose the parent order's status, so a vendor sees "Confirmed" under a `refund_pending` order until they press Ship.
