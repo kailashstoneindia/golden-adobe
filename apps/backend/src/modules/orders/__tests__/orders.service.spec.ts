@@ -26,7 +26,11 @@ describe('OrdersService', () => {
   let artisanModelMock: { findOne: jest.Mock };
   let hireRequestModelMock: { findByPk: jest.Mock };
   let configServiceMock: { get: jest.Mock };
-  let orderPaymentMock: { releaseAndCancel: jest.Mock };
+  let orderPaymentMock: {
+    releaseAndCancel: jest.Mock;
+    checkProviderPayments: jest.Mock;
+    applyCapture: jest.Mock;
+  };
   const mockTransaction = {};
 
   beforeEach(async () => {
@@ -40,7 +44,11 @@ describe('OrdersService', () => {
     artisanModelMock = { findOne: jest.fn() };
     hireRequestModelMock = { findByPk: jest.fn() };
     configServiceMock = { get: jest.fn().mockReturnValue('all') };
-    orderPaymentMock = { releaseAndCancel: jest.fn() };
+    orderPaymentMock = {
+      releaseAndCancel: jest.fn(),
+      checkProviderPayments: jest.fn().mockResolvedValue({ kind: 'none' }),
+      applyCapture: jest.fn(),
+    };
 
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -427,6 +435,47 @@ describe('OrdersService', () => {
       await service.sweepStaleReservations();
 
       expect(notificationsMock.sendOrderStatusChanged).not.toHaveBeenCalled();
+    });
+
+    it('applies a capture Razorpay reports instead of cancelling', async () => {
+      const order = { id: 'order-1', customerId: 'cust-1' };
+      const payment = { id: 'pay_1' };
+      orderModelMock.findAll.mockResolvedValue([order]);
+      orderPaymentMock.checkProviderPayments.mockResolvedValue({ kind: 'captured', payment });
+
+      await service.sweepStaleReservations();
+
+      expect(orderPaymentMock.applyCapture).toHaveBeenCalledWith(order, payment);
+      expect(orderPaymentMock.releaseAndCancel).not.toHaveBeenCalled();
+      expect(notificationsMock.sendOrderStatusChanged).not.toHaveBeenCalled();
+    });
+
+    it.each(['in_flight', 'unavailable'])(
+      'skips an order whose payment check is %s',
+      async (kind) => {
+        orderModelMock.findAll.mockResolvedValue([{ id: 'order-1', customerId: 'cust-1' }]);
+        orderPaymentMock.checkProviderPayments.mockResolvedValue({ kind });
+
+        await service.sweepStaleReservations();
+
+        expect(orderPaymentMock.releaseAndCancel).not.toHaveBeenCalled();
+        expect(orderPaymentMock.applyCapture).not.toHaveBeenCalled();
+      },
+    );
+
+    it('keeps sweeping the remaining orders when one fails', async () => {
+      orderModelMock.findAll.mockResolvedValue([
+        { id: 'order-1', customerId: 'cust-1' },
+        { id: 'order-2', customerId: 'cust-2' },
+      ]);
+      orderPaymentMock.releaseAndCancel
+        .mockRejectedValueOnce(new Error('db down'))
+        .mockResolvedValueOnce(true);
+
+      await service.sweepStaleReservations();
+
+      expect(orderPaymentMock.releaseAndCancel).toHaveBeenCalledTimes(2);
+      expect(notificationsMock.sendOrderStatusChanged).toHaveBeenCalledTimes(1);
     });
 
     it('does nothing when WORKER_MODE is api — some other process owns scheduled work', async () => {

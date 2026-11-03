@@ -1,4 +1,11 @@
-import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/sequelize';
 import { Cron, CronExpression } from '@nestjs/schedule';
@@ -17,7 +24,12 @@ import { PaymentEvent } from './models/payment-event.model';
 import { CustomersService } from '../customers/customers.service';
 import { NOTIFICATION_SERVICE, NotificationService } from '../notifications/notification.interface';
 import { OrderPaymentService } from './order-payment.service';
-import { PAYMENT_PROVIDER, PaymentProviderService } from '../payments/payment-provider.interface';
+import {
+  PAYMENT_CAPTURE_WINDOW_MINUTES,
+  PAYMENT_PROVIDER,
+  PaymentProviderService,
+  ProviderPayment,
+} from '../payments/payment-provider.interface';
 import { Artisan } from '../artisans/models/artisan.model';
 import { ArtisanHireRequest } from '../artisans/models/artisan-hire-request.model';
 import {
@@ -37,8 +49,14 @@ import {
 // for a checkout hold, since payment.failed's own handling already
 // treats a UPI-retry-after-wrong-PIN as the expected case for this
 // checkout, not an edge case — a customer retrying needs more headroom
-// than a single-swipe card checkout does.
-const STALE_RESERVATION_TIMEOUT_MS = 20 * 60 * 1000;
+// than a single-swipe card checkout does. Decision 0054: the same constant
+// is Razorpay's capture window, so a payment authorised after the sweep has
+// given up is auto-refunded by Razorpay instead of captured.
+const STALE_RESERVATION_TIMEOUT_MS = PAYMENT_CAPTURE_WINDOW_MINUTES * 60_000;
+
+const IN_FLIGHT_PAYMENT_MESSAGE =
+  'A payment is in progress for this order. Try again in a few minutes.';
+const PAYMENT_STATUS_UNVERIFIED_MESSAGE = 'Could not verify payment status. Try again shortly.';
 
 @Injectable()
 export class OrdersService {
@@ -164,6 +182,13 @@ export class OrdersService {
       throw new BadRequestException(`order cannot be cancelled from status ${order.status}`);
     }
 
+    const capturedPayment = await this.askProviderBeforeCancel(order);
+    if (capturedPayment) {
+      // Razorpay already has the money: confirm instead of cancelling.
+      await this.orderPayment.applyCapture(order, capturedPayment);
+      return this.getForCustomer(userId, orderId);
+    }
+
     const cancelled = await this.orderPayment.releaseAndCancel(order.id);
 
     if (!cancelled) {
@@ -206,16 +231,62 @@ export class OrdersService {
     });
 
     for (const order of stale) {
-      const released = await this.orderPayment.releaseAndCancel(order.id);
-      if (!released) {
-        continue;
+      try {
+        await this.sweepOne(order);
+      } catch (err) {
+        // One order's failure must not stop the rest of the sweep.
+        this.logger.error(
+          `order ${order.id}: sweep failed: ${err instanceof Error ? err.message : String(err)}`,
+        );
       }
-      this.logger.log(`order ${order.id}: swept — stale reservation released, order cancelled`);
-      await this.notifications.sendOrderStatusChanged(
-        order.customerId,
-        order.id,
-        OrderStatus.CANCELLED,
-      );
+    }
+  }
+
+  // Decision 0054 rule 3. No row lock is held across the Razorpay call (so no
+  // SKIP LOCKED either): concurrent sweeps are safe because only one guarded
+  // UPDATE can win, as decision 0049 established.
+  private async sweepOne(order: Order): Promise<void> {
+    const check = await this.orderPayment.checkProviderPayments(order);
+    switch (check.kind) {
+      case 'captured':
+        // A webhook we never received (or one that failed): Razorpay is the
+        // source of truth.
+        await this.orderPayment.applyCapture(order, check.payment);
+        this.logger.log(`order ${order.id}: swept — Razorpay reports a captured payment`);
+        return;
+      case 'in_flight':
+      case 'unavailable':
+        this.logger.log(`order ${order.id}: sweep skipped — payment ${check.kind}, will retry`);
+        return;
+      case 'none': {
+        const released = await this.orderPayment.releaseAndCancel(order.id);
+        if (!released) {
+          return;
+        }
+        this.logger.log(`order ${order.id}: swept — stale reservation released, order cancelled`);
+        await this.notifications.sendOrderStatusChanged(
+          order.customerId,
+          order.id,
+          OrderStatus.CANCELLED,
+        );
+      }
+    }
+  }
+
+  // Shared by both cancel paths. Returns the captured payment to confirm, or
+  // null when it is safe to go on cancelling. Throws when a payment is in
+  // progress (400) or Razorpay cannot be asked (503) — never cancels blind.
+  private async askProviderBeforeCancel(order: Order): Promise<ProviderPayment | null> {
+    const check = await this.orderPayment.checkProviderPayments(order);
+    switch (check.kind) {
+      case 'captured':
+        return check.payment;
+      case 'in_flight':
+        throw new BadRequestException(IN_FLIGHT_PAYMENT_MESSAGE);
+      case 'unavailable':
+        throw new ServiceUnavailableException(PAYMENT_STATUS_UNVERIFIED_MESSAGE);
+      case 'none':
+        return null;
     }
   }
 
@@ -465,6 +536,23 @@ export class OrdersService {
     }
     if (order.status === OrderStatus.CANCELLED) {
       throw new BadRequestException('order is already cancelled');
+    }
+    // Captured money with no confirmed order: cancelling would orphan it.
+    if (
+      order.status === OrderStatus.REFUND_REQUIRED ||
+      order.status === OrderStatus.REFUND_PENDING
+    ) {
+      throw new BadRequestException('refund this order before cancelling it');
+    }
+
+    // Decision 0054 rule 3. Asked before the transaction below, so its row
+    // lock is never held across the Razorpay call.
+    if (order.status === OrderStatus.PENDING_PAYMENT) {
+      const capturedPayment = await this.askProviderBeforeCancel(order);
+      if (capturedPayment) {
+        await this.orderPayment.applyCapture(order, capturedPayment);
+        throw new BadRequestException('order was paid; refund it instead');
+      }
     }
 
     const cancelled = await this.sequelize.transaction(async (t) => {
