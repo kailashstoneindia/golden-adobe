@@ -35,6 +35,7 @@ function artisan(over: Partial<AdminArtisanDto> = {}): AdminArtisanDto {
       lastLoginAt: null,
     },
     documentViewUrl: null,
+    documentStorageAvailable: true,
     jobCounts: { active: 1, completed: 5, declined: 0, total: 6 },
     createdAt: '2026-10-29T00:00:00.000Z',
     updatedAt: '2026-10-29T00:00:00.000Z',
@@ -200,6 +201,27 @@ describe('ArtisansPage full ustaad view', () => {
     expect(screen.getByRole('group', { name: 'Bank' })).toHaveTextContent('998877665544');
     expect(screen.getByRole('group', { name: 'Jobs' })).toHaveTextContent(
       '1 active · 5 completed · 0 declined · 6 in total',
+    );
+  });
+});
+
+describe('ArtisansPage when document storage is not set up', () => {
+  it('says the document exists but cannot be opened yet, rather than "No document"', async () => {
+    artisans = [
+      artisan({
+        documentUrl: 'artisans/a1/id.pdf',
+        documentViewUrl: null,
+        documentStorageAvailable: false,
+      }),
+    ];
+    useHandlers();
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('row', { name: /Mohan Lal/ }));
+
+    expect(await screen.findByRole('group', { name: 'Documents' })).toHaveTextContent(
+      'Uploaded, but document storage is not set up',
     );
   });
 });

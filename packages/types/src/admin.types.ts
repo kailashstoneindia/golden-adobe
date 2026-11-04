@@ -148,6 +148,9 @@ export type AdminArtisanDto = Omit<ArtisanProfileDto, 'team'> & {
   // there is no document. A stored http(s) URL is passed through as-is.
   documentViewUrl: string | null;
   jobCounts: { active: number; completed: number; declined: number; total: number };
+  // False when links could not be signed (e.g. no media bucket configured):
+  // a document may exist even though there is no link to it.
+  documentStorageAvailable: boolean;
 };
 
 export type PaginatedAdminArtisansResponse = PaginatedResponse<AdminArtisanDto>;

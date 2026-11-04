@@ -36,7 +36,12 @@ export function ArtisanDetailBody({ artisan }: { artisan: AdminArtisanDto }) {
 
       <Group title="Documents">
         <Row label="Ustaad">
-          <DocumentLink url={artisan.documentViewUrl} label="View ustaad document" />
+          <DocumentLink
+            url={artisan.documentViewUrl}
+            stored={artisan.documentUrl}
+            storageAvailable={artisan.documentStorageAvailable}
+            label="View ustaad document"
+          />
         </Row>
       </Group>
 
@@ -76,6 +81,8 @@ export function ArtisanDetailBody({ artisan }: { artisan: AdminArtisanDto }) {
                     <td>
                       <DocumentLink
                         url={member.documentViewUrl}
+                        stored={member.documentUrl}
+                        storageAvailable={artisan.documentStorageAvailable}
                         label={`View document for ${member.name || 'team member'}`}
                       />
                     </td>
@@ -108,7 +115,21 @@ export function ArtisanDetailBody({ artisan }: { artisan: AdminArtisanDto }) {
   );
 }
 
-function DocumentLink({ url, label }: { url: string | null; label: string }) {
+function DocumentLink({
+  url,
+  stored,
+  storageAvailable,
+  label,
+}: {
+  url: string | null;
+  stored: string | null;
+  storageAvailable: boolean;
+  label: string;
+}) {
+  if (!url && stored && !storageAvailable) {
+    // The file exists; the server just could not sign a link (no bucket set up).
+    return <>Uploaded, but document storage is not set up</>;
+  }
   if (!url) return <>No document</>;
   return (
     <a href={url} target="_blank" rel="noreferrer" aria-label={label}>

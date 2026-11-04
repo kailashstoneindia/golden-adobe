@@ -35,6 +35,7 @@ function artisan(over: Partial<AdminArtisanDto> = {}): AdminArtisanDto {
       lastLoginAt: null,
     },
     documentViewUrl: null,
+    documentStorageAvailable: true,
     jobCounts: { active: 1, completed: 5, declined: 0, total: 6 },
     createdAt: '2026-10-29T00:00:00.000Z',
     updatedAt: '2026-10-29T00:00:00.000Z',

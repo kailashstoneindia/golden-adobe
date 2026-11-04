@@ -68,3 +68,6 @@ apps/mobile/GoogleService-Info.plist
 # Claude Code worktrees — isolated workspaces, never part of the repo
 .claude/worktrees/
 infra/deploy/.rehearsal/
+
+# Throwaway builds (e.g. dist-uiverify from browser checks) are never committed.
+dist-*/

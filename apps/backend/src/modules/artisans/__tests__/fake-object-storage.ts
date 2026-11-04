@@ -16,8 +16,12 @@ export class FakeObjectStorage {
     return { url: 'https://example.test/upload', fields: {} };
   }
 
+  // Set by a test to act like an environment with no bucket configured.
+  failSigning = false;
+
   // Deterministic, so tests can assert which key a link was signed for.
   async presignGet(key: string, expiresInSeconds: number): Promise<string> {
+    if (this.failSigning) throw new Error('No value provided for input HTTP label: Bucket.');
     return `https://signed.example.test/${key}?expires=${expiresInSeconds}`;
   }
 

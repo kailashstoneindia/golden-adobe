@@ -50,7 +50,9 @@ describe('Admin ustaad detail (real HTTP, Postgres)', () => {
     t.storage.seed(key);
     await asArtisan(request(server()).post('/api/artisans/me/documents/confirm').send({ key }));
 
-    expect((await detail()).documentViewUrl).toBe(`https://signed.example.test/${key}?expires=300`);
+    const dto = await detail();
+    expect(dto.documentViewUrl).toBe(`https://signed.example.test/${key}?expires=300`);
+    expect(dto.documentStorageAvailable).toBe(true);
   });
 
   it('signs a link for each team member’s document', async () => {
@@ -113,5 +115,52 @@ describe('Admin ustaad detail (real HTTP, Postgres)', () => {
     );
 
     expect(row).toMatchObject({ documentViewUrl: null, owner: { userId: t.artisanUserId } });
+  });
+});
+
+describe('Admin ustaad detail when document storage is not set up', () => {
+  let t: ArtisansTestApp;
+  let artisanId: string;
+
+  beforeAll(async () => {
+    t = await createArtisansTestApp();
+    const res = await request(t.app.getHttpServer())
+      .post('/api/artisans/me/profile')
+      .set('Authorization', `Bearer ${t.artisanToken}`)
+      .send({ tradeType: 'MASON', servicePincode: '560001' });
+    artisanId = res.body.data.id;
+    await Artisan.update(
+      { documentUrl: `artisans/${artisanId}/id.pdf` },
+      { where: { id: artisanId } },
+    );
+    await ArtisanTeamMember.create({
+      artisanId,
+      name: 'Old Helper',
+      documentUrl: 'https://legacy.example.test/old.pdf',
+    } as never);
+    t.storage.failSigning = true;
+  });
+
+  afterAll(async () => {
+    t.storage.failSigning = false;
+    await ArtisanTeamMember.destroy({ where: { artisanId } });
+    await Artisan.destroy({ where: { id: artisanId } });
+    await t.close();
+  });
+
+  it('still shows the ustaad, says links are unavailable, and does not fail', async () => {
+    const res = await request(t.app.getHttpServer())
+      .get(`/api/admin/artisans/${artisanId}`)
+      .set('Authorization', `Bearer ${t.adminToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toMatchObject({
+      id: artisanId,
+      documentUrl: `artisans/${artisanId}/id.pdf`,
+      documentViewUrl: null,
+      documentStorageAvailable: false,
+    });
+    // An older document stored as a full URL needs no signing, so it still opens.
+    expect(res.body.data.team[0].documentViewUrl).toBe('https://legacy.example.test/old.pdf');
   });
 });

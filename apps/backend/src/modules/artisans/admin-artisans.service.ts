@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { QueryTypes, WhereOptions } from 'sequelize';
 import { Sequelize } from 'sequelize-typescript';
@@ -29,6 +29,8 @@ const ACTIVE_JOB_STATUSES = ['PENDING_ARTISAN_RESPONSE', 'ACCEPTED_BY_ARTISAN', 
 // list never mints dozens of links nobody opens.
 @Injectable()
 export class AdminArtisansService {
+  private readonly logger = new Logger(AdminArtisansService.name);
+
   constructor(
     @InjectModel(Artisan) private readonly artisanModel: typeof Artisan,
     @Inject(OBJECT_STORAGE) private readonly storage: ObjectStorage,
@@ -50,16 +52,35 @@ export class AdminArtisansService {
       throw new NotFoundException(`artisan ${artisanId} not found`);
     }
     const [dto] = await this.withFacts([artisan]);
-    return {
-      ...dto,
-      documentViewUrl: await this.viewUrl(dto.documentUrl),
-      team: await Promise.all(
-        dto.team.map(async (member) => ({
+    try {
+      return {
+        ...dto,
+        documentViewUrl: await this.viewUrl(dto.documentUrl),
+        team: await Promise.all(
+          dto.team.map(async (member) => ({
+            ...member,
+            documentViewUrl: await this.viewUrl(member.documentUrl),
+          })),
+        ),
+      };
+    } catch (error) {
+      // No bucket configured (or S3 unreachable): the rest of the ustaad is
+      // still worth showing. The admin sees that links are unavailable.
+      this.logger.warn(
+        `could not sign document links for artisan ${artisanId}: ${(error as Error).message}`,
+      );
+      // Older documents stored as full URLs need no signing and still open.
+      const plainUrl = (stored: string | null) => (stored && isUrl(stored) ? stored : null);
+      return {
+        ...dto,
+        documentStorageAvailable: false,
+        documentViewUrl: plainUrl(dto.documentUrl),
+        team: dto.team.map((member) => ({
           ...member,
-          documentViewUrl: await this.viewUrl(member.documentUrl),
+          documentViewUrl: plainUrl(member.documentUrl),
         })),
-      ),
-    };
+      };
+    }
   }
 
   private async page(
@@ -112,6 +133,7 @@ export class AdminArtisansService {
         ...profile,
         owner: toAdminContactDto(artisan.user),
         documentViewUrl: null,
+        documentStorageAvailable: true,
         team: profile.team.map((member) => ({ ...member, documentViewUrl: null })),
         jobCounts: {
           active: sum(ACTIVE_JOB_STATUSES),
@@ -130,4 +152,8 @@ export class AdminArtisansService {
     if (/^https?:\/\//i.test(stored)) return stored;
     return this.storage.presignGet(stored, DOCUMENT_VIEW_TTL_SECONDS);
   }
+}
+
+function isUrl(stored: string): boolean {
+  return /^https?:\/\//i.test(stored);
 }
