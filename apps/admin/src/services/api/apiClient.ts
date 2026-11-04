@@ -43,6 +43,7 @@ const NO_REFRESH_ENDPOINTS: readonly string[] = [
   API_ENDPOINTS.auth.adminLogin,
   API_ENDPOINTS.auth.adminRegister,
   API_ENDPOINTS.auth.refresh,
+  API_ENDPOINTS.auth.logout,
 ];
 
 function toClientError(error: AxiosError<ApiErrorResponse>): ApiClientError {

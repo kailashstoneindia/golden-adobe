@@ -2,6 +2,8 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 
 import { APP_CONSTANTS } from '@/constants/appConstants';
 import { ROUTES } from '@/constants/routes';
+import { authService } from '@/services/api/authService';
+import { tokenStorage } from '@/services/storage/tokenStorage';
 import { selectAdminUser, selectClearSession, useAuthStore } from '@/store';
 import styles from '@/styles/shared.module.css';
 
@@ -11,6 +13,12 @@ export function AdminLayout() {
   const clearSession = useAuthStore(selectClearSession);
 
   const handleLogout = () => {
+    // Revoke the refresh token on the server too, otherwise it stays usable for
+    // its full 30 days. Best effort: the local logout never waits on it.
+    const refreshToken = tokenStorage.getRefreshToken();
+    if (refreshToken) {
+      authService.logout({ refreshToken }).catch(() => undefined);
+    }
     clearSession();
     navigate(ROUTES.login);
   };
