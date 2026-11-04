@@ -12,6 +12,9 @@ export function usePlaceOrder() {
   const checkout = useCheckoutMutation();
   const { pollUntilResolved } = useOrderPaymentPoll();
   const { showSuccess, showError, showWarning } = useToast();
+  // True from "Place order" until we leave checkout. Checkout empties the
+  // cart server-side, so the screen must not fall back to reading the live
+  // cart while the payment sheet is opening.
   const [isProcessing, setIsProcessing] = useState(false);
 
   async function placeOrder(deliveryAddressId: string, bookingId?: string): Promise<void> {

@@ -76,6 +76,23 @@ export function useCancelHireRequestMutation() {
   });
 }
 
+export function useAcceptHireRequestMutation() {
+  const invalidateHireRequests = useInvalidateHireRequests();
+  return useMutation({
+    mutationFn: (requestId: string) => artisansService.acceptHireRequest(requestId),
+    onSuccess: invalidateHireRequests,
+  });
+}
+
+export function useDeclineHireRequestMutation() {
+  const invalidateHireRequests = useInvalidateHireRequests();
+  return useMutation({
+    mutationFn: (options: { requestId: string; reason: string }) =>
+      artisansService.declineHireRequest(options.requestId, { reason: options.reason }),
+    onSuccess: invalidateHireRequests,
+  });
+}
+
 export function useStartHireRequestMutation() {
   const invalidateHireRequests = useInvalidateHireRequests();
   return useMutation({

@@ -10,6 +10,7 @@ import { router } from 'expo-router';
 import { ApiError } from '../api';
 import {
   BOOKING_ATTRIBUTABLE_HIRE_STATUSES,
+  ARTISAN_CANCELLABLE_HIRE_STATUSES,
   CANCELLABLE_HIRE_STATUSES,
   ERROR_MESSAGES,
   ROUTES,
@@ -127,8 +128,38 @@ export function parseWholeNumber(value: string): number | null {
   return WHOLE_NUMBER_PATTERN.test(trimmed) ? Number(trimmed) : null;
 }
 
-export function canCancelHireRequest(status: ArtisanHireRequestStatus): boolean {
-  return CANCELLABLE_HIRE_STATUSES.includes(status);
+export function canCancelHireRequest(
+  status: ArtisanHireRequestStatus,
+  isArtisan: boolean,
+): boolean {
+  return (isArtisan ? ARTISAN_CANCELLABLE_HIRE_STATUSES : CANCELLABLE_HIRE_STATUSES).includes(
+    status,
+  );
+}
+
+/**
+ * Time left for the Ustaad to answer, e.g. "31h left" or "25m left";
+ * null once the window has passed.
+ */
+export function formatResponseTimeLeft(dueAtIso: string, now: number = Date.now()): string | null {
+  const remainingMs = new Date(dueAtIso).getTime() - now;
+  if (!Number.isFinite(remainingMs) || remainingMs <= 0) {
+    return null;
+  }
+  const totalMinutes = Math.floor(remainingMs / 60_000);
+  if (totalMinutes < 60) {
+    return `${Math.max(totalMinutes, 1)}m left`;
+  }
+  return `${Math.floor(totalMinutes / 60)}h left`;
+}
+
+export function formatDateTime(isoDate: string): string {
+  return new Date(isoDate).toLocaleString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
 }
 
 export function isBookingAttributable(status: ArtisanHireRequestStatus): boolean {
@@ -143,10 +174,15 @@ export function toHireRequestBadgeVariant(status: ArtisanHireRequestStatus): Bad
   if (status === 'COMPLETED') {
     return 'success';
   }
-  if (status === 'ADMIN_REJECTED' || status === 'CANCELLED') {
+  if (
+    status === 'ADMIN_REJECTED' ||
+    status === 'CANCELLED' ||
+    status === 'ARTISAN_DECLINED' ||
+    status === 'EXPIRED'
+  ) {
     return 'error';
   }
-  if (status === 'PENDING_ADMIN_REVIEW') {
+  if (status === 'PENDING_ADMIN_REVIEW' || status === 'PENDING_ARTISAN_RESPONSE') {
     return 'pending';
   }
   return 'info';
