@@ -22,13 +22,14 @@ export default function OrderHistoryScreen() {
   const { user } = useAuth();
   const isCustomer = user?.role === Role.CUSTOMER;
   const ordersQuery = useOrdersQuery(isCustomer);
+  const refresh = () => ordersQuery.refetch();
   const handlePress = useCallback((orderId: string) => {
     navigateToOrderDetail(orderId);
   }, []);
 
   if (!isCustomer) {
     return (
-      <DemoScreen title="Order history" showBack>
+      <DemoScreen onRefresh={refresh} title="Order history" showBack>
         <EmptyStateCard title="No past orders" message={EMPTY_STATE_MESSAGES.orderHistoryEmpty} />
       </DemoScreen>
     );
@@ -36,7 +37,7 @@ export default function OrderHistoryScreen() {
 
   if (ordersQuery.isLoading) {
     return (
-      <DemoScreen title="Order history" showBack>
+      <DemoScreen onRefresh={refresh} title="Order history" showBack>
         <Text variant="body" color={Colors.inkSoft}>
           Loading orders…
         </Text>
@@ -46,7 +47,7 @@ export default function OrderHistoryScreen() {
 
   if (ordersQuery.isError) {
     return (
-      <DemoScreen title="Order history" showBack>
+      <DemoScreen onRefresh={refresh} title="Order history" showBack>
         <EmptyStateCard title="Could not load orders" message={ERROR_MESSAGES.ordersFailed} />
       </DemoScreen>
     );
@@ -59,6 +60,7 @@ export default function OrderHistoryScreen() {
   if (historyOrders.length === 0) {
     return (
       <DemoScreen
+        onRefresh={refresh}
         title="Order history"
         subtitle="Completed, cancelled, and refunded orders"
         showBack
@@ -69,7 +71,12 @@ export default function OrderHistoryScreen() {
   }
 
   return (
-    <DemoScreen title="Order history" subtitle="Completed, cancelled, and refunded orders" showBack>
+    <DemoScreen
+      onRefresh={refresh}
+      title="Order history"
+      subtitle="Completed, cancelled, and refunded orders"
+      showBack
+    >
       {historyOrders.map((order) => (
         <OrderListRow key={order.id} order={order} onPress={handlePress} />
       ))}

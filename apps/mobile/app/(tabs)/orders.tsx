@@ -29,13 +29,18 @@ export default function OrdersTabScreen() {
 
 function CustomerOrdersList() {
   const ordersQuery = useOrdersQuery(true);
+  const refresh = () => ordersQuery.refetch();
   const handlePress = useCallback((orderId: string) => {
     navigateToOrderDetail(orderId);
   }, []);
 
   if (ordersQuery.isLoading) {
     return (
-      <DemoScreen title="Orders" subtitle="Track active deliveries and review past orders">
+      <DemoScreen
+        onRefresh={refresh}
+        title="Orders"
+        subtitle="Track active deliveries and review past orders"
+      >
         <Text variant="body" color={Colors.inkSoft}>
           Loading orders…
         </Text>
@@ -45,7 +50,7 @@ function CustomerOrdersList() {
 
   if (ordersQuery.isError) {
     return (
-      <DemoScreen title="Orders">
+      <DemoScreen onRefresh={refresh} title="Orders">
         <EmptyStateCard title="Could not load orders" message={ERROR_MESSAGES.ordersFailed} />
       </DemoScreen>
     );
@@ -54,14 +59,22 @@ function CustomerOrdersList() {
   const orders = ordersQuery.data ?? [];
   if (orders.length === 0) {
     return (
-      <DemoScreen title="Orders" subtitle="Track active deliveries and review past orders">
+      <DemoScreen
+        onRefresh={refresh}
+        title="Orders"
+        subtitle="Track active deliveries and review past orders"
+      >
         <EmptyStateCard title="No orders yet" message={EMPTY_STATE_MESSAGES.ordersCustomerEmpty} />
       </DemoScreen>
     );
   }
 
   return (
-    <DemoScreen title="Orders" subtitle="Track active deliveries and review past orders">
+    <DemoScreen
+      onRefresh={refresh}
+      title="Orders"
+      subtitle="Track active deliveries and review past orders"
+    >
       {orders.map((order) => (
         <OrderListRow key={order.id} order={order} onPress={handlePress} />
       ))}
@@ -71,13 +84,18 @@ function CustomerOrdersList() {
 
 function VendorOrdersList() {
   const groupsQuery = useVendorOrderGroupsQuery(true);
+  const refresh = () => groupsQuery.refetch();
   const handlePress = useCallback((groupId: string) => {
     navigateToOrderDetail(groupId);
   }, []);
 
   if (groupsQuery.isLoading) {
     return (
-      <DemoScreen title="Orders" subtitle="Incoming requests from customers on your shop">
+      <DemoScreen
+        onRefresh={refresh}
+        title="Orders"
+        subtitle="Incoming requests from customers on your shop"
+      >
         <Text variant="body" color={Colors.inkSoft}>
           Loading orders…
         </Text>
@@ -87,7 +105,7 @@ function VendorOrdersList() {
 
   if (groupsQuery.isError) {
     return (
-      <DemoScreen title="Orders">
+      <DemoScreen onRefresh={refresh} title="Orders">
         <EmptyStateCard
           title="Could not load orders"
           message={ERROR_MESSAGES.vendorOrderGroupsFailed}
@@ -99,14 +117,22 @@ function VendorOrdersList() {
   const groups = groupsQuery.data ?? [];
   if (groups.length === 0) {
     return (
-      <DemoScreen title="Orders" subtitle="Incoming requests from customers on your shop">
+      <DemoScreen
+        onRefresh={refresh}
+        title="Orders"
+        subtitle="Incoming requests from customers on your shop"
+      >
         <EmptyStateCard title="No orders yet" message={EMPTY_STATE_MESSAGES.ordersVendorEmpty} />
       </DemoScreen>
     );
   }
 
   return (
-    <DemoScreen title="Orders" subtitle="Incoming requests from customers on your shop">
+    <DemoScreen
+      onRefresh={refresh}
+      title="Orders"
+      subtitle="Incoming requests from customers on your shop"
+    >
       {groups.map((group) => (
         <VendorGroupListRow key={group.id} group={group} onPress={handlePress} />
       ))}
@@ -116,11 +142,12 @@ function VendorOrdersList() {
 
 function ArtisanJobsList() {
   const jobsQuery = useArtisanHireRequestsQuery(true);
+  const refresh = () => jobsQuery.refetch();
   const subtitle = 'Jobs approved for you by the admin team';
 
   if (jobsQuery.isLoading) {
     return (
-      <DemoScreen title="Jobs" subtitle={subtitle}>
+      <DemoScreen onRefresh={refresh} title="Jobs" subtitle={subtitle}>
         <Text variant="body" color={Colors.inkSoft}>
           Loading jobs…
         </Text>
@@ -130,7 +157,7 @@ function ArtisanJobsList() {
 
   if (jobsQuery.isError) {
     return (
-      <DemoScreen title="Jobs">
+      <DemoScreen onRefresh={refresh} title="Jobs">
         <EmptyStateCard title="Could not load jobs" message={ERROR_MESSAGES.hireRequestsFailed} />
       </DemoScreen>
     );
@@ -139,14 +166,14 @@ function ArtisanJobsList() {
   const jobs = jobsQuery.data ?? [];
   if (jobs.length === 0) {
     return (
-      <DemoScreen title="Jobs" subtitle={subtitle}>
+      <DemoScreen onRefresh={refresh} title="Jobs" subtitle={subtitle}>
         <EmptyStateCard title="No jobs yet" message={EMPTY_STATE_MESSAGES.artisanJobsEmpty} />
       </DemoScreen>
     );
   }
 
   return (
-    <DemoScreen title="Jobs" subtitle={subtitle}>
+    <DemoScreen onRefresh={refresh} title="Jobs" subtitle={subtitle}>
       {jobs.map((job) => (
         <HireRequestListRow key={job.id} request={job} onPress={navigateToHireRequestDetail} />
       ))}

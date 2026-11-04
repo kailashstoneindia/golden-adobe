@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { ERROR_MESSAGES } from '../../constants';
 import {
   captureCurrentShopLocation,
+  describeShopLocation,
   searchShopLocationByAddress,
   ShopLocationNativeError,
 } from '../../services/location';
@@ -10,6 +11,8 @@ import type { ShopCoordinates } from '../../types';
 
 type ShopLocationState = {
   coordinates: ShopCoordinates | null;
+  /** Readable address of the pinned point, when the platform can resolve one. */
+  matchedAddress: string | null;
   searchAddress: string;
   locationError: string | null;
   isLoadingLocation: boolean;
@@ -21,6 +24,13 @@ type ShopLocationState = {
 
 export function useShopLocation(): ShopLocationState {
   const [coordinates, setCoordinates] = useState<ShopCoordinates | null>(null);
+  const [matchedAddress, setMatchedAddress] = useState<string | null>(null);
+
+  const pin = async (next: ShopCoordinates): Promise<void> => {
+    setCoordinates(next);
+    setMatchedAddress(null);
+    setMatchedAddress(await describeShopLocation(next));
+  };
   const [searchAddress, setSearchAddress] = useState('');
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
@@ -43,7 +53,7 @@ export function useShopLocation(): ShopLocationState {
 
     try {
       const searchedCoordinates = await searchShopLocationByAddress(trimmedAddress);
-      setCoordinates(searchedCoordinates);
+      await pin(searchedCoordinates);
     } catch (error) {
       setLocationError(resolveLocationErrorMessage(error));
     } finally {
@@ -57,7 +67,7 @@ export function useShopLocation(): ShopLocationState {
 
     try {
       const captured = await captureCurrentShopLocation();
-      setCoordinates(captured);
+      await pin(captured);
     } catch (error) {
       setLocationError(resolveLocationErrorMessage(error));
     } finally {
@@ -67,6 +77,7 @@ export function useShopLocation(): ShopLocationState {
 
   return {
     coordinates,
+    matchedAddress,
     searchAddress,
     locationError,
     isLoadingLocation,
@@ -88,6 +99,10 @@ function resolveLocationErrorMessage(error: unknown): string {
 
   if (error.message === 'LOCATION_NATIVE_MODULE_MISSING') {
     return ERROR_MESSAGES.locationNativeModuleMissing;
+  }
+
+  if (error.message === 'LOCATION_GEOCODER_UNAVAILABLE') {
+    return ERROR_MESSAGES.locationGeocoderUnavailable;
   }
 
   if (error.message === 'LOCATION_SEARCH_FAILED') {

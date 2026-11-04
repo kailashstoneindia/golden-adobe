@@ -10,10 +10,11 @@ const SUBTITLE = 'Every request is reviewed by our team before the Ustaad is not
 
 export default function HireRequestsScreen() {
   const requestsQuery = useCustomerHireRequestsQuery(true);
+  const refresh = () => requestsQuery.refetch();
 
   if (requestsQuery.isLoading) {
     return (
-      <DemoScreen title="Hired Ustaads" subtitle={SUBTITLE} showBack>
+      <DemoScreen onRefresh={refresh} title="Hired Ustaads" subtitle={SUBTITLE} showBack>
         <Text variant="body" color={Colors.inkSoft}>
           Loading hire requests…
         </Text>
@@ -23,7 +24,7 @@ export default function HireRequestsScreen() {
 
   if (requestsQuery.isError) {
     return (
-      <DemoScreen title="Hired Ustaads" showBack>
+      <DemoScreen onRefresh={refresh} title="Hired Ustaads" showBack>
         <EmptyStateCard
           title="Could not load hire requests"
           message={ERROR_MESSAGES.hireRequestsFailed}
@@ -35,7 +36,7 @@ export default function HireRequestsScreen() {
   const requests = requestsQuery.data ?? [];
 
   return (
-    <DemoScreen title="Hired Ustaads" subtitle={SUBTITLE} showBack>
+    <DemoScreen onRefresh={refresh} title="Hired Ustaads" subtitle={SUBTITLE} showBack>
       {requests.length === 0 ? (
         <EmptyStateCard message={EMPTY_STATE_MESSAGES.customerHireRequestsEmpty} />
       ) : (

@@ -75,6 +75,7 @@ function notifyCancelResult(
 
 function CustomerOrderDetail({ orderId }: CustomerOrderDetailProps) {
   const orderQuery = useOrderQuery(orderId);
+  const refresh = () => orderQuery.refetch();
   const cancelOrder = useCancelOrderMutation();
   const { payExistingOrder } = usePlaceOrder();
   const { showSuccess, showError, showWarning } = useToast();
@@ -99,7 +100,7 @@ function CustomerOrderDetail({ orderId }: CustomerOrderDetailProps) {
 
   if (orderQuery.isLoading) {
     return (
-      <DemoScreen title="Order details" showBack>
+      <DemoScreen onRefresh={refresh} title="Order details" showBack>
         <Text variant="body" color={Colors.inkSoft}>
           Loading order…
         </Text>
@@ -109,14 +110,14 @@ function CustomerOrderDetail({ orderId }: CustomerOrderDetailProps) {
 
   if (orderQuery.isError || !order) {
     return (
-      <DemoScreen title="Order details" showBack>
+      <DemoScreen onRefresh={refresh} title="Order details" showBack>
         <EmptyStateCard title="Order not available" message={ERROR_MESSAGES.orderDetailFailed} />
       </DemoScreen>
     );
   }
 
   return (
-    <DemoScreen title="Order details" showBack>
+    <DemoScreen onRefresh={refresh} title="Order details" showBack>
       <Text variant="bodyMedium">{ORDER_STATUS_LABELS[order.status]}</Text>
       <Text variant="caption" color={Colors.inkSoft}>
         Total {formatInr(order.grandTotal)}
@@ -147,11 +148,12 @@ function CustomerOrderDetail({ orderId }: CustomerOrderDetailProps) {
 // are delivered, without payment actions or the customer's identifiers.
 function ArtisanOrderDetail({ orderId }: ArtisanOrderDetailProps) {
   const orderQuery = useArtisanOrderQuery(orderId);
+  const refresh = () => orderQuery.refetch();
   const order = orderQuery.data;
 
   if (orderQuery.isLoading) {
     return (
-      <DemoScreen title="Order details" showBack>
+      <DemoScreen onRefresh={refresh} title="Order details" showBack>
         <Text variant="body" color={Colors.inkSoft}>
           Loading order…
         </Text>
@@ -161,14 +163,19 @@ function ArtisanOrderDetail({ orderId }: ArtisanOrderDetailProps) {
 
   if (orderQuery.isError || !order) {
     return (
-      <DemoScreen title="Order details" showBack>
+      <DemoScreen onRefresh={refresh} title="Order details" showBack>
         <EmptyStateCard title="Order not available" message={ERROR_MESSAGES.orderDetailFailed} />
       </DemoScreen>
     );
   }
 
   return (
-    <DemoScreen title="Order details" subtitle="Materials ordered for your job" showBack>
+    <DemoScreen
+      onRefresh={refresh}
+      title="Order details"
+      subtitle="Materials ordered for your job"
+      showBack
+    >
       <Text variant="bodyMedium">{ORDER_STATUS_LABELS[order.status]}</Text>
       <Text variant="caption" color={Colors.inkSoft}>
         Total {formatInr(order.grandTotal)}
@@ -190,6 +197,7 @@ function ArtisanOrderDetail({ orderId }: ArtisanOrderDetailProps) {
 
 function VendorOrderDetail({ groupId }: VendorOrderDetailProps) {
   const groupQuery = useVendorOrderGroupQuery(groupId);
+  const refresh = () => groupQuery.refetch();
   const updateStatus = useUpdateVendorOrderGroupStatusMutation();
   const { showSuccess, showError } = useToast();
   const group = groupQuery.data;
@@ -210,7 +218,7 @@ function VendorOrderDetail({ groupId }: VendorOrderDetailProps) {
 
   if (groupQuery.isLoading) {
     return (
-      <DemoScreen title="Order details" showBack>
+      <DemoScreen onRefresh={refresh} title="Order details" showBack>
         <Text variant="body" color={Colors.inkSoft}>
           Loading order…
         </Text>
@@ -220,14 +228,14 @@ function VendorOrderDetail({ groupId }: VendorOrderDetailProps) {
 
   if (groupQuery.isError || !group) {
     return (
-      <DemoScreen title="Order details" showBack>
+      <DemoScreen onRefresh={refresh} title="Order details" showBack>
         <EmptyStateCard title="Order not available" message={ERROR_MESSAGES.orderDetailFailed} />
       </DemoScreen>
     );
   }
 
   return (
-    <DemoScreen title="Order details" showBack>
+    <DemoScreen onRefresh={refresh} title="Order details" showBack>
       <OrderVendorSection group={group} />
       <VendorStatusActions
         group={group}

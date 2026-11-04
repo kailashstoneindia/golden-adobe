@@ -7,6 +7,8 @@ export const ERROR_MESSAGES = {
   locationNativeModuleMissing: 'GPS is unavailable in this build. Rebuild the app after prebuild.',
   locationSearchRequired: 'Enter your shop area or address to search.',
   locationSearchFailed: 'Location not found. Try a more specific address.',
+  locationGeocoderUnavailable:
+    'Address search is not available on this phone right now. Use current location instead, or try again.',
   invalidCoordinates: 'Enter valid latitude (-90 to 90) and longitude (-180 to 180).',
   gstinLength: 'GSTIN must be exactly 15 characters.',
   accountHolderNameRequired: 'Enter the account holder name.',

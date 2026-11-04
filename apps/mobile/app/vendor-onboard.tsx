@@ -62,8 +62,11 @@ export default function VendorOnboardScreen() {
     }
   }, [isAuthenticated, isHydrated, user]);
 
-  const locationLabel = shopLocation.coordinates
+  const coordinatesLabel = shopLocation.coordinates
     ? `${shopLocation.coordinates.latitude.toFixed(5)}, ${shopLocation.coordinates.longitude.toFixed(5)}`
+    : null;
+  const locationLabel = shopLocation.coordinates
+    ? `Pinned: ${shopLocation.matchedAddress ?? 'location set'}`
     : 'Not captured yet';
 
   const isFinalStep = currentStepIndex === VENDOR_ONBOARD_STEPS.length - 1;
@@ -191,6 +194,20 @@ export default function VendorOnboardScreen() {
                   Use GPS or search by area/address to set your shop location
                 </Text>
                 <Text variant="bodyMedium">{locationLabel}</Text>
+                {coordinatesLabel ? (
+                  <Text variant="caption" color={Colors.inkSoft}>
+                    {coordinatesLabel}
+                  </Text>
+                ) : null}
+                {shopLocation.matchedAddress && !vendorForm.formValues.address.trim() ? (
+                  <Button
+                    title="Use as shop address"
+                    variant="ghost"
+                    onPress={() =>
+                      vendorForm.updateField('address', shopLocation.matchedAddress ?? '')
+                    }
+                  />
+                ) : null}
                 <TextInput
                   label="Search location"
                   placeholder="Vaishali Nagar, Jaipur"
