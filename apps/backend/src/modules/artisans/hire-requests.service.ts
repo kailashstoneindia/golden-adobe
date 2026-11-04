@@ -3,16 +3,18 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
-import { Op } from 'sequelize';
+import { Includeable, Op, UniqueConstraintError, WhereOptions } from 'sequelize';
 import {
   ArtisanCompletionEstimateDto,
   ArtisanHireRequestDto,
   CancelHireRequestDto,
   CreateCompletionEstimateDto,
   CreateHireRequestDto,
+  DeclineHireRequestDto,
   PaginatedHireRequestsResponse,
   ReviewHireRequestDto,
   Role,
@@ -26,6 +28,19 @@ import { NOTIFICATION_SERVICE, NotificationService } from '../notifications/noti
 import { Order } from '../orders/models/order.model';
 import type { OrderDto } from '@golden-abode/types';
 import { toOrderDto } from '../orders/order-display.mapper';
+import {
+  ARTISAN_RESPONSE_WINDOW_MS,
+  CAPACITY_LOAD_STATUSES,
+  OPEN_HIRE_REQUEST_STATUSES,
+  isVisibleToArtisan,
+} from './hire-request-rules';
+
+// Loaded on every read that maps to a DTO, so the mapper can fill the
+// customer's contact for the ustaad (0055). Only the two fields it shows.
+const CUSTOMER_CONTACT_INCLUDE: Includeable = {
+  association: 'customer',
+  attributes: ['id', 'name', 'phone'],
+};
 
 // The window in which a completion estimate makes sense (spec §8.2): the
 // request has been admin-approved and work is underway, but hasn't
@@ -35,6 +50,8 @@ export const ACTIVE_ENGAGEMENT_STATUSES = new Set(['ACCEPTED_BY_ARTISAN', 'IN_PR
 
 @Injectable()
 export class HireRequestsService {
+  private readonly logger = new Logger(HireRequestsService.name);
+
   constructor(
     @InjectModel(Artisan)
     private readonly artisanModel: typeof Artisan,
@@ -68,28 +85,48 @@ export class HireRequestsService {
       throw new ConflictException('this artisan is not currently available');
     }
 
-    const created = await this.hireRequestModel.create({
-      customerId,
-      artisanId: dto.artisanId,
-      addressText: dto.addressText,
-      notes: dto.notes ?? null,
-    } as never);
+    // Decision 0055: any number of ustaads at once, but one open request per
+    // ustaad. The partial unique index backs this check against a race.
+    const openWithSameArtisan = await this.hireRequestModel.count({
+      where: {
+        customerId,
+        artisanId: dto.artisanId,
+        status: { [Op.in]: OPEN_HIRE_REQUEST_STATUSES },
+      },
+    });
+    if (openWithSameArtisan > 0) {
+      throw new ConflictException('you already have an open request with this artisan');
+    }
 
-    return toHireRequestDto(created, null);
+    try {
+      const created = await this.hireRequestModel.create({
+        customerId,
+        artisanId: dto.artisanId,
+        addressText: dto.addressText,
+        notes: dto.notes ?? null,
+      } as never);
+      return toHireRequestDto(created, null);
+    } catch (err) {
+      if (err instanceof UniqueConstraintError) {
+        throw new ConflictException('you already have an open request with this artisan');
+      }
+      throw err;
+    }
   }
 
   async listForCustomer(customerId: string): Promise<ArtisanHireRequestDto[]> {
     const requests = await this.hireRequestModel.findAll({
       where: { customerId },
+      include: [CUSTOMER_CONTACT_INCLUDE],
       order: [['createdAt', 'DESC']],
     });
     return this.withLatestEstimates(requests);
   }
 
-  // Excludes PENDING_ADMIN_REVIEW unconditionally — this filter IS the
-  // mechanism by which "artisan is only notified after admin approval" is
-  // enforced (spec §8.1, LLD §3). There is no notified_at column;
-  // visibility is notification-equivalent for this module's scope.
+  // Excludes PENDING_ADMIN_REVIEW and ADMIN_REJECTED unconditionally — the
+  // ustaad only ever sees requests the admin let through (spec §8.1, LLD §3,
+  // 0055). There is no notified_at column; visibility is
+  // notification-equivalent for this module's scope.
   async listForArtisan(artisanUserId: string): Promise<ArtisanHireRequestDto[]> {
     const artisan = await this.artisanModel.findOne({ where: { userId: artisanUserId } });
     if (!artisan) {
@@ -97,7 +134,13 @@ export class HireRequestsService {
     }
 
     const requests = await this.hireRequestModel.findAll({
-      where: { artisanId: artisan.id, status: { [Op.ne]: 'PENDING_ADMIN_REVIEW' } },
+      // Same rule as isVisibleToArtisan, as a query.
+      where: {
+        artisanId: artisan.id,
+        adminReviewedAt: { [Op.ne]: null },
+        status: { [Op.ne]: 'ADMIN_REJECTED' },
+      },
+      include: [CUSTOMER_CONTACT_INCLUDE],
       order: [['createdAt', 'DESC']],
     });
     return this.withLatestEstimates(requests);
@@ -136,6 +179,7 @@ export class HireRequestsService {
     const offset = (page - 1) * limit;
     const { rows, count } = await this.hireRequestModel.findAndCountAll({
       where,
+      include: [CUSTOMER_CONTACT_INCLUDE],
       limit,
       offset,
       order: [['createdAt', order]],
@@ -163,7 +207,7 @@ export class HireRequestsService {
       this.hireRequestModel.findAll({
         where: {
           artisanId: { [Op.in]: artisanIds },
-          status: { [Op.in]: Array.from(ACTIVE_ENGAGEMENT_STATUSES) },
+          status: { [Op.in]: CAPACITY_LOAD_STATUSES },
         },
         attributes: ['artisanId'],
       }),
@@ -192,9 +236,10 @@ export class HireRequestsService {
   }
 
   // The admin-gate invariant (spec §8.1, LLD §3): the only legal entry
-  // point into ACCEPTED_BY_ARTISAN or ADMIN_REJECTED is from
-  // PENDING_ADMIN_REVIEW. A conditional UPDATE ... WHERE status =
-  // 'PENDING_ADMIN_REVIEW' is atomic — it is the single line that
+  // point into PENDING_ARTISAN_RESPONSE or ADMIN_REJECTED is from
+  // PENDING_ADMIN_REVIEW. Allowing a request sends it to the ustaad, who
+  // then accepts or declines (0055); the admin never accepts for them.
+  // A conditional UPDATE ... WHERE status = 'PENDING_ADMIN_REVIEW' is atomic — it is the single line that
   // enforces the whole invariant, including under a race between two
   // admins reviewing the same request simultaneously — mirroring the
   // conditional-UPDATE pattern OrdersService.cancelOrder already uses for
@@ -205,7 +250,7 @@ export class HireRequestsService {
     requestId: string,
     dto: ReviewHireRequestDto,
   ): Promise<ArtisanHireRequestDto> {
-    const nextStatus = dto.approve ? 'ACCEPTED_BY_ARTISAN' : 'ADMIN_REJECTED';
+    const nextStatus = dto.approve ? 'PENDING_ARTISAN_RESPONSE' : 'ADMIN_REJECTED';
 
     const [affected] = await this.hireRequestModel.update(
       {
@@ -227,7 +272,9 @@ export class HireRequestsService {
       );
     }
 
-    const updated = await this.hireRequestModel.findByPk(requestId);
+    const updated = await this.hireRequestModel.findByPk(requestId, {
+      include: [CUSTOMER_CONTACT_INCLUDE],
+    });
     const artisan = await this.artisanModel.findByPk(updated!.artisanId);
     if (artisan) {
       await this.notifications.sendHireRequestStatusChanged(artisan.userId, requestId, nextStatus);
@@ -290,6 +337,105 @@ export class HireRequestsService {
     return estimates.map(toCompletionEstimateDto);
   }
 
+  // Ustaad-initiated (0055): PENDING_ARTISAN_RESPONSE -> ACCEPTED_BY_ARTISAN,
+  // only inside the response window. The window is part of the guarded
+  // UPDATE, so a late accept fails even if the expiry sweep hasn't run yet.
+  async acceptRequest(artisanUserId: string, requestId: string): Promise<ArtisanHireRequestDto> {
+    const request = await this.respondAsArtisan(artisanUserId, requestId, {
+      status: 'ACCEPTED_BY_ARTISAN',
+      artisanRespondedAt: new Date(),
+    });
+    await this.notifications.sendHireRequestStatusChanged(
+      request.customerId,
+      requestId,
+      'ACCEPTED_BY_ARTISAN',
+    );
+    return request;
+  }
+
+  // Ustaad-initiated (0055): PENDING_ARTISAN_RESPONSE -> ARTISAN_DECLINED.
+  async declineRequest(
+    artisanUserId: string,
+    requestId: string,
+    dto: DeclineHireRequestDto,
+  ): Promise<ArtisanHireRequestDto> {
+    const request = await this.respondAsArtisan(artisanUserId, requestId, {
+      status: 'ARTISAN_DECLINED',
+      artisanRespondedAt: new Date(),
+      artisanDeclineReason: dto.reason,
+    });
+    await this.notifications.sendHireRequestStatusChanged(
+      request.customerId,
+      requestId,
+      'ARTISAN_DECLINED',
+    );
+    return request;
+  }
+
+  private async respondAsArtisan(
+    artisanUserId: string,
+    requestId: string,
+    updates: Partial<ArtisanHireRequest>,
+  ): Promise<ArtisanHireRequestDto> {
+    const artisan = await this.artisanModel.findOne({ where: { userId: artisanUserId } });
+    if (!artisan) {
+      throw new NotFoundException('no artisan profile found for this user');
+    }
+    const request = await this.getRequestById(requestId);
+    await this.assertOwnedByArtisan(request, artisan.id);
+
+    const windowOpenSince = new Date(Date.now() - ARTISAN_RESPONSE_WINDOW_MS);
+    return this.claimTransition(requestId, {
+      fromStatuses: ['PENDING_ARTISAN_RESPONSE'],
+      extraWhere: { adminReviewedAt: { [Op.gt]: windowOpenSince } },
+      updates,
+      // Judged from the status after the UPDATE missed, not the read above:
+      // still waiting means only the window can have stopped it; anything
+      // else means another accept/decline/cancel got there first.
+      conflictMessage: (currentStatus) =>
+        currentStatus === 'PENDING_ARTISAN_RESPONSE'
+          ? 'the time to respond to this hire request has passed'
+          : undefined,
+    });
+  }
+
+  // Decision 0055: closes every request the ustaad left unanswered past the
+  // window, in one guarded UPDATE, so a concurrent accept and the sweep can't
+  // both win. Returns how many it expired. Called by HireRequestExpirySweep.
+  async expireStaleResponses(): Promise<number> {
+    const cutoff = new Date(Date.now() - ARTISAN_RESPONSE_WINDOW_MS);
+    const [, expired] = await this.hireRequestModel.update({ status: 'EXPIRED' } as never, {
+      where: { status: 'PENDING_ARTISAN_RESPONSE', adminReviewedAt: { [Op.lte]: cutoff } },
+      returning: true,
+    });
+    if (expired.length === 0) {
+      return 0;
+    }
+
+    const artisans = await this.artisanModel.findAll({
+      where: { id: { [Op.in]: [...new Set(expired.map((request) => request.artisanId))] } },
+    });
+    const artisanUserIdById = new Map(artisans.map((artisan) => [artisan.id, artisan.userId]));
+    // The rows are already EXPIRED, so a later sweep won't retry them: one
+    // failed notification must not cost everyone after it theirs.
+    for (const request of expired) {
+      const recipients = [request.customerId, artisanUserIdById.get(request.artisanId)];
+      for (const userId of recipients) {
+        if (!userId) continue;
+        try {
+          await this.notifications.sendHireRequestStatusChanged(userId, request.id, 'EXPIRED');
+        } catch (err) {
+          this.logger.error(
+            `hire request ${request.id}: expiry notification to ${userId} failed: ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          );
+        }
+      }
+    }
+    return expired.length;
+  }
+
   // Artisan-initiated: ACCEPTED_BY_ARTISAN -> IN_PROGRESS. Same
   // conditional-UPDATE guard as reviewRequest, scoped additionally to
   // artisanId so an artisan cannot start work on another artisan's request.
@@ -348,8 +494,21 @@ export class HireRequestsService {
     const request = await this.getRequestById(requestId);
     await this.assertCanCancel(callerId, callerRole, request);
 
+    // 0055: while a request waits on the ustaad, the ustaad's way out is
+    // decline, not cancel — so the customer and admin see the real reason.
+    const artisanCaller = callerRole === Role.ARTISAN;
+    if (artisanCaller && request.status === 'PENDING_ARTISAN_RESPONSE') {
+      throw new ConflictException('decline this hire request instead of cancelling it');
+    }
     const result = await this.claimTransition(requestId, {
-      fromStatuses: ['PENDING_ADMIN_REVIEW', 'ACCEPTED_BY_ARTISAN', 'IN_PROGRESS'],
+      fromStatuses: artisanCaller
+        ? ['ACCEPTED_BY_ARTISAN', 'IN_PROGRESS']
+        : [
+            'PENDING_ADMIN_REVIEW',
+            'PENDING_ARTISAN_RESPONSE',
+            'ACCEPTED_BY_ARTISAN',
+            'IN_PROGRESS',
+          ],
       updates: { status: 'CANCELLED', cancelledAt: new Date(), cancelReason: dto.reason },
     });
 
@@ -365,7 +524,8 @@ export class HireRequestsService {
         'CANCELLED',
       );
     }
-    if (callerRole !== Role.ARTISAN && artisan) {
+    // Not if the request never reached the ustaad (cancelled in admin review).
+    if (callerRole !== Role.ARTISAN && artisan && isVisibleToArtisan(request)) {
       await this.notifications.sendHireRequestStatusChanged(artisan.userId, requestId, 'CANCELLED');
     }
 
@@ -392,7 +552,9 @@ export class HireRequestsService {
     if (callerRole === Role.CUSTOMER && request.customerId === callerId) {
       return;
     }
-    if (callerRole === Role.ARTISAN) {
+    // A request the ustaad can't see is forbidden, not a status conflict —
+    // a 409 would confirm it exists (same boundary as the view guard).
+    if (callerRole === Role.ARTISAN && isVisibleToArtisan(request)) {
       const artisan = await this.artisanModel.findOne({ where: { userId: callerId } });
       if (artisan && artisan.id === request.artisanId) {
         return;
@@ -409,28 +571,43 @@ export class HireRequestsService {
   // a concurrent transition slip through the gap between them.
   private async claimTransition(
     requestId: string,
-    options: { fromStatuses: string[]; updates: Partial<ArtisanHireRequest> },
+    options: {
+      fromStatuses: string[];
+      updates: Partial<ArtisanHireRequest>;
+      extraWhere?: WhereOptions<ArtisanHireRequest>;
+      // Given the request's status as it stands after the UPDATE missed.
+      conflictMessage?: (currentStatus: string) => string | undefined;
+    },
   ): Promise<ArtisanHireRequestDto> {
     const [affected] = await this.hireRequestModel.update(options.updates as never, {
-      where: { id: requestId, status: { [Op.in]: options.fromStatuses } },
+      where: {
+        ...(options.extraWhere as object),
+        id: requestId,
+        status: { [Op.in]: options.fromStatuses },
+      },
     });
 
     if (affected === 0) {
-      const exists = await this.hireRequestModel.count({ where: { id: requestId } });
-      if (!exists) {
+      const current = await this.hireRequestModel.findByPk(requestId, { attributes: ['status'] });
+      if (!current) {
         throw new NotFoundException(`hire request ${requestId} not found`);
       }
       throw new ConflictException(
-        'this hire request is not in a status that allows this transition',
+        options.conflictMessage?.(current.status) ??
+          'this hire request is not in a status that allows this transition',
       );
     }
 
-    const updated = await this.hireRequestModel.findByPk(requestId);
+    const updated = await this.hireRequestModel.findByPk(requestId, {
+      include: [CUSTOMER_CONTACT_INCLUDE],
+    });
     return toHireRequestDto(updated!, await this.latestEstimateFor(requestId));
   }
 
   async getRequestById(requestId: string): Promise<ArtisanHireRequest> {
-    const request = await this.hireRequestModel.findByPk(requestId);
+    const request = await this.hireRequestModel.findByPk(requestId, {
+      include: [CUSTOMER_CONTACT_INCLUDE],
+    });
     if (!request) {
       throw new NotFoundException(`hire request ${requestId} not found`);
     }

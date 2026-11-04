@@ -10,9 +10,11 @@ import { formatDateTime } from '@/utils/date';
 
 // Terminal states mirror the backend's own claimTransition guard
 // (hire-requests.service.ts): cancel is only legal from
-// PENDING_ADMIN_REVIEW, ACCEPTED_BY_ARTISAN, or IN_PROGRESS.
+// PENDING_ADMIN_REVIEW, PENDING_ARTISAN_RESPONSE, ACCEPTED_BY_ARTISAN, or
+// IN_PROGRESS (decision 0055 added the waiting-on-artisan status).
 const CANCELLABLE_STATUSES = new Set([
   'PENDING_ADMIN_REVIEW',
+  'PENDING_ARTISAN_RESPONSE',
   'ACCEPTED_BY_ARTISAN',
   'IN_PROGRESS',
 ]);
@@ -100,6 +102,23 @@ export function ArtisanHireRequestsTrackingPage() {
                     : '—'
                 }
               />
+              {selectedRequest.artisanResponseDueAt ? (
+                <DetailRow
+                  label="Artisan must respond by"
+                  value={formatDateTime(selectedRequest.artisanResponseDueAt)}
+                />
+              ) : null}
+              <DetailRow
+                label="Artisan responded"
+                value={
+                  selectedRequest.artisanRespondedAt
+                    ? formatDateTime(selectedRequest.artisanRespondedAt)
+                    : '—'
+                }
+              />
+              {selectedRequest.artisanDeclineReason ? (
+                <DetailRow label="Decline reason" value={selectedRequest.artisanDeclineReason} />
+              ) : null}
               <DetailRow
                 label="Started"
                 value={selectedRequest.startedAt ? formatDateTime(selectedRequest.startedAt) : '—'}

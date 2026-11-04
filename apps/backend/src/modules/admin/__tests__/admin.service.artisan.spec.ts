@@ -4,6 +4,7 @@ import { Role } from '@golden-abode/types';
 
 import { ARTISAN_TEST_MODELS } from '../../artisans/__tests__/test-db';
 import { User } from '../../users/models/user.model';
+import { Vendor } from '../../vendors/models/vendor.model';
 import { Artisan } from '../../artisans/models/artisan.model';
 import { ArtisanHireRequest } from '../../artisans/models/artisan-hire-request.model';
 import { AdminService } from '../admin.service';
@@ -28,7 +29,7 @@ describe('AdminService artisan surfacing (integration)', () => {
           logging: false,
           models: ARTISAN_TEST_MODELS,
         }),
-        SequelizeModule.forFeature([User, Artisan, ArtisanHireRequest]),
+        SequelizeModule.forFeature([User, Vendor, Artisan, ArtisanHireRequest]),
       ],
       providers: [AdminService],
     }).compile();

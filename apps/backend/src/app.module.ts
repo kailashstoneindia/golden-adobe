@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import configuration from './config/configuration';
 import { HealthModule } from './modules/health/health.module';
 import { CoreModule } from './core/core.module';
@@ -19,6 +20,8 @@ import { OrdersModule } from './modules/orders/orders.module';
       isGlobal: true,
       load: [configuration],
     }),
+    // Decision 0049 — drives OrdersService's stale-reservation sweep.
+    ScheduleModule.forRoot(),
     CoreModule,
     HealthModule,
     AuthModule,

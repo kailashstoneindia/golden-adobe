@@ -40,6 +40,8 @@ export class AdminService {
   constructor(
     @InjectModel(User)
     private readonly userModel: typeof User,
+    @InjectModel(Vendor)
+    private readonly vendorModel: typeof Vendor,
     @InjectModel(Artisan)
     private readonly artisanModel: typeof Artisan,
     @InjectModel(ArtisanHireRequest)
@@ -56,7 +58,10 @@ export class AdminService {
       pendingArtisanVerifications,
       pendingHireRequests,
     ] = await Promise.all([
-      this.userModel.count({ where: { role: Role.VENDOR, isApproved: false } }),
+      // Vendor.status, not User.isApproved=false — a rejected vendor is
+      // also isApproved=false, which would double-count as "pending" here
+      // otherwise. See decision 0048.
+      this.vendorModel.count({ where: { status: 'PENDING' } }),
       this.userModel.count({ where: { role: Role.ARTISAN, isApproved: false } }),
       this.userModel.count(),
       this.userModel.count({ where: { role: Role.VENDOR, isApproved: true } }),

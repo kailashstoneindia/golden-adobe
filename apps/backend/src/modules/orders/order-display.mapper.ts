@@ -7,11 +7,13 @@ import type {
   OrderVendorGroupDto,
   OrderVendorGroupStatus,
   PaymentEventDto,
+  RefundDto,
 } from '@golden-abode/types';
 import { Order } from './models/order.model';
 import { OrderVendorGroup } from './models/order-vendor-group.model';
 import { OrderItem } from './models/order-item.model';
 import { PaymentEvent } from './models/payment-event.model';
+import { Refund } from './models/refund.model';
 import { CustomerAddress } from '../customers/models/customer-address.model';
 import { toCustomerAddressDto } from '../customers/customer-address.mapper';
 import { toFiniteNumber, toIsoDate } from '../../common/utils/display-number.util';
@@ -22,6 +24,7 @@ export function toOrderDto(order: Order, includeDeliveryAddress: boolean): Order
     customerId: order.customerId,
     deliveryAddressId: order.deliveryAddressId,
     grandTotal: toFiniteNumber(order.grandTotal),
+    capturedPaise: order.capturedPaise ?? null,
     status: order.status as OrderStatus,
     razorpayOrderId: order.razorpayOrderId,
     razorpayPaymentId: order.razorpayPaymentId,
@@ -86,6 +89,22 @@ export function toPaymentEventDto(event: PaymentEvent): PaymentEventDto {
     eventType: event.eventType,
     rawPayload: event.rawPayload ?? {},
     createdAt: toIsoDate(event.createdAt),
+  };
+}
+
+export function toRefundDto(refund: Refund): RefundDto {
+  return {
+    id: refund.id,
+    orderId: refund.orderId,
+    orderVendorGroupId: refund.orderVendorGroupId,
+    rail: refund.rail,
+    amountPaise: refund.amountPaise,
+    receipt: refund.receipt,
+    razorpayRefundId: refund.razorpayRefundId,
+    status: refund.status,
+    reason: refund.reason,
+    createdBy: refund.createdBy,
+    createdAt: toIsoDate(refund.createdAt),
   };
 }
 

@@ -52,7 +52,8 @@ export function ArtisanHireRequestsPage() {
       <h2 className={styles.pageTitle}>Hire requests</h2>
       <p className={styles.pageSubtitle}>
         Every customer hire request lands here first — the artisan is notified only once you approve
-        it. Rejecting is terminal; the customer starts a new request instead of resubmitting.
+        it, and then has 48 hours to accept or decline. Rejecting is terminal; the customer starts a
+        new request instead of resubmitting.
       </p>
 
       {isEmpty(requests) ? (

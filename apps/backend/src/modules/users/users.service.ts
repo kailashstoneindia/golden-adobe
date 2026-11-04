@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
+import { Transaction } from 'sequelize';
 import { User } from './models/user.model';
 import { Role, VENDOR_ONBOARDING_STAGES, VendorOnboardingStage } from '@golden-abode/types';
 import { Vendor } from '../vendors/models/vendor.model';
@@ -26,16 +27,25 @@ export class UsersService {
     return this.userModel.findByPk(id, { include });
   }
 
-  async create(data: { name: string; phone: string; role: Role }): Promise<User> {
+  // `transaction` lets AuthService.register write the user and its customers
+  // row as one unit. The re-read below must use it too: inside an open
+  // transaction the freshly inserted row is invisible to any other connection.
+  async create(
+    data: { name: string; phone: string; role: Role },
+    transaction?: Transaction,
+  ): Promise<User> {
     const isVendor = data.role === Role.VENDOR;
-    const created = await this.userModel.create({
-      name: data.name,
-      phone: data.phone,
-      role: data.role,
-      onboardingCompleted: !isVendor,
-      onboardingStage: isVendor ? VENDOR_ONBOARDING_STAGES.basicDetails : null,
-    } as any);
-    const user = await this.userModel.findByPk(created.id);
+    const created = await this.userModel.create(
+      {
+        name: data.name,
+        phone: data.phone,
+        role: data.role,
+        onboardingCompleted: !isVendor,
+        onboardingStage: isVendor ? VENDOR_ONBOARDING_STAGES.basicDetails : null,
+      } as any,
+      { transaction },
+    );
+    const user = await this.userModel.findByPk(created.id, { transaction });
     return user!;
   }
 
@@ -60,6 +70,13 @@ export class UsersService {
 
   async approveUser(userId: string): Promise<void> {
     await this.userModel.update({ isApproved: true }, { where: { id: userId } });
+  }
+
+  // Transaction-aware variant for callers (VendorsService.approveVendor/
+  // rejectVendor, decision 0048) that write isApproved alongside their own
+  // vendor-specific state in one unit of work.
+  async setApproved(userId: string, isApproved: boolean, transaction?: Transaction): Promise<void> {
+    await this.userModel.update({ isApproved }, { where: { id: userId }, transaction });
   }
 
   // Called only from AuthService's real-authentication paths (verifyOtp,

@@ -1,5 +1,14 @@
-import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/sequelize';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { Sequelize } from 'sequelize-typescript';
 import { Op, QueryTypes } from 'sequelize';
 import type {
@@ -14,7 +23,12 @@ import { OrderVendorGroup, OrderVendorGroupStatus } from './models/order-vendor-
 import { PaymentEvent } from './models/payment-event.model';
 import { CustomersService } from '../customers/customers.service';
 import { NOTIFICATION_SERVICE, NotificationService } from '../notifications/notification.interface';
-import { PAYMENT_PROVIDER, PaymentProviderService } from '../payments/payment-provider.interface';
+import { OrderPaymentService } from './order-payment.service';
+import { LOCKED_PARENT_ORDER_STATUSES } from './refund-status';
+import {
+  PAYMENT_CAPTURE_WINDOW_MINUTES,
+  ProviderPayment,
+} from '../payments/payment-provider.interface';
 import { Artisan } from '../artisans/models/artisan.model';
 import { ArtisanHireRequest } from '../artisans/models/artisan-hire-request.model';
 import {
@@ -30,6 +44,21 @@ import {
   toPaymentEventDto,
 } from './order-display.mapper';
 
+// Decision 0049. Slightly above the typical 5-15 minute industry range
+// for a checkout hold, since payment.failed's own handling already
+// treats a UPI-retry-after-wrong-PIN as the expected case for this
+// checkout, not an edge case — a customer retrying needs more headroom
+// than a single-swipe card checkout does. Decision 0054: the same constant
+// is Razorpay's capture window, so a payment authorised after the sweep has
+// given up is auto-refunded by Razorpay instead of captured.
+const STALE_RESERVATION_TIMEOUT_MS = PAYMENT_CAPTURE_WINDOW_MINUTES * 60_000;
+
+const GROUP_LOCKED_MESSAGE =
+  'order is refunded, being refunded or cancelled, and its groups can no longer be updated';
+const IN_FLIGHT_PAYMENT_MESSAGE =
+  'A payment is in progress for this order. Try again in a few minutes.';
+const PAYMENT_STATUS_UNVERIFIED_MESSAGE = 'Could not verify payment status. Try again shortly.';
+
 @Injectable()
 export class OrdersService {
   private readonly logger = new Logger(OrdersService.name);
@@ -43,7 +72,8 @@ export class OrdersService {
     private readonly sequelize: Sequelize,
     private readonly customersService: CustomersService,
     @Inject(NOTIFICATION_SERVICE) private readonly notifications: NotificationService,
-    @Inject(PAYMENT_PROVIDER) private readonly paymentProvider: PaymentProviderService,
+    private readonly configService: ConfigService,
+    private readonly orderPayment: OrderPaymentService,
   ) {}
 
   async listForCustomer(userId: string): Promise<OrderDto[]> {
@@ -152,68 +182,14 @@ export class OrdersService {
       throw new BadRequestException(`order cannot be cancelled from status ${order.status}`);
     }
 
-    const cancelled = await this.sequelize.transaction(async (t) => {
-      // Sequelize's QueryTypes.UPDATE return shape for Postgres is
-      // [results, affectedRowCount] — results is always an empty array,
-      // the count is the SECOND element. Verified empirically (not
-      // assumed): a prior version of this destructured [updatedCount]
-      // (the first element, always []), so `updatedCount === 0` was
-      // always false and this guard never actually fired — found while
-      // verifying the fix-pass's own fixes, not by reading docs.
-      const [, updatedCount] = await this.sequelize.query(
-        `UPDATE orders SET status = :cancelled WHERE id = :orderId AND status = :pending`,
-        {
-          replacements: {
-            orderId: order.id,
-            cancelled: OrderStatus.CANCELLED,
-            pending: OrderStatus.PENDING_PAYMENT,
-          },
-          type: QueryTypes.UPDATE,
-          transaction: t,
-        },
-      );
-      if (updatedCount === 0) {
-        return false;
-      }
+    const capturedPayment = await this.askProviderBeforeCancel(order);
+    if (capturedPayment) {
+      // Razorpay already has the money: confirm instead of cancelling.
+      await this.orderPayment.applyCapture(order, capturedPayment);
+      return this.getForCustomer(userId, orderId);
+    }
 
-      const items = await this.sequelize.query<{ vendor_listing_id: string; quantity: string }>(
-        `
-        SELECT oi.vendor_listing_id, oi.quantity
-        FROM order_items oi
-        JOIN order_vendor_group ovg ON ovg.id = oi.order_vendor_group_id
-        WHERE ovg.order_id = :orderId
-        `,
-        { replacements: { orderId: order.id }, type: QueryTypes.SELECT, transaction: t },
-      );
-      for (const item of items) {
-        await this.sequelize.query(
-          `
-          UPDATE inventory
-          SET quantity_reserved = quantity_reserved - :qty
-          WHERE vendor_listing_id = :listingId AND warehouse_id IS NULL
-          `,
-          {
-            replacements: { listingId: item.vendor_listing_id, qty: item.quantity },
-            type: QueryTypes.UPDATE,
-            transaction: t,
-          },
-        );
-      }
-      // WHERE also pins status: PENDING, defensively — the UPDATE ...
-      // WHERE status = 'pending_payment' above already guarantees no
-      // vendor could have advanced any group's status (updateVendorGroupStatus
-      // excludes pending_payment orders entirely as of the final review's
-      // finding #8 fix), but costs nothing to assert here too rather than
-      // rely solely on a invariant enforced three files away.
-      await this.groupModel.update(
-        { status: OrderVendorGroupStatus.CANCELLED },
-        {
-          where: { orderId: order.id, status: OrderVendorGroupStatus.PENDING },
-          transaction: t,
-        },
-      );
-      return true;
-    });
+    const cancelled = await this.orderPayment.releaseAndCancel(order.id);
 
     if (!cancelled) {
       // Lost a race against a concurrent transition (e.g. the webhook
@@ -225,6 +201,93 @@ export class OrdersService {
     order.status = OrderStatus.CANCELLED;
     await this.notifications.sendOrderStatusChanged(customer.id, order.id, OrderStatus.CANCELLED);
     return this.getForCustomer(userId, orderId);
+  }
+
+  // Decision 0049. A customer who reaches the Razorpay payment sheet and
+  // abandons it (closes the tab, loses signal, never completes or
+  // explicitly fails) leaves no webhook for this codebase to react to —
+  // payment.failed is NOT this case (see webhooks.controller.ts's own
+  // comment: a failed attempt stays PENDING_PAYMENT for a UPI-style
+  // retry, by design). Without this sweep, that order's quantity_reserved
+  // hold is never released. 20 minutes is slightly above the typical
+  // 5-15 minute industry range specifically because a UPI retry needs
+  // more headroom than a single card swipe.
+  //
+  // Gated the same way IndexingProcessor.onModuleInit gates the
+  // search-outbox drain: WORKER_MODE=api means this process serves HTTP
+  // only, and some other process owns scheduled work. No lock is needed
+  // for correctness (unlike the outbox drain) — releaseAndCancel's own
+  // guarded UPDATE already makes two concurrent sweeps of the same order
+  // a no-op on the second one, not a hazard.
+  @Cron(CronExpression.EVERY_5_MINUTES)
+  async sweepStaleReservations(): Promise<void> {
+    if (this.configService.get<string>('search.workerMode', 'all') === 'api') {
+      return;
+    }
+
+    const cutoff = new Date(Date.now() - STALE_RESERVATION_TIMEOUT_MS);
+    const stale = await this.orderModel.findAll({
+      where: { status: OrderStatus.PENDING_PAYMENT, createdAt: { [Op.lt]: cutoff } },
+    });
+
+    for (const order of stale) {
+      try {
+        await this.sweepOne(order);
+      } catch (err) {
+        // One order's failure must not stop the rest of the sweep.
+        this.logger.error(
+          `order ${order.id}: sweep failed: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+  }
+
+  // Decision 0054 rule 3. No row lock is held across the Razorpay call (so no
+  // SKIP LOCKED either): concurrent sweeps are safe because only one guarded
+  // UPDATE can win, as decision 0049 established.
+  private async sweepOne(order: Order): Promise<void> {
+    const check = await this.orderPayment.checkProviderPayments(order);
+    switch (check.kind) {
+      case 'captured':
+        // A webhook we never received (or one that failed): Razorpay is the
+        // source of truth.
+        await this.orderPayment.applyCapture(order, check.payment);
+        this.logger.log(`order ${order.id}: swept — Razorpay reports a captured payment`);
+        return;
+      case 'in_flight':
+      case 'unavailable':
+        this.logger.log(`order ${order.id}: sweep skipped — payment ${check.kind}, will retry`);
+        return;
+      case 'none': {
+        const released = await this.orderPayment.releaseAndCancel(order.id);
+        if (!released) {
+          return;
+        }
+        this.logger.log(`order ${order.id}: swept — stale reservation released, order cancelled`);
+        await this.notifications.sendOrderStatusChanged(
+          order.customerId,
+          order.id,
+          OrderStatus.CANCELLED,
+        );
+      }
+    }
+  }
+
+  // Shared by both cancel paths. Returns the captured payment to confirm, or
+  // null when it is safe to go on cancelling. Throws when a payment is in
+  // progress (400) or Razorpay cannot be asked (503) — never cancels blind.
+  private async askProviderBeforeCancel(order: Order): Promise<ProviderPayment | null> {
+    const check = await this.orderPayment.checkProviderPayments(order);
+    switch (check.kind) {
+      case 'captured':
+        return check.payment;
+      case 'in_flight':
+        throw new BadRequestException(IN_FLIGHT_PAYMENT_MESSAGE);
+      case 'unavailable':
+        throw new ServiceUnavailableException(PAYMENT_STATUS_UNVERIFIED_MESSAGE);
+      case 'none':
+        return null;
+    }
   }
 
   // The read half of the vendor order surface. Without this, a vendor has
@@ -288,18 +351,15 @@ export class OrdersService {
     // Final-review fix (post-implementation, finding #4): REFUNDED is a
     // status this plan introduced, and the Order join above only excludes
     // PENDING_PAYMENT — REFUNDED satisfies "!= pending_payment" too.
-    // adminRefund never touches order_vendor_group rows, so a group can
+    // Refunds never touch order_vendor_group rows, so a group can
     // sit at CONFIRMED or SHIPPED while its parent order is REFUNDED (or,
     // separately, CANCELLED by adminCancel after a refund). Without this
     // guard a vendor could still ship or deliver goods for an order that
     // was already refunded or cancelled.
-    if (
-      group.order.status === OrderStatus.REFUNDED ||
-      group.order.status === OrderStatus.CANCELLED
-    ) {
-      throw new BadRequestException(
-        'order has been refunded or cancelled and its groups can no longer be updated',
-      );
+    // Decision 0054: captured money being returned (refund_required,
+    // refund_pending) stops fulfilment the same way.
+    if (LOCKED_PARENT_ORDER_STATUSES.includes(group.order.status)) {
+      throw new BadRequestException(GROUP_LOCKED_MESSAGE);
     }
     // Valid forward transitions only — a vendor cannot jump PENDING
     // straight to DELIVERED, and cannot move a CANCELLED group anywhere.
@@ -354,113 +414,29 @@ export class OrdersService {
     return toOrderDto(order, true);
   }
 
-  // Full refund only — partial per-line refunds are named as an open
-  // question in decision 0034 and not built here. Only a CONFIRMED order
-  // has a captured payment to refund; PENDING_PAYMENT was never charged,
-  // CANCELLED/REFUNDED already resolved one way or the other. Guarding on
-  // both status AND the presence of razorpayPaymentId catches an order
-  // that reached CONFIRMED through some future code path that forgot to
-  // persist the payment id — fail loudly rather than refund nothing while
-  // reporting success.
-  // Final-review fix (post-implementation, finding #3): the original
-  // version checked status with a plain findByPk, called Razorpay, then
-  // order.save() — none of it guarded, so two concurrent calls could both
-  // pass the check and both call Razorpay, and a failure between the
-  // Razorpay call succeeding and the save committing left the order stuck
-  // CONFIRMED forever with the money already gone (retrying hits
-  // Razorpay's "already refunded" error; adminCancel refuses CONFIRMED).
-  //
-  // Fixed with the same claim-before-call-out pattern CheckoutService uses
-  // for its own Razorpay call (Phase 2): the status transition to REFUNDED
-  // is claimed with a guarded UPDATE FIRST, inside the only statement that
-  // can race, before any network call. If Razorpay's refund then fails,
-  // the claim is reverted so the order is still refundable on retry rather
-  // than stuck in a state no other code path can move it out of.
-  async adminRefund(orderId: string): Promise<OrderDto> {
-    const order = await this.orderModel.findByPk(orderId);
-    if (!order) {
-      throw new NotFoundException('order not found');
-    }
-    if (order.status !== OrderStatus.CONFIRMED || !order.razorpayPaymentId) {
-      throw new BadRequestException('order has no captured payment to refund');
-    }
-
-    const [, claimedCount] = await this.sequelize.query(
-      `UPDATE orders SET status = :refunded WHERE id = :orderId AND status = :confirmed AND razorpay_payment_id = :paymentId`,
-      {
-        replacements: {
-          orderId: order.id,
-          refunded: OrderStatus.REFUNDED,
-          confirmed: OrderStatus.CONFIRMED,
-          paymentId: order.razorpayPaymentId,
-        },
-        type: QueryTypes.UPDATE,
-      },
-    );
-    if (claimedCount === 0) {
-      throw new BadRequestException('order could not be refunded — its status just changed');
-    }
-
-    const amountPaise = Math.round(Number(order.grandTotal) * 100);
-    try {
-      await this.paymentProvider.refundPayment(order.razorpayPaymentId, amountPaise);
-    } catch (err) {
-      await this.sequelize.query(
-        `UPDATE orders SET status = :confirmed WHERE id = :orderId AND status = :refunded`,
-        {
-          replacements: {
-            orderId: order.id,
-            confirmed: OrderStatus.CONFIRMED,
-            refunded: OrderStatus.REFUNDED,
-          },
-          type: QueryTypes.UPDATE,
-        },
-      );
-      throw err;
-    }
-
-    order.status = OrderStatus.REFUNDED;
-    await this.notifications.sendOrderStatusChanged(
-      order.customerId,
-      order.id,
-      OrderStatus.REFUNDED,
-    );
-    return this.getForAdmin(orderId);
-  }
-
   // Admin may cancel from pending_payment (nothing was ever charged — same
   // as the customer-facing path) or from refunded (the money is already
   // back with the customer, so cancelling now is just bookkeeping). A
-  // confirmed order must be refunded FIRST via adminRefund — cancelling a
+  // confirmed order must be refunded FIRST via RefundsService — cancelling a
   // captured payment without refunding it would release the customer's
   // reserved stock while keeping their money, which is strictly worse
   // than doing nothing.
   //
-  // Final-review fix (post-implementation): the guarded UPDATE below must
-  // name exactly {pending_payment, refunded} rather than "!= cancelled" —
-  // the latter also matches 'confirmed', so a webhook confirming the order
-  // between the advisory check above and this transaction's UPDATE used to
-  // let a paid order be silently cancelled with no refund path back
-  // (adminRefund only accepts CONFIRMED). Naming the exact source statuses
-  // closes that race the same way the customer-facing cancel's
-  // WHERE status = 'pending_payment' does (final review finding #6 on the
-  // original branch).
+  // Final-review fix (post-implementation): the cancel must be guarded on the
+  // exact source status rather than "!= cancelled" — the latter also matches
+  // 'confirmed', so a webhook confirming the order between the advisory check
+  // below and the write used to let a paid order be silently cancelled with no
+  // refund path back (refunds only apply to captured orders). pending_payment
+  // goes through OrderPaymentService.releaseAndCancel (guarded UPDATE ... WHERE
+  // status = 'pending_payment', the same release the customer cancel and the
+  // sweep use); refunded takes the locked transaction below.
   //
-  // Inventory release only runs when the row's locked, current status is
-  // pending_payment. A refunded order was CONFIRMED before the refund, and
-  // confirmOrder (webhooks.controller.ts) already decremented BOTH
-  // quantity_available and quantity_reserved at that point — the
-  // reservation this order held no longer exists. Releasing it again here
-  // would subtract from whatever OTHER order's reservation now occupies
-  // that quantity on the same listing, enabling an oversell.
-  //
-  // SELECT ... FOR UPDATE locks the row and reads its real status inside
-  // the transaction before anything else happens, closing the same race
-  // finding #6 (original branch) and finding #2 (this fix pass) both
-  // named: the advisory check above reads order.status with no lock at
-  // all, so a concurrent webhook confirming the order between that read
-  // and this transaction starting must still be caught — which only a
-  // lock taken inside the transaction can do.
+  // Inventory is released only for pending_payment. A refunded order was
+  // CONFIRMED before the refund, and confirmOrder (webhooks.controller.ts)
+  // already decremented BOTH quantity_available and quantity_reserved at that
+  // point — the reservation this order held no longer exists. Releasing it
+  // again here would subtract from whatever OTHER order's reservation now
+  // occupies that quantity on the same listing, enabling an oversell.
   async adminCancel(orderId: string): Promise<OrderDto> {
     const order = await this.orderModel.findByPk(orderId);
     if (!order) {
@@ -474,68 +450,65 @@ export class OrdersService {
     if (order.status === OrderStatus.CANCELLED) {
       throw new BadRequestException('order is already cancelled');
     }
+    // Captured money with no confirmed order: cancelling would orphan it.
+    if (
+      order.status === OrderStatus.REFUND_REQUIRED ||
+      order.status === OrderStatus.REFUND_PENDING
+    ) {
+      throw new BadRequestException('refund this order before cancelling it');
+    }
 
-    const cancelled = await this.sequelize.transaction(async (t) => {
-      const lockedRows = await this.sequelize.query<{ status: string }>(
-        `SELECT status FROM orders WHERE id = :orderId FOR UPDATE`,
-        { replacements: { orderId: order.id }, type: QueryTypes.SELECT, transaction: t },
-      );
-      const lockedStatus = lockedRows[0]?.status;
-      if (lockedStatus !== OrderStatus.PENDING_PAYMENT && lockedStatus !== OrderStatus.REFUNDED) {
-        return false;
+    let cancelled: boolean;
+    if (order.status === OrderStatus.PENDING_PAYMENT) {
+      // Decision 0054 rule 3. Asked before cancelling, so no row lock is held
+      // across the Razorpay call.
+      const capturedPayment = await this.askProviderBeforeCancel(order);
+      if (capturedPayment) {
+        await this.orderPayment.applyCapture(order, capturedPayment);
+        throw new BadRequestException('order was paid; refund it instead');
       }
-
-      const [, updatedCount] = await this.sequelize.query(
-        `UPDATE orders SET status = :cancelled WHERE id = :orderId`,
-        {
-          replacements: { orderId: order.id, cancelled: OrderStatus.CANCELLED },
-          type: QueryTypes.UPDATE,
-          transaction: t,
-        },
-      );
-      if (updatedCount === 0) {
-        return false;
-      }
-
-      const wasPendingPayment = lockedStatus === OrderStatus.PENDING_PAYMENT;
-      if (wasPendingPayment) {
-        const items = await this.sequelize.query<{ vendor_listing_id: string; quantity: string }>(
-          `
-          SELECT oi.vendor_listing_id, oi.quantity
-          FROM order_items oi
-          JOIN order_vendor_group ovg ON ovg.id = oi.order_vendor_group_id
-          WHERE ovg.order_id = :orderId
-          `,
+      // The same release the customer cancel and the sweep use: a guarded
+      // UPDATE on pending_payment, so a webhook that confirmed the order since
+      // the advisory read above makes this return false.
+      cancelled = await this.orderPayment.releaseAndCancel(order.id);
+    } else {
+      // Refunded: bookkeeping only, no stock release (see above). The row lock
+      // read inside the transaction is what catches a status change since the
+      // advisory read.
+      cancelled = await this.sequelize.transaction(async (t) => {
+        const lockedRows = await this.sequelize.query<{ status: string }>(
+          `SELECT status FROM orders WHERE id = :orderId FOR UPDATE`,
           { replacements: { orderId: order.id }, type: QueryTypes.SELECT, transaction: t },
         );
-        for (const item of items) {
-          await this.sequelize.query(
-            `
-            UPDATE inventory
-            SET quantity_reserved = GREATEST(quantity_reserved - :qty, 0)
-            WHERE vendor_listing_id = :listingId AND warehouse_id IS NULL
-            `,
-            {
-              replacements: { listingId: item.vendor_listing_id, qty: item.quantity },
-              type: QueryTypes.UPDATE,
-              transaction: t,
-            },
-          );
+        if (lockedRows[0]?.status !== OrderStatus.REFUNDED) {
+          return false;
         }
-      }
 
-      await this.groupModel.update(
-        { status: OrderVendorGroupStatus.CANCELLED },
-        {
-          where: {
-            orderId: order.id,
-            status: { [Op.ne]: OrderVendorGroupStatus.CANCELLED },
+        const [, updatedCount] = await this.sequelize.query(
+          `UPDATE orders SET status = :cancelled WHERE id = :orderId`,
+          {
+            replacements: { orderId: order.id, cancelled: OrderStatus.CANCELLED },
+            type: QueryTypes.UPDATE,
+            transaction: t,
           },
-          transaction: t,
-        },
-      );
-      return true;
-    });
+        );
+        if (updatedCount === 0) {
+          return false;
+        }
+
+        await this.groupModel.update(
+          { status: OrderVendorGroupStatus.CANCELLED },
+          {
+            where: {
+              orderId: order.id,
+              status: { [Op.ne]: OrderVendorGroupStatus.CANCELLED },
+            },
+            transaction: t,
+          },
+        );
+        return true;
+      });
+    }
 
     if (!cancelled) {
       throw new BadRequestException('order could not be cancelled — its status just changed');
@@ -591,11 +564,10 @@ export class OrdersService {
     // order is cleanup in the safe direction, not a resurrection of a
     // dead order, so it is still allowed.
     const order = await this.orderModel.findByPk(group.orderId);
-    const parentIsClosed =
-      order?.status === OrderStatus.REFUNDED || order?.status === OrderStatus.CANCELLED;
+    const parentIsClosed = !!order && LOCKED_PARENT_ORDER_STATUSES.includes(order.status);
     if (parentIsClosed && status !== OrderVendorGroupStatus.CANCELLED) {
       throw new BadRequestException(
-        'cannot override a group whose parent order is refunded or cancelled',
+        'cannot override a group whose parent order is refunded, being refunded or cancelled',
       );
     }
 

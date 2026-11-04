@@ -33,7 +33,12 @@ function toBadgeVariant(status: OrderStatus): BadgeVariant {
   if (status === ORDER_STATUSES.CONFIRMED) {
     return 'success';
   }
-  if (status === ORDER_STATUSES.CANCELLED || status === ORDER_STATUSES.REFUNDED) {
+  if (
+    status === ORDER_STATUSES.CANCELLED ||
+    status === ORDER_STATUSES.REFUND_REQUIRED ||
+    status === ORDER_STATUSES.REFUND_PENDING ||
+    status === ORDER_STATUSES.REFUNDED
+  ) {
     return 'error';
   }
   return 'pending';

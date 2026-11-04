@@ -1,4 +1,7 @@
-import type { AdminOverrideVendorGroupStatusRequest } from '@golden-abode/types';
+import type {
+  AdminOverrideVendorGroupStatusRequest,
+  AdminRefundRequest,
+} from '@golden-abode/types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { APP_CONSTANTS } from '@/constants/appConstants';
@@ -9,6 +12,7 @@ export const ORDERS_QUERY_KEYS = {
   list: ['orders', 'list'] as const,
   detail: (orderId: string) => ['orders', 'detail', orderId] as const,
   paymentEvents: (orderId: string) => ['orders', 'payment-events', orderId] as const,
+  refunds: (orderId: string) => ['orders', 'refunds', orderId] as const,
 };
 
 export function useOrdersQuery() {
@@ -37,11 +41,23 @@ export function usePaymentEventsQuery(orderId: string | null, isEnabled: boolean
   });
 }
 
+export function useOrderRefundsQuery(orderId: string | null, isEnabled: boolean) {
+  return useQuery({
+    queryKey: ORDERS_QUERY_KEYS.refunds(orderId ?? ''),
+    queryFn: () => ordersService.listRefunds(orderId!),
+    enabled: Boolean(orderId) && isEnabled,
+    staleTime: APP_CONSTANTS.staleTimeMs,
+  });
+}
+
 export function useRefundOrderMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (orderId: string) => ordersService.refundOrder(orderId),
-    onSuccess: () => {
+    mutationFn: (options: { orderId: string; body: AdminRefundRequest }) =>
+      ordersService.refundOrder(options.orderId, options.body),
+    // Also on error: a refund can be recorded even when the call reports a
+    // problem, so the history and the remaining amount must come from the server.
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEYS.all });
     },
   });

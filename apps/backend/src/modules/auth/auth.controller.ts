@@ -8,6 +8,7 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { LogoutDto } from './dto/logout.dto';
 import { AdminRegisterDto } from './dto/admin-register.dto';
 import { AdminLoginDto } from './dto/admin-login.dto';
+import { AdminResetPasswordDto } from './dto/admin-reset-password.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtPayload } from '@golden-abode/types';
@@ -64,6 +65,20 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
   loginAdmin(@Body() dto: AdminLoginDto) {
     return this.authService.loginAdmin(dto);
+  }
+
+  @Post('admin/reset-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Reset an admin password using the registration secret',
+    description:
+      'Decision 0050. Requires ADMIN_REGISTRATION_SECRET, the same secret that gates creating a new admin — no email/SMS delivery exists for admins, so this is the only recovery path. Revokes every existing refresh token for the account.',
+  })
+  @ApiResponse({ status: 200, description: 'Password reset — all sessions revoked' })
+  @ApiResponse({ status: 401, description: 'Invalid registration secret' })
+  @ApiResponse({ status: 404, description: 'No admin account with this email' })
+  resetAdminPassword(@Body() dto: AdminResetPasswordDto) {
+    return this.authService.resetAdminPassword(dto);
   }
 
   @Post('refresh')

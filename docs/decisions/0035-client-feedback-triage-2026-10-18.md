@@ -96,3 +96,15 @@ fits inside work already priced and underway.
 - Whether 1b is a rename (replace one category) or a taxonomy split (two new categories
   replacing one) — ambiguous in the client's own message, needs a direct question back to them.
 - Q1's root cause (permission bug vs. intentional read-only state) — not diagnosed here.
+
+## Amendment (2026-10-23)
+
+Item #3 (last-login timestamp) was marked out-of-scope/Phase 4 above, but shipped on `main` in
+commit `0390086` ("feat(admin): last-login timestamp on users") before Phase 4 formally started.
+This was not a reversal of this record's reasoning — **0038** (admin-panel-incremental-delivery)
+subsequently established that small, self-contained admin-panel features (a column, a stat, a
+filter) ship incrementally as they're requested rather than being held for a Phase 4 milestone,
+specifically carving out only the genuinely new-domain Artisan/Ustaad module (item #2 here) as
+still gated. Last-login is exactly the kind of item 0038 intended to unblock. No other item in
+the table above (#2, #4, #5, 1b, Q1) is affected by 0038 — see 0038 for the line between what
+ships incrementally and what stays deferred.

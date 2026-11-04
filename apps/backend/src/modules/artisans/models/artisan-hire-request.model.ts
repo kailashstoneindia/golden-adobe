@@ -44,14 +44,21 @@ export class ArtisanHireRequest extends Model<ArtisanHireRequest> {
   })
   declare artisanId: string;
 
-  // State machine: PENDING_ADMIN_REVIEW -> (ACCEPTED_BY_ARTISAN | ADMIN_REJECTED)
-  // -> IN_PROGRESS -> (COMPLETED | CANCELLED). Only HireRequestsService.reviewRequest
-  // may write this column out of PENDING_ADMIN_REVIEW (spec §8.1, LLD §3).
+  // State machine (0045, amended by 0055):
+  //   PENDING_ADMIN_REVIEW -> (PENDING_ARTISAN_RESPONSE | ADMIN_REJECTED)
+  //   PENDING_ARTISAN_RESPONSE -> (ACCEPTED_BY_ARTISAN | ARTISAN_DECLINED | EXPIRED)
+  //   ACCEPTED_BY_ARTISAN -> IN_PROGRESS -> COMPLETED
+  //   any open status -> CANCELLED
+  // Only HireRequestsService.reviewRequest may write this column out of
+  // PENDING_ADMIN_REVIEW (spec §8.1, LLD §3).
   @Index
   @Column({
     type: DataType.ENUM(
       'PENDING_ADMIN_REVIEW',
       'ADMIN_REJECTED',
+      'PENDING_ARTISAN_RESPONSE',
+      'ARTISAN_DECLINED',
+      'EXPIRED',
       'ACCEPTED_BY_ARTISAN',
       'IN_PROGRESS',
       'COMPLETED',
@@ -116,8 +123,10 @@ export class ArtisanHireRequest extends Model<ArtisanHireRequest> {
   })
   declare completedAt: Date | null;
 
-  // Set exactly once, by cancel, when status moves to CANCELLED from any of
-  // PENDING_ADMIN_REVIEW, ACCEPTED_BY_ARTISAN, or IN_PROGRESS.
+  // Set exactly once, by cancel, when status moves to CANCELLED. The customer
+  // and admin may cancel from PENDING_ADMIN_REVIEW, PENDING_ARTISAN_RESPONSE,
+  // ACCEPTED_BY_ARTISAN or IN_PROGRESS; the ustaad only from the last two —
+  // while a request waits on them they decline instead (0055).
   @Column({
     type: DataType.DATE,
     allowNull: true,
@@ -133,6 +142,22 @@ export class ArtisanHireRequest extends Model<ArtisanHireRequest> {
     field: 'cancel_reason',
   })
   declare cancelReason: string | null;
+
+  // Set once, when the ustaad accepts or declines (0055).
+  @Column({
+    type: DataType.DATE,
+    allowNull: true,
+    field: 'artisan_responded_at',
+  })
+  declare artisanRespondedAt: Date | null;
+
+  // Always set alongside artisan_responded_at on a decline, never on accept.
+  @Column({
+    type: DataType.TEXT,
+    allowNull: true,
+    field: 'artisan_decline_reason',
+  })
+  declare artisanDeclineReason: string | null;
 
   @BelongsTo(() => User, 'customerId')
   declare customer: User;

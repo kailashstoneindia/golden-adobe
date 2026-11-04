@@ -75,7 +75,7 @@ export class AdminArtisansController {
   @ApiOperation({
     summary: 'Approve or reject a hire request',
     description:
-      'Approving moves PENDING_ADMIN_REVIEW straight to ACCEPTED_BY_ARTISAN (the artisan is notified for the first time at this point). Rejecting is terminal — no resubmit path.',
+      'Approving (allowing) moves PENDING_ADMIN_REVIEW to PENDING_ARTISAN_RESPONSE: the artisan sees it for the first time and has 48 hours to accept or decline (decision 0055). Rejecting (blocking) is terminal — no resubmit path.',
   })
   @ApiResponse({ status: 200, description: 'Updated hire request' })
   @ApiResponse({ status: 409, description: 'Request is not currently PENDING_ADMIN_REVIEW' })

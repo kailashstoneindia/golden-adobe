@@ -107,6 +107,11 @@ export interface UpdateArtisanProfileDto {
 export type ArtisanHireRequestStatus =
   | 'PENDING_ADMIN_REVIEW'
   | 'ADMIN_REJECTED'
+  // Admin allowed it; waiting on the ustaad to accept or decline (0055).
+  | 'PENDING_ARTISAN_RESPONSE'
+  | 'ARTISAN_DECLINED'
+  // The ustaad didn't answer within the response window (0055).
+  | 'EXPIRED'
   | 'ACCEPTED_BY_ARTISAN'
   | 'IN_PROGRESS'
   | 'COMPLETED'
@@ -119,6 +124,9 @@ export type ArtisanHireRequestStatus =
 export const HIRE_REQUEST_STATUSES: ArtisanHireRequestStatus[] = [
   'PENDING_ADMIN_REVIEW',
   'ADMIN_REJECTED',
+  'PENDING_ARTISAN_RESPONSE',
+  'ARTISAN_DECLINED',
+  'EXPIRED',
   'ACCEPTED_BY_ARTISAN',
   'IN_PROGRESS',
   'COMPLETED',
@@ -155,6 +163,16 @@ export interface ArtisanHireRequestDto {
   completedAt: string | null;
   cancelledAt: string | null;
   cancelReason: string | null;
+  // Ustaad's accept/decline (0055). artisanResponseDueAt is when a
+  // PENDING_ARTISAN_RESPONSE request expires; null in every other status.
+  artisanRespondedAt: string | null;
+  artisanDeclineReason: string | null;
+  artisanResponseDueAt: string | null;
+  // Customer contact for the ustaad (0055): set only while the request is
+  // PENDING_ARTISAN_RESPONSE, ACCEPTED_BY_ARTISAN or IN_PROGRESS, null
+  // otherwise.
+  customerName: string | null;
+  customerPhone: string | null;
   // Capacity signal for admin review (decision 0045 addendum) — present
   // only on admin-facing reads (listPendingAdminReview, listAll), null
   // elsewhere. A proxy, not real per-job assignment tracking: admin reads
@@ -177,6 +195,10 @@ export interface ReviewHireRequestDto {
 }
 
 export interface CancelHireRequestDto {
+  reason: string;
+}
+
+export interface DeclineHireRequestDto {
   reason: string;
 }
 

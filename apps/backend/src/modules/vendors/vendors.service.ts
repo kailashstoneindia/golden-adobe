@@ -245,6 +245,41 @@ export class VendorsService {
     return toVendorProfileDto(await this.findByIdOrThrow(vendorId));
   }
 
+  // Decision 0048. Sets both Vendor.status (the richer record) and
+  // User.isApproved (the gate every guard already reads) in one
+  // transaction — two call sites writing these independently is how they
+  // drift.
+  async approveVendor(vendorId: string): Promise<VendorProfileDto> {
+    const vendor = await this.findByIdOrThrow(vendorId);
+
+    await this.sequelize.transaction(async (transaction) => {
+      await this.vendorModel.update(
+        { status: 'APPROVED', statusUpdatedAt: new Date(), rejectionReason: null },
+        { where: { id: vendorId }, transaction },
+      );
+      await this.usersService.setApproved(vendor.userId, true, transaction);
+    });
+
+    return toVendorProfileDto(await this.findByIdOrThrow(vendorId));
+  }
+
+  // reason is required here (unlike AdminService.rejectUser's optional,
+  // log-only reason) — a persisted reason with no value defeats the point
+  // of persisting it. See decision 0048.
+  async rejectVendor(vendorId: string, reason: string): Promise<VendorProfileDto> {
+    const vendor = await this.findByIdOrThrow(vendorId);
+
+    await this.sequelize.transaction(async (transaction) => {
+      await this.vendorModel.update(
+        { status: 'REJECTED', statusUpdatedAt: new Date(), rejectionReason: reason },
+        { where: { id: vendorId }, transaction },
+      );
+      await this.usersService.setApproved(vendor.userId, false, transaction);
+    });
+
+    return toVendorProfileDto(await this.findByIdOrThrow(vendorId));
+  }
+
   async updateOnboardingProgress(
     userId: string,
     onboardingStage: VendorOnboardingStage,

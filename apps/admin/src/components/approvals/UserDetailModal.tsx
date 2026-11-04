@@ -11,21 +11,42 @@ type UserDetailModalProps = {
   user: UserDto;
   isSubmitting: boolean;
   showApprovalActions?: boolean;
+  // Vendor rejections require a persisted reason (decision 0048) — when
+  // true, Reject opens a reason prompt instead of firing immediately.
+  // Artisan rejections keep the old one-click behavior (generic,
+  // log-only reason) until artisans get the same status-field treatment.
+  requireRejectReason?: boolean;
   onClose: () => void;
   onApprove?: (userId: string) => void;
-  onReject?: (userId: string) => void;
+  onReject?: (userId: string, reason?: string) => void;
 };
 
 export function UserDetailModal({
   user,
   isSubmitting,
   showApprovalActions = true,
+  requireRejectReason = false,
   onClose,
   onApprove,
   onReject,
 }: UserDetailModalProps) {
+  const [rejectReason, setRejectReason] = useState('');
+  const [isRejecting, setIsRejecting] = useState(false);
+
   const handleApprove = () => onApprove?.(user.id);
-  const handleReject = () => onReject?.(user.id);
+  const handleRejectClick = () => {
+    if (requireRejectReason) {
+      setIsRejecting(true);
+      return;
+    }
+    onReject?.(user.id);
+  };
+  const handleConfirmReject = () => {
+    if (!rejectReason.trim()) {
+      return;
+    }
+    onReject?.(user.id, rejectReason.trim());
+  };
   const vendorProfile = user.role === Role.VENDOR ? user.vendorProfile : undefined;
 
   return (
@@ -52,6 +73,22 @@ export function UserDetailModal({
           />
 
           {vendorProfile ? <VendorProfileSections profile={vendorProfile} /> : null}
+
+          {isRejecting ? (
+            <div className={styles.detailSections}>
+              <label className={styles.detailLabel} htmlFor="reject-reason">
+                Reason for rejection
+              </label>
+              <textarea
+                id="reject-reason"
+                className={styles.input}
+                value={rejectReason}
+                disabled={isSubmitting}
+                onChange={(event) => setRejectReason(event.target.value)}
+                placeholder="Why is this vendor being rejected? Shown back on their record."
+              />
+            </div>
+          ) : null}
         </div>
 
         <div className={styles.actions}>
@@ -63,24 +100,45 @@ export function UserDetailModal({
             Close
           </button>
           {showApprovalActions ? (
-            <>
-              <button
-                type="button"
-                className={`${styles.button} ${styles.buttonDanger}`}
-                disabled={isSubmitting}
-                onClick={handleReject}
-              >
-                Reject
-              </button>
-              <button
-                type="button"
-                className={`${styles.button} ${styles.buttonPrimary}`}
-                disabled={isSubmitting}
-                onClick={handleApprove}
-              >
-                Approve
-              </button>
-            </>
+            isRejecting ? (
+              <>
+                <button
+                  type="button"
+                  className={`${styles.button} ${styles.buttonGhost}`}
+                  disabled={isSubmitting}
+                  onClick={() => setIsRejecting(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.button} ${styles.buttonDanger}`}
+                  disabled={isSubmitting || !rejectReason.trim()}
+                  onClick={handleConfirmReject}
+                >
+                  Confirm reject
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className={`${styles.button} ${styles.buttonDanger}`}
+                  disabled={isSubmitting}
+                  onClick={handleRejectClick}
+                >
+                  Reject
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.button} ${styles.buttonPrimary}`}
+                  disabled={isSubmitting}
+                  onClick={handleApprove}
+                >
+                  Approve
+                </button>
+              </>
+            )
           ) : null}
         </div>
       </div>

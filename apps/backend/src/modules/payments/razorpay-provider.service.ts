@@ -3,9 +3,21 @@ import { ConfigService } from '@nestjs/config';
 import Razorpay from 'razorpay';
 import {
   CreateProviderOrderResult,
+  CreateRefundParams,
+  PAYMENT_CAPTURE_WINDOW_MINUTES,
   PaymentProviderService,
-  RefundResult,
+  PROVIDER_TIMEOUT_MS,
+  ProviderPayment,
+  ProviderRefund,
+  ProviderRequestError,
 } from './payment-provider.interface';
+import { toProviderPayment, toProviderRefund } from './razorpay-mappers';
+
+const RAZORPAY_API_BASE = 'https://api.razorpay.com/v1';
+const REFUND_PAGE_SIZE = 100;
+// Loop guard for fetchRefunds: a payment never has 5000 refunds, so reaching
+// this many pages means the API is not honouring `skip`.
+const REFUND_MAX_PAGES = 50;
 
 // No real Razorpay merchant account exists in this project as of 2026-10-09
 // (decision 0042, rules 8-9). This implementation is written and
@@ -29,10 +41,10 @@ import {
 // client instance at all.
 @Injectable()
 export class RazorpayProviderService implements PaymentProviderService {
-  private readonly logger = new Logger(RazorpayProviderService.name);
   private readonly keyId: string;
   private readonly keySecret: string;
   private readonly webhookSecret: string;
+  private readonly logger = new Logger(RazorpayProviderService.name);
   private client: Razorpay | null = null;
 
   constructor(private readonly configService: ConfigService) {
@@ -61,27 +73,97 @@ export class RazorpayProviderService implements PaymentProviderService {
   // than assuming. A hung HTTP call here would otherwise wait
   // indefinitely. Race it against a timer instead of trusting the SDK to
   // bound it.
-  private static readonly CREATE_ORDER_TIMEOUT_MS = 15_000;
+  private async withTimeout<T>(p: Promise<T>, label: string): Promise<T> {
+    let timer: NodeJS.Timeout | undefined;
+    try {
+      return await Promise.race([
+        p,
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(
+            () =>
+              reject(
+                new ProviderRequestError(
+                  'timeout',
+                  `Razorpay ${label} timed out after ${PROVIDER_TIMEOUT_MS}ms`,
+                ),
+              ),
+            PROVIDER_TIMEOUT_MS,
+          );
+        }),
+      ]);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
 
+  // SDK calls reject with { statusCode, error: { code, description } }; a
+  // rejection without statusCode never got an HTTP response from Razorpay.
+  private toProviderError(err: unknown): ProviderRequestError {
+    if (err instanceof ProviderRequestError) {
+      return err;
+    }
+    const e = err as {
+      statusCode?: number;
+      error?: { code?: string; description?: string };
+      message?: string;
+    };
+    const message = e?.error?.description ?? e?.message ?? 'Razorpay request failed';
+    return this.classify(e?.statusCode, message, e?.error?.code);
+  }
+
+  private classify(
+    status: number | undefined,
+    message: string,
+    code?: string,
+  ): ProviderRequestError {
+    if (status === undefined) {
+      return new ProviderRequestError('network', message, undefined, code);
+    }
+    // 408/429 are transient, so they retry like a 5xx; the stable idempotency
+    // key makes that safe (decision 0054).
+    if (status >= 500 || status === 408 || status === 429) {
+      return new ProviderRequestError('server', message, status, code);
+    }
+    // Razorpay answers 409 while the first request carrying the same
+    // X-Refund-Idempotency key is still being processed (decision 0054). The
+    // exact description is unverified, so every 409 counts.
+    if (status === 409) {
+      return new ProviderRequestError('conflict_in_progress', message, status, code);
+    }
+    return new ProviderRequestError('client', message, status, code);
+  }
+
+  private async callSdk<T>(label: string, call: (client: Razorpay) => Promise<T>): Promise<T> {
+    const client = this.getClient();
+    try {
+      return await this.withTimeout(call(client), label);
+    } catch (err) {
+      throw this.toProviderError(err);
+    }
+  }
+
+  // Never retry this without an order-level idempotency strategy: 429 and 408
+  // are classified retryable (for refunds, which carry a stable key).
   async createOrder(amountPaise: number, receiptId: string): Promise<CreateProviderOrderResult> {
-    const order = await Promise.race([
-      this.getClient().orders.create({
+    const order = await this.callSdk('createOrder', (client) =>
+      client.orders.create({
         amount: amountPaise,
         currency: 'INR',
         receipt: receiptId,
+        // Decision 0054: the window runs per payment, from its creation. The app
+        // closes the Checkout sheet before the order's hold expires, so a payment
+        // can only start in time; anything captured later lands in
+        // refund_required instead of being silently cancelled.
+        payment: {
+          capture: 'automatic',
+          capture_options: {
+            automatic_expiry_period: PAYMENT_CAPTURE_WINDOW_MINUTES,
+            manual_expiry_period: PAYMENT_CAPTURE_WINDOW_MINUTES,
+            refund_speed: 'normal',
+          },
+        },
       }),
-      new Promise<never>((_, reject) =>
-        setTimeout(
-          () =>
-            reject(
-              new Error(
-                `Razorpay createOrder timed out after ${RazorpayProviderService.CREATE_ORDER_TIMEOUT_MS}ms`,
-              ),
-            ),
-          RazorpayProviderService.CREATE_ORDER_TIMEOUT_MS,
-        ),
-      ),
-    ]);
+    );
     return { providerOrderId: order.id };
   }
 
@@ -92,19 +174,116 @@ export class RazorpayProviderService implements PaymentProviderService {
     return Razorpay.validateWebhookSignature(rawBody, signatureHeader, this.webhookSecret);
   }
 
-  async markCaptured(providerOrderId: string, providerPaymentId: string): Promise<void> {
-    // Razorpay's webhook payload already confirms capture; this method
-    // exists for symmetry with the interface and as the place a future
-    // reconciliation call (fetch payment by id to double-check) would go.
-    // Not calling out to Razorpay again here — the webhook signature
-    // verification is the authority, per decision 0041 rule 3.
-    this.logger.log(`order ${providerOrderId} payment ${providerPaymentId} marked captured`);
+  async fetchOrderPayments(providerOrderId: string): Promise<ProviderPayment[]> {
+    const res = await this.callSdk('fetchOrderPayments', (client) =>
+      client.orders.fetchPayments(providerOrderId),
+    );
+    return res.items.map(toProviderPayment);
   }
 
-  async refundPayment(providerPaymentId: string, amountPaise: number): Promise<RefundResult> {
-    const refund = await this.getClient().payments.refund(providerPaymentId, {
-      amount: amountPaise,
-    });
-    return { refundId: refund.id };
+  // Raw fetch, not the SDK: razorpay-node's getValidHeaders whitelists only
+  // X-Razorpay-Account and Content-Type, so it silently drops
+  // X-Refund-Idempotency (decision 0054).
+  async createRefund(params: CreateRefundParams): Promise<ProviderRefund> {
+    this.getClient();
+    let res: Response;
+    try {
+      res = await fetch(`${RAZORPAY_API_BASE}/payments/${params.paymentId}/refund`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Basic ${Buffer.from(`${this.keyId}:${this.keySecret}`).toString('base64')}`,
+          'Content-Type': 'application/json',
+          'X-Refund-Idempotency': params.idempotencyKey,
+        },
+        body: JSON.stringify({
+          amount: params.amountPaise,
+          speed: 'normal',
+          receipt: params.receipt,
+          notes: params.notes,
+        }),
+        signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
+      });
+    } catch (err) {
+      const name = (err as Error)?.name;
+      if (name === 'AbortError' || name === 'TimeoutError') {
+        throw new ProviderRequestError(
+          'timeout',
+          `Razorpay createRefund timed out after ${PROVIDER_TIMEOUT_MS}ms`,
+        );
+      }
+      throw new ProviderRequestError('network', (err as Error)?.message ?? 'fetch failed');
+    }
+    let body: unknown;
+    try {
+      body = await res.json();
+    } catch (err) {
+      const name = (err as Error)?.name;
+      if (name === 'AbortError' || name === 'TimeoutError') {
+        throw new ProviderRequestError(
+          'timeout',
+          `Razorpay createRefund timed out after ${PROVIDER_TIMEOUT_MS}ms`,
+        );
+      }
+      body = undefined;
+    }
+    if (!res.ok) {
+      const error = (body as { error?: { code?: string; description?: string } } | undefined)
+        ?.error;
+      throw this.classify(
+        res.status,
+        error?.description ?? `Razorpay createRefund failed with ${res.status}`,
+        error?.code,
+      );
+    }
+    // A 2xx whose body is unusable means the refund may exist at Razorpay but
+    // we cannot tell. Retryable: the stable idempotency key returns the same
+    // refund (decision 0054).
+    if (!body || typeof body !== 'object' || typeof (body as { id?: unknown }).id !== 'string') {
+      throw new ProviderRequestError(
+        'network',
+        `Razorpay createRefund returned ${res.status} with an unusable body`,
+        res.status,
+      );
+    }
+    return toProviderRefund(body as Parameters<typeof toProviderRefund>[0]);
+  }
+
+  async fetchRefunds(paymentId: string): Promise<ProviderRefund[]> {
+    // Razorpay returns 10 by default; a receipt lookup that only saw the first
+    // page could miss an existing refund and let the admin refund twice
+    // (decision 0054 rule 6).
+    const all: ProviderRefund[] = [];
+    let previousLastId: string | undefined;
+    for (let page = 0; page < REFUND_MAX_PAGES; page += 1) {
+      const skip = page * REFUND_PAGE_SIZE;
+      const res = await this.callSdk('fetchRefunds', (client) =>
+        client.payments.fetchMultipleRefund(paymentId, { count: REFUND_PAGE_SIZE, skip }),
+      );
+      const refunds = res.items.map(toProviderRefund);
+      const lastId = refunds[refunds.length - 1]?.id;
+      if (lastId !== undefined && lastId === previousLastId) {
+        // The API ignored `skip` and returned the previous page again.
+        this.logger.warn(
+          `fetchRefunds(${paymentId}) stopped: page ${page + 1} repeated the previous page`,
+        );
+        return all;
+      }
+      all.push(...refunds);
+      if (refunds.length < REFUND_PAGE_SIZE) {
+        return all;
+      }
+      previousLastId = lastId;
+    }
+    this.logger.warn(
+      `fetchRefunds(${paymentId}) stopped after ${REFUND_MAX_PAGES} pages; the list may be incomplete`,
+    );
+    return all;
+  }
+
+  async fetchRefund(paymentId: string, refundId: string): Promise<ProviderRefund> {
+    const refund = await this.callSdk('fetchRefund', (client) =>
+      client.payments.fetchRefund(paymentId, refundId),
+    );
+    return toProviderRefund(refund);
   }
 }

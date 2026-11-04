@@ -12,11 +12,10 @@ import { Request } from 'express';
 import { InjectModel } from '@nestjs/sequelize';
 import { Sequelize } from 'sequelize-typescript';
 import { QueryTypes } from 'sequelize';
-import { Order, OrderStatus } from './models/order.model';
-import { OrderVendorGroup, OrderVendorGroupStatus } from './models/order-vendor-group.model';
-import { PaymentEvent } from './models/payment-event.model';
+import { Order } from './models/order.model';
+import { OrderPaymentService } from './order-payment.service';
 import { PAYMENT_PROVIDER, PaymentProviderService } from '../payments/payment-provider.interface';
-import { NOTIFICATION_SERVICE, NotificationService } from '../notifications/notification.interface';
+import { toProviderPayment } from '../payments/razorpay-mappers';
 
 // Not behind JwtAuthGuard — Razorpay calls this directly, server to server.
 // Signature verification (decision 0041 rule 3) IS the authentication.
@@ -27,17 +26,16 @@ export class WebhooksController {
 
   constructor(
     @InjectModel(Order) private readonly orderModel: typeof Order,
-    @InjectModel(OrderVendorGroup) private readonly groupModel: typeof OrderVendorGroup,
-    @InjectModel(PaymentEvent) private readonly paymentEventModel: typeof PaymentEvent,
     private readonly sequelize: Sequelize,
     @Inject(PAYMENT_PROVIDER) private readonly paymentProvider: PaymentProviderService,
-    @Inject(NOTIFICATION_SERVICE) private readonly notifications: NotificationService,
+    private readonly orderPayment: OrderPaymentService,
   ) {}
 
   @Post('razorpay')
   async handleRazorpayWebhook(
     @Req() req: Request & { rawBody?: Buffer },
     @Headers('x-razorpay-signature') signature: string,
+    @Headers('x-razorpay-event-id') eventId?: string,
   ) {
     const rawBody = req.rawBody?.toString('utf8') ?? '';
     if (!this.paymentProvider.verifyWebhookSignature(rawBody, signature ?? '')) {
@@ -46,7 +44,8 @@ export class WebhooksController {
 
     const payload = JSON.parse(rawBody);
     const eventType = payload.event;
-    const providerOrderId = payload.payload?.payment?.entity?.order_id;
+    const entity = payload.payload?.payment?.entity;
+    const providerOrderId = entity?.order_id;
 
     if (!providerOrderId) {
       this.logger.warn(`webhook event ${eventType} had no order_id in payload — ignoring`);
@@ -59,38 +58,27 @@ export class WebhooksController {
       return { received: true };
     }
 
-    await this.paymentEventModel.create({
-      orderId: order.id,
-      eventType,
-      rawPayload: payload,
-    } as any);
+    // Decision 0054 rule 7. The unique event_id only stops a redelivery from
+    // being stored twice; it is not a gate. Processing continues either way
+    // because applyCapture is idempotent, and a first delivery that stored its
+    // event and then crashed must be able to finish on Razorpay's retry.
+    await this.sequelize.query(
+      `INSERT INTO payment_events (id, order_id, event_type, raw_payload, event_id)
+       VALUES (gen_random_uuid(), :orderId, :eventType, CAST(:rawPayload AS jsonb), :eventId)
+       ON CONFLICT (event_id) DO NOTHING`,
+      {
+        replacements: {
+          orderId: order.id,
+          eventType,
+          rawPayload: rawBody,
+          eventId: eventId ?? null,
+        },
+        type: QueryTypes.INSERT,
+      },
+    );
 
     if (eventType === 'payment.captured') {
-      const providerPaymentId = payload.payload?.payment?.entity?.id ?? null;
-      const confirmedGroups = await this.confirmOrder(order.id, providerPaymentId);
-      if (confirmedGroups === null) {
-        // Final review finding #6: the old code read order.status here,
-        // outside any lock, then wrote unconditionally — two concurrent
-        // webhook deliveries for the same event (Razorpay documents
-        // duplicate delivery as possible) could both pass that check and
-        // both decrement stock. confirmOrder's own UPDATE ... WHERE
-        // status = 'pending_payment' is now the only gate, and a null
-        // result means it did not apply — either already confirmed (a
-        // genuine replay, safe to ignore) or already cancelled (see the
-        // comment on confirmOrder for why a capture can still legitimately
-        // arrive there).
-        this.logger.log(`order ${order.id}: capture webhook did not apply (not pending_payment)`);
-        return { received: true };
-      }
-      await this.notifications.sendOrderPlaced(order.customerId, order.id);
-      // One notification per vendor group, to that group's vendor only —
-      // this is how each vendor in a multi-vendor checkout finds out they
-      // have an order. Fired AFTER the confirming transaction commits, not
-      // inside it: a slow or failing notification must never roll back a
-      // payment confirmation that has already happened.
-      for (const group of confirmedGroups) {
-        await this.notifications.sendNewOrderToVendor(group.vendorId, group.id);
-      }
+      await this.orderPayment.applyCapture(order, toProviderPayment(entity));
     } else if (eventType === 'payment.failed') {
       // Final review finding #1: this used to call releaseOrder, which
       // CANCELLED the order outright. Razorpay's own documented behaviour
@@ -115,118 +103,5 @@ export class WebhooksController {
     }
 
     return { received: true };
-  }
-
-  // Returns the confirmed groups, or null if the transition did not apply
-  // (order was not pending_payment when the UPDATE ran). The WHERE clause
-  // on the UPDATE is the only guard — no separate read-then-check, so two
-  // concurrent calls cannot both pass a check that is stale by the time
-  // either writes (final review finding #6).
-  private async confirmOrder(
-    orderId: string,
-    providerPaymentId: string | null,
-  ): Promise<OrderVendorGroup[] | null> {
-    return this.sequelize.transaction(async (t) => {
-      // Sequelize's QueryTypes.UPDATE return shape for Postgres is
-      // [results, affectedRowCount] — results is always an empty array,
-      // the count is the SECOND element. Verified empirically (not
-      // assumed): the first version of this destructured [updatedCount]
-      // (the first element, always []), so `updatedCount === 0` never
-      // fired and payment.captured decremented stock on EVERY call, not
-      // just the first — caught by re-sending the same webhook sequence
-      // twice during the fix pass's own verification and seeing inventory
-      // drop a second time.
-      const [, updatedCount] = await this.sequelize.query(
-        `UPDATE orders SET status = :confirmed, razorpay_payment_id = :paymentId WHERE id = :orderId AND status = :pending`,
-        {
-          replacements: {
-            orderId,
-            confirmed: OrderStatus.CONFIRMED,
-            pending: OrderStatus.PENDING_PAYMENT,
-            paymentId: providerPaymentId,
-          },
-          type: QueryTypes.UPDATE,
-          transaction: t,
-        },
-      );
-      if (updatedCount === 0) {
-        return null;
-      }
-
-      const items = await this.sequelize.query<{ vendor_listing_id: string; quantity: string }>(
-        `
-        SELECT oi.vendor_listing_id, oi.quantity
-        FROM order_items oi
-        JOIN order_vendor_group ovg ON ovg.id = oi.order_vendor_group_id
-        WHERE ovg.order_id = :orderId
-        `,
-        { replacements: { orderId }, type: QueryTypes.SELECT, transaction: t },
-      );
-
-      // Converts reservation to a real decrement — the server-to-server
-      // signal, never the client SDK (decision 0041 rule 3).
-      //
-      // Final review finding #2: StockService.setStock/bulkSetStock (the
-      // vendor's own stock-write path, outside this plan's scope — a
-      // different file than any of this plan's 8 tasks touched) can set
-      // quantity_available below what is already reserved; nothing in
-      // that service validates against outstanding reservations. Without
-      // the clamp below, a vendor shelf-counting stock downward after a
-      // checkout reserved against the old number would make this
-      // decrement go negative, trip `CHECK (quantity_available >= 0)`,
-      // and roll back the whole transaction — permanently, since this
-      // same code re-runs on every Razorpay retry and fails the same way
-      // every time, leaving a CAPTURED payment stuck on a pending_payment
-      // order forever.
-      //
-      // GREATEST(..., 0) clamps the floor so the payment confirmation
-      // always succeeds — correctly recording the real, if negative-going,
-      // demand against stock rather than crashing on it — and the
-      // mismatch is logged loudly for someone to reconcile, rather than
-      // silently absorbed. The proper fix is still StockService itself
-      // rejecting or clamping a write that would undercut a live
-      // reservation; this is the payment-side half of that, since a
-      // captured payment must never be left unconfirmable regardless of
-      // what the catalog side allowed.
-      for (const item of items) {
-        const updatedRows = await this.sequelize.query<{ quantity_available: string }>(
-          `
-          UPDATE inventory
-          SET quantity_available = GREATEST(quantity_available - :qty, 0),
-              quantity_reserved = GREATEST(quantity_reserved - :qty, 0)
-          WHERE vendor_listing_id = :listingId AND warehouse_id IS NULL
-          RETURNING quantity_available
-          `,
-          {
-            replacements: { listingId: item.vendor_listing_id, qty: item.quantity },
-            type: QueryTypes.SELECT,
-            transaction: t,
-          },
-        );
-        const row = updatedRows[0];
-        if (row && Number(row.quantity_available) === 0) {
-          // Not proof of a shortfall by itself (legitimately selling the
-          // last unit also lands here), but worth a loud log either way —
-          // cheap, and the alternative (silence) is how #2 went
-          // unnoticed in the first place.
-          this.logger.warn(
-            `order ${orderId}: inventory for listing ${item.vendor_listing_id} clamped to 0 on confirm — verify this wasn't a reservation/stock-write conflict (final review finding #2)`,
-          );
-        }
-      }
-
-      // WHERE also pins status: PENDING, defensively — see the matching
-      // comment in OrdersService.cancel for why this invariant already
-      // holds, and why it's asserted here anyway rather than relied on
-      // solely from this file.
-      await this.groupModel.update(
-        { status: OrderVendorGroupStatus.CONFIRMED },
-        { where: { orderId, status: OrderVendorGroupStatus.PENDING }, transaction: t },
-      );
-
-      // Returned so the caller can notify each group's vendor OUTSIDE this
-      // transaction.
-      return this.groupModel.findAll({ where: { orderId }, transaction: t });
-    });
   }
 }

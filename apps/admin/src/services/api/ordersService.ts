@@ -1,11 +1,13 @@
 import type {
   AdminOverrideVendorGroupStatusRequest,
+  AdminRefundRequest,
   OrderDto,
   PaymentEventDto,
+  RefundDto,
 } from '@golden-abode/types';
 
 import { API_ENDPOINTS } from '@/constants/apiEndpoints';
-import { getRequest, patchRequest, postRequest } from '@/services/api/apiClient';
+import { getRequest, patchRequest, postRequestWithStatus } from '@/services/api/apiClient';
 
 export const ordersService = {
   fetchOrders(): Promise<OrderDto[]> {
@@ -16,11 +18,20 @@ export const ordersService = {
     return getRequest<OrderDto>(API_ENDPOINTS.admin.orderById(orderId));
   },
 
-  refundOrder(orderId: string): Promise<OrderDto> {
-    return postRequest<OrderDto, Record<string, never>>(
+  // 202 means the refund is recorded but Razorpay has not confirmed it yet.
+  async refundOrder(
+    orderId: string,
+    body: AdminRefundRequest,
+  ): Promise<{ order: OrderDto; pending: boolean }> {
+    const { data, status } = await postRequestWithStatus<OrderDto, AdminRefundRequest>(
       API_ENDPOINTS.admin.orderRefund(orderId),
-      {},
+      body,
     );
+    return { order: data, pending: status === 202 };
+  },
+
+  listRefunds(orderId: string): Promise<RefundDto[]> {
+    return getRequest<RefundDto[]>(API_ENDPOINTS.admin.orderRefunds(orderId));
   },
 
   cancelOrder(orderId: string): Promise<OrderDto> {

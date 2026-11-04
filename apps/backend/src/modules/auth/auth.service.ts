@@ -3,11 +3,13 @@ import {
   UnauthorizedException,
   ConflictException,
   BadRequestException,
+  NotFoundException,
   Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/sequelize';
+import { Sequelize } from 'sequelize-typescript';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 
@@ -24,6 +26,7 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { LogoutDto } from './dto/logout.dto';
 import { AdminRegisterDto } from './dto/admin-register.dto';
 import { AdminLoginDto } from './dto/admin-login.dto';
+import { AdminResetPasswordDto } from './dto/admin-reset-password.dto';
 
 const BCRYPT_SALT_ROUNDS = 12;
 
@@ -43,6 +46,7 @@ export class AuthService {
     private usersService: UsersService,
     private customersService: CustomersService,
     private redisService: RedisService,
+    private readonly sequelize: Sequelize,
     @InjectModel(RefreshToken)
     private refreshTokenModel: typeof RefreshToken,
   ) {
@@ -54,13 +58,20 @@ export class AuthService {
   async sendOtp(dto: SendOtpDto): Promise<{ message: string; devOtp?: string }> {
     const { phone } = dto;
 
-    // Rate limiting check (Redis-based)
+    // Per-phone send limit (Redis-based). It exists to stop SMS spam against a
+    // victim's number and to cap MSG91 cost, so it is enforced ONLY when real
+    // SMS is on. In demo mode (USE_MSG91_SMS=false) nothing is sent or billed
+    // and the code comes back in the response, so the limit protects nothing
+    // and only locks testers out of their own accounts (decision 0057). It
+    // switches itself back on with USE_MSG91_SMS=true; the verify-attempt
+    // limit in verifyOtp is unaffected and always applies.
+    const enforceSendLimit = this.useMsg91Sms;
     const rateLimitKey = `otp_rate:${phone}`;
-    const attempts = await this.redisService.get(rateLimitKey);
+    const attempts = enforceSendLimit ? await this.redisService.get(rateLimitKey) : null;
     const maxSends = this.configService.get<number>('throttle.otpSendLimit', 3);
     const rateTtl = this.configService.get<number>('throttle.otpSendTtl', 3600);
 
-    if (attempts && parseInt(attempts, 10) >= maxSends) {
+    if (enforceSendLimit && attempts && parseInt(attempts, 10) >= maxSends) {
       throw new BadRequestException(`OTP send limit exceeded. Try again after some time.`);
     }
 
@@ -75,9 +86,12 @@ export class AuthService {
     const otpKey = `otp:${phone}`;
     await this.redisService.set(otpKey, hashedOtp, 300); // 5 minutes
 
-    // Increment rate limit counter
-    const currentCount = attempts ? parseInt(attempts, 10) : 0;
-    await this.redisService.set(rateLimitKey, (currentCount + 1).toString(), rateTtl);
+    // Increment rate limit counter (real SMS only — in demo mode no counter is
+    // written, so flipping to real SMS starts every number from a clean slate).
+    if (enforceSendLimit) {
+      const currentCount = attempts ? parseInt(attempts, 10) : 0;
+      await this.redisService.set(rateLimitKey, (currentCount + 1).toString(), rateTtl);
+    }
 
     if (this.useMsg91Sms) {
       await this.sendViaMSG91(phone, otp);
@@ -186,21 +200,27 @@ export class AuthService {
       throw new ConflictException('User with this phone number already exists');
     }
 
-    // Create user
-    const user = await this.usersService.create({
-      name,
-      phone: payload.phone,
-      role,
-    });
-
     // CUSTOMER has no separate onboarding step (unlike VENDOR, which
     // collects shop/address/GPS data afterward via POST /vendors/onboard) —
     // every cart/order service resolves a customers row by user id and 404s
-    // without one, so it must exist the moment registration completes.
-    // Decision 0041's own named gap: no code path created this row until now.
-    if (role === Role.CUSTOMER) {
-      await this.customersService.createForUser(user.id, name);
-    }
+    // ("no customer profile found for this user") without one, so it must
+    // exist the moment registration completes.
+    //
+    // The user row and the customers row are ONE unit of work. As two bare
+    // writes, a failure of the second left a login with no shopping profile
+    // — a half-created account that nothing repaired. Inside a transaction
+    // that failure rolls the user insert back too, so the caller can simply
+    // register again.
+    const user = await this.sequelize.transaction(async (transaction) => {
+      const created = await this.usersService.create(
+        { name, phone: payload.phone, role },
+        transaction,
+      );
+      if (role === Role.CUSTOMER) {
+        await this.customersService.createForUser(created.id, name, transaction);
+      }
+      return created;
+    });
 
     // Generate tokens
     const tokens = await this.generateTokenPair(user);
@@ -268,6 +288,30 @@ export class AuthService {
       refreshToken: tokens.refreshToken,
       user: this.sanitizeUser(user),
     };
+  }
+
+  // Decision 0050. No email/SMS delivery exists for admin accounts, so
+  // this reuses the same ADMIN_REGISTRATION_SECRET that already gates
+  // "may create a new admin" — the same trust decision, extended to an
+  // existing account instead of only a new one. Revokes every refresh
+  // token for the user, same pattern refresh()'s reuse-detection branch
+  // already uses: a credential change should not leave old sessions
+  // standing.
+  async resetAdminPassword(dto: AdminResetPasswordDto): Promise<{ success: true }> {
+    this.assertValidAdminRegistrationSecret(dto.secretKey);
+
+    const normalizedEmail = dto.email.trim().toLowerCase();
+    const user = await this.usersService.findByEmail(normalizedEmail);
+    if (!user || user.role !== Role.ADMIN) {
+      throw new NotFoundException('No admin account with this email');
+    }
+
+    const passwordHash = await bcrypt.hash(dto.newPassword, BCRYPT_SALT_ROUNDS);
+    await user.update({ passwordHash });
+    await this.refreshTokenModel.update({ isRevoked: true }, { where: { userId: user.id } });
+
+    this.logger.log(`Admin password reset: ${normalizedEmail}`);
+    return { success: true };
   }
 
   private assertValidAdminRegistrationSecret(secretKey: string): void {

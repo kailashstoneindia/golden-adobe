@@ -23,6 +23,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { ArtisansService } from './artisans.service';
 import { HireRequestsService } from './hire-requests.service';
+import { isVisibleToArtisan } from './hire-request-rules';
 import { OnboardArtisanDto } from './dto/onboard-artisan.dto';
 import { UpdateArtisanProfileDto } from './dto/update-artisan-profile.dto';
 import { UpdateAccountDetailsDto } from './dto/update-account-details.dto';
@@ -30,6 +31,7 @@ import { CreateTeamMemberDto } from './dto/create-team-member.dto';
 import { UpdateTeamMemberDto } from './dto/update-team-member.dto';
 import { CreateHireRequestDto } from './dto/create-hire-request.dto';
 import { CancelHireRequestDto } from './dto/cancel-hire-request.dto';
+import { DeclineHireRequestDto } from './dto/decline-hire-request.dto';
 import { CreateCompletionEstimateDto } from './dto/create-completion-estimate.dto';
 import { CreateDocumentUploadUrlDto } from './dto/create-document-upload-url.dto';
 import { ConfirmDocumentUploadDto } from './dto/confirm-document-upload.dto';
@@ -171,7 +173,9 @@ export class ArtisansController {
   @Roles(Role.ARTISAN)
   @ApiOperation({
     summary: 'Hire requests assigned to you',
-    description: 'Admin-approved only — a PENDING_ADMIN_REVIEW request never appears here.',
+    description:
+      'Only requests the admin let through: PENDING_ADMIN_REVIEW and ADMIN_REJECTED never appear here. ' +
+      'customerName/customerPhone are set while PENDING_ARTISAN_RESPONSE, ACCEPTED_BY_ARTISAN or IN_PROGRESS.',
   })
   @ApiResponse({ status: 200, description: 'Your hire requests, newest first' })
   async listMyHireRequests(@Req() req: any) {
@@ -193,6 +197,39 @@ export class ArtisansController {
     @Body() dto: CreateCompletionEstimateDto,
   ) {
     return this.hireRequestsService.addEstimate(req.user.sub, id, dto);
+  }
+
+  @Patch('me/hire-requests/:id/accept')
+  @Roles(Role.ARTISAN)
+  @ApiOperation({
+    summary: 'Accept a hire request the admin sent you',
+    description:
+      'PENDING_ARTISAN_RESPONSE -> ACCEPTED_BY_ARTISAN, within 48 hours of the admin allowing it (decision 0055).',
+  })
+  @ApiResponse({ status: 200, description: 'Updated hire request, status ACCEPTED_BY_ARTISAN' })
+  @ApiResponse({ status: 403, description: 'This hire request does not belong to you' })
+  @ApiResponse({ status: 409, description: 'Not waiting on you, or the 48-hour window has passed' })
+  async acceptHireRequest(@Req() req: any, @Param('id', ParseUUIDPipe) id: string) {
+    return this.hireRequestsService.acceptRequest(req.user.sub, id);
+  }
+
+  @Patch('me/hire-requests/:id/decline')
+  @Roles(Role.ARTISAN)
+  @ApiOperation({
+    summary: 'Decline a hire request the admin sent you',
+    description:
+      'PENDING_ARTISAN_RESPONSE -> ARTISAN_DECLINED, reason required, within 48 hours (decision 0055).',
+  })
+  @ApiResponse({ status: 200, description: 'Updated hire request, status ARTISAN_DECLINED' })
+  @ApiResponse({ status: 400, description: 'Missing reason' })
+  @ApiResponse({ status: 403, description: 'This hire request does not belong to you' })
+  @ApiResponse({ status: 409, description: 'Not waiting on you, or the 48-hour window has passed' })
+  async declineHireRequest(
+    @Req() req: any,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: DeclineHireRequestDto,
+  ) {
+    return this.hireRequestsService.declineRequest(req.user.sub, id, dto);
   }
 
   @Patch('me/hire-requests/:id/start')
@@ -228,7 +265,8 @@ export class ArtisansController {
   @ApiOperation({
     summary: 'Cancel a hire request',
     description:
-      'Legal from PENDING_ADMIN_REVIEW, ACCEPTED_BY_ARTISAN, or IN_PROGRESS. Terminal — no resume path.',
+      'Legal from PENDING_ADMIN_REVIEW, PENDING_ARTISAN_RESPONSE, ACCEPTED_BY_ARTISAN, or IN_PROGRESS. ' +
+      'The artisan cannot cancel while PENDING_ARTISAN_RESPONSE — they decline instead. Terminal — no resume path.',
   })
   @ApiResponse({ status: 200, description: 'Updated hire request, status CANCELLED' })
   @ApiResponse({ status: 403, description: 'Not the owning customer, owning artisan, or admin' })
@@ -330,7 +368,12 @@ export class ArtisansController {
   private async assertCanViewHireRequest(
     userId: string,
     role: string,
-    request: { customerId: string; artisanId: string; status: string },
+    request: {
+      customerId: string;
+      artisanId: string;
+      status: string;
+      adminReviewedAt: Date | null;
+    },
   ): Promise<void> {
     if (role === Role.ADMIN) {
       return;
@@ -339,11 +382,11 @@ export class ArtisansController {
       return;
     }
     if (role === Role.ARTISAN) {
-      // Same admin-gate boundary as listForArtisan: an artisan isn't
-      // notified of a request until admin approves it, so they can't
-      // confirm it exists via this read either while it's still
-      // PENDING_ADMIN_REVIEW.
-      if (request.status === 'PENDING_ADMIN_REVIEW') {
+      // Same admin-gate boundary as listForArtisan: an artisan only sees a
+      // request the admin let through, so they can't confirm one exists
+      // via this read while it's in admin review, was blocked, or was
+      // cancelled before the admin reviewed it.
+      if (!isVisibleToArtisan(request)) {
         throw new ForbiddenException('you may not view this hire request');
       }
       const artisan = await this.artisansService.resolveArtisanByUserId(userId).catch(() => null);

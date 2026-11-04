@@ -6,7 +6,9 @@ import { VendorDetailModal } from '@/components/vendors/VendorDetailModal';
 import { ERROR_MESSAGES } from '@/constants/error.constants';
 import { useCategoryTreeQuery } from '@/queries/useCatalogQueries';
 import {
+  useApproveVendorMutation,
   useCitiesQuery,
+  useRejectVendorMutation,
   useSetVendorCategoriesMutation,
   useSetVendorCityMutation,
   useVendorCategoriesQuery,
@@ -26,12 +28,18 @@ export function VendorsPage() {
   const categoriesQuery = useVendorCategoriesQuery(selectedVendor?.id ?? null);
   const setCityMutation = useSetVendorCityMutation();
   const setCategoriesMutation = useSetVendorCategoriesMutation();
+  const approveMutation = useApproveVendorMutation();
+  const rejectMutation = useRejectVendorMutation();
 
   const leafCategories = useMemo(
     () => leavesOf(treeQuery.data ?? []).map(toLeafOption),
     [treeQuery.data],
   );
-  const isSubmitting = setCityMutation.isPending || setCategoriesMutation.isPending;
+  const isSubmitting =
+    setCityMutation.isPending ||
+    setCategoriesMutation.isPending ||
+    approveMutation.isPending ||
+    rejectMutation.isPending;
 
   const handleSaveCity = async (cityId: string | null): Promise<void> => {
     if (!selectedVendor) return;
@@ -55,6 +63,31 @@ export function VendorsPage() {
         vendorId: selectedVendor.id,
         body: { categoryIds },
       });
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : ERROR_MESSAGES.generic);
+    }
+  };
+
+  const handleApprove = async (): Promise<void> => {
+    if (!selectedVendor) return;
+    setActionError(null);
+    try {
+      const updated = await approveMutation.mutateAsync(selectedVendor.id);
+      setSelectedVendor(updated);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : ERROR_MESSAGES.generic);
+    }
+  };
+
+  const handleReject = async (reason: string): Promise<void> => {
+    if (!selectedVendor) return;
+    setActionError(null);
+    try {
+      const updated = await rejectMutation.mutateAsync({
+        vendorId: selectedVendor.id,
+        body: { reason },
+      });
+      setSelectedVendor(updated);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : ERROR_MESSAGES.generic);
     }
@@ -85,6 +118,7 @@ export function VendorsPage() {
             <thead>
               <tr>
                 <th>Shop</th>
+                <th>Status</th>
                 <th>City</th>
                 <th>GSTIN</th>
                 <th>Updated</th>
@@ -101,6 +135,7 @@ export function VendorsPage() {
                   }}
                 >
                   <td>{vendor.shopName}</td>
+                  <td>{formatVendorStatusLabel(vendor.status)}</td>
                   <td>{vendor.city?.name ?? '—'}</td>
                   <td>{vendor.gstin ?? '—'}</td>
                   <td>{formatDateTime(vendor.updatedAt)}</td>
@@ -124,6 +159,8 @@ export function VendorsPage() {
           onClose={() => setSelectedVendor(null)}
           onSaveCity={handleSaveCity}
           onSaveCategories={handleSaveCategories}
+          onApprove={handleApprove}
+          onReject={handleReject}
         />
       ) : null}
     </section>
@@ -136,4 +173,10 @@ function leavesOf(nodes: CategoryNode[]): CategoryNode[] {
 
 function toLeafOption(node: CategoryNode): { id: string; path: string; name: string } {
   return { id: node.id, path: node.path, name: node.name };
+}
+
+function formatVendorStatusLabel(status: string): string {
+  if (status === 'APPROVED') return 'Approved';
+  if (status === 'REJECTED') return 'Rejected';
+  return 'Pending';
 }

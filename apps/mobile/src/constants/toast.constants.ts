@@ -25,6 +25,9 @@ export const TOAST_MESSAGES = {
   paymentPending: 'Payment is still pending. Complete payment to confirm the order.',
   paymentConfirmed: 'Payment confirmed',
   orderCancelled: 'Order cancelled',
+  orderCancelPaymentWentThrough: 'Your payment went through — your order is confirmed.',
+  paymentArrivedAfterExpiry:
+    'Your payment arrived after the order expired. A refund will be issued.',
   vendorGroupStatusUpdated: 'Order status updated',
   shopProfileSaved: 'Shop profile saved',
   artisanProfileSaved: 'Profile saved',

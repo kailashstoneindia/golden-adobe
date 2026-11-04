@@ -46,6 +46,7 @@ export const ERROR_MESSAGES = {
   paymentSheetUnavailable: 'Payment sheet is not available in this build. Rebuild the app to pay.',
   paymentKeyMissing: 'Payment is not configured on this build.',
   paymentFailed: 'Payment was not completed.',
+  paymentWindowExpired: "This order's payment window has expired. Please place the order again.",
   ordersFailed: 'Could not load orders. Try again.',
   orderDetailFailed: 'Could not load this order. Try again.',
   orderCancelFailed: 'Could not cancel this order.',
