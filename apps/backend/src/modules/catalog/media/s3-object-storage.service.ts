@@ -8,6 +8,7 @@ import {
   S3Client,
 } from '@aws-sdk/client-s3';
 import { createPresignedPost } from '@aws-sdk/s3-presigned-post';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 import type { StorageConfig } from '../../../config/storage.config';
 import {
@@ -69,6 +70,15 @@ export class S3ObjectStorage implements ObjectStorage {
       ],
     });
     return { url: result.url, fields: result.fields };
+  }
+
+  // Uses presignClient so the link points at the browser-reachable endpoint.
+  async presignGet(key: string, expiresInSeconds: number): Promise<string> {
+    return getSignedUrl(
+      this.presignClient,
+      new GetObjectCommand({ Bucket: this.config.bucket, Key: key }),
+      { expiresIn: expiresInSeconds },
+    );
   }
 
   async head(key: string): Promise<ObjectHead | null> {

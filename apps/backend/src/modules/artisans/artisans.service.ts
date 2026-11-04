@@ -339,10 +339,6 @@ export class ArtisansService {
     };
   }
 
-  async getArtisanById(artisanId: string): Promise<ArtisanProfileDto> {
-    return toArtisanProfileDto(await this.findByIdOrThrow(artisanId));
-  }
-
   async listPendingVerification(page: number, limit: number): Promise<PaginatedArtisansResponse> {
     // Review Focus item from the implementation plan, LLD §4.8: an
     // artisan with no document yet is "incomplete", not "pending" —

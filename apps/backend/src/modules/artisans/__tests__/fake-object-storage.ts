@@ -16,6 +16,11 @@ export class FakeObjectStorage {
     return { url: 'https://example.test/upload', fields: {} };
   }
 
+  // Deterministic, so tests can assert which key a link was signed for.
+  async presignGet(key: string, expiresInSeconds: number): Promise<string> {
+    return `https://signed.example.test/${key}?expires=${expiresInSeconds}`;
+  }
+
   async head(key: string): Promise<ObjectHead | null> {
     return this.existingKeys.has(key) ? { contentLength: 1024 } : null;
   }

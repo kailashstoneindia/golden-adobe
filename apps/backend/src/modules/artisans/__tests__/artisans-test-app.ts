@@ -25,6 +25,7 @@ import { ArtisansController } from '../artisans.controller';
 import { AdminArtisansController } from '../admin-artisans.controller';
 import { ArtisansService } from '../artisans.service';
 import { HireRequestsService } from '../hire-requests.service';
+import { AdminArtisansService } from '../admin-artisans.service';
 import { NOTIFICATION_SERVICE } from '../../notifications/notification.interface';
 import { LogNotificationService } from '../../notifications/log-notification.service';
 
@@ -107,6 +108,7 @@ export async function createArtisansTestApp(): Promise<ArtisansTestApp> {
       JwtStrategy,
       ArtisansService,
       HireRequestsService,
+      AdminArtisansService,
       { provide: NOTIFICATION_SERVICE, useClass: LogNotificationService },
       { provide: getModelToken(Order), useValue: orderModel },
       {

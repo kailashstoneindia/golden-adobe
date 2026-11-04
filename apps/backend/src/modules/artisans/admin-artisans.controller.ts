@@ -18,6 +18,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ArtisansService } from './artisans.service';
 import { HireRequestsService } from './hire-requests.service';
+import { AdminArtisansService } from './admin-artisans.service';
 import { ReviewHireRequestDto } from './dto/review-hire-request.dto';
 import { RejectArtisanVerificationDto } from './dto/reject-artisan-verification.dto';
 import { PaginationQueryDto } from './dto/pagination-query.dto';
@@ -34,13 +35,14 @@ export class AdminArtisansController {
   constructor(
     private readonly artisansService: ArtisansService,
     private readonly hireRequestsService: HireRequestsService,
+    private readonly adminArtisansService: AdminArtisansService,
   ) {}
 
   @Get()
   @ApiOperation({ summary: 'List all artisan profiles' })
   @ApiResponse({ status: 200, description: 'Page of artisan profiles, newest first' })
   async list(@Query() query: PaginationQueryDto) {
-    return this.artisansService.listArtisans(query.page ?? 1, query.limit ?? 20);
+    return this.adminArtisansService.list(query.page ?? 1, query.limit ?? 20);
   }
 
   // Declared before ':id' so the UUID route doesn't swallow it.
@@ -63,7 +65,7 @@ export class AdminArtisansController {
   })
   @ApiResponse({ status: 200, description: 'Page of artisans ready for an admin to review' })
   async pendingVerification(@Query() query: PaginationQueryDto) {
-    return this.artisansService.listPendingVerification(query.page ?? 1, query.limit ?? 20);
+    return this.adminArtisansService.listPendingVerification(query.page ?? 1, query.limit ?? 20);
   }
 
   @Get('hire-requests/pending')
@@ -105,7 +107,7 @@ export class AdminArtisansController {
   @ApiResponse({ status: 200, description: 'The artisan profile' })
   @ApiResponse({ status: 404, description: 'No such artisan' })
   async getOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.artisansService.getArtisanById(id);
+    return this.adminArtisansService.get(id);
   }
 
   @Patch(':id/verify')

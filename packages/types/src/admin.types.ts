@@ -1,7 +1,12 @@
 import { Role } from './role.enum';
 import { UserDto } from './user.types';
 import { PaginatedResponse } from './pagination.types';
-import type { ArtisanHireRequestDto, TradeType } from './artisan.types';
+import type {
+  ArtisanHireRequestDto,
+  ArtisanProfileDto,
+  ArtisanTeamMemberDto,
+  TradeType,
+} from './artisan.types';
 import type { OrderDto, OrderVendorGroupDto, RefundDto } from './order.types';
 import type { VendorProfileDto } from './vendor.types';
 
@@ -128,3 +133,21 @@ export type AdminVendorListingDto = {
 };
 
 export type PaginatedAdminVendorListingsResponse = PaginatedResponse<AdminVendorListingDto>;
+
+// ─── Ustaads (decision 0058 Task 6) ──────────────────────────────────────
+
+export type AdminArtisanTeamMemberDto = ArtisanTeamMemberDto & {
+  // Short-lived signed link to the member's document; null in lists.
+  documentViewUrl: string | null;
+};
+
+export type AdminArtisanDto = Omit<ArtisanProfileDto, 'team'> & {
+  owner: AdminContactDto | null;
+  team: AdminArtisanTeamMemberDto[];
+  // Short-lived signed link to the ustaad's document; null in lists and when
+  // there is no document. A stored http(s) URL is passed through as-is.
+  documentViewUrl: string | null;
+  jobCounts: { active: number; completed: number; declined: number; total: number };
+};
+
+export type PaginatedAdminArtisansResponse = PaginatedResponse<AdminArtisanDto>;
