@@ -935,7 +935,7 @@ textarea.input {
   text-decoration: none;
 }
 
-.statCardLink:hover .statCard,
-.statCardLink:focus-visible .statCard {
+.statCardLink:hover,
+.statCardLink:focus-visible {
   border-color: var(--color-navy);
 }

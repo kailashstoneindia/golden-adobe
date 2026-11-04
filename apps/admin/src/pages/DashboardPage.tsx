@@ -61,17 +61,19 @@ type StatCardProps = {
 };
 
 function StatCard({ label, value, to }: StatCardProps) {
-  const card = (
-    <article className={styles.statCard}>
+  const content = (
+    <>
       <div className={styles.statValue}>{value}</div>
       <div className={styles.statLabel}>{label}</div>
-    </article>
+    </>
   );
+  // The link is the card itself, not a wrapper around an <article>:
+  // Chromium gives a link no accessible name from a nested <article>.
   return to ? (
-    <Link to={to} className={styles.statCardLink}>
-      {card}
+    <Link to={to} className={`${styles.statCard} ${styles.statCardLink}`}>
+      {content}
     </Link>
   ) : (
-    card
+    <article className={styles.statCard}>{content}</article>
   );
 }
