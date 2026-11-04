@@ -222,7 +222,7 @@ export type ArtisanSearchQuery = {
 export type PaginatedArtisansResponse = PaginatedResponse<ArtisanProfileDto>;
 export type PaginatedArtisanPublicProfilesResponse = PaginatedResponse<ArtisanPublicProfileDto>;
 
-// Decision 0056 §3a: an ustaad the admin can't verify yet — no profile, or a
+// Decision 0058 §3a: an ustaad the admin can't verify yet — no profile, or a
 // profile with no document. Listed so the admin can chase them.
 export interface ArtisanAwaitingDocumentDto {
   userId: string;

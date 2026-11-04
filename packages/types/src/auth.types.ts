@@ -80,6 +80,6 @@ export interface ApiErrorResponse {
   timestamp: string;
   path: string;
   // Machine-readable reason when the message alone is ambiguous, e.g.
-  // "ACCOUNT_NOT_APPROVED" (decision 0057).
+  // "ACCOUNT_NOT_APPROVED" (decision 0059).
   code?: string;
 }

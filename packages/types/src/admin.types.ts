@@ -11,7 +11,7 @@ export type AdminDashboardStats = {
   approvedArtisans: number;
   pendingArtisanVerifications: number;
   pendingHireRequests: number;
-  // Ustaads with no profile or no document yet (decision 0056 §3a).
+  // Ustaads with no profile or no document yet (decision 0058 §3a).
   artisansAwaitingDocument: number;
 };
 
@@ -35,7 +35,7 @@ export type AdminActionResponse = {
   user: UserDto;
 };
 
-// ─── Admin-only views (decision 0056) ────────────────────────────────────
+// ─── Admin-only views (decision 0058) ────────────────────────────────────
 // Admin DTOs extend the shared ones; customers, vendors and ustaads never
 // receive these fields.
 
@@ -51,7 +51,7 @@ export type AdminContactDto = {
   lastLoginAt: string | null;
 };
 
-/** Hire requests show the ustaad without an email (user ruling, decision 0056). */
+/** Hire requests show the ustaad without an email (user ruling, decision 0058). */
 export type AdminContactWithoutEmailDto = Omit<AdminContactDto, 'email'>;
 
 export type AdminHireRequestDto = ArtisanHireRequestDto & {
