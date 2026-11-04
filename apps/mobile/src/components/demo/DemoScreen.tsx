@@ -1,7 +1,8 @@
 import { router } from 'expo-router';
-import { type ReactNode } from 'react';
+import { useCallback, useState, type ReactNode } from 'react';
 import {
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   View,
@@ -19,6 +20,8 @@ interface DemoScreenProps {
   showBack?: boolean;
   footer?: ReactNode;
   contentStyle?: StyleProp<ViewStyle>;
+  /** Enables pull-to-refresh; the spinner shows until the promise settles. */
+  onRefresh?: () => Promise<unknown>;
   children: ReactNode;
 }
 
@@ -28,8 +31,22 @@ export function DemoScreen({
   showBack = false,
   footer,
   contentStyle,
+  onRefresh,
   children,
 }: DemoScreenProps) {
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const handleRefresh = useCallback(async () => {
+    if (!onRefresh) {
+      return;
+    }
+    setIsRefreshing(true);
+    try {
+      await onRefresh();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [onRefresh]);
+
   return (
     <Screen edges={['top']}>
       <View style={styles.root}>
@@ -45,6 +62,21 @@ export function DemoScreen({
           style={styles.scroll}
           contentContainerStyle={[styles.content, contentStyle]}
           showsVerticalScrollIndicator={false}
+          // Keeps the focused field above the keyboard on iOS; Android
+          // resizes the window instead.
+          automaticallyAdjustKeyboardInsets
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          refreshControl={
+            onRefresh ? (
+              <RefreshControl
+                refreshing={isRefreshing}
+                onRefresh={handleRefresh}
+                tintColor={Colors.navy}
+                colors={[Colors.navy]}
+              />
+            ) : undefined
+          }
         >
           <Text variant="h1" style={styles.title}>
             {title}

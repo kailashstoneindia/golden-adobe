@@ -47,8 +47,21 @@ function AddressFormComponent({
         keyboardType="number-pad"
         maxLength={6}
       />
-      <Pressable onPress={() => onChange('isDefault', !values.isDefault)} style={styles.defaultRow}>
-        <Text variant="body">{values.isDefault ? 'Default address' : 'Set as default'}</Text>
+      <Pressable
+        onPress={() => onChange('isDefault', !values.isDefault)}
+        style={styles.defaultRow}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: values.isDefault }}
+        hitSlop={4}
+      >
+        <View style={[styles.checkbox, values.isDefault ? styles.checkboxChecked : null]}>
+          {values.isDefault ? (
+            <Text variant="caption" color={Colors.white}>
+              ✓
+            </Text>
+          ) : null}
+        </View>
+        <Text variant="body">Use as my default address</Text>
       </Pressable>
       <View style={styles.actions}>
         <Button title="Cancel" variant="secondary" onPress={onCancel} />
@@ -65,7 +78,24 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   defaultRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
     paddingVertical: Spacing.sm,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: Colors.line,
+    backgroundColor: Colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxChecked: {
+    borderColor: Colors.navy,
+    backgroundColor: Colors.navy,
   },
   actions: {
     flexDirection: 'row',

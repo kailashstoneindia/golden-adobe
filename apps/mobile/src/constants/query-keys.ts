@@ -12,6 +12,22 @@ export const QUERY_KEYS = {
     profile: () => [...QUERY_KEYS.vendor.all, 'profile'] as const,
     categories: () => [...QUERY_KEYS.vendor.all, 'categories'] as const,
   },
+  artisan: {
+    all: ['artisan'] as const,
+    profile: () => [...QUERY_KEYS.artisan.all, 'profile'] as const,
+    publicProfile: (artisanId: string) =>
+      [...QUERY_KEYS.artisan.all, 'publicProfile', artisanId] as const,
+    search: (paramsKey: string) => [...QUERY_KEYS.artisan.all, 'search', paramsKey] as const,
+  },
+  hireRequests: {
+    all: ['hireRequests'] as const,
+    artisanList: () => [...QUERY_KEYS.hireRequests.all, 'artisanList'] as const,
+    customerList: () => [...QUERY_KEYS.hireRequests.all, 'customerList'] as const,
+    detail: (requestId: string) => [...QUERY_KEYS.hireRequests.all, 'detail', requestId] as const,
+    estimates: (requestId: string) =>
+      [...QUERY_KEYS.hireRequests.all, 'estimates', requestId] as const,
+    orders: (requestId: string) => [...QUERY_KEYS.hireRequests.all, 'orders', requestId] as const,
+  },
   search: {
     all: ['search'] as const,
     products: (paramsKey: string) => [...QUERY_KEYS.search.all, 'products', paramsKey] as const,
@@ -37,6 +53,8 @@ export const QUERY_KEYS = {
     all: ['orders'] as const,
     list: () => [...QUERY_KEYS.orders.all, 'list'] as const,
     detail: (orderId: string) => [...QUERY_KEYS.orders.all, 'detail', orderId] as const,
+    artisanDetail: (orderId: string) =>
+      [...QUERY_KEYS.orders.all, 'artisanDetail', orderId] as const,
   },
   addresses: {
     all: ['addresses'] as const,

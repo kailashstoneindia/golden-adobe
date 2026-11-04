@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Colors, Radius, Spacing } from '../../theme';
 import { formatCategoryPath, formatInr } from '../../utils';
 import { Text } from '../ui';
+import { ProductImage } from './ProductImage';
 
 type SearchProductCardProps = {
   product: SearchDocument;
@@ -18,11 +19,7 @@ function SearchProductCardComponent({ product, onPress }: SearchProductCardProps
 
   return (
     <Pressable style={styles.card} onPress={handlePress}>
-      <View style={styles.imagePlaceholder}>
-        <Text variant="caption" color={Colors.subtle}>
-          No image
-        </Text>
-      </View>
+      <ProductImage image={product.primaryImage} size="thumb" style={styles.image} />
       <View style={styles.content}>
         <Text variant="bodyMedium" numberOfLines={2}>
           {product.name}
@@ -60,13 +57,10 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     padding: Spacing.md,
   },
-  imagePlaceholder: {
+  image: {
     width: 72,
     height: 72,
     borderRadius: Radius.sm,
-    backgroundColor: Colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   content: {
     flex: 1,

@@ -1,4 +1,5 @@
 import { ORDER_STATUSES, type OrderDto } from '@golden-abode/types';
+import { useState } from 'react';
 
 import { APP_CONSTANTS, ERROR_MESSAGES, TOAST_MESSAGES } from '../../constants';
 import { openRazorpayCheckout } from '../../services';
@@ -11,10 +12,18 @@ export function usePlaceOrder() {
   const checkout = useCheckoutMutation();
   const { pollUntilResolved } = useOrderPaymentPoll();
   const { showSuccess, showError, showWarning } = useToast();
+  // True from "Place order" until we leave checkout. Checkout empties the
+  // cart server-side, so the screen must not fall back to reading the live
+  // cart while the payment sheet is opening.
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  async function placeOrder(deliveryAddressId: string): Promise<void> {
+  async function placeOrder(deliveryAddressId: string, bookingId?: string): Promise<void> {
+    setIsProcessing(true);
     try {
-      const order = await checkout.mutateAsync({ deliveryAddressId });
+      const order = await checkout.mutateAsync({
+        deliveryAddressId,
+        ...(bookingId ? { bookingId } : {}),
+      });
       const sheetOpened = await openPaymentSheetOrWarn(order, showError);
       if (sheetOpened) {
         const resolved = await pollUntilResolved(order.id);
@@ -23,6 +32,8 @@ export function usePlaceOrder() {
       replaceToOrderDetail(order.id);
     } catch (error) {
       showError(getApiErrorMessage(error, ERROR_MESSAGES.checkoutFailed));
+    } finally {
+      setIsProcessing(false);
     }
   }
 
@@ -39,7 +50,7 @@ export function usePlaceOrder() {
     }
   }
 
-  return { placeOrder, payExistingOrder, isPlacing: checkout.isPending };
+  return { placeOrder, payExistingOrder, isPlacing: checkout.isPending || isProcessing };
 }
 
 async function tryOpenPaymentSheet(order: OrderDto, timeoutSeconds: number): Promise<void> {
@@ -54,10 +65,11 @@ async function tryOpenPaymentSheet(order: OrderDto, timeoutSeconds: number): Pro
   });
 }
 
-// Returns false when the sheet was not opened because the order's payment hold
-// has (nearly) run out; there is then nothing to wait for, so the caller must
-// not start polling. Any other failure keeps the existing behaviour: report it
-// and carry on to the poll.
+// Returns true only when the customer went through the payment sheet, so a
+// webhook may be on its way and polling is worthwhile. Returns false when the
+// sheet never opened (hold expired, no Razorpay order, key missing) or the
+// customer closed it: there is nothing to wait for, so the caller goes
+// straight to order detail, where "Pay now" retries.
 async function openPaymentSheetOrWarn(
   order: OrderDto,
   showError: (message: string) => void,
@@ -70,10 +82,15 @@ async function openPaymentSheetOrWarn(
     showError(ERROR_MESSAGES.paymentWindowExpired);
     return false;
   }
+  if (!order.razorpayOrderId) {
+    showError(ERROR_MESSAGES.paymentFailed);
+    return false;
+  }
   try {
     await tryOpenPaymentSheet(order, timeoutSeconds ?? 0);
   } catch (error) {
     showError(getApiErrorMessage(error, ERROR_MESSAGES.paymentFailed));
+    return false;
   }
   return true;
 }

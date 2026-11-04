@@ -1,19 +1,29 @@
+import { Role } from '@golden-abode/types';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { Screen } from '../src/components/layout/Screen';
 import { Badge, Button, Text } from '../src/components/ui';
-import { ROUTES } from '../src/constants';
+import { QUERY_KEYS, ROUTES, TRADE_TYPE_LABELS } from '../src/constants';
+import { useArtisanOnboardingStatus, useArtisanProfileQuery } from '../src/hooks/artisans';
 import { useAuth, useMe } from '../src/hooks/auth';
 import { useLogout } from '../src/hooks/auth/useLogout';
 import { Colors, Spacing } from '../src/theme';
 import { formatRoleLabel, isPendingApproval, needsVendorOnboarding } from '../src/utils/user';
 
+const APPROVAL_POLL_INTERVAL_MS = 15_000;
+
 export default function PendingApprovalScreen() {
   const { isAuthenticated, isHydrated, user } = useAuth();
-  const me = useMe();
+  // Poll so approval shows up without the user tapping "Check status".
+  const me = useMe(APPROVAL_POLL_INTERVAL_MS);
+  const queryClient = useQueryClient();
   const logout = useLogout();
+  const artisanOnboarding = useArtisanOnboardingStatus(user);
+  const isArtisan = user?.role === Role.ARTISAN;
+  const artisanProfile = useArtisanProfileQuery(isArtisan).data;
 
   useEffect(() => {
     if (!isHydrated) return;
@@ -28,13 +38,23 @@ export default function PendingApprovalScreen() {
       return;
     }
 
+    if (artisanOnboarding.needsOnboarding) {
+      router.replace(ROUTES.artisanOnboard);
+      return;
+    }
+
     if (user && !isPendingApproval(user)) {
       router.replace(ROUTES.home);
     }
-  }, [isAuthenticated, isHydrated, user]);
+  }, [artisanOnboarding.needsOnboarding, isAuthenticated, isHydrated, user]);
 
   const handleCheckStatus = async () => {
     const result = await me.refetch();
+    if (isArtisan) {
+      // Approval and verification land together; refresh the profile so the
+      // Ustaad home does not keep showing "Verification pending".
+      await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.artisan.profile() });
+    }
     if (result.data && !isPendingApproval(result.data)) {
       router.replace(ROUTES.home);
     }
@@ -49,21 +69,39 @@ export default function PendingApprovalScreen() {
     return null;
   }
 
+  // Decision 0048: an admin can reject a vendor; that is final until they
+  // re-review, so say so instead of showing "pending" forever.
+  const isRejectedVendor = user.vendorProfile?.status === 'REJECTED';
+
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Text variant="label">Almost ready</Text>
           <Text variant="h1" style={styles.title}>
-            Pending admin approval
+            {isRejectedVendor ? 'Application not approved' : 'Pending admin approval'}
           </Text>
-          <Badge label="Pending approval" variant="pending" />
+          <Badge
+            label={isRejectedVendor ? 'Not approved' : 'Pending approval'}
+            variant={isRejectedVendor ? 'error' : 'pending'}
+          />
         </View>
 
-        <Text variant="body" color={Colors.inkSoft}>
-          Your {formatRoleLabel(user.role).toLowerCase()} profile is under review. An admin will
-          verify your account before you can list inventory or take on projects.
-        </Text>
+        {isRejectedVendor ? (
+          <Text variant="body" color={Colors.inkSoft}>
+            Our team could not approve your shop
+            {user.vendorProfile?.rejectionReason
+              ? `: ${user.vendorProfile.rejectionReason}`
+              : '.'}{' '}
+            Contact support if you have questions or have fixed the issue.
+          </Text>
+        ) : (
+          <Text variant="body" color={Colors.inkSoft}>
+            Your {formatRoleLabel(user.role).toLowerCase()} profile is under review. An admin will
+            verify your account before you can{' '}
+            {isArtisan ? 'take on jobs from customers' : 'list inventory or take on projects'}.
+          </Text>
+        )}
 
         <View style={styles.details}>
           <Text variant="bodyMedium">{user.name}</Text>
@@ -75,6 +113,12 @@ export default function PendingApprovalScreen() {
               </Text>
               <Text variant="caption">{user.vendorProfile.address}</Text>
             </>
+          ) : null}
+          {isArtisan && artisanProfile ? (
+            <Text variant="bodyMedium" style={styles.shopName}>
+              {TRADE_TYPE_LABELS[artisanProfile.tradeType]}
+              {artisanProfile.servicePincode ? ` · ${artisanProfile.servicePincode}` : ''}
+            </Text>
           ) : null}
         </View>
 

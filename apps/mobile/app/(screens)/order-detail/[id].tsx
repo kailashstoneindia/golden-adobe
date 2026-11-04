@@ -14,6 +14,7 @@ import {
 } from '../../../src/constants';
 import { useAuth } from '../../../src/hooks/auth';
 import {
+  useArtisanOrderQuery,
   useCancelOrderMutation,
   useOrderQuery,
   useUpdateVendorOrderGroupStatusMutation,
@@ -22,7 +23,11 @@ import {
 import { usePlaceOrder } from '../../../src/hooks/payments';
 import { useToast } from '../../../src/hooks/useToast';
 import { Colors } from '../../../src/theme';
-import type { CustomerOrderDetailProps, VendorOrderDetailProps } from '../../../src/types';
+import type {
+  ArtisanOrderDetailProps,
+  CustomerOrderDetailProps,
+  VendorOrderDetailProps,
+} from '../../../src/types';
 import { formatInr, getApiErrorMessage } from '../../../src/utils';
 
 export default function OrderDetailScreen() {
@@ -43,6 +48,10 @@ export default function OrderDetailScreen() {
 
   if (isVendor) {
     return <VendorOrderDetail groupId={id} />;
+  }
+
+  if (user?.role === Role.ARTISAN) {
+    return <ArtisanOrderDetail orderId={id} />;
   }
 
   return <CustomerOrderDetail orderId={id} />;
@@ -66,6 +75,7 @@ function notifyCancelResult(
 
 function CustomerOrderDetail({ orderId }: CustomerOrderDetailProps) {
   const orderQuery = useOrderQuery(orderId);
+  const refresh = () => orderQuery.refetch();
   const cancelOrder = useCancelOrderMutation();
   const { payExistingOrder } = usePlaceOrder();
   const { showSuccess, showError, showWarning } = useToast();
@@ -90,7 +100,7 @@ function CustomerOrderDetail({ orderId }: CustomerOrderDetailProps) {
 
   if (orderQuery.isLoading) {
     return (
-      <DemoScreen title="Order details" showBack>
+      <DemoScreen onRefresh={refresh} title="Order details" showBack>
         <Text variant="body" color={Colors.inkSoft}>
           Loading order…
         </Text>
@@ -100,14 +110,14 @@ function CustomerOrderDetail({ orderId }: CustomerOrderDetailProps) {
 
   if (orderQuery.isError || !order) {
     return (
-      <DemoScreen title="Order details" showBack>
+      <DemoScreen onRefresh={refresh} title="Order details" showBack>
         <EmptyStateCard title="Order not available" message={ERROR_MESSAGES.orderDetailFailed} />
       </DemoScreen>
     );
   }
 
   return (
-    <DemoScreen title="Order details" showBack>
+    <DemoScreen onRefresh={refresh} title="Order details" showBack>
       <Text variant="bodyMedium">{ORDER_STATUS_LABELS[order.status]}</Text>
       <Text variant="caption" color={Colors.inkSoft}>
         Total {formatInr(order.grandTotal)}
@@ -134,8 +144,60 @@ function CustomerOrderDetail({ orderId }: CustomerOrderDetailProps) {
   );
 }
 
+// Read-only: an artisan sees materials ordered for their job and where they
+// are delivered, without payment actions or the customer's identifiers.
+function ArtisanOrderDetail({ orderId }: ArtisanOrderDetailProps) {
+  const orderQuery = useArtisanOrderQuery(orderId);
+  const refresh = () => orderQuery.refetch();
+  const order = orderQuery.data;
+
+  if (orderQuery.isLoading) {
+    return (
+      <DemoScreen onRefresh={refresh} title="Order details" showBack>
+        <Text variant="body" color={Colors.inkSoft}>
+          Loading order…
+        </Text>
+      </DemoScreen>
+    );
+  }
+
+  if (orderQuery.isError || !order) {
+    return (
+      <DemoScreen onRefresh={refresh} title="Order details" showBack>
+        <EmptyStateCard title="Order not available" message={ERROR_MESSAGES.orderDetailFailed} />
+      </DemoScreen>
+    );
+  }
+
+  return (
+    <DemoScreen
+      onRefresh={refresh}
+      title="Order details"
+      subtitle="Materials ordered for your job"
+      showBack
+    >
+      <Text variant="bodyMedium">{ORDER_STATUS_LABELS[order.status]}</Text>
+      <Text variant="caption" color={Colors.inkSoft}>
+        Total {formatInr(order.grandTotal)}
+      </Text>
+      {order.deliveryAddress ? (
+        <Text variant="caption" color={Colors.inkSoft}>
+          Deliver to {order.deliveryAddress.addressLine1}
+          {order.deliveryAddress.addressLine2
+            ? `, ${order.deliveryAddress.addressLine2}`
+            : ''}, {order.deliveryAddress.city} {order.deliveryAddress.pincode}
+        </Text>
+      ) : null}
+      {order.vendorGroups.map((group) => (
+        <OrderVendorSection key={group.id} group={group} />
+      ))}
+    </DemoScreen>
+  );
+}
+
 function VendorOrderDetail({ groupId }: VendorOrderDetailProps) {
   const groupQuery = useVendorOrderGroupQuery(groupId);
+  const refresh = () => groupQuery.refetch();
   const updateStatus = useUpdateVendorOrderGroupStatusMutation();
   const { showSuccess, showError } = useToast();
   const group = groupQuery.data;
@@ -156,7 +218,7 @@ function VendorOrderDetail({ groupId }: VendorOrderDetailProps) {
 
   if (groupQuery.isLoading) {
     return (
-      <DemoScreen title="Order details" showBack>
+      <DemoScreen onRefresh={refresh} title="Order details" showBack>
         <Text variant="body" color={Colors.inkSoft}>
           Loading order…
         </Text>
@@ -166,14 +228,14 @@ function VendorOrderDetail({ groupId }: VendorOrderDetailProps) {
 
   if (groupQuery.isError || !group) {
     return (
-      <DemoScreen title="Order details" showBack>
+      <DemoScreen onRefresh={refresh} title="Order details" showBack>
         <EmptyStateCard title="Order not available" message={ERROR_MESSAGES.orderDetailFailed} />
       </DemoScreen>
     );
   }
 
   return (
-    <DemoScreen title="Order details" showBack>
+    <DemoScreen onRefresh={refresh} title="Order details" showBack>
       <OrderVendorSection group={group} />
       <VendorStatusActions
         group={group}

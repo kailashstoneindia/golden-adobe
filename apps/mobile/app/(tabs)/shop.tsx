@@ -1,11 +1,13 @@
 import { Role } from '@golden-abode/types';
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { DemoScreen } from '../../src/components/demo/DemoScreen';
 import { Button, EmptyStateCard, Text, TextInput } from '../../src/components/ui';
-import { EMPTY_STATE_MESSAGES, ERROR_MESSAGES, TOAST_MESSAGES } from '../../src/constants';
+import { EMPTY_STATE_MESSAGES, ERROR_MESSAGES, ROUTES, TOAST_MESSAGES } from '../../src/constants';
 import { useAuth } from '../../src/hooks/auth';
+import { useLogout } from '../../src/hooks/auth/useLogout';
 import { useToast } from '../../src/hooks/useToast';
 import { useUpdateVendorProfileMutation, useVendorProfileQuery } from '../../src/hooks/vendor';
 import { Colors, Spacing } from '../../src/theme';
@@ -15,8 +17,10 @@ export default function ShopTabScreen() {
   const { user } = useAuth();
   const isVendor = user?.role === Role.VENDOR;
   const profileQuery = useVendorProfileQuery(isVendor);
+  const refresh = () => profileQuery.refetch();
   const updateProfile = useUpdateVendorProfileMutation();
   const { showSuccess, showError } = useToast();
+  const logout = useLogout();
   const [minOrderValue, setMinOrderValue] = useState('');
   const [hasLoadingUnloadingTeam, setHasLoadingUnloadingTeam] = useState<boolean | null>(null);
 
@@ -49,9 +53,31 @@ export default function ShopTabScreen() {
     );
   };
 
+  // Vendors have no You tab, so the shop profile is their only way out.
+  const handleLogout = async (): Promise<void> => {
+    try {
+      await logout.mutateAsync();
+      showSuccess(TOAST_MESSAGES.logoutSuccess);
+      router.replace(ROUTES.auth.login);
+    } catch {
+      showError(ERROR_MESSAGES.generic);
+    }
+  };
+
+  const logoutButton = (
+    <Button
+      title={logout.isPending ? 'Logging out…' : 'Log out'}
+      variant="ghost"
+      fullWidth
+      disabled={logout.isPending}
+      onPress={handleLogout}
+      style={styles.logout}
+    />
+  );
+
   if (!isVendor) {
     return (
-      <DemoScreen title="Shop profile">
+      <DemoScreen onRefresh={refresh} title="Shop profile">
         <EmptyStateCard
           title="Shop profile unavailable"
           message={EMPTY_STATE_MESSAGES.shopProfileEmpty}
@@ -62,7 +88,7 @@ export default function ShopTabScreen() {
 
   if (profileQuery.isLoading) {
     return (
-      <DemoScreen title="Shop profile">
+      <DemoScreen onRefresh={refresh} title="Shop profile">
         <Text variant="body" color={Colors.inkSoft}>
           Loading shop profile…
         </Text>
@@ -72,11 +98,12 @@ export default function ShopTabScreen() {
 
   if (profileQuery.isError || !profileQuery.data) {
     return (
-      <DemoScreen title="Shop profile">
+      <DemoScreen onRefresh={refresh} title="Shop profile">
         <EmptyStateCard
           title="Shop profile unavailable"
           message={ERROR_MESSAGES.vendorProfileFailed}
         />
+        {logoutButton}
       </DemoScreen>
     );
   }
@@ -85,7 +112,11 @@ export default function ShopTabScreen() {
   const isCityMissing = profile.cityId === null;
 
   return (
-    <DemoScreen title="Shop profile" subtitle="How customers see your business on Kailash Stones">
+    <DemoScreen
+      onRefresh={refresh}
+      title="Shop profile"
+      subtitle="How customers see your business on Kailash Stones"
+    >
       <Text variant="h3">{profile.shopName}</Text>
       <Text variant="caption" color={Colors.inkSoft}>
         {profile.address}
@@ -128,11 +159,15 @@ export default function ShopTabScreen() {
         disabled={updateProfile.isPending}
         onPress={handleSave}
       />
+      {logoutButton}
     </DemoScreen>
   );
 }
 
 const styles = StyleSheet.create({
+  logout: {
+    marginTop: Spacing.lg,
+  },
   warning: {
     marginTop: Spacing.sm,
   },

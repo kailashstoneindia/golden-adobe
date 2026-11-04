@@ -4,7 +4,8 @@ import { QUERY_KEYS } from '../../constants';
 import { authService } from '../../services';
 import { selectIsAuthenticated, useAuthStore } from '../../stores/auth.store';
 
-export function useMe() {
+/** `refetchIntervalMs` polls while set, e.g. on the pending-approval screen. */
+export function useMe(refetchIntervalMs?: number) {
   const isAuthenticated = useAuthStore(selectIsAuthenticated);
   const setUser = useAuthStore((state) => state.setUser);
 
@@ -17,5 +18,6 @@ export function useMe() {
     },
     enabled: isAuthenticated,
     staleTime: 5 * 60_000,
+    refetchInterval: refetchIntervalMs ?? false,
   });
 }

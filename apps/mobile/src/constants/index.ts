@@ -16,4 +16,13 @@ export {
   VENDOR_GROUP_STATUS_STEPS,
 } from './order.constants';
 export { ROUTES } from './routes';
+export {
+  ARTISAN_CONSTANTS,
+  ARTISAN_DOCUMENT_CONTENT_TYPES,
+  BOOKING_ATTRIBUTABLE_HIRE_STATUSES,
+  ARTISAN_CANCELLABLE_HIRE_STATUSES,
+  CANCELLABLE_HIRE_STATUSES,
+  HIRE_REQUEST_STATUS_LABELS,
+  TRADE_TYPE_LABELS,
+} from './artisan.constants';
 export { STORAGE_KEYS } from './storage-keys';

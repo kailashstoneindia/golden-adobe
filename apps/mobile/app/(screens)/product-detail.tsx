@@ -5,7 +5,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { OtherSellersList } from '../../src/components/catalog';
+import { OtherSellersList, ProductImage } from '../../src/components/catalog';
 import { Screen } from '../../src/components/layout/Screen';
 import { Button, Card, Text } from '../../src/components/ui';
 import { APP_CONSTANTS, ERROR_MESSAGES, ROUTES, TOAST_MESSAGES } from '../../src/constants';
@@ -110,11 +110,12 @@ export default function ProductDetailScreen() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.hero}>
-            <Text variant="caption" color={Colors.subtle}>
-              No image yet
-            </Text>
-          </View>
+          <ProductImage
+            image={selectedProduct.primaryImage}
+            size="large"
+            style={styles.hero}
+            placeholderLabel="No image yet"
+          />
 
           <Text variant="h2">{selectedProduct.name}</Text>
           <Text variant="caption" color={Colors.inkSoft}>
@@ -294,11 +295,8 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   hero: {
-    height: 180,
+    height: 220,
     borderRadius: Radius.md,
-    backgroundColor: Colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   priceMeta: {
     marginTop: Spacing.xs,

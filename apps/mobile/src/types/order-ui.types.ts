@@ -110,6 +110,10 @@ export type PendingOrdersPreviewProps = {
   onSeeAllPress: () => void;
 };
 
+export type ArtisanOrderDetailProps = {
+  orderId: string;
+};
+
 export type CustomerOrderDetailProps = {
   orderId: string;
 };

@@ -1,7 +1,14 @@
 import type { VendorListingStockDto } from '@golden-abode/types';
 import { router } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  View,
+} from 'react-native';
 
 import { Screen } from '../../src/components/layout/Screen';
 import { VendorListingCard, type ListingStatusFilter } from '../../src/components/vendor';
@@ -33,6 +40,16 @@ export default function ProductsTabScreen() {
     status: apiStatus,
     limit: statusFilter === 'needs_stock' ? 100 : undefined,
   });
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([listingsQuery.refetch(), pendingQuery.refetch()]);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [listingsQuery, pendingQuery]);
 
   const pendingCount = pendingQuery.data?.length ?? 0;
   const listings = useMemo(
@@ -123,6 +140,8 @@ export default function ProductsTabScreen() {
           emptyMessage={emptyMessage}
           onListingPress={handleListingPress}
           onSyncPress={() => router.push(ROUTES.screens.catalogSync)}
+          isRefreshing={isRefreshing}
+          onRefresh={handleRefresh}
         />
       </View>
     </Screen>
@@ -136,6 +155,8 @@ type ProductsListBodyProps = {
   emptyMessage: string;
   onListingPress: (listing: VendorListingStockDto) => void;
   onSyncPress: () => void;
+  isRefreshing: boolean;
+  onRefresh: () => void;
 };
 
 function ProductsListBody({
@@ -145,6 +166,8 @@ function ProductsListBody({
   emptyMessage,
   onListingPress,
   onSyncPress,
+  isRefreshing,
+  onRefresh,
 }: ProductsListBodyProps) {
   if (isLoading) {
     return (
@@ -187,6 +210,14 @@ function ProductsListBody({
       contentContainerStyle={styles.listContent}
       ItemSeparatorComponent={ListSeparator}
       showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={isRefreshing}
+          onRefresh={onRefresh}
+          tintColor={Colors.tangerine}
+          colors={[Colors.tangerine]}
+        />
+      }
     />
   );
 }
