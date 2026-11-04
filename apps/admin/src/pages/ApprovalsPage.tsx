@@ -18,17 +18,14 @@ import styles from '@/styles/shared.module.css';
 export function ApprovalsPage() {
   // Vendors only: ustaad approval happens on the verification page since
   // decision 0056 (Verify also sets users.is_approved).
-  const role = Role.VENDOR;
 
   const [selectedUser, setSelectedUser] = useState<UserDto | null>(null);
-  const usersQuery = useAdminUsersQuery(getPendingQueryForRole(role));
+  const usersQuery = useAdminUsersQuery(getPendingQueryForRole(Role.VENDOR));
   const approveMutation = useApproveUserMutation();
   const rejectMutation = useRejectUserMutation();
   const approveVendorMutation = useApproveVendorMutation();
   const rejectVendorMutation = useRejectVendorMutation();
 
-  const isVendorCategory = true;
-  const title = 'Vendor approvals';
   const isSubmitting =
     approveMutation.isPending ||
     rejectMutation.isPending ||
@@ -39,15 +36,14 @@ export function ApprovalsPage() {
 
   // Vendors go through their own status-aware endpoints (decision 0048) so
   // rejection persists a reason and the row doesn't look identical to a
-  // never-reviewed applicant. Artisans keep the generic, log-only path
-  // until they get the same status-field treatment.
+  // never-reviewed applicant.
   // Falls back to the generic path when there's no vendorProfile yet (a
   // vendor who registered but never completed onboarding has no Vendor
   // row to carry a status) — not expected in the pending-approvals queue
   // in practice, but kept safe rather than erroring.
   const handleApprove = async (userId: string) => {
     const vendorId = selectedUser?.vendorProfile?.id;
-    if (isVendorCategory && vendorId) {
+    if (vendorId) {
       await approveVendorMutation.mutateAsync(vendorId);
     } else {
       await approveMutation.mutateAsync(userId);
@@ -57,7 +53,7 @@ export function ApprovalsPage() {
 
   const handleReject = async (userId: string, reason?: string) => {
     const vendorId = selectedUser?.vendorProfile?.id;
-    if (isVendorCategory && vendorId) {
+    if (vendorId) {
       await rejectVendorMutation.mutateAsync({ vendorId, body: { reason: reason ?? '' } });
     } else {
       await rejectMutation.mutateAsync({ userId, reason });
@@ -75,11 +71,11 @@ export function ApprovalsPage() {
 
   return (
     <section>
-      <h2 className={styles.pageTitle}>{title}</h2>
+      <h2 className={styles.pageTitle}>Vendor approvals</h2>
       <p className={styles.pageSubtitle}>Tap a card to review details and approve or reject</p>
 
       {isEmpty(users) ? (
-        <div className={styles.empty}>No pending requests in this category.</div>
+        <div className={styles.empty}>No vendors waiting for approval.</div>
       ) : (
         <div className={styles.grid}>
           {users.map((user) => (
@@ -92,7 +88,7 @@ export function ApprovalsPage() {
         <UserDetailModal
           user={selectedUser}
           isSubmitting={isSubmitting}
-          requireRejectReason={isVendorCategory}
+          requireRejectReason
           onClose={() => setSelectedUser(null)}
           onApprove={handleApprove}
           onReject={handleReject}

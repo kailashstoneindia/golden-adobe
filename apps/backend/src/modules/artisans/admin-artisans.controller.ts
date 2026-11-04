@@ -15,6 +15,7 @@ import { Role } from '@golden-abode/types';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ArtisansService } from './artisans.service';
 import { HireRequestsService } from './hire-requests.service';
 import { ReviewHireRequestDto } from './dto/review-hire-request.dto';
@@ -102,8 +103,8 @@ export class AdminArtisansController {
   })
   @ApiResponse({ status: 200, description: 'Updated profile, isVerified: true' })
   @ApiResponse({ status: 400, description: 'No uploaded document to review' })
-  async verify(@Param('id', ParseUUIDPipe) id: string) {
-    return this.artisansService.verify(id);
+  async verify(@Param('id', ParseUUIDPipe) id: string, @CurrentUser('sub') adminUserId: string) {
+    return this.artisansService.verify(id, adminUserId);
   }
 
   @Patch(':id/reject-verification')
@@ -116,7 +117,8 @@ export class AdminArtisansController {
   async rejectVerification(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: RejectArtisanVerificationDto,
+    @CurrentUser('sub') adminUserId: string,
   ) {
-    return this.artisansService.rejectVerification(id, dto.reason);
+    return this.artisansService.rejectVerification(id, adminUserId, dto.reason);
   }
 }

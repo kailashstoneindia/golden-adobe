@@ -57,7 +57,9 @@ The user then set two broader requirements:
    `navigator.locks` (`'admin-token-refresh'`). If the refresh fails, the admin is logged out.
 2. **Ustaad approval is one action (D1, D2).** *Verify* sets `artisans.is_verified = true` and
    `users.is_approved = true` in one transaction. *Reject verification* sets both to false. A
-   rejected ustaad is blocked from every `ApprovedGuard` route.
+   rejected ustaad is no longer discoverable or hireable (`is_verified`), and the mobile app
+   holds them on its "pending approval" screen (`is_approved`). The block is enforced in the
+   app only: `ApprovedGuard` exists but no backend route applies it today.
 3. **One approval page (D3).** The separate "Ustaad approvals" tab is removed.
    `/approvals/artisans` redirects to `/artisans/verification`.
 4. **Maximum information rule.** Quote verbatim: *"Every admin page shows every stored
@@ -104,6 +106,7 @@ someone.
   document read links.
 - The admin's `UserDto` responses stop carrying `deviceToken`.
 - The dashboard counters "pending ustaads" (`is_approved = false`) and "pending
-  verifications" (`is_verified = false`) now move together for ustaads handled after this
-  change.
+  verifications" (`is_verified = false`) do **not** move together. "Pending ustaads" also
+  counts ustaads who have not uploaded a document yet (they cannot be verified) and every
+  rejected ustaad; no page lists that group since the ustaad approvals tab was removed.
 - Plan: [2026-11-04-admin-visibility-and-editing.md](../superpowers/plans/2026-11-04-admin-visibility-and-editing.md).

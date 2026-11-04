@@ -54,8 +54,8 @@ export function ArtisanVerificationPage() {
     <section>
       <h2 className={styles.pageTitle}>Ustaad verification</h2>
       <p className={styles.pageSubtitle}>
-        Verifying an ustaad also approves their account, and rejecting blocks it. Only verified
-        ustaads are discoverable to customers.
+        Verifying an ustaad also approves their account, and rejecting takes that approval away.
+        Only verified ustaads are discoverable to customers.
       </p>
 
       {isEmpty(artisans) ? (

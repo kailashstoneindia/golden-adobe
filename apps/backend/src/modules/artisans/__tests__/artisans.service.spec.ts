@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { SequelizeModule } from '@nestjs/sequelize';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -11,6 +11,7 @@ import { Artisan } from '../models/artisan.model';
 import { ArtisanAccountDetails } from '../models/artisan-account-details.model';
 import { ArtisanTeamMember } from '../models/artisan-team-member.model';
 import { ArtisansService } from '../artisans.service';
+import { UsersService } from '../../users/users.service';
 import { loadStorageConfig } from '../../../config/storage.config';
 import { MEDIA_STORAGE_CONFIG, OBJECT_STORAGE } from '../../catalog/media/object-storage';
 
@@ -45,6 +46,7 @@ describe('ArtisansService (integration)', () => {
       ],
       providers: [
         ArtisansService,
+        UsersService,
         {
           provide: MEDIA_STORAGE_CONFIG,
           useFactory: () => loadStorageConfig(),
@@ -277,7 +279,7 @@ describe('ArtisansService (integration)', () => {
       tradeType: 'PLUMBER',
       servicePincode: '560001',
     });
-    await expect(service.verify(profile.id)).rejects.toThrow();
+    await expect(service.verify(profile.id, 'admin-test')).rejects.toThrow();
   });
 
   it('rejectVerification clears isVerified regardless of whether a reason was given', async () => {
@@ -288,9 +290,13 @@ describe('ArtisansService (integration)', () => {
     const key = `artisans/${profile.id}/doc-key.pdf`;
     fakeStorage.seed(key);
     await service.confirmDocumentUpload(userId, key);
-    await service.verify(profile.id);
+    await service.verify(profile.id, 'admin-test');
 
-    const rejected = await service.rejectVerification(profile.id, 'Document is blurry');
+    const rejected = await service.rejectVerification(
+      profile.id,
+      'admin-test',
+      'Document is blurry',
+    );
     expect(rejected.isVerified).toBe(false);
   });
 
@@ -315,7 +321,7 @@ describe('ArtisansService (integration)', () => {
     it('verify sets artisan.isVerified and user.isApproved', async () => {
       const profile = await profileWithDocument();
 
-      await service.verify(profile.id);
+      await service.verify(profile.id, 'admin-test');
 
       expect(await flags(profile.id)).toEqual({ isVerified: true, isApproved: true });
     });
@@ -326,7 +332,7 @@ describe('ArtisansService (integration)', () => {
         servicePincode: '560001',
       });
 
-      await expect(service.verify(profile.id)).rejects.toThrow(BadRequestException);
+      await expect(service.verify(profile.id, 'admin-test')).rejects.toThrow(BadRequestException);
 
       expect(await flags(profile.id)).toEqual({ isVerified: false, isApproved: false });
     });
@@ -336,19 +342,40 @@ describe('ArtisansService (integration)', () => {
       await Artisan.update({ isVerified: true }, { where: { id: profile.id } });
       await User.update({ isApproved: true }, { where: { id: userId } });
 
-      await service.rejectVerification(profile.id, 'Document is blurry');
+      await service.rejectVerification(profile.id, 'admin-test', 'Document is blurry');
 
       expect(await flags(profile.id)).toEqual({ isVerified: false, isApproved: false });
     });
 
-    it('verify rolls back when the user update fails', async () => {
-      const profile = await profileWithDocument();
-      const spy = jest.spyOn(User, 'update').mockRejectedValueOnce(new Error('db down'));
+    afterEach(() => jest.restoreAllMocks());
 
-      await expect(service.verify(profile.id)).rejects.toThrow('db down');
-      spy.mockRestore();
+    it('verify rolls back both writes when anything fails after them', async () => {
+      const profile = await profileWithDocument();
+      // Let the user write really happen, then fail: if either write ran
+      // outside the transaction it would survive the rollback.
+      const realUpdate = User.update.bind(User);
+      jest.spyOn(User, 'update').mockImplementationOnce((async (...args: unknown[]) => {
+        await (realUpdate as (...a: unknown[]) => Promise<unknown>)(...args);
+        throw new Error('db down');
+      }) as never);
+
+      await expect(service.verify(profile.id, 'admin-test')).rejects.toThrow('db down');
 
       expect(await flags(profile.id)).toEqual({ isVerified: false, isApproved: false });
+    });
+
+    it('logs which admin verified and rejected', async () => {
+      const log = jest.spyOn(Logger.prototype, 'log');
+      const profile = await profileWithDocument();
+
+      await service.verify(profile.id, 'admin-7');
+      await service.rejectVerification(profile.id, 'admin-7', 'blurry');
+
+      const lines = log.mock.calls.map((call) => String(call[0]));
+      expect(lines).toContain(`admin admin-7 verify artisan ${profile.id} isVerified,isApproved`);
+      expect(lines).toContain(
+        `admin admin-7 reject-verification artisan ${profile.id} isVerified,isApproved: blurry`,
+      );
     });
   });
 

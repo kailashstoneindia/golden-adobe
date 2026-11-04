@@ -58,6 +58,21 @@ async function runExclusive(staleAccessToken: string | null): Promise<string> {
 }
 
 /**
+ * Resolves once no refresh is running in this tab or any other. Log out waits
+ * on this so it revokes the token that is current, not one a refresh is about
+ * to rotate (revoking that one would look like reuse and end every session).
+ */
+export async function waitForPendingRefresh(): Promise<void> {
+  if (inFlight) {
+    await inFlight.catch(() => undefined);
+  }
+  const locks = typeof navigator !== 'undefined' ? navigator.locks : undefined;
+  if (locks) {
+    await locks.request(LOCK_NAME, () => undefined);
+  }
+}
+
+/**
  * Returns an access token newer than `staleAccessToken`, refreshing only if no
  * other caller (this tab or another) already has.
  */

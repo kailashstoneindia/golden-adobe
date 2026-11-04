@@ -22,7 +22,7 @@ import {
   PaginatedArtisansResponse,
 } from '@golden-abode/types';
 
-import { User } from '../users/models/user.model';
+import { UsersService } from '../users/users.service';
 import { Artisan } from './models/artisan.model';
 import { ArtisanAccountDetails } from './models/artisan-account-details.model';
 import { ArtisanTeamMember } from './models/artisan-team-member.model';
@@ -65,8 +65,7 @@ export class ArtisansService {
     private readonly artisanAccountDetailsModel: typeof ArtisanAccountDetails,
     @InjectModel(ArtisanTeamMember)
     private readonly artisanTeamMemberModel: typeof ArtisanTeamMember,
-    @InjectModel(User)
-    private readonly userModel: typeof User,
+    private readonly usersService: UsersService,
     @Inject(OBJECT_STORAGE) private readonly storage: ObjectStorage,
   ) {}
 
@@ -376,36 +375,44 @@ export class ArtisansService {
   // Decision 0056: verifying also approves the account (users.is_approved),
   // and rejecting un-approves it, in one transaction — before this an admin
   // had to set the two flags on two different pages.
-  async verify(artisanId: string): Promise<ArtisanProfileDto> {
+  async verify(artisanId: string, adminUserId: string): Promise<ArtisanProfileDto> {
     const artisan = await this.findByIdOrThrow(artisanId);
     if (!artisan.documentUrl) {
       throw new BadRequestException('cannot verify an artisan with no uploaded document');
     }
 
     await this.setVerifiedAndApproved(artisan, true);
+    this.logger.log(`admin ${adminUserId} verify artisan ${artisanId} isVerified,isApproved`);
     return toArtisanProfileDto(await this.findByIdOrThrow(artisanId));
   }
 
   // No persisted reason column in the §4.1 schema — logged only, matching
   // AdminService.rejectUser's existing reason-is-log-only pattern. Same
   // last-write-wins reasoning as verify() above applies here too.
-  async rejectVerification(artisanId: string, reason?: string): Promise<ArtisanProfileDto> {
+  async rejectVerification(
+    artisanId: string,
+    adminUserId: string,
+    reason?: string,
+  ): Promise<ArtisanProfileDto> {
     const artisan = await this.findByIdOrThrow(artisanId);
     await this.setVerifiedAndApproved(artisan, false);
-    this.logger.log(`Rejected verification for artisan ${artisanId}${reason ? `: ${reason}` : ''}`);
+    this.logger.log(
+      `admin ${adminUserId} reject-verification artisan ${artisanId} isVerified,isApproved${
+        reason ? `: ${reason}` : ''
+      }`,
+    );
     return toArtisanProfileDto(await this.findByIdOrThrow(artisanId));
   }
 
+  // UsersService.setApproved is the one writer of users.is_approved, shared
+  // with VendorsService.approveVendor/rejectVendor (decision 0048).
   private async setVerifiedAndApproved(artisan: Artisan, value: boolean): Promise<void> {
     await this.artisanModel.sequelize!.transaction(async (transaction) => {
       await this.artisanModel.update(
         { isVerified: value },
         { where: { id: artisan.id }, transaction },
       );
-      await this.userModel.update(
-        { isApproved: value },
-        { where: { id: artisan.userId }, transaction },
-      );
+      await this.usersService.setApproved(artisan.userId, value, transaction);
     });
   }
 

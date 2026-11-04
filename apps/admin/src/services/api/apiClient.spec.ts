@@ -184,6 +184,22 @@ describe('apiClient token refresh', () => {
     post.mockRestore();
   });
 
+  it('logout 401 does not refresh or redirect', async () => {
+    server.use(
+      http.post('/api/auth/logout', () =>
+        HttpResponse.json({ success: false, message: 'Invalid refresh token' }, { status: 401 }),
+      ),
+    );
+    refreshAnswers({ accessToken: 'a2', refreshToken: 'r2' });
+
+    await expect(postRequest('/auth/logout', { refreshToken: 'r1' })).rejects.toBeInstanceOf(
+      ApiClientError,
+    );
+
+    expect(refreshCalls).toBe(0);
+    expect(assignSpy).not.toHaveBeenCalled();
+  });
+
   it('login 401 does not refresh', async () => {
     server.use(
       http.post(LOGIN, () =>

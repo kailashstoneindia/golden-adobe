@@ -4,6 +4,7 @@ import { http, HttpResponse } from 'msw';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { getFreshAccessToken } from '@/services/api/tokenRefresh';
 import { tokenStorage } from '@/services/storage/tokenStorage';
 import { server } from '@/test/server';
 
@@ -44,6 +45,38 @@ describe('AdminLayout log out', () => {
     await waitFor(() => expect(bodies).toEqual([{ refreshToken: 'r1' }]));
     expect(await screen.findByText('Login page')).toBeInTheDocument();
     expect(tokenStorage.getAccessToken()).toBeNull();
+    expect(tokenStorage.getRefreshToken()).toBeNull();
+  });
+
+  it('waits for an in-flight token refresh, then revokes the new token', async () => {
+    // Revoking r1 while a refresh with r1 is in flight would make the backend
+    // see r1 reused and revoke every session of this admin.
+    let releaseRefresh!: () => void;
+    const refreshHeld = new Promise<void>((resolve) => (releaseRefresh = resolve));
+    const logoutBodies: unknown[] = [];
+    server.use(
+      http.post('/api/auth/refresh', async () => {
+        await refreshHeld;
+        return HttpResponse.json({
+          success: true,
+          data: { accessToken: 'a2', refreshToken: 'r2' },
+        });
+      }),
+      http.post(LOGOUT, async ({ request }) => {
+        logoutBodies.push(await request.json());
+        return HttpResponse.json({ success: true, data: { message: 'ok' } });
+      }),
+    );
+    renderLayout();
+    const pending = getFreshAccessToken('a1').catch(() => undefined);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Log out' }));
+    expect(logoutBodies).toEqual([]);
+    releaseRefresh();
+    await pending;
+
+    await waitFor(() => expect(logoutBodies).toEqual([{ refreshToken: 'r2' }]));
+    expect(await screen.findByText('Login page')).toBeInTheDocument();
     expect(tokenStorage.getRefreshToken()).toBeNull();
   });
 
