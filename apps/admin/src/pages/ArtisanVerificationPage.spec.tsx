@@ -90,7 +90,7 @@ describe('ArtisanVerificationPage', () => {
 
   it('renders a pending-verification row', async () => {
     renderPage();
-    expect(await screen.findByText('PLUMBER')).toBeInTheDocument();
+    expect(await screen.findByText('Plumber')).toBeInTheDocument();
   });
 
   it('tells the admin that verifying also approves the account', async () => {
@@ -170,10 +170,10 @@ describe('ArtisanVerificationPage', () => {
     renderPage();
     const user = userEvent.setup();
 
-    await user.click(await screen.findByText('PLUMBER'));
+    await user.click(await screen.findByText('Plumber'));
     await user.click(await screen.findByRole('button', { name: 'Verify and approve' }));
 
-    await screen.findByText('PLUMBER'); // dialog closes, list re-renders
+    await screen.findByText('Plumber'); // dialog closes, list re-renders
     expect(verifyCalls).toEqual([artisan().id]);
   });
 
@@ -181,7 +181,7 @@ describe('ArtisanVerificationPage', () => {
     renderPage();
     const user = userEvent.setup();
 
-    await user.click(await screen.findByText('PLUMBER'));
+    await user.click(await screen.findByText('Plumber'));
     await user.type(
       screen.getByPlaceholderText('Optional, stored in logs only'),
       'Document is blurry',
@@ -195,7 +195,7 @@ describe('ArtisanVerificationPage', () => {
     renderPage();
     const user = userEvent.setup();
 
-    await user.click(await screen.findByText('PLUMBER'));
+    await user.click(await screen.findByText('Plumber'));
     await user.click(await screen.findByRole('button', { name: 'Reject' }));
 
     expect(rejectCalls).toEqual([{ id: artisan().id, body: {} }]);

@@ -4,6 +4,7 @@ import { isEmpty } from 'lodash';
 import { APP_CONSTANTS } from '@/constants/appConstants';
 import { ERROR_MESSAGES } from '@/constants/error.constants';
 import { useArtisanByIdQuery, useArtisansQuery } from '@/queries';
+import { labelFor, TRADE_TYPE_LABELS } from '@/constants/labels';
 import styles from '@/styles/shared.module.css';
 import { formatDateTime } from '@/utils/date';
 
@@ -50,7 +51,7 @@ export function ArtisansPage() {
                   className={styles.clickableRow}
                   onClick={() => setSelectedArtisanId(artisan.id)}
                 >
-                  <td>{artisan.tradeType}</td>
+                  <td>{labelFor(TRADE_TYPE_LABELS, artisan.tradeType)}</td>
                   <td>{artisan.servicePincode || '—'}</td>
                   <td>
                     <span className={styles.badge}>
@@ -73,7 +74,9 @@ export function ArtisansPage() {
         >
           <div className={styles.modal} onClick={(event) => event.stopPropagation()} role="dialog">
             <h2 className={styles.modalTitle}>
-              {detailQuery.data?.tradeType ?? 'Artisan profile'}
+              {detailQuery.data
+                ? labelFor(TRADE_TYPE_LABELS, detailQuery.data.tradeType)
+                : 'Artisan profile'}
             </h2>
             <p className={styles.pageSubtitle}>Read-only profile — team and account details</p>
 
@@ -108,7 +111,7 @@ type ArtisanDetailBodyProps = {
 function ArtisanDetailBody({ artisan }: ArtisanDetailBodyProps) {
   return (
     <div className={styles.modalBody}>
-      <DetailRow label="Trade" value={artisan.tradeType} />
+      <DetailRow label="Trade" value={labelFor(TRADE_TYPE_LABELS, artisan.tradeType)} />
       <DetailRow
         label="Experience"
         value={artisan.experienceYears != null ? `${artisan.experienceYears} years` : '—'}

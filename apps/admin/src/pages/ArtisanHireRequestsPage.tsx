@@ -6,6 +6,7 @@ import { APP_CONSTANTS } from '@/constants/appConstants';
 import { ContactBlock, ContactCell, Row } from '@/components/common/ContactBlock';
 import { ERROR_MESSAGES } from '@/constants/error.constants';
 import { useArtisanPendingHireRequestsQuery, useReviewHireRequestMutation } from '@/queries';
+import { labelFor, TRADE_TYPE_LABELS } from '@/constants/labels';
 import styles from '@/styles/shared.module.css';
 import { formatDateTime } from '@/utils/date';
 
@@ -99,7 +100,9 @@ export function ArtisanHireRequestsPage() {
             <div className={styles.modalBody}>
               <ContactBlock title="Customer" contact={selectedRequest.customer} />
               <ContactBlock title="Ustaad" contact={selectedRequest.artisan}>
-                <Row label="Trade">{selectedRequest.artisanTradeType ?? '—'}</Row>
+                <Row label="Trade">
+                  {labelFor(TRADE_TYPE_LABELS, selectedRequest.artisanTradeType)}
+                </Row>
               </ContactBlock>
               <DetailRow label="Notes" value={selectedRequest.notes || '-'} />
               <DetailRow label="Requested" value={formatDateTime(selectedRequest.createdAt)} />

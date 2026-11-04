@@ -10,6 +10,7 @@ import {
   useRejectArtisanVerificationMutation,
   useVerifyArtisanMutation,
 } from '@/queries';
+import { labelFor, TRADE_TYPE_LABELS } from '@/constants/labels';
 import styles from '@/styles/shared.module.css';
 import { formatDateTime } from '@/utils/date';
 import { formatPhoneDisplay } from '@/utils/phone';
@@ -72,7 +73,7 @@ export function ArtisanVerificationPage() {
               onClick={() => setSelectedArtisan(artisan)}
             >
               <div className={styles.cardTop}>
-                <h3 className={styles.name}>{artisan.tradeType}</h3>
+                <h3 className={styles.name}>{labelFor(TRADE_TYPE_LABELS, artisan.tradeType)}</h3>
                 <span className={styles.badge}>Pending</span>
               </div>
               <p className={styles.meta}>
@@ -157,7 +158,7 @@ function AwaitingDocumentSection() {
                   <td>{row.email ? <a href={`mailto:${row.email}`}>{row.email}</a> : '—'}</td>
                   <td>
                     {row.hasProfile
-                      ? `${row.tradeType ?? 'Profile'}${row.servicePincode ? ` · ${row.servicePincode}` : ''} · no document`
+                      ? `${row.tradeType ? labelFor(TRADE_TYPE_LABELS, row.tradeType) : 'Profile'}${row.servicePincode ? ` · ${row.servicePincode}` : ''} · no document`
                       : 'No profile yet'}
                   </td>
                   <td>{formatDateTime(row.createdAt)}</td>
@@ -194,10 +195,10 @@ function ArtisanVerificationModal({
     <div className={styles.overlay} onClick={onClose} role="presentation">
       <div className={styles.modal} onClick={(event) => event.stopPropagation()} role="dialog">
         <h2 className={styles.modalTitle}>Review verification</h2>
-        <p className={styles.pageSubtitle}>{artisan.tradeType}</p>
+        <p className={styles.pageSubtitle}>{labelFor(TRADE_TYPE_LABELS, artisan.tradeType)}</p>
 
         <div className={styles.modalBody}>
-          <DetailRow label="Trade" value={artisan.tradeType} />
+          <DetailRow label="Trade" value={labelFor(TRADE_TYPE_LABELS, artisan.tradeType)} />
           <DetailRow
             label="Experience"
             value={artisan.experienceYears != null ? `${artisan.experienceYears} years` : '-'}

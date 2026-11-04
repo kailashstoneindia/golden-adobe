@@ -9,6 +9,7 @@ import {
   usePublishProductMutation,
   useUnpublishProductMutation,
 } from '@/queries/useCatalogQueries';
+import { labelFor, PRODUCT_STATUS_LABELS } from '@/constants/labels';
 import styles from '@/styles/shared.module.css';
 import catalogStyles from '@/styles/catalog.module.css';
 import {
@@ -248,7 +249,7 @@ export function CatalogProductsPage() {
                     <td onClick={() => setSelectedId(product.id)}>{product.brand ?? '—'}</td>
                     <td onClick={() => setSelectedId(product.id)}>
                       <span className={catalogStyles[`status_${product.status}`]}>
-                        {product.status}
+                        {labelFor(PRODUCT_STATUS_LABELS, product.status)}
                       </span>
                     </td>
                     <td onClick={() => setSelectedId(product.id)}>{product.listingCount}</td>

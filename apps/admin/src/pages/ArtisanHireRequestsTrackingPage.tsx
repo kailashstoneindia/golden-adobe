@@ -6,6 +6,7 @@ import { APP_CONSTANTS } from '@/constants/appConstants';
 import { ContactBlock, ContactCell, Row } from '@/components/common/ContactBlock';
 import { ERROR_MESSAGES } from '@/constants/error.constants';
 import { useAllHireRequestsQuery, useCancelHireRequestMutation } from '@/queries';
+import { HIRE_REQUEST_STATUS_LABELS, labelFor, TRADE_TYPE_LABELS } from '@/constants/labels';
 import styles from '@/styles/shared.module.css';
 import { formatDateTime } from '@/utils/date';
 
@@ -81,7 +82,7 @@ export function ArtisanHireRequestsTrackingPage() {
                   <ContactCell contact={request.customer} />
                   <ContactCell contact={request.artisan} />
                   <td>{request.addressText}</td>
-                  <td>{request.status}</td>
+                  <td>{labelFor(HIRE_REQUEST_STATUS_LABELS, request.status)}</td>
                   <td>{formatDateTime(request.createdAt)}</td>
                 </tr>
               ))}
@@ -93,13 +94,17 @@ export function ArtisanHireRequestsTrackingPage() {
       {selectedRequest ? (
         <div className={styles.overlay} onClick={handleClose} role="presentation">
           <div className={styles.modal} onClick={(event) => event.stopPropagation()} role="dialog">
-            <h2 className={styles.modalTitle}>{selectedRequest.status}</h2>
+            <h2 className={styles.modalTitle}>
+              {labelFor(HIRE_REQUEST_STATUS_LABELS, selectedRequest.status)}
+            </h2>
             <p className={styles.pageSubtitle}>{selectedRequest.addressText}</p>
 
             <div className={styles.modalBody}>
               <ContactBlock title="Customer" contact={selectedRequest.customer} />
               <ContactBlock title="Ustaad" contact={selectedRequest.artisan}>
-                <Row label="Trade">{selectedRequest.artisanTradeType ?? '—'}</Row>
+                <Row label="Trade">
+                  {labelFor(TRADE_TYPE_LABELS, selectedRequest.artisanTradeType)}
+                </Row>
               </ContactBlock>
               <DetailRow label="Notes" value={selectedRequest.notes || '—'} />
               <DetailRow label="Requested" value={formatDateTime(selectedRequest.createdAt)} />

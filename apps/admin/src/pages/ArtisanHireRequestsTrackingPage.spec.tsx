@@ -110,7 +110,7 @@ describe('ArtisanHireRequestsTrackingPage', () => {
 
   it('renders a hire request row with its current status', async () => {
     renderPage();
-    expect(await screen.findByText('IN_PROGRESS')).toBeInTheDocument();
+    expect(await screen.findByText('In progress')).toBeInTheDocument();
   });
 
   it('lists customer and ustaad for every request (0058)', async () => {
@@ -155,7 +155,7 @@ describe('ArtisanHireRequestsTrackingPage', () => {
     renderPage();
     const user = userEvent.setup();
 
-    await user.click(await screen.findByText('IN_PROGRESS'));
+    await user.click(await screen.findByText('In progress'));
 
     expect(await screen.findByText('Started')).toBeInTheDocument();
     // startedAt is set for this fixture; completedAt/cancelledAt are null
@@ -168,7 +168,7 @@ describe('ArtisanHireRequestsTrackingPage', () => {
     renderPage();
     const user = userEvent.setup();
 
-    await user.click(await screen.findByText('IN_PROGRESS'));
+    await user.click(await screen.findByText('In progress'));
     await user.type(screen.getByPlaceholderText('Required to cancel'), 'Customer backed out');
     await user.click(await screen.findByRole('button', { name: 'Cancel request' }));
 
@@ -182,7 +182,7 @@ describe('ArtisanHireRequestsTrackingPage', () => {
     renderPage();
     const user = userEvent.setup();
 
-    await user.click(await screen.findByText('COMPLETED'));
+    await user.click(await screen.findByText('Completed'));
 
     expect(screen.queryByRole('button', { name: 'Cancel request' })).not.toBeInTheDocument();
   });
@@ -198,7 +198,7 @@ describe('ArtisanHireRequestsTrackingPage', () => {
     renderPage();
     const user = userEvent.setup();
 
-    await user.click(await screen.findByText('PENDING_ARTISAN_RESPONSE'));
+    await user.click(await screen.findByText('Waiting for ustaad'));
 
     expect(await screen.findByText('Artisan must respond by')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Cancel request' })).toBeInTheDocument();
@@ -216,7 +216,7 @@ describe('ArtisanHireRequestsTrackingPage', () => {
     renderPage();
     const user = userEvent.setup();
 
-    await user.click(await screen.findByText('ARTISAN_DECLINED'));
+    await user.click(await screen.findByText('Declined by ustaad'));
 
     expect(await screen.findByText('Fully booked')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Cancel request' })).not.toBeInTheDocument();

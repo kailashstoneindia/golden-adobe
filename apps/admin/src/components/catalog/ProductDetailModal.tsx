@@ -2,6 +2,7 @@ import { isEmpty } from 'lodash';
 
 import { ProductMediaPanel } from '@/components/catalog/media/ProductMediaPanel';
 import { useProductQuery } from '@/queries/useCatalogQueries';
+import { labelFor, PRODUCT_STATUS_LABELS } from '@/constants/labels';
 import styles from '@/styles/shared.module.css';
 import catalogStyles from '@/styles/catalog.module.css';
 import { formatDateTime } from '@/utils/date';
@@ -44,7 +45,7 @@ export function ProductDetailModal({
                   <span className={styles.detailLabel}>Status</span>
                   <span className={styles.detailValue}>
                     <span className={catalogStyles[`status_${product.status}`]}>
-                      {product.status}
+                      {labelFor(PRODUCT_STATUS_LABELS, product.status)}
                     </span>
                   </span>
                 </div>

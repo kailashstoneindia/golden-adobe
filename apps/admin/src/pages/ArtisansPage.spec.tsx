@@ -67,7 +67,7 @@ describe('ArtisansPage', () => {
 
   it('renders an artisan row with trade type and verification status', async () => {
     renderPage();
-    expect(await screen.findByText('PLUMBER')).toBeInTheDocument();
+    expect(await screen.findByText('Plumber')).toBeInTheDocument();
     expect(screen.getByText('Verified')).toBeInTheDocument();
   });
 
@@ -115,7 +115,7 @@ describe('ArtisansPage', () => {
     renderPage();
     const user = userEvent.setup();
 
-    await user.click(await screen.findByText('PLUMBER'));
+    await user.click(await screen.findByText('Plumber'));
 
     expect(await screen.findByText('Reliable plumber')).toBeInTheDocument();
     expect(screen.getByText('Suresh')).toBeInTheDocument();

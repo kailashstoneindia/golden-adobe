@@ -136,7 +136,7 @@ describe('ArtisanHireRequestsPage', () => {
     expect(within(customer).getByRole('link', { name: 'asha@example.com' })).toBeInTheDocument();
     const ustaad = screen.getByRole('group', { name: 'Ustaad' });
     expect(ustaad).toHaveTextContent('Ramesh Plumber');
-    expect(ustaad).toHaveTextContent('PLUMBER');
+    expect(ustaad).toHaveTextContent('Plumber');
     expect(within(ustaad).queryByText(/Email/)).not.toBeInTheDocument();
   });
 
