@@ -77,4 +77,21 @@ safe side.
 - The mobile developer must handle `ACCOUNT_NOT_APPROVED` (send the user to the pending
   screen). Normal use shouldn't hit it, because the app already routes pending users there.
 - `CatalogModule` and `OrdersModule` import `UsersModule` so the guard can read approval.
-- One indexed read of `users` per vendor/ustaad request on these controllers.
+- One extra indexed read of `users` per vendor/ustaad request on these controllers (`JwtStrategy` already reads the user once; see G2).
+
+## Review outcomes (2026-11-04)
+
+- Only a **route** can be opened. The guard ignores a class-level `@AllowUnapproved()`, so a
+  tag above a controller can't open every route on it at once.
+- A test finds every controller automatically and fails if one that vendors or ustaads can
+  reach doesn't carry the gate. Exceptions are listed by name: `AuthController`,
+  `UsersController`.
+- A locked call answers `{ statusCode: 403, error: "Forbidden", code: "ACCOUNT_NOT_APPROVED" }`.
+
+## Open follow-ups
+
+| # | Item | Found in | Why not now |
+|---|---|---|---|
+| G1 | **A rejected vendor's live listings still appear in search and can still be bought**, but the vendor now gets 403 on their order groups, so those orders sit unseen. Search and checkout filter on listing status and city, not on vendor approval. | 4a review | Product decision: hide listings of unapproved vendors from search/checkout, or pause all their listings on reject. Awaiting the user. |
+| G2 | Each gated vendor/ustaad request reads `users` twice (`JwtStrategy` and the guard). | 4a review | Performance only. Fix by returning `isApproved` from `JwtStrategy.validate`. |
+| G3 | There are no HTTP-level gate tests for vendor listings, catalog import or orders. The unit, wiring and discovery tests cover them. | 4a review | Low risk; the vendor listings test app doesn't exist yet. |

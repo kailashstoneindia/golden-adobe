@@ -73,3 +73,32 @@ describe('ApprovedGuard', () => {
     await expect(guard.canActivate(ctx)).resolves.toBe(true);
   });
 });
+
+describe('ApprovedGuard ignores a class-level @AllowUnapproved', () => {
+  it('still refuses: only individual routes can be opened', async () => {
+    const usersService = { findById: jest.fn(async () => ({ isApproved: false })) };
+    const guard = new ApprovedGuard(usersService as never, new Reflector());
+    const controller = class {};
+    Reflect.defineMetadata(ALLOW_UNAPPROVED_KEY, true, controller);
+    const ctx = {
+      switchToHttp: () => ({ getRequest: () => ({ user: { sub: 'v', role: Role.VENDOR } }) }),
+      getHandler: () => () => undefined,
+      getClass: () => controller,
+    } as unknown as ExecutionContext;
+
+    await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('labels the refusal Forbidden, not Internal Server Error', async () => {
+    const usersService = { findById: jest.fn(async () => ({ isApproved: false })) };
+    const guard = new ApprovedGuard(usersService as never, new Reflector());
+    const ctx = {
+      switchToHttp: () => ({ getRequest: () => ({ user: { sub: 'v', role: Role.VENDOR } }) }),
+      getHandler: () => () => undefined,
+      getClass: () => class {},
+    } as unknown as ExecutionContext;
+
+    const error = (await guard.canActivate(ctx).catch((caught) => caught)) as ForbiddenException;
+    expect(error.getResponse()).toMatchObject({ error: 'Forbidden', statusCode: 403 });
+  });
+});

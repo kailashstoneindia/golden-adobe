@@ -63,9 +63,36 @@ describe('ArtisansController (real HTTP, Postgres)', () => {
           )
         ).status,
       ).toBeLessThan(300);
+      const member = await as(
+        request(server).post('/api/artisans/me/team').send({ name: 'Ramesh' }),
+      );
+      expect(member.status).toBe(201);
+
+      // The rest of onboarding, still as a pending ustaad.
+      const profile = await as(request(server).get('/api/artisans/me/profile'));
+      const key = `artisans/${profile.body.data.id}/doc-pending.pdf`;
+      t.storage.seed(key);
       expect(
-        (await as(request(server).post('/api/artisans/me/team').send({ name: 'Ramesh' }))).status,
-      ).toBe(201);
+        (await as(request(server).post('/api/artisans/me/documents/confirm').send({ key }))).status,
+      ).toBeLessThan(300);
+      expect(
+        (
+          await as(
+            request(server).put('/api/artisans/me/account-details').send({
+              accountHolderName: 'Pending Ustaad',
+              bankName: 'State Bank of India',
+              ifscCode: 'SBIN0001234',
+              branchName: 'MG Road',
+              accountNumber: '123456789012',
+            }),
+          )
+        ).status,
+      ).toBeLessThan(300);
+      const memberPath = `/api/artisans/me/team/${member.body.data.id}`;
+      expect(
+        (await as(request(server).patch(memberPath).send({ roleOnTeam: 'Helper' }))).status,
+      ).toBe(200);
+      expect((await as(request(server).delete(memberPath))).status).toBeLessThan(300);
     });
 
     it('a pending ustaad cannot see or act on hire requests', async () => {
@@ -76,6 +103,7 @@ describe('ArtisansController (real HTTP, Postgres)', () => {
 
       expect(res.status).toBe(403);
       expect(res.body.code).toBe('ACCOUNT_NOT_APPROVED');
+      expect(res.body.error).toBe('Forbidden');
     });
 
     it('approving the ustaad opens hire requests without a new login', async () => {

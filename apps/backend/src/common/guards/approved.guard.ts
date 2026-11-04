@@ -31,10 +31,9 @@ export class ApprovedGuard implements CanActivate {
       return true;
     }
 
-    const allowUnapproved = this.reflector.getAllAndOverride<boolean>(ALLOW_UNAPPROVED_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
+    // Route level only: a class-level tag would open every route on the
+    // controller at once, which is exactly the silent hole 0059 exists to stop.
+    const allowUnapproved = this.reflector.get<boolean>(ALLOW_UNAPPROVED_KEY, context.getHandler());
     if (allowUnapproved) {
       return true;
     }
@@ -42,7 +41,11 @@ export class ApprovedGuard implements CanActivate {
     // Read fresh, not from the token, so approving or rejecting applies at once.
     const dbUser = await this.usersService.findById(user.sub);
     if (!dbUser?.isApproved) {
+      // An object body replaces Nest's default one, so statusCode and error
+      // must be set here or the error filter reports "Internal Server Error".
       throw new ForbiddenException({
+        statusCode: 403,
+        error: 'Forbidden',
         message: 'Your account is waiting for admin approval. You cannot use this feature yet.',
         code: ACCOUNT_NOT_APPROVED,
       });
