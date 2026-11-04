@@ -86,7 +86,7 @@ Scope is MVP: keep the flow minimal.
 ## Why
 
 The admin step exists to protect the customer from an ustaad who would say yes without the
-capacity to deliver. Making admin approval *be* the acceptance turned a safety gate into a
+capacity to deliver. Making admin approval _be_ the acceptance turned a safety gate into a
 forced assignment. Option A keeps both decisions with the person who owns them.
 
 Calls made by Claude, not the user, in keeping the flow minimal:
