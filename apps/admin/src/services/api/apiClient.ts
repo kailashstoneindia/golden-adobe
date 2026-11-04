@@ -53,6 +53,15 @@ export async function postRequest<TResponse, TBody>(url: string, body: TBody): P
   return response.data.data;
 }
 
+// For endpoints where the success status carries meaning (202 Accepted).
+export async function postRequestWithStatus<TResponse, TBody>(
+  url: string,
+  body: TBody,
+): Promise<{ data: TResponse; status: number }> {
+  const response = await apiClient.post<ApiSuccessResponse<TResponse>>(url, body);
+  return { data: response.data.data, status: response.status };
+}
+
 export async function patchRequest<TResponse, TBody>(
   url: string,
   body?: TBody,

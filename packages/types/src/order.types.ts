@@ -2,10 +2,18 @@ export const ORDER_STATUSES = {
   PENDING_PAYMENT: 'pending_payment',
   CONFIRMED: 'confirmed',
   CANCELLED: 'cancelled',
+  REFUND_REQUIRED: 'refund_required',
+  REFUND_PENDING: 'refund_pending',
   REFUNDED: 'refunded',
 } as const;
 
 export type OrderStatus = (typeof ORDER_STATUSES)[keyof typeof ORDER_STATUSES];
+
+// How long an unpaid order holds its stock (decision 0054). The backend's
+// stale-reservation sweep and Razorpay's per-payment capture window both use
+// it, and the mobile app closes the Checkout sheet before it runs out, so
+// all three share this one number.
+export const PAYMENT_HOLD_MINUTES = 20;
 
 export const ORDER_VENDOR_GROUP_STATUSES = {
   PENDING: 'pending',
@@ -156,6 +164,10 @@ export type OrderDto = {
   customerId: string;
   deliveryAddressId: string;
   grandTotal: number;
+  // Decision 0054: what Razorpay actually captured, in paise. Differs from
+  // grandTotal for a mismatched late payment; null for orders captured
+  // before the column existed.
+  capturedPaise: number | null;
   status: OrderStatus;
   razorpayOrderId: string | null;
   razorpayPaymentId: string | null;
@@ -183,4 +195,28 @@ export type PaymentEventDto = {
   eventType: string;
   rawPayload: Record<string, unknown>;
   createdAt: string;
+};
+
+export type RefundStatus = 'requested' | 'submitted' | 'processed' | 'failed';
+
+export type RefundRail = 'razorpay' | 'manual_payout';
+
+export type RefundDto = {
+  id: string;
+  orderId: string;
+  orderVendorGroupId: string | null;
+  rail: RefundRail;
+  amountPaise: number;
+  receipt: string;
+  razorpayRefundId: string | null;
+  status: RefundStatus;
+  reason: string;
+  createdBy: string;
+  createdAt: string;
+};
+
+export type AdminRefundRequest = {
+  reason: string;
+  amountPaise?: number;
+  vendorGroupId?: string;
 };

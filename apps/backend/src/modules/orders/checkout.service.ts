@@ -16,6 +16,7 @@ import { CartService } from '../cart/cart.service';
 import { CustomersService } from '../customers/customers.service';
 import { CustomerAddress } from '../customers/models/customer-address.model';
 import { PAYMENT_PROVIDER, PaymentProviderService } from '../payments/payment-provider.interface';
+import { toPaise } from '../payments/money';
 import { VendorListingStatus } from '../catalog/models/vendor-listing.model';
 import { SaleUnitType } from '../catalog/models/master-product.model';
 import { ArtisanHireRequest } from '../artisans/models/artisan-hire-request.model';
@@ -501,7 +502,7 @@ export class CheckoutService {
     // pending_payment forever with no way for the customer to pay it.
     try {
       const providerOrder = await this.paymentProvider.createOrder(
-        Math.round(Number(order.grandTotal) * 100),
+        toPaise(order.grandTotal),
         order.id,
       );
       order.razorpayOrderId = providerOrder.providerOrderId;

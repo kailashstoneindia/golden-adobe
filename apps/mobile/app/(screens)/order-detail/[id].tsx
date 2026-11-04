@@ -1,4 +1,4 @@
-import type { OrderVendorGroupStatus } from '@golden-abode/types';
+import type { OrderDto, OrderVendorGroupStatus } from '@golden-abode/types';
 import { ORDER_STATUSES, Role } from '@golden-abode/types';
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback } from 'react';
@@ -48,21 +48,39 @@ export default function OrderDetailScreen() {
   return <CustomerOrderDetail orderId={id} />;
 }
 
+function notifyCancelResult(
+  status: OrderDto['status'],
+  showSuccess: (message: string) => void,
+  showWarning: (message: string) => void,
+): void {
+  if (status === ORDER_STATUSES.CONFIRMED) {
+    showWarning(TOAST_MESSAGES.orderCancelPaymentWentThrough);
+    return;
+  }
+  if (status === ORDER_STATUSES.REFUND_REQUIRED || status === ORDER_STATUSES.REFUND_PENDING) {
+    showWarning(TOAST_MESSAGES.paymentArrivedAfterExpiry);
+    return;
+  }
+  showSuccess(TOAST_MESSAGES.orderCancelled);
+}
+
 function CustomerOrderDetail({ orderId }: CustomerOrderDetailProps) {
   const orderQuery = useOrderQuery(orderId);
   const cancelOrder = useCancelOrderMutation();
   const { payExistingOrder } = usePlaceOrder();
-  const { showSuccess, showError } = useToast();
+  const { showSuccess, showError, showWarning } = useToast();
   const order = orderQuery.data;
   const canCancel = order?.status === ORDER_STATUSES.PENDING_PAYMENT;
   const canPay = canCancel && Boolean(order?.razorpayOrderId);
 
   const handleCancel = useCallback(() => {
     cancelOrder.mutate(orderId, {
-      onSuccess: () => showSuccess(TOAST_MESSAGES.orderCancelled),
+      // The server answers 200 even when Razorpay had already captured the
+      // payment (decision 0054), so say what actually happened.
+      onSuccess: (cancelled) => notifyCancelResult(cancelled.status, showSuccess, showWarning),
       onError: (error) => showError(getApiErrorMessage(error, ERROR_MESSAGES.orderCancelFailed)),
     });
-  }, [cancelOrder, orderId, showError, showSuccess]);
+  }, [cancelOrder, orderId, showError, showSuccess, showWarning]);
 
   const handlePay = useCallback(() => {
     if (order) {

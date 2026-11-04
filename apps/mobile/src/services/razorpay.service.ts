@@ -40,6 +40,7 @@ export async function openRazorpayCheckout(
     currency: 'INR',
     name: options.merchantName,
     amount: options.amountPaise,
+    timeout: options.timeoutSeconds,
   };
 
   try {
