@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { getModelToken } from '@nestjs/sequelize';
+import { Sequelize } from 'sequelize-typescript';
 import * as bcrypt from 'bcrypt';
 
 import { AuthService } from '../auth.service';
@@ -37,6 +38,7 @@ describe('AuthService.resetAdminPassword (decision 0050)', () => {
         { provide: UsersService, useValue: usersServiceMock },
         { provide: CustomersService, useValue: {} },
         { provide: RedisService, useValue: {} },
+        { provide: Sequelize, useValue: {} },
         { provide: getModelToken(RefreshToken), useValue: refreshTokenModelMock },
       ],
     }).compile();
