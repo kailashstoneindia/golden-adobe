@@ -4,6 +4,7 @@ import { ArtisansTestApp, createArtisansTestApp } from './artisans-test-app';
 import { Artisan } from '../models/artisan.model';
 import { ArtisanHireRequest } from '../models/artisan-hire-request.model';
 import { User } from '../../users/models/user.model';
+import { findOnAnyPage } from './find-on-any-page';
 
 jest.setTimeout(60_000);
 
@@ -146,7 +147,18 @@ describe('AdminArtisansController (real HTTP, Postgres)', () => {
     expect(res.status).toBe(200);
     expect(res.body.data.page).toBe(1);
     expect(res.body.data.limit).toBe(10);
-    expect(res.body.data.items.some((a: { id: string }) => a.id === artisan!.id)).toBe(true);
+    const found = await findOnAnyPage(
+      async (p) =>
+        (
+          await asAdmin(
+            request(t.app.getHttpServer()).get(
+              `/api/admin/artisans/pending-verification?page=${p}&limit=100`,
+            ),
+          )
+        ).body.data,
+      (a: { id: string }) => a.id === artisan!.id,
+    );
+    expect(found).toBeDefined();
   });
 
   it('hire-requests/pending is a paginated page, not a bare array', async () => {
@@ -208,7 +220,7 @@ describe('AdminArtisansController (real HTTP, Postgres)', () => {
         .send({ tradeType: 'PLUMBER', servicePincode: '560001' }),
     );
     const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
-    await ArtisanHireRequest.create({
+    const completed = await ArtisanHireRequest.create({
       customerId: t.customerUserId,
       artisanId: artisan!.id,
       addressText: '1 Park Lane',
@@ -219,9 +231,18 @@ describe('AdminArtisansController (real HTTP, Postgres)', () => {
       request(t.app.getHttpServer()).get('/api/admin/artisans/hire-requests'),
     );
     expect(res.status).toBe(200);
-    expect(res.body.data.items.some((r: { status: string }) => r.status === 'COMPLETED')).toBe(
-      true,
+    const found = await findOnAnyPage(
+      async (p) =>
+        (
+          await asAdmin(
+            request(t.app.getHttpServer()).get(
+              `/api/admin/artisans/hire-requests?page=${p}&limit=100`,
+            ),
+          )
+        ).body.data,
+      (r: { id: string; status: string }) => r.id === completed.id && r.status === 'COMPLETED',
     );
+    expect(found).toBeDefined();
   });
 
   it('hire-requests?status= narrows to that one status', async () => {

@@ -12,6 +12,7 @@ import { ArtisanCompletionEstimate } from '../models/artisan-completion-estimate
 import { Order } from '../../orders/models/order.model';
 import { HireRequestsService } from '../hire-requests.service';
 import { ARTISAN_RESPONSE_WINDOW_MS } from '../hire-request-rules';
+import { findOnAnyPage } from './find-on-any-page';
 
 describe('HireRequestsService (integration)', () => {
   let moduleRef: TestingModule;
@@ -263,8 +264,9 @@ describe('HireRequestsService (integration)', () => {
     } as never);
 
     const page = await service.listPendingAdminReview(1, 20);
-    const dtoA = page.items.find((r) => r.id === requestA.id);
-    const dtoB = page.items.find((r) => r.id === requestB.id);
+    const pending = (p: number) => service.listPendingAdminReview(p, 100);
+    const dtoA = await findOnAnyPage(pending, (r) => r.id === requestA.id);
+    const dtoB = await findOnAnyPage(pending, (r) => r.id === requestB.id);
     expect(dtoA?.latestEstimate?.estimatedDays).toBe(2);
     expect(dtoB?.latestEstimate?.estimatedDays).toBe(9);
     expect(page.page).toBe(1);
@@ -413,11 +415,11 @@ describe('HireRequestsService (integration)', () => {
   });
 
   it('listAll returns every status when no filter is given', async () => {
-    await createHireRequestFixture({ status: 'PENDING_ADMIN_REVIEW' });
-    await createHireRequestFixture({ status: 'COMPLETED' });
-    const page = await service.listAll(1, 20);
-    expect(page.items.some((r) => r.status === 'PENDING_ADMIN_REVIEW')).toBe(true);
-    expect(page.items.some((r) => r.status === 'COMPLETED')).toBe(true);
+    const pending = await createHireRequestFixture({ status: 'PENDING_ADMIN_REVIEW' });
+    const completed = await createHireRequestFixture({ status: 'COMPLETED' });
+    const all = (p: number) => service.listAll(p, 100);
+    expect(await findOnAnyPage(all, (r) => r.id === pending.id)).toBeDefined();
+    expect(await findOnAnyPage(all, (r) => r.id === completed.id)).toBeDefined();
   });
 
   it('listAll filters to a single status when given one', async () => {
@@ -433,9 +435,10 @@ describe('HireRequestsService (integration)', () => {
     // includes rows other tests left behind — measure the delta two new
     // active rows cause, not an absolute count.
     const pendingBefore = await createHireRequestFixture({ status: 'PENDING_ADMIN_REVIEW' });
-    const before = await service.listPendingAdminReview(1, 20);
+    const pendingPages = (p: number) => service.listPendingAdminReview(p, 100);
     const baselineCount =
-      before.items.find((r) => r.id === pendingBefore.id)?.artisanActiveJobCount ?? 0;
+      (await findOnAnyPage(pendingPages, (r) => r.id === pendingBefore.id))
+        ?.artisanActiveJobCount ?? 0;
 
     await createHireRequestFixture({
       status: 'ACCEPTED_BY_ARTISAN',
@@ -457,16 +460,17 @@ describe('HireRequestsService (integration)', () => {
       customerId: await createExtraCustomer(),
     });
 
-    const page = await service.listPendingAdminReview(1, 20);
-    const dto = page.items.find((r) => r.id === pending.id);
+    const dto = await findOnAnyPage(pendingPages, (r) => r.id === pending.id);
     expect(dto?.artisanActiveJobCount).toBe(baselineCount + 3);
     expect(dto?.artisanTeamSize).toBe(0);
   });
 
   it('listAll does not attach capacity info (admin review surface only)', async () => {
     const request = await createHireRequestFixture({ status: 'COMPLETED' });
-    const page = await service.listAll(1, 20);
-    const dto = page.items.find((r) => r.id === request.id);
+    const dto = await findOnAnyPage(
+      (p) => service.listAll(p, 100),
+      (r) => r.id === request.id,
+    );
     expect(dto?.artisanActiveJobCount).toBeNull();
     expect(dto?.artisanTeamSize).toBeNull();
   });
