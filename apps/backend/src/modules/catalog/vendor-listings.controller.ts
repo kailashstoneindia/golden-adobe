@@ -46,7 +46,7 @@ import { CreateVendorListingDto } from './dto/create-vendor-listing.dto';
 // trusted from the request.
 @ApiTags('Vendor Listings')
 @Controller('vendor/listings')
-// Decision 0057: vendors and ustaads need an approved account here unless a
+// Decision 0059: vendors and ustaads need an approved account here unless a
 // route is marked @AllowUnapproved() (onboarding and own profile).
 @UseGuards(JwtAuthGuard, RolesGuard, ApprovedGuard)
 @Roles(Role.VENDOR)

@@ -30,7 +30,7 @@ function setup() {
   return { invalidate, wrapper };
 }
 
-// Verify and Reject change users.is_approved too (decision 0056), so the Users
+// Verify and Reject change users.is_approved too (decision 0058), so the Users
 // page must refetch or it shows the old Approved value.
 describe('ustaad verification mutations', () => {
   it('Verify refreshes the users list', async () => {

@@ -104,7 +104,7 @@ describe('AdminArtisansController (real HTTP, Postgres)', () => {
     expect(res.body.data.status).toBe('PENDING_ARTISAN_RESPONSE');
   });
 
-  it('awaiting-document lists an ustaad with a profile but no document (decision 0056)', async () => {
+  it('awaiting-document lists an ustaad with a profile but no document (decision 0058)', async () => {
     await asArtisan(
       request(t.app.getHttpServer())
         .post('/api/artisans/me/profile')
@@ -171,7 +171,7 @@ describe('AdminArtisansController (real HTTP, Postgres)', () => {
     expect(Array.isArray(res.body.data.items)).toBe(true);
   });
 
-  it('hire-requests JSON carries the customer and the ustaad without email (0056)', async () => {
+  it('hire-requests JSON carries the customer and the ustaad without email (0058)', async () => {
     await asArtisan(
       request(t.app.getHttpServer())
         .post('/api/artisans/me/profile')

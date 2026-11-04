@@ -17,7 +17,7 @@ import styles from '@/styles/shared.module.css';
 
 export function ApprovalsPage() {
   // Vendors only: ustaad approval happens on the verification page since
-  // decision 0056 (Verify also sets users.is_approved).
+  // decision 0058 (Verify also sets users.is_approved).
 
   const [selectedUser, setSelectedUser] = useState<UserDto | null>(null);
   const usersQuery = useAdminUsersQuery(getPendingQueryForRole(Role.VENDOR));

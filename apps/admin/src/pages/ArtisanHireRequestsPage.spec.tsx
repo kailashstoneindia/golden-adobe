@@ -111,7 +111,7 @@ describe('ArtisanHireRequestsPage', () => {
     expect(await screen.findByText('12 MG Road, Bengaluru')).toBeInTheDocument();
   });
 
-  it('shows who is involved: customer and ustaad name and phone in the list (0056)', async () => {
+  it('shows who is involved: customer and ustaad name and phone in the list (0058)', async () => {
     renderPage();
 
     const row = await screen.findByRole('row', { name: /Asha Rao/ });
@@ -121,7 +121,7 @@ describe('ArtisanHireRequestsPage', () => {
     expect(row).toHaveTextContent('91234 56780');
   });
 
-  it('the review popup shows both contacts with call links, and no ustaad email (0056)', async () => {
+  it('the review popup shows both contacts with call links, and no ustaad email (0058)', async () => {
     renderPage();
     const user = userEvent.setup();
 

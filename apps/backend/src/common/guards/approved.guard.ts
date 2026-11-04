@@ -7,7 +7,7 @@ import { ALLOW_UNAPPROVED_KEY } from '../decorators/allow-unapproved.decorator';
 
 export const ACCOUNT_NOT_APPROVED = 'ACCOUNT_NOT_APPROVED';
 
-// Decision 0057: vendors and ustaads need an approved account for business
+// Decision 0059: vendors and ustaads need an approved account for business
 // routes. Applied per controller after JwtAuthGuard and RolesGuard, locked by
 // default; onboarding routes opt out with @AllowUnapproved().
 @Injectable()

@@ -27,7 +27,7 @@ import { AdminService } from './admin.service';
       ArtisanCompletionEstimate,
     ]),
     // AdminService delegates ustaad approve/reject to ArtisansService and reads
-    // the awaiting-document count from UsersService (decision 0056).
+    // the awaiting-document count from UsersService (decision 0058).
     UsersModule,
     ArtisansModule,
   ],

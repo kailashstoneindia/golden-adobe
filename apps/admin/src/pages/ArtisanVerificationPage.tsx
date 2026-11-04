@@ -103,7 +103,7 @@ export function ArtisanVerificationPage() {
   );
 }
 
-// Decision 0056 §3a: ustaads who can't be verified yet (no profile, or no
+// Decision 0058 §3a: ustaads who can't be verified yet (no profile, or no
 // document). Read-only on purpose: there is nothing to approve until the
 // document arrives, so the admin's job here is to call them.
 function AwaitingDocumentSection() {

@@ -100,7 +100,7 @@ describe('ArtisanVerificationPage', () => {
     ).toBeInTheDocument();
   });
 
-  it('lists ustaads waiting for a document with a call link (decision 0056)', async () => {
+  it('lists ustaads waiting for a document with a call link (decision 0058)', async () => {
     awaiting = [
       {
         userId: 'u-await',

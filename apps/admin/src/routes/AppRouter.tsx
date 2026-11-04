@@ -47,7 +47,7 @@ export function AppRouter() {
         <Route element={<AdminLayout />}>
           <Route path={ROUTES.dashboard} element={<DashboardPage />} />
           <Route path={ROUTES.approvalsVendors} element={<ApprovalsPage />} />
-          {/* Decision 0056: verifying an ustaad also approves the account, so the
+          {/* Decision 0058: verifying an ustaad also approves the account, so the
               separate approvals tab is gone; old links land on verification. */}
           <Route
             path={ROUTES.approvalsArtisans}

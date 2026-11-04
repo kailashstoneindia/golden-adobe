@@ -678,7 +678,7 @@ export class HireRequestsService {
     );
   }
 
-  // Admin lists (decision 0056): the same batch details plus how many
+  // Admin lists (decision 0058): the same batch details plus how many
   // estimates each request has had.
   private async withAdminDetails(
     requests: ArtisanHireRequest[],

@@ -13,7 +13,7 @@ type ContactBlockProps = {
   children?: ReactNode;
 };
 
-// "Who is this and how do I reach them" in an admin popup (decision 0056).
+// "Who is this and how do I reach them" in an admin popup (decision 0058).
 // The email row appears only when the contact carries one: hire requests
 // send the ustaad without an email on purpose.
 export function ContactBlock({ title, contact, children }: ContactBlockProps) {

@@ -41,7 +41,7 @@ export function useArtisanByIdQuery(artisanId: string | null) {
   });
 }
 
-// Ustaads with no profile or no document yet (decision 0056 §3a).
+// Ustaads with no profile or no document yet (decision 0058 §3a).
 export function useArtisansAwaitingDocumentQuery(query: ArtisanListQuery) {
   return useQuery({
     queryKey: ARTISANS_QUERY_KEYS.awaitingDocument(query),
@@ -65,7 +65,7 @@ export function useVerifyArtisanMutation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ARTISANS_QUERY_KEYS.all });
       queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] });
-      // Verify/Reject also change users.is_approved (decision 0056).
+      // Verify/Reject also change users.is_approved (decision 0058).
       queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'user'] });
     },
@@ -80,7 +80,7 @@ export function useRejectArtisanVerificationMutation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ARTISANS_QUERY_KEYS.all });
       queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] });
-      // Verify/Reject also change users.is_approved (decision 0056).
+      // Verify/Reject also change users.is_approved (decision 0058).
       queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'user'] });
     },

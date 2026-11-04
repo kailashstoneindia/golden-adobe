@@ -5,7 +5,7 @@ import { Role } from '@golden-abode/types';
 import { ALLOW_UNAPPROVED_KEY } from '../../decorators/allow-unapproved.decorator';
 import { ApprovedGuard } from '../approved.guard';
 
-// Decision 0057: vendors and ustaads must be approved to use business routes.
+// Decision 0059: vendors and ustaads must be approved to use business routes.
 describe('ApprovedGuard', () => {
   const users = new Map<string, { isApproved: boolean }>();
   const usersService = { findById: jest.fn(async (id: string) => users.get(id) ?? null) };

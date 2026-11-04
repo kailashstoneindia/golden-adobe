@@ -21,7 +21,7 @@ import { CheckoutDto } from './dto/checkout.dto';
 
 @ApiTags('Orders')
 @Controller()
-// Decision 0057: vendors and ustaads need an approved account here unless a
+// Decision 0059: vendors and ustaads need an approved account here unless a
 // route is marked @AllowUnapproved() (onboarding and own profile).
 @UseGuards(JwtAuthGuard, RolesGuard, ApprovedGuard)
 @Roles(Role.CUSTOMER)

@@ -10,7 +10,7 @@ import { toHireRequestDto } from './artisan-profile.mapper';
 import { ArtisanCompletionEstimate } from './models/artisan-completion-estimate.model';
 import { ArtisanHireRequest } from './models/artisan-hire-request.model';
 
-// What the admin hire-request lists load (decision 0056): both parties'
+// What the admin hire-request lists load (decision 0058): both parties'
 // contact and who reviewed it. The ustaad's email is mapped away below, not
 // just left unloaded, so it can't leak through a later include change.
 export const ADMIN_HIRE_REQUEST_INCLUDES: Includeable[] = [

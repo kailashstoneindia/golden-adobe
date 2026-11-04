@@ -16,7 +16,7 @@ import { UsersService } from '../../users/users.service';
 import { Vendor } from '../../vendors/models/vendor.model';
 import { AdminService } from '../admin.service';
 
-// Decision 0056 §3b: the generic users-page approve/reject must keep an
+// Decision 0058 §3b: the generic users-page approve/reject must keep an
 // ustaad's two flags (users.is_approved, artisans.is_verified) in step.
 describe('AdminService ustaad approval from the users page (integration)', () => {
   let moduleRef: TestingModule;

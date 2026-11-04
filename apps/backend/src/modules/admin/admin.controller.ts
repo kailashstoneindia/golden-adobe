@@ -52,7 +52,7 @@ export class AdminController {
   @ApiOperation({
     summary: 'Approve a pending vendor or artisan',
     description:
-      'For an ustaad this runs Verify (decision 0056): 400 if they have no profile or no document.',
+      'For an ustaad this runs Verify (decision 0058): 400 if they have no profile or no document.',
   })
   approveUser(@Param('id') userId: string, @CurrentUser('sub') adminUserId: string) {
     return this.adminService.approveUser(userId, adminUserId);

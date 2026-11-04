@@ -97,7 +97,7 @@ import { UsersModule } from '../users/users.module';
 @Module({
   imports: [
     // ApprovedGuard on this module's vendor/ustaad controllers reads approval
-    // through UsersService (decision 0057).
+    // through UsersService (decision 0059).
     UsersModule,
     SequelizeModule.forFeature([
       UnitOfMeasure,

@@ -8,7 +8,7 @@ import { VendorsController } from '../../../modules/vendors/vendors.controller';
 import { ALLOW_UNAPPROVED_KEY } from '../../decorators/allow-unapproved.decorator';
 import { ApprovedGuard } from '../approved.guard';
 
-// Decision 0057 pins exactly which controllers are gated and exactly which
+// Decision 0059 pins exactly which controllers are gated and exactly which
 // routes stay open to pending vendors and ustaads. Opening a route, or adding
 // a controller vendors/ustaads use without the gate, must change this test.
 const GATED: Array<[string, new (...args: never[]) => unknown, string[]]> = [
@@ -50,13 +50,13 @@ function handlerNames(controller: new (...args: never[]) => unknown): string[] {
   return Object.getOwnPropertyNames(controller.prototype).filter((name) => name !== 'constructor');
 }
 
-describe('approval gate wiring (decision 0057)', () => {
+describe('approval gate wiring (decision 0059)', () => {
   it.each(GATED)('%s carries ApprovedGuard', (_name, controller) => {
     const guards: unknown[] = Reflect.getMetadata(GUARDS_METADATA, controller) ?? [];
     expect(guards).toContain(ApprovedGuard);
   });
 
-  it.each(GATED)('%s opens exactly the 0057 routes to pending users', (_name, controller, open) => {
+  it.each(GATED)('%s opens exactly the 0059 routes to pending users', (_name, controller, open) => {
     const opened = handlerNames(controller).filter((name) =>
       Reflect.getMetadata(
         ALLOW_UNAPPROVED_KEY,

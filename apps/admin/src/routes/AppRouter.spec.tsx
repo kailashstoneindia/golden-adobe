@@ -31,7 +31,7 @@ afterEach(() => {
 });
 
 describe('AppRouter', () => {
-  it('sends the old ustaad approvals tab to the verification page (decision 0056)', async () => {
+  it('sends the old ustaad approvals tab to the verification page (decision 0058)', async () => {
     render(
       <QueryClientProvider client={new QueryClient()}>
         <MemoryRouter initialEntries={['/approvals/artisans']}>

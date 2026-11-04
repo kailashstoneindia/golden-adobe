@@ -24,7 +24,7 @@ export function UsersPage() {
     selectedUser?.role === Role.VENDOR || selectedUser?.role === Role.ARTISAN;
 
   // The server can refuse, e.g. approving an ustaad with no document
-  // (decision 0056 §3b); keep the popup open and show why.
+  // (decision 0058 §3b); keep the popup open and show why.
   const [actionError, setActionError] = useState<string | null>(null);
 
   const runAction = async (action: () => Promise<unknown>) => {

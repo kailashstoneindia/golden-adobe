@@ -55,7 +55,7 @@ describe('Vendor onboarding and city resolution (real HTTP, Postgres)', () => {
     await t.close();
   });
 
-  describe('approval gate (0057)', () => {
+  describe('approval gate (0059)', () => {
     it('a pending vendor can onboard and read their profile but not their orders', async () => {
       const vendor = await t.newVendorUser();
       const as = (req: request.Test) => req.set('Authorization', `Bearer ${vendor.token}`);

@@ -21,7 +21,7 @@ const stats: AdminDashboardStats = {
 };
 
 describe('DashboardPage', () => {
-  it('links the ustaads-without-a-document count to the verification page (decision 0056)', async () => {
+  it('links the ustaads-without-a-document count to the verification page (decision 0058)', async () => {
     server.use(
       http.get('/api/admin/stats', () => HttpResponse.json({ success: true, data: stats })),
     );

@@ -300,7 +300,7 @@ describe('ArtisansService (integration)', () => {
     expect(rejected.isVerified).toBe(false);
   });
 
-  describe('verification sets the account approval too (decision 0056)', () => {
+  describe('verification sets the account approval too (decision 0058)', () => {
     async function profileWithDocument() {
       const profile = await service.onboardProfile(userId, {
         tradeType: 'PLUMBER',

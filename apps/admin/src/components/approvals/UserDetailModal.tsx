@@ -14,7 +14,7 @@ type UserDetailModalProps = {
   // Vendor rejections require a persisted reason (decision 0048) — when
   // true, Reject opens a reason prompt instead of firing immediately.
   // Ustaad rejections stay one-click; the server runs Reject verification
-  // for them (decision 0056 §3b).
+  // for them (decision 0058 §3b).
   requireRejectReason?: boolean;
   // Shown above the actions when Approve/Reject was refused by the server.
   actionError?: string | null;

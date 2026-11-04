@@ -42,7 +42,7 @@ const XLSX_MIME_TYPES = new Set([
 // only", 0011 section 5).
 @ApiTags('Vendor Catalog Import')
 @Controller('vendor/catalog-import')
-// Decision 0057: vendors and ustaads need an approved account here unless a
+// Decision 0059: vendors and ustaads need an approved account here unless a
 // route is marked @AllowUnapproved() (onboarding and own profile).
 @UseGuards(JwtAuthGuard, RolesGuard, ApprovedGuard)
 @Roles(Role.VENDOR)

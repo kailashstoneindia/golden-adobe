@@ -1,10 +1,10 @@
-# 0057 — Server-side approval gate for vendors and ustaads
+# 0059 — Server-side approval gate for vendors and ustaads
 
 - **Date:** 2026-11-04
 - **Status:** Accepted (implementing on `feat/admin-visibility`, Task 4a)
 - **Supersedes / Superseded by:** Resolves follow-up F1 of
-  [0056](0056-admin-visibility-and-editing.md). Builds on the approval flags of 0048 (vendors)
-  and 0056 §2/§3b (ustaads).
+  [0058](0058-admin-visibility-and-editing.md). Builds on the approval flags of 0048 (vendors)
+  and 0058 §2/§3b (ustaads).
 
 ## Context
 
@@ -72,7 +72,7 @@ safe side.
 
 ## Consequences
 
-- An ustaad rejected mid-job can't finish it in the app. The admin cancels it (0056 Part C,
+- An ustaad rejected mid-job can't finish it in the app. The admin cancels it (0058 Part C,
   admin cancel).
 - The mobile developer must handle `ACCOUNT_NOT_APPROVED` (send the user to the pending
   screen). Normal use shouldn't hit it, because the app already routes pending users there.

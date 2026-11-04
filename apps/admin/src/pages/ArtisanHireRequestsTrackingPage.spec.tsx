@@ -113,14 +113,14 @@ describe('ArtisanHireRequestsTrackingPage', () => {
     expect(await screen.findByText('IN_PROGRESS')).toBeInTheDocument();
   });
 
-  it('lists customer and ustaad for every request (0056)', async () => {
+  it('lists customer and ustaad for every request (0058)', async () => {
     renderPage();
 
     const row = await screen.findByRole('row', { name: /Asha Rao/ });
     expect(row).toHaveTextContent('Ramesh Plumber');
   });
 
-  it('the popup shows both contacts, who reviewed it and how many estimates (0056)', async () => {
+  it('the popup shows both contacts, who reviewed it and how many estimates (0058)', async () => {
     requests = [
       hireRequest({
         adminReviewerName: 'Admin Priya',

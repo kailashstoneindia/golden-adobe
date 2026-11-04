@@ -12,7 +12,7 @@
 
 ## Decisions the user must make before Task 0
 
-**Answered 2026-11-04: every recommendation accepted** (recorded in decision 0056).
+**Answered 2026-11-04: every recommendation accepted** (recorded in decision 0058).
 
 | # | Question | Recommendation |
 |---|---|---|
@@ -62,12 +62,12 @@
 ### Task 0: Branch and decision record
 
 **Files:**
-- Create: `docs/decisions/0056-admin-visibility-and-editing.md` (from `docs/decisions/TEMPLATE.md`)
+- Create: `docs/decisions/0058-admin-visibility-and-editing.md` (from `docs/decisions/TEMPLATE.md`)
 - Modify: `docs/decisions/README.md` (index line)
 
 - [ ] **Step 1:** `git switch -c feat/admin-visibility`
-- [ ] **Step 2:** Write 0056 with the answers to D1–D5, the "maximum information" rule verbatim ("every admin page shows every stored field of the record except the never-render list in Global Constraints"), and the Part C table as decided.
-- [ ] **Step 3:** Commit `Docs: decision 0056, admin visibility and editing`.
+- [ ] **Step 2:** Write 0058 with the answers to D1–D5, the "maximum information" rule verbatim ("every admin page shows every stored field of the record except the never-render list in Global Constraints"), and the Part C table as decided.
+- [ ] **Step 3:** Commit `Docs: decision 0058, admin visibility and editing`.
 
 ### Task 1: Admin silent token refresh
 
@@ -97,7 +97,7 @@
 - [ ] **Step 3:** Implement `tokenRefresh.ts` and the interceptor change.
 - [ ] **Step 4:** Tests pass; `pnpm --filter admin lint` and `tsc --noEmit` clean.
 - [ ] **Step 5:** Manual check: set `JWT_ACCESS_EXPIRES_IN=1m` locally, log in, wait 2 minutes with two tabs, click in both → no logout.
-- [ ] **Step 6:** Commit `Admin: refresh the access token instead of logging out (decision 0056)`.
+- [ ] **Step 6:** Commit `Admin: refresh the access token instead of logging out (decision 0058)`.
 
 ### Task 2: Ustaad Verify sets both flags (D1–D3)
 
@@ -116,7 +116,7 @@
   - `verify rolls back when the user update fails` — spy `User.update` to throw; artisan `isVerified` still false.
 - [ ] **Step 2:** Run → FAIL. **Step 3:** Implement. **Step 4:** Run → PASS.
 - [ ] **Step 5:** Admin: remove tab + redirect; update `ArtisanVerificationPage.spec.tsx` assertion that Verify success copy reads "Verified and approved".
-- [ ] **Step 6:** Commit `Ustaads: Verify approves the account too (decision 0056)`.
+- [ ] **Step 6:** Commit `Ustaads: Verify approves the account too (decision 0058)`.
 
 ### Task 3: Shared contact type + hire requests show both parties
 
@@ -156,18 +156,18 @@ export type AdminHireRequestDto = ArtisanHireRequestDto & {
   - page: list row shows customer name + phone and ustaad name + phone; detail shows reviewer name, estimate count, all timestamps.
   - service: `admin hire request never carries the ustaad's email` (`'email' in dto.artisan` is false).
 - [ ] **Step 2–4:** fail → implement → pass.
-- [ ] **Step 5:** Commit `Admin: hire requests show customer and ustaad contact (decision 0056)`.
+- [ ] **Step 5:** Commit `Admin: hire requests show customer and ustaad contact (decision 0058)`.
 
 ### Task 4 (user ruling 2026-11-04): server approval gate, friendly labels, robust old tests, then orders
 
 Task 4 runs as four steps: 4a, 4b, 4c, 4d. 4a is reviewed alone, 4b and 4c together, 4d alone.
 
-#### Task 4a: Server-side approval gate (decision 0057, follow-up F1)
+#### Task 4a: Server-side approval gate (decision 0059, follow-up F1)
 
 **Files:**
 - Create: `apps/backend/src/common/decorators/allow-unapproved.decorator.ts`
 - Modify: `apps/backend/src/common/guards/approved.guard.ts`, `common/filters/global-exception.filter.ts` (pass `code` through)
-- Modify: the five controllers in 0057 §1, adding the guard at class level and `@AllowUnapproved()` on the 0057 §3 routes
+- Modify: the five controllers in 0059 §1, adding the guard at class level and `@AllowUnapproved()` on the 0059 §3 routes
 - Modify: `catalog.module.ts`, `orders.module.ts` (import `UsersModule`)
 - Test: `apps/backend/src/common/guards/__tests__/approved.guard.spec.ts` (unit), plus HTTP tests in `artisans/__tests__/artisans.controller.spec.ts` and the vendor controller spec
 
@@ -210,7 +210,7 @@ UI: list gets columns Customer (name, phone), Paid (capturedPaise as ₹), Payme
 
 - [ ] **Step 1: Failing tests:** `admin order carries customer and vendor contact`, `customer view (getForCustomer) is unchanged` (deep-equal against a snapshot of the current DTO keys), `admin refund shows who created it`, page `renders customer phone and paid amount`.
 - [ ] **Step 2–4:** fail → implement → pass.
-- [ ] **Step 5:** Commit `Admin: orders show customer, vendor and payment details (decision 0056)`.
+- [ ] **Step 5:** Commit `Admin: orders show customer, vendor and payment details (decision 0058)`.
 
 ## Part B — Maximum information per entity
 
@@ -250,7 +250,7 @@ export type AdminVendorListingDto = {
 Counts are computed with grouped `COUNT` queries, not by loading rows. Popup sections in this order: Owner · Shop · Location · Payout · Commercial · Status · Categories · Warehouses · Listings (paged table, status filter).
 
 - [ ] Tests: `admin vendor list includes owner contact and listing counts`, `listings endpoint pages and filters by status`, `listings endpoint 404s for unknown vendor`, `vendor's own GET /vendors/me is unchanged`, modal `renders payout section with full account number` (D4), list `shows last 4 digits only`.
-- [ ] fail → implement → pass → Playwright check → commit `Admin: vendors show owner, payout, warehouses and listings (decision 0056)`.
+- [ ] fail → implement → pass → Playwright check → commit `Admin: vendors show owner, payout, warehouses and listings (decision 0058)`.
 
 ### Task 6: Ustaads + viewable documents
 
@@ -272,7 +272,7 @@ export type AdminArtisanDto = Omit<ArtisanProfileDto, 'team'> & {
 `documentViewUrl` rule: stored value null → null; starts with `http` → returned as-is (legacy); otherwise `presignGet(key, DOCUMENT_PRESIGN_TTL_SECONDS)`. Both pages open the same detail popup (fetches `GET /admin/artisans/:id` on open). Documents open in a new tab.
 
 - [ ] Tests: `detail returns a signed link for the ustaad document`, `detail returns a signed link per team member document`, `passes through a stored http URL`, `returns null link when no document`, `list responses never sign`, `job counts by status`, page `verification popup shows owner phone, team and View document links`.
-- [ ] fail → implement → pass → Playwright → commit `Admin: ustaads show owner, team and openable documents (decision 0056)`.
+- [ ] fail → implement → pass → Playwright → commit `Admin: ustaads show owner, team and openable documents (decision 0058)`.
 
 ### Task 7: Users and customers
 
@@ -295,7 +295,7 @@ export type AdminUserDetailDto = Omit<UserDto, 'deviceToken'> & {
 `listUsers` items drop `deviceToken` and add `pushEnabled`. List columns gain email, active, onboarding stage. Popup links: customer orders → Orders page filtered by customer id (add `?customerId=` to `GET /admin/orders`), vendor → vendor popup, ustaad → ustaad popup.
 
 - [ ] Tests: `user detail never contains deviceToken`, `counts only live sessions`, `customer profile with addresses and totals`, `non-customer has null customerProfile`, `orders filter by customerId`.
-- [ ] fail → implement → pass → Playwright → commit `Admin: users show sessions, push and customer profile (decision 0056)`.
+- [ ] fail → implement → pass → Playwright → commit `Admin: users show sessions, push and customer profile (decision 0058)`.
 
 ### Task 8: Catalog product popup
 
@@ -304,7 +304,7 @@ export type AdminUserDetailDto = Omit<UserDto, 'deviceToken'> & {
 **Interfaces:** `ProductDetail` gains `description`, `productFamily: string | null`, `stoneVariety: string | null`, `unitOfMeasure: string | null`, `saleUnitType`, `packContentQty: number | null`, `hasNaturalVariation`, `importerDetails: string | null`, `cachedBestPrice: number | null`, `cachedBestVendorName: string | null`, `listings: { vendorId; shopName; price; mrp; status; quantityAvailable }[]`.
 
 - [ ] Tests: `detail includes family, unit and listings by vendor`; modal renders each new field.
-- [ ] fail → implement → pass → commit `Admin: product popup shows full product and vendor listings (decision 0056)`.
+- [ ] fail → implement → pass → commit `Admin: product popup shows full product and vendor listings (decision 0058)`.
 
 ## Part C — What should be editable (proposal for D5)
 

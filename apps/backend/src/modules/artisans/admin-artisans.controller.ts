@@ -48,7 +48,7 @@ export class AdminArtisansController {
   @ApiOperation({
     summary: 'Ustaads who cannot be verified yet',
     description:
-      'Active ustaads with no profile, or a profile with no document (decision 0056). Read-only: there is nothing to approve until a document arrives.',
+      'Active ustaads with no profile, or a profile with no document (decision 0058). Read-only: there is nothing to approve until a document arrives.',
   })
   @ApiResponse({ status: 200, description: 'Page of ustaads, newest sign-up first' })
   async awaitingDocument(@Query() query: PaginationQueryDto) {

@@ -34,7 +34,7 @@ describe('ArtisansController (real HTTP, Postgres)', () => {
     }
   });
 
-  describe('approval gate (0057)', () => {
+  describe('approval gate (0059)', () => {
     it('a pending ustaad can set up their profile and upload a document', async () => {
       const pending = await t.newArtisanUser({ approved: false });
       const as = (req: request.Test) => req.set('Authorization', `Bearer ${pending.token}`);

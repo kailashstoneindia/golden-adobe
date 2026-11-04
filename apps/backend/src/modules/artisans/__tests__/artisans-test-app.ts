@@ -44,7 +44,7 @@ export type ArtisansTestApp = {
   // value to exercise GET hire-requests/:id/orders meaningfully.
   orderModel: { findAll: jest.Mock };
   // Approved by default, like the main ustaad; pass approved: false for a
-  // pending one (decision 0057).
+  // pending one (decision 0059).
   newArtisanUser: (options?: { approved?: boolean }) => Promise<{ id: string; token: string }>;
   close: () => Promise<void>;
 };
@@ -139,7 +139,7 @@ export async function createArtisansTestApp(): Promise<ArtisansTestApp> {
     phone: `9${suffix}`.slice(0, 10),
     role: Role.ARTISAN,
     isActive: true,
-    // Business-as-usual ustaad: approved, so the gate (0057) lets them work.
+    // Business-as-usual ustaad: approved, so the gate (0059) lets them work.
     isApproved: true,
   } as never);
   const customerUser = await User.create({

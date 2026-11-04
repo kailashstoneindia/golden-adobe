@@ -8,7 +8,7 @@ import { Artisan } from '../../artisans/models/artisan.model';
 import { User } from '../models/user.model';
 import { UsersService } from '../users.service';
 
-// Decision 0056 §3a: ustaads who cannot be verified yet because there is no
+// Decision 0058 §3a: ustaads who cannot be verified yet because there is no
 // profile or no document. The admin needs them listed to chase them.
 describe('UsersService ustaads awaiting a document (integration)', () => {
   let moduleRef: TestingModule;

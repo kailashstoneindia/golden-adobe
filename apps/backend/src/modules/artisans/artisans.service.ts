@@ -373,7 +373,7 @@ export class ArtisansService {
   // unconditional update (last write wins) is the correct, simpler
   // choice here, not a gap to close with the same guard.
   //
-  // Decision 0056: verifying also approves the account (users.is_approved),
+  // Decision 0058: verifying also approves the account (users.is_approved),
   // and rejecting un-approves it, in one transaction — before this an admin
   // had to set the two flags on two different pages.
   async verify(artisanId: string, adminUserId: string): Promise<ArtisanProfileDto> {
@@ -406,7 +406,7 @@ export class ArtisansService {
   }
 
   // Ustaads this queue can't show yet: no profile, or no document (decision
-  // 0056 §3a). The query lives in UsersService because some have no artisans row.
+  // 0058 §3a). The query lives in UsersService because some have no artisans row.
   listAwaitingDocument(
     page: number,
     limit: number,

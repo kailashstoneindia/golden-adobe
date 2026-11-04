@@ -27,7 +27,7 @@ const ustaad = {
 } satisfies UserDto;
 
 describe('UsersPage', () => {
-  it('shows the server reason when approving an ustaad fails (decision 0056)', async () => {
+  it('shows the server reason when approving an ustaad fails (decision 0058)', async () => {
     server.use(
       http.get('/api/admin/users', () =>
         HttpResponse.json({

@@ -38,7 +38,7 @@ class UpdateOrderGroupStatusDto {
 // with the risk that a sixth route added later forgets them.
 @ApiTags('Vendors')
 @Controller('vendors')
-// Decision 0057: vendors and ustaads need an approved account here unless a
+// Decision 0059: vendors and ustaads need an approved account here unless a
 // route is marked @AllowUnapproved() (onboarding and own profile).
 @UseGuards(JwtAuthGuard, RolesGuard, ApprovedGuard)
 @Roles(Role.VENDOR)

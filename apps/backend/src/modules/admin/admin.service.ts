@@ -125,7 +125,7 @@ export class AdminService {
     return this.toUserDto(user);
   }
 
-  // Decision 0056 §3b: for an ustaad, approve/reject here run the same
+  // Decision 0058 §3b: for an ustaad, approve/reject here run the same
   // Verify / Reject verification as the verification page, so
   // users.is_approved and artisans.is_verified never disagree.
   async approveUser(userId: string, adminUserId: string): Promise<UserDto> {

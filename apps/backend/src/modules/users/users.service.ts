@@ -116,7 +116,7 @@ export class UsersService {
     );
   }
 
-  // ─── Ustaads awaiting a document (decision 0056 §3a) ─────────────────
+  // ─── Ustaads awaiting a document (decision 0058 §3a) ─────────────────
   // Active ustaads with no artisans row, or a row with no document. They
   // can't be verified yet; the admin lists them to follow up.
   async listArtisansAwaitingDocument(

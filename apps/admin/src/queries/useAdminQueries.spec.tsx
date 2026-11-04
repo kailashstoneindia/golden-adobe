@@ -24,7 +24,7 @@ function setup() {
 }
 
 // For an ustaad, approve/reject on the users page runs Verify/Reject
-// (decision 0056 §3b), so the ustaad lists must refetch too.
+// (decision 0058 §3b), so the ustaad lists must refetch too.
 describe('user approval mutations', () => {
   it('approve refreshes the ustaad lists', async () => {
     const { invalidate, wrapper } = setup();

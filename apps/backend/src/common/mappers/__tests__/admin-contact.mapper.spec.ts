@@ -17,7 +17,7 @@ function user(over: Partial<Record<string, unknown>> = {}): User {
   } as unknown as User;
 }
 
-describe('admin contact mapper (decision 0056)', () => {
+describe('admin contact mapper (decision 0058)', () => {
   it('maps a user to a contact', () => {
     expect(toAdminContactDto(user())).toEqual({
       userId: 'u-1',
