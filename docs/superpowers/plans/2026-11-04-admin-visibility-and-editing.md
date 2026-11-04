@@ -360,3 +360,23 @@ Every edit task follows the same pattern, so each is specified by its endpoint a
 0 → 1 → 2 → 3 → 4a → 4b → 4c → 4d → 5 → 6 → 7 → 8 → (D5) → 9 → 10 → 11 → 12 → 13 → whole-branch review → PR
 ```
 After each task: tests + lint + typecheck green, a fresh reviewer checks the task's diff against this plan, then the user OKs before the next task starts.
+
+## Release (only after every task above, user ruling 2026-11-05)
+
+Merge and deploy happen once, after all tasks are done and the backend is in sync with the
+mobile developer's `feat/artisan-mobile`. Each production step needs the user's go-ahead.
+Ask the merge method before merging.
+
+- [ ] Whole-branch review, then a PR for `feat/admin-visibility`.
+- [ ] Mobile sync: the mobile developer handles `403 ACCOUNT_NOT_APPROVED` (decision 0059), and
+      the hire-request status labels cover 0055's statuses. Their side; we only tell them.
+- [ ] Deploy latest main to production and run every pending migration, including
+      `20261105090000` (approval trigger) and `20261105090100` (queue already-unapproved vendors).
+- [ ] Production media env vars: `S3_MEDIA_BUCKET`, `AWS_REGION`, `MEDIA_PUBLIC_BASE_URL`
+      (CloudFront), `MEDIA_CALLBACK_SECRET` (32+ characters). `S3_ACCESS_KEY_ID` and
+      `S3_SECRET_ACCESS_KEY` only if not on AWS. Without these, ustaad document upload
+      returns 503.
+- [ ] Deploy `apps/media-lambda` (product images never reach "ready" without it).
+- [ ] Razorpay on the backend: `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`,
+      `RAZORPAY_WEBHOOK_SECRET`. Send the key ID to the mobile developer for the app build.
+- [ ] After deploy: confirm search shows only approved vendors (the outbox drain has run).
