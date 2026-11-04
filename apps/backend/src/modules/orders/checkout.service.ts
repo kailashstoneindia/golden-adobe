@@ -17,7 +17,7 @@ import { CustomersService } from '../customers/customers.service';
 import { CustomerAddress } from '../customers/models/customer-address.model';
 import { PAYMENT_PROVIDER, PaymentProviderService } from '../payments/payment-provider.interface';
 import { toPaise } from '../payments/money';
-import { VendorListingStatus } from '../catalog/models/vendor-listing.model';
+import { sellerBlockReason } from './checkout-line-rules';
 import { SaleUnitType } from '../catalog/models/master-product.model';
 import { ArtisanHireRequest } from '../artisans/models/artisan-hire-request.model';
 import type { OrderDto } from '@golden-abode/types';
@@ -41,6 +41,7 @@ interface CartLineForCheckout {
   listing_status: string;
   sale_unit_type: string;
   vendor_is_active: boolean;
+  vendor_is_approved: boolean;
   quantity_available: string | null;
   quantity_reserved: string | null;
   category_path: string;
@@ -208,6 +209,7 @@ export class CheckoutService {
           mp.sale_unit_type,
           mp.name AS product_name,
           u.is_active AS vendor_is_active,
+          u.is_approved AS vendor_is_approved,
           inv.quantity_available,
           inv.quantity_reserved,
           cat.path AS category_path,
@@ -235,12 +237,9 @@ export class CheckoutService {
 
       const rejections: CheckoutRejection[] = [];
       for (const line of lines) {
-        if (line.listing_status !== VendorListingStatus.ACTIVE) {
-          rejections.push(toLineRejection(line, 'listing is not active'));
-          continue;
-        }
-        if (!line.vendor_is_active) {
-          rejections.push(toLineRejection(line, 'vendor is paused'));
+        const blocked = sellerBlockReason(line);
+        if (blocked) {
+          rejections.push(toLineRejection(line, blocked));
           continue;
         }
         const requested = Number(line.quantity);

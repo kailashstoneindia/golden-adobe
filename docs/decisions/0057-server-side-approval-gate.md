@@ -92,6 +92,6 @@ safe side.
 
 | # | Item | Found in | Why not now |
 |---|---|---|---|
-| G1 | **A rejected vendor's live listings still appear in search and can still be bought**, but the vendor now gets 403 on their order groups, so those orders sit unseen. Search and checkout filter on listing status and city, not on vendor approval. | 4a review | Product decision: hide listings of unapproved vendors from search/checkout, or pause all their listings on reject. Awaiting the user. |
+| G1 | **Done (option A, ruled 2026-11-04).** A rejected vendor's live listings used to stay in search and could still be bought, but the vendor now gets 403 on their order groups, so those orders sit unseen. Search and checkout filter on listing status and city, not on vendor approval. | 4a review | Built: search (both engines, including other sellers) and checkout leave out listings of a vendor whose account is not approved; approving brings them back, nothing is paused or deleted. A trigger on `users.is_approved` queues the vendor's products for re-indexing. The cart still accepts the item (decision 0042: checkout is the gate). Deploy: run migration `20261105090000`. |
 | G2 | Each gated vendor/ustaad request reads `users` twice (`JwtStrategy` and the guard). | 4a review | Performance only. Fix by returning `isApproved` from `JwtStrategy.validate`. |
 | G3 | There are no HTTP-level gate tests for vendor listings, catalog import or orders. The unit, wiring and discovery tests cover them. | 4a review | Low risk; the vendor listings test app doesn't exist yet. |

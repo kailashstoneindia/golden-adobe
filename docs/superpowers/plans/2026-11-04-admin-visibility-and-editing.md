@@ -177,6 +177,10 @@ Task 4 runs as four steps: 4a, 4b, 4c, 4d. 4a is reviewed alone, 4b and 4c toget
   - unit: customer and admin pass; approved vendor passes; unapproved vendor gets 403 with the code; `@AllowUnapproved` route passes when unapproved; a user deleted mid-session gets 403.
   - HTTP: a pending ustaad can create and read their profile but gets 403 on `GET /artisans/me/hire-requests`; approving them opens it with no new login; a pending vendor can `GET /vendors/me` but gets 403 on `GET /vendor/listings` and `GET /vendors/order-groups`.
 
+#### Task 4a-G1: Hide unapproved vendors from search and checkout (0059 G1, option A)
+
+Done in the 4a review cycle: approval filter in the search document builder, Postgres search, other-sellers list and checkout (`sellerBlockReason`); migration `20261105090000` adds a `users.is_approved` trigger that queues re-indexing. Tests: `search/__tests__/unapproved-vendor-hidden.spec.ts`, `orders/__tests__/checkout-line-rules.spec.ts`.
+
 #### Task 4b: Friendly labels on admin pages (follow-up F10)
 
 One `apps/admin/src/utils/labels.ts` with `formatTradeType`, `formatHireRequestStatus`, `formatOrderStatus`, `formatVendorGroupStatus`, `formatListingStatus`. Every admin page renders through it. Unknown codes fall back to the raw code. Tests: each map covers every value of its union type (type-checked with `satisfies Record<…>`), and the pages show labels.
