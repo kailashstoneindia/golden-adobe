@@ -10,7 +10,8 @@ import { Artisan } from '../models/artisan.model';
 import { ArtisanHireRequest } from '../models/artisan-hire-request.model';
 import { ArtisanCompletionEstimate } from '../models/artisan-completion-estimate.model';
 import { Order } from '../../orders/models/order.model';
-import { ARTISAN_RESPONSE_WINDOW_MS, HireRequestsService } from '../hire-requests.service';
+import { HireRequestsService } from '../hire-requests.service';
+import { ARTISAN_RESPONSE_WINDOW_MS } from '../hire-request-rules';
 
 describe('HireRequestsService (integration)', () => {
   let moduleRef: TestingModule;
@@ -122,7 +123,7 @@ describe('HireRequestsService (integration)', () => {
   });
 
   async function createHireRequestFixture(
-    overrides: Partial<{ status: string; customerId: string; adminReviewedAt: Date }> = {},
+    overrides: Partial<{ status: string; customerId: string; adminReviewedAt: Date | null }> = {},
   ): Promise<ArtisanHireRequest> {
     const status = overrides.status ?? 'PENDING_ADMIN_REVIEW';
     return ArtisanHireRequest.create({
@@ -133,7 +134,11 @@ describe('HireRequestsService (integration)', () => {
       // A request past the admin gate was reviewed at some point; the
       // ustaad's response window runs from then (0055).
       adminReviewedAt:
-        overrides.adminReviewedAt ?? (status === 'PENDING_ADMIN_REVIEW' ? null : new Date()),
+        'adminReviewedAt' in overrides
+          ? overrides.adminReviewedAt
+          : status === 'PENDING_ADMIN_REVIEW'
+            ? null
+            : new Date(),
     } as never);
   }
 
@@ -441,7 +446,8 @@ describe('HireRequestsService (integration)', () => {
       customerId: await createExtraCustomer(),
     });
     await createHireRequestFixture({ status: 'COMPLETED' }); // not active, excluded from count
-    // Waiting on the ustaad is not an active job either (0055).
+    // Already sent to the ustaad and waiting on an answer: counts as load,
+    // so the admin sees it before sending them more (0055, PR #41 review).
     await createHireRequestFixture({
       status: 'PENDING_ARTISAN_RESPONSE',
       customerId: await createExtraCustomer(),
@@ -453,7 +459,7 @@ describe('HireRequestsService (integration)', () => {
 
     const page = await service.listPendingAdminReview(1, 20);
     const dto = page.items.find((r) => r.id === pending.id);
-    expect(dto?.artisanActiveJobCount).toBe(baselineCount + 2);
+    expect(dto?.artisanActiveJobCount).toBe(baselineCount + 3);
     expect(dto?.artisanTeamSize).toBe(0);
   });
 
@@ -726,6 +732,80 @@ describe('HireRequestsService (integration)', () => {
     it('the database index blocks a duplicate open request even if the service check is bypassed', async () => {
       await createHireRequestFixture({ status: 'PENDING_ADMIN_REVIEW' });
       await expect(createHireRequestFixture({ status: 'IN_PROGRESS' })).rejects.toThrow();
+    });
+  });
+
+  describe('code review fixes (PR #41)', () => {
+    const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000);
+
+    it('the ustaad never sees a request cancelled before the admin reviewed it', async () => {
+      const cancelledEarly = await createHireRequestFixture({
+        status: 'CANCELLED',
+        adminReviewedAt: null,
+      });
+      const cancelledLate = await createHireRequestFixture({
+        status: 'CANCELLED',
+        adminReviewedAt: new Date(),
+      });
+      const ids = (await service.listForArtisan(artisanUserId)).map((r) => r.id);
+      expect(ids).not.toContain(cancelledEarly.id);
+      expect(ids).toContain(cancelledLate.id);
+    });
+
+    it('cancelling before admin review does not notify the ustaad', async () => {
+      const request = await createHireRequestFixture({ status: 'PENDING_ADMIN_REVIEW' });
+      await service.cancel(customerId, Role.CUSTOMER, request.id, { reason: 'changed my mind' });
+      expect(notificationsMock.sendHireRequestStatusChanged).not.toHaveBeenCalledWith(
+        artisanUserId,
+        request.id,
+        'CANCELLED',
+      );
+    });
+
+    it('the ustaad gets 403, not 409, cancelling a request the admin has not sent them', async () => {
+      const request = await createHireRequestFixture({ status: 'PENDING_ADMIN_REVIEW' });
+      await expect(
+        service.cancel(artisanUserId, Role.ARTISAN, request.id, { reason: 'peek' }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('one failed expiry notification does not stop the others', async () => {
+      const first = await createHireRequestFixture({
+        status: 'PENDING_ARTISAN_RESPONSE',
+        adminReviewedAt: hoursAgo(50),
+      });
+      const secondCustomer = await createExtraCustomer();
+      const second = await createHireRequestFixture({
+        status: 'PENDING_ARTISAN_RESPONSE',
+        adminReviewedAt: hoursAgo(50),
+        customerId: secondCustomer,
+      });
+      notificationsMock.sendHireRequestStatusChanged.mockRejectedValueOnce(new Error('push down'));
+
+      await expect(service.expireStaleResponses()).resolves.toBeGreaterThanOrEqual(2);
+
+      const notifiedIds = notificationsMock.sendHireRequestStatusChanged.mock.calls.map(
+        (call) => call[1],
+      );
+      expect(notifiedIds).toEqual(expect.arrayContaining([first.id, second.id]));
+      // Both sides for both rows were attempted, even though the first call threw.
+      expect(
+        notificationsMock.sendHireRequestStatusChanged.mock.calls.filter(
+          (call) => call[2] === 'EXPIRED',
+        ).length,
+      ).toBeGreaterThanOrEqual(4);
+    });
+
+    it('a lost race on accept is not reported as the window having passed', async () => {
+      const request = await createHireRequestFixture({ status: 'PENDING_ARTISAN_RESPONSE' });
+      const staleRead = await service.getRequestById(request.id);
+      await service.acceptRequest(artisanUserId, request.id);
+
+      const spy = jest.spyOn(service, 'getRequestById').mockResolvedValueOnce(staleRead);
+      const second = service.acceptRequest(artisanUserId, request.id);
+      await expect(second).rejects.toThrow(ConflictException);
+      await expect(second).rejects.not.toThrow(/time to respond/);
+      spy.mockRestore();
     });
   });
 });

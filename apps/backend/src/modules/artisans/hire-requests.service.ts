@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
@@ -29,11 +30,10 @@ import type { OrderDto } from '@golden-abode/types';
 import { toOrderDto } from '../orders/order-display.mapper';
 import {
   ARTISAN_RESPONSE_WINDOW_MS,
-  HIDDEN_FROM_ARTISAN_STATUSES,
+  CAPACITY_LOAD_STATUSES,
   OPEN_HIRE_REQUEST_STATUSES,
+  isVisibleToArtisan,
 } from './hire-request-rules';
-
-export { ARTISAN_RESPONSE_WINDOW_MS };
 
 // Loaded on every read that maps to a DTO, so the mapper can fill the
 // customer's contact for the ustaad (0055). Only the two fields it shows.
@@ -50,6 +50,8 @@ export const ACTIVE_ENGAGEMENT_STATUSES = new Set(['ACCEPTED_BY_ARTISAN', 'IN_PR
 
 @Injectable()
 export class HireRequestsService {
+  private readonly logger = new Logger(HireRequestsService.name);
+
   constructor(
     @InjectModel(Artisan)
     private readonly artisanModel: typeof Artisan,
@@ -132,7 +134,12 @@ export class HireRequestsService {
     }
 
     const requests = await this.hireRequestModel.findAll({
-      where: { artisanId: artisan.id, status: { [Op.notIn]: HIDDEN_FROM_ARTISAN_STATUSES } },
+      // Same rule as isVisibleToArtisan, as a query.
+      where: {
+        artisanId: artisan.id,
+        adminReviewedAt: { [Op.ne]: null },
+        status: { [Op.ne]: 'ADMIN_REJECTED' },
+      },
       include: [CUSTOMER_CONTACT_INCLUDE],
       order: [['createdAt', 'DESC']],
     });
@@ -200,7 +207,7 @@ export class HireRequestsService {
       this.hireRequestModel.findAll({
         where: {
           artisanId: { [Op.in]: artisanIds },
-          status: { [Op.in]: Array.from(ACTIVE_ENGAGEMENT_STATUSES) },
+          status: { [Op.in]: CAPACITY_LOAD_STATUSES },
         },
         attributes: ['artisanId'],
       }),
@@ -382,8 +389,11 @@ export class HireRequestsService {
       fromStatuses: ['PENDING_ARTISAN_RESPONSE'],
       extraWhere: { adminReviewedAt: { [Op.gt]: windowOpenSince } },
       updates,
-      conflictMessage:
-        request.status === 'PENDING_ARTISAN_RESPONSE'
+      // Judged from the status after the UPDATE missed, not the read above:
+      // still waiting means only the window can have stopped it; anything
+      // else means another accept/decline/cancel got there first.
+      conflictMessage: (currentStatus) =>
+        currentStatus === 'PENDING_ARTISAN_RESPONSE'
           ? 'the time to respond to this hire request has passed'
           : undefined,
     });
@@ -406,15 +416,21 @@ export class HireRequestsService {
       where: { id: { [Op.in]: [...new Set(expired.map((request) => request.artisanId))] } },
     });
     const artisanUserIdById = new Map(artisans.map((artisan) => [artisan.id, artisan.userId]));
+    // The rows are already EXPIRED, so a later sweep won't retry them: one
+    // failed notification must not cost everyone after it theirs.
     for (const request of expired) {
-      await this.notifications.sendHireRequestStatusChanged(
-        request.customerId,
-        request.id,
-        'EXPIRED',
-      );
-      const artisanUserId = artisanUserIdById.get(request.artisanId);
-      if (artisanUserId) {
-        await this.notifications.sendHireRequestStatusChanged(artisanUserId, request.id, 'EXPIRED');
+      const recipients = [request.customerId, artisanUserIdById.get(request.artisanId)];
+      for (const userId of recipients) {
+        if (!userId) continue;
+        try {
+          await this.notifications.sendHireRequestStatusChanged(userId, request.id, 'EXPIRED');
+        } catch (err) {
+          this.logger.error(
+            `hire request ${request.id}: expiry notification to ${userId} failed: ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          );
+        }
       }
     }
     return expired.length;
@@ -508,7 +524,8 @@ export class HireRequestsService {
         'CANCELLED',
       );
     }
-    if (callerRole !== Role.ARTISAN && artisan) {
+    // Not if the request never reached the ustaad (cancelled in admin review).
+    if (callerRole !== Role.ARTISAN && artisan && isVisibleToArtisan(request)) {
       await this.notifications.sendHireRequestStatusChanged(artisan.userId, requestId, 'CANCELLED');
     }
 
@@ -535,7 +552,9 @@ export class HireRequestsService {
     if (callerRole === Role.CUSTOMER && request.customerId === callerId) {
       return;
     }
-    if (callerRole === Role.ARTISAN) {
+    // A request the ustaad can't see is forbidden, not a status conflict —
+    // a 409 would confirm it exists (same boundary as the view guard).
+    if (callerRole === Role.ARTISAN && isVisibleToArtisan(request)) {
       const artisan = await this.artisanModel.findOne({ where: { userId: callerId } });
       if (artisan && artisan.id === request.artisanId) {
         return;
@@ -556,7 +575,8 @@ export class HireRequestsService {
       fromStatuses: string[];
       updates: Partial<ArtisanHireRequest>;
       extraWhere?: WhereOptions<ArtisanHireRequest>;
-      conflictMessage?: string;
+      // Given the request's status as it stands after the UPDATE missed.
+      conflictMessage?: (currentStatus: string) => string | undefined;
     },
   ): Promise<ArtisanHireRequestDto> {
     const [affected] = await this.hireRequestModel.update(options.updates as never, {
@@ -568,12 +588,12 @@ export class HireRequestsService {
     });
 
     if (affected === 0) {
-      const exists = await this.hireRequestModel.count({ where: { id: requestId } });
-      if (!exists) {
+      const current = await this.hireRequestModel.findByPk(requestId, { attributes: ['status'] });
+      if (!current) {
         throw new NotFoundException(`hire request ${requestId} not found`);
       }
       throw new ConflictException(
-        options.conflictMessage ??
+        options.conflictMessage?.(current.status) ??
           'this hire request is not in a status that allows this transition',
       );
     }

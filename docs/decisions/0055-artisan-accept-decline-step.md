@@ -69,13 +69,19 @@ Scope is MVP: keep the flow minimal.
 >    `IN_PROGRESS`. Once that request ends, the customer may ask the same ustaad again.
 >    Enforced by a check in `createRequest` (409) **and** a partial unique index, so two
 >    concurrent requests can't both get through.
-> 8. **Ustaad visibility:** the ustaad never sees `PENDING_ADMIN_REVIEW` or `ADMIN_REJECTED`
->    requests. A blocked request was never sent to them.
+> 8. **Ustaad visibility:** the ustaad sees a request only if the admin let it through:
+>    `admin_reviewed_at` is set and the status is not `ADMIN_REJECTED`. This covers lists, the
+>    single read, cancel (403, not 409) and notifications. A request cancelled while still in
+>    admin review stays hidden and sends the ustaad no notification, because it was never sent
+>    to them.
 > 9. **Cancel:** the customer or admin may cancel while the request waits on the ustaad. The
 >    ustaad cannot cancel at that point; they decline instead (409 points them there).
-> 10. **Unchanged:** estimates, start, complete, and checkout `bookingId` attribution all
->     still require the ustaad to have accepted. Capacity signal (active jobs) still counts
->     `ACCEPTED_BY_ARTISAN` + `IN_PROGRESS` only.
+> 10. **Capacity signal:** the admin's "active jobs" count now includes
+>     `PENDING_ARTISAN_RESPONSE` along with `ACCEPTED_BY_ARTISAN` and `IN_PROGRESS`. Otherwise
+>     a burst of allows to one ustaad would all read as zero load, which is the problem the
+>     admin gate exists to catch.
+> 11. **Unchanged:** estimates, start, complete, and checkout `bookingId` attribution all
+>     still require the ustaad to have accepted.
 
 ## Why
 

@@ -23,10 +23,24 @@ export const CUSTOMER_CONTACT_VISIBLE_STATUSES = new Set<ArtisanHireRequestStatu
   'IN_PROGRESS',
 ]);
 
-// Never shown to the ustaad: the admin hasn't sent it, or blocked it.
-export const HIDDEN_FROM_ARTISAN_STATUSES: ArtisanHireRequestStatus[] = [
-  'PENDING_ADMIN_REVIEW',
-  'ADMIN_REJECTED',
+// The ustaad only sees a request the admin let through: it has been
+// reviewed (admin_reviewed_at set) and not blocked. A request cancelled
+// while still in admin review was never sent, so it stays hidden too —
+// the current status alone can't tell that (PR #41 review).
+export function isVisibleToArtisan(request: {
+  status: string;
+  adminReviewedAt: Date | null;
+}): boolean {
+  return request.adminReviewedAt !== null && request.status !== 'ADMIN_REJECTED';
+}
+
+// Load on the ustaad for the admin's capacity check: jobs they're working,
+// plus requests already sent to them and waiting on an answer, so a burst
+// of allows doesn't all read as zero (PR #41 review).
+export const CAPACITY_LOAD_STATUSES: ArtisanHireRequestStatus[] = [
+  'PENDING_ARTISAN_RESPONSE',
+  'ACCEPTED_BY_ARTISAN',
+  'IN_PROGRESS',
 ];
 
 export function artisanResponseDueAt(adminReviewedAt: Date): Date {
