@@ -6,17 +6,8 @@ import { User } from '../../modules/users/models/user.model';
 // (decision 0056). The caller must load these user attributes:
 // id, name, phone, email, role, isActive, isApproved, lastLoginAt.
 export function toAdminContactDto(user: User | null | undefined): AdminContactDto | null {
-  if (!user) return null;
-  return {
-    userId: user.id,
-    name: user.name,
-    phone: user.phone ?? null,
-    email: user.email ?? null,
-    role: user.role,
-    isActive: user.isActive,
-    isApproved: user.isApproved,
-    lastLoginAt: user.lastLoginAt ? new Date(user.lastLoginAt).toISOString() : null,
-  };
+  const contact = toAdminContactWithoutEmailDto(user);
+  return contact && user ? { ...contact, email: user.email ?? null } : null;
 }
 
 // Same, with the email left out entirely — used for the ustaad on hire
@@ -24,10 +15,16 @@ export function toAdminContactDto(user: User | null | undefined): AdminContactDt
 export function toAdminContactWithoutEmailDto(
   user: User | null | undefined,
 ): AdminContactWithoutEmailDto | null {
-  const contact = toAdminContactDto(user);
-  if (!contact) return null;
-  const { email: _email, ...withoutEmail } = contact;
-  return withoutEmail;
+  if (!user) return null;
+  return {
+    userId: user.id,
+    name: user.name,
+    phone: user.phone ?? null,
+    role: user.role,
+    isActive: user.isActive,
+    isApproved: user.isApproved,
+    lastLoginAt: user.lastLoginAt ? new Date(user.lastLoginAt).toISOString() : null,
+  };
 }
 
 // Attribute list for a User include that feeds the mappers above.
