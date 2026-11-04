@@ -1,4 +1,10 @@
-import type { CityDto, VendorCategoryDto, VendorProfileDto } from '@golden-abode/types';
+import type {
+  AdminVendorDto,
+  CityDto,
+  PaginatedAdminVendorListingsResponse,
+  VendorCategoryDto,
+  VendorProfileDto,
+} from '@golden-abode/types';
 
 import { API_ENDPOINTS } from '@/constants/apiEndpoints';
 import { getRequest, patchRequest, putRequest } from '@/services/api/apiClient';
@@ -9,12 +15,23 @@ import type {
 } from '@/types/vendors.types';
 
 export const vendorsService = {
-  fetchVendors(): Promise<VendorProfileDto[]> {
-    return getRequest<VendorProfileDto[]>(API_ENDPOINTS.admin.vendors);
+  fetchVendors(): Promise<AdminVendorDto[]> {
+    return getRequest<AdminVendorDto[]>(API_ENDPOINTS.admin.vendors);
   },
 
-  fetchVendorById(vendorId: string): Promise<VendorProfileDto> {
-    return getRequest<VendorProfileDto>(API_ENDPOINTS.admin.vendorById(vendorId));
+  fetchVendorById(vendorId: string): Promise<AdminVendorDto> {
+    return getRequest<AdminVendorDto>(API_ENDPOINTS.admin.vendorById(vendorId));
+  },
+
+  fetchVendorListings(
+    vendorId: string,
+    query: { status?: string; page: number; limit: number },
+  ): Promise<PaginatedAdminVendorListingsResponse> {
+    const params = new URLSearchParams({ page: String(query.page), limit: String(query.limit) });
+    if (query.status) params.set('status', query.status);
+    return getRequest<PaginatedAdminVendorListingsResponse>(
+      `${API_ENDPOINTS.admin.vendorListings(vendorId)}?${params.toString()}`,
+    );
   },
 
   setVendorCity(vendorId: string, body: SetVendorCityRequest): Promise<VendorProfileDto> {

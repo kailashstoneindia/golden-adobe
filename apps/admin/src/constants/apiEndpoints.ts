@@ -18,6 +18,7 @@ export const API_ENDPOINTS = {
     vendorCategories: (vendorId: string) => `/admin/vendors/${vendorId}/categories`,
     vendorApprove: (vendorId: string) => `/admin/vendors/${vendorId}/approve`,
     vendorReject: (vendorId: string) => `/admin/vendors/${vendorId}/reject`,
+    vendorListings: (vendorId: string) => `/admin/vendors/${vendorId}/listings`,
     cities: '/admin/cities',
     orders: '/admin/orders',
     orderById: (orderId: string) => `/admin/orders/${orderId}`,

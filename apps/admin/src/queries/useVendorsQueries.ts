@@ -14,12 +14,26 @@ export const VENDORS_QUERY_KEYS = {
   detail: (vendorId: string) => ['vendors', 'detail', vendorId] as const,
   categories: (vendorId: string) => ['vendors', 'categories', vendorId] as const,
   cities: ['vendors', 'cities'] as const,
+  listings: (vendorId: string, query: { status?: string; page: number }) =>
+    ['vendors', 'listings', vendorId, query] as const,
 };
 
 export function useVendorsQuery() {
   return useQuery({
     queryKey: VENDORS_QUERY_KEYS.list,
     queryFn: () => vendorsService.fetchVendors(),
+    staleTime: APP_CONSTANTS.staleTimeMs,
+  });
+}
+
+// One page of a vendor's listings in the vendor popup (decision 0058 Task 5).
+export function useVendorListingsQuery(
+  vendorId: string,
+  query: { status?: string; page: number; limit: number },
+) {
+  return useQuery({
+    queryKey: VENDORS_QUERY_KEYS.listings(vendorId, { status: query.status, page: query.page }),
+    queryFn: () => vendorsService.fetchVendorListings(vendorId, query),
     staleTime: APP_CONSTANTS.staleTimeMs,
   });
 }

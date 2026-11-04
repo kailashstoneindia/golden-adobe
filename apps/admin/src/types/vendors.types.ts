@@ -1,4 +1,4 @@
-import type { CityDto, VendorCategoryDto, VendorProfileDto } from '@golden-abode/types';
+import type { AdminVendorDto, CityDto, VendorCategoryDto } from '@golden-abode/types';
 
 export type SetVendorCityRequest = {
   cityId: string | null;
@@ -13,7 +13,7 @@ export type RejectVendorRequest = {
 };
 
 export type VendorDetailModalProps = {
-  vendor: VendorProfileDto;
+  vendor: AdminVendorDto;
   cities: CityDto[];
   registeredCategories: VendorCategoryDto[];
   leafCategories: Array<{ id: string; path: string; name: string }>;

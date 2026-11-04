@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
@@ -60,5 +60,37 @@ describe('UsersPage', () => {
     expect(
       await screen.findByText('This ustaad has not created a profile or uploaded a document yet'),
     ).toBeInTheDocument();
+  });
+});
+
+describe('UsersPage vendor rejection (decision 0058 F2)', () => {
+  it('asks for a reason and sends it, because the vendor record keeps it', async () => {
+    const vendorUser = { ...ustaad, id: 'u-vendor', name: 'Vikram Vendor', role: Role.VENDOR };
+    const bodies: unknown[] = [];
+    server.use(
+      http.get('/api/admin/users', () =>
+        HttpResponse.json({
+          success: true,
+          data: { items: [vendorUser], total: 1, page: 1, limit: 20, totalPages: 1 },
+        }),
+      ),
+      http.patch('/api/admin/users/:id/reject', async ({ request }) => {
+        bodies.push(await request.json());
+        return HttpResponse.json({ success: true, data: vendorUser });
+      }),
+    );
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <UsersPage />
+      </QueryClientProvider>,
+    );
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByText('Vikram Vendor'));
+    await user.click(screen.getByRole('button', { name: 'Reject' }));
+    await user.type(screen.getByRole('textbox'), 'GSTIN does not match');
+    await user.click(screen.getByRole('button', { name: 'Confirm reject' }));
+
+    await waitFor(() => expect(bodies).toEqual([{ reason: 'GSTIN does not match' }]));
   });
 });

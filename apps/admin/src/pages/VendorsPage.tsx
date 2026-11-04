@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import type { VendorProfileDto } from '@golden-abode/types';
 import { isEmpty } from 'lodash';
 
 import { VendorDetailModal } from '@/components/vendors/VendorDetailModal';
@@ -15,15 +14,20 @@ import {
   useVendorsQuery,
 } from '@/queries/useVendorsQueries';
 import { labelFor, VENDOR_STATUS_LABELS } from '@/constants/labels';
+import { ContactCell } from '@/components/common/ContactBlock';
 import styles from '@/styles/shared.module.css';
 import type { CategoryNode } from '@/types/catalog.types';
 import { formatDateTime } from '@/utils/date';
 
 export function VendorsPage() {
-  const [selectedVendor, setSelectedVendor] = useState<VendorProfileDto | null>(null);
+  // The id only: the popup always shows the latest list entry, so action
+  // replies (the plain vendor profile) never replace the admin view.
+  const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const vendorsQuery = useVendorsQuery();
+  const selectedVendor =
+    vendorsQuery.data?.find((vendor) => vendor.id === selectedVendorId) ?? null;
   const citiesQuery = useCitiesQuery();
   const treeQuery = useCategoryTreeQuery();
   const categoriesQuery = useVendorCategoriesQuery(selectedVendor?.id ?? null);
@@ -46,11 +50,7 @@ export function VendorsPage() {
     if (!selectedVendor) return;
     setActionError(null);
     try {
-      const updated = await setCityMutation.mutateAsync({
-        vendorId: selectedVendor.id,
-        body: { cityId },
-      });
-      setSelectedVendor(updated);
+      await setCityMutation.mutateAsync({ vendorId: selectedVendor.id, body: { cityId } });
     } catch (error) {
       setActionError(error instanceof Error ? error.message : ERROR_MESSAGES.generic);
     }
@@ -73,8 +73,7 @@ export function VendorsPage() {
     if (!selectedVendor) return;
     setActionError(null);
     try {
-      const updated = await approveMutation.mutateAsync(selectedVendor.id);
-      setSelectedVendor(updated);
+      await approveMutation.mutateAsync(selectedVendor.id);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : ERROR_MESSAGES.generic);
     }
@@ -84,11 +83,7 @@ export function VendorsPage() {
     if (!selectedVendor) return;
     setActionError(null);
     try {
-      const updated = await rejectMutation.mutateAsync({
-        vendorId: selectedVendor.id,
-        body: { reason },
-      });
-      setSelectedVendor(updated);
+      await rejectMutation.mutateAsync({ vendorId: selectedVendor.id, body: { reason } });
     } catch (error) {
       setActionError(error instanceof Error ? error.message : ERROR_MESSAGES.generic);
     }
@@ -119,9 +114,12 @@ export function VendorsPage() {
             <thead>
               <tr>
                 <th>Shop</th>
+                <th>Owner</th>
                 <th>Status</th>
                 <th>City</th>
                 <th>GSTIN</th>
+                <th>Active listings</th>
+                <th>Account</th>
                 <th>Updated</th>
               </tr>
             </thead>
@@ -132,13 +130,17 @@ export function VendorsPage() {
                   className={styles.clickableRow}
                   onClick={() => {
                     setActionError(null);
-                    setSelectedVendor(vendor);
+                    setSelectedVendorId(vendor.id);
                   }}
                 >
                   <td>{vendor.shopName}</td>
+                  <ContactCell contact={vendor.owner} />
                   <td>{labelFor(VENDOR_STATUS_LABELS, vendor.status)}</td>
                   <td>{vendor.city?.name ?? '—'}</td>
                   <td>{vendor.gstin ?? '—'}</td>
+                  <td>{vendor.listingCounts.active}</td>
+                  {/* Decision 0058 D4: lists show only the last 4 digits. */}
+                  <td>{maskAccount(vendor.accountDetails?.accountNumber)}</td>
                   <td>{formatDateTime(vendor.updatedAt)}</td>
                 </tr>
               ))}
@@ -157,7 +159,7 @@ export function VendorsPage() {
           isCategoriesLoading={categoriesQuery.isLoading || treeQuery.isLoading}
           isSubmitting={isSubmitting}
           actionError={actionError}
-          onClose={() => setSelectedVendor(null)}
+          onClose={() => setSelectedVendorId(null)}
           onSaveCity={handleSaveCity}
           onSaveCategories={handleSaveCategories}
           onApprove={handleApprove}
@@ -174,4 +176,8 @@ function leavesOf(nodes: CategoryNode[]): CategoryNode[] {
 
 function toLeafOption(node: CategoryNode): { id: string; path: string; name: string } {
   return { id: node.id, path: node.path, name: node.name };
+}
+
+function maskAccount(accountNumber: string | null | undefined): string {
+  return accountNumber ? `•••• ${accountNumber.slice(-4)}` : '—';
 }

@@ -39,7 +39,8 @@ export function UsersPage() {
 
   const handleApprove = (userId: string) => runAction(() => approveMutation.mutateAsync(userId));
 
-  const handleReject = (userId: string) => runAction(() => rejectMutation.mutateAsync({ userId }));
+  const handleReject = (userId: string, reason?: string) =>
+    runAction(() => rejectMutation.mutateAsync({ userId, reason }));
 
   const closeModal = () => {
     setSelectedUser(null);
@@ -99,6 +100,8 @@ export function UsersPage() {
           user={selectedUser}
           isSubmitting={isSubmitting}
           showApprovalActions={showApprovalActions}
+          // A vendor rejection is stored with its reason (decisions 0048, 0058 F2).
+          requireRejectReason={selectedUser.role === Role.VENDOR}
           actionError={actionError}
           onClose={closeModal}
           onApprove={handleApprove}

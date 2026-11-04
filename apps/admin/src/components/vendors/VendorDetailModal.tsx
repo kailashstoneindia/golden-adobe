@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { isEmpty } from 'lodash';
 
+import { VendorFacts } from '@/components/vendors/VendorFacts';
 import { labelFor, VENDOR_STATUS_LABELS } from '@/constants/labels';
 import styles from '@/styles/shared.module.css';
 import type { VendorDetailModalProps, VendorDetailRowProps } from '@/types/vendors.types';
@@ -71,10 +72,10 @@ export function VendorDetailModal({
           {vendor.statusUpdatedAt ? (
             <DetailRow label="Status updated" value={formatDateTime(vendor.statusUpdatedAt)} />
           ) : null}
-          <DetailRow label="Address" value={vendor.address} />
-          <DetailRow label="GSTIN" value={vendor.gstin || '—'} />
           <DetailRow label="Current city" value={vendor.city?.name ?? 'Not set'} />
           <DetailRow label="Updated" value={formatDateTime(vendor.updatedAt)} />
+
+          <VendorFacts vendor={vendor} />
 
           <section className={styles.detailSections}>
             <h3 className={styles.sectionTitle}>Approval</h3>
