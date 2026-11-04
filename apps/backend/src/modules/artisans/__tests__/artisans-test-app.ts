@@ -43,7 +43,9 @@ export type ArtisansTestApp = {
   // artisan-focused fixture. Exposed so a spec can set findAll's return
   // value to exercise GET hire-requests/:id/orders meaningfully.
   orderModel: { findAll: jest.Mock };
-  newArtisanUser: () => Promise<{ id: string; token: string }>;
+  // Approved by default, like the main ustaad; pass approved: false for a
+  // pending one (decision 0057).
+  newArtisanUser: (options?: { approved?: boolean }) => Promise<{ id: string; token: string }>;
   close: () => Promise<void>;
 };
 
@@ -137,6 +139,8 @@ export async function createArtisansTestApp(): Promise<ArtisansTestApp> {
     phone: `9${suffix}`.slice(0, 10),
     role: Role.ARTISAN,
     isActive: true,
+    // Business-as-usual ustaad: approved, so the gate (0057) lets them work.
+    isApproved: true,
   } as never);
   const customerUser = await User.create({
     name: 'Artisans Test Customer',
@@ -154,12 +158,13 @@ export async function createArtisansTestApp(): Promise<ArtisansTestApp> {
     customerUserId: customerUser.id,
     storage,
     orderModel,
-    async newArtisanUser() {
+    async newArtisanUser(options: { approved?: boolean } = {}) {
       const user = await User.create({
         name: `Artisans Test Artisan ${extraUserIds.length}`,
         phone: `6${suffix}${extraUserIds.length}`.slice(0, 10),
         role: Role.ARTISAN,
         isActive: true,
+        isApproved: options.approved ?? true,
       } as never);
       extraUserIds.push(user.id);
       return { id: user.id, token: jwt.sign({ sub: user.id, role: Role.ARTISAN }) };

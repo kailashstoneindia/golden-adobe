@@ -14,12 +14,19 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
     const exceptionResponse = exception instanceof HttpException ? exception.getResponse() : null;
 
-    let message = 'Internal server error';
+    let message: string | string[] = 'Internal server error';
     let error = 'Internal Server Error';
+    let code: string | undefined;
 
     if (exceptionResponse && typeof exceptionResponse === 'object') {
-      message = (exceptionResponse as any).message || message;
-      error = (exceptionResponse as any).error || error;
+      const body = exceptionResponse as {
+        message?: string | string[];
+        error?: string;
+        code?: unknown;
+      };
+      message = body.message || message;
+      error = body.error || error;
+      code = typeof body.code === 'string' ? body.code : undefined;
     } else if (exception instanceof Error) {
       message = exception.message;
     }
@@ -31,6 +38,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       message: Array.isArray(message) ? message.join(', ') : message,
       timestamp: new Date().toISOString(),
       path: request.url,
+      ...(code ? { code } : {}),
     };
 
     response.status(status).json(errorBody);

@@ -12,6 +12,7 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { ApprovedGuard } from '../../common/guards/approved.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '@golden-abode/types';
 import { CheckoutService } from './checkout.service';
@@ -20,7 +21,9 @@ import { CheckoutDto } from './dto/checkout.dto';
 
 @ApiTags('Orders')
 @Controller()
-@UseGuards(JwtAuthGuard, RolesGuard)
+// Decision 0057: vendors and ustaads need an approved account here unless a
+// route is marked @AllowUnapproved() (onboarding and own profile).
+@UseGuards(JwtAuthGuard, RolesGuard, ApprovedGuard)
 @Roles(Role.CUSTOMER)
 @ApiBearerAuth()
 export class OrdersController {

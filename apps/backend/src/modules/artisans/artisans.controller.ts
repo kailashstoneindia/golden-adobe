@@ -20,6 +20,8 @@ import { Role } from '@golden-abode/types';
 
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { ApprovedGuard } from '../../common/guards/approved.guard';
+import { AllowUnapproved } from '../../common/decorators/allow-unapproved.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { ArtisansService } from './artisans.service';
 import { HireRequestsService } from './hire-requests.service';
@@ -45,7 +47,9 @@ import { SearchArtisansQueryDto } from './dto/search-artisans-query.dto';
 // to set.
 @ApiTags('Artisans')
 @Controller('artisans')
-@UseGuards(JwtAuthGuard, RolesGuard)
+// Decision 0057: vendors and ustaads need an approved account here unless a
+// route is marked @AllowUnapproved() (onboarding and own profile).
+@UseGuards(JwtAuthGuard, RolesGuard, ApprovedGuard)
 @ApiBearerAuth()
 export class ArtisansController {
   constructor(
@@ -61,6 +65,7 @@ export class ArtisansController {
   // regardless of registration order — unlike the :id vs :id/estimates
   // ordering concern noted further down, which is between two dynamic
   // routes).
+  @AllowUnapproved()
   @Get()
   @ApiOperation({ summary: 'Browse verified artisans, optionally filtered by trade and pincode' })
   @ApiResponse({ status: 200, description: 'Page of public (bio-only) artisan profiles' })
@@ -71,6 +76,7 @@ export class ArtisansController {
     });
   }
 
+  @AllowUnapproved()
   @Post('me/profile')
   @Roles(Role.ARTISAN)
   @HttpCode(HttpStatus.CREATED)
@@ -84,6 +90,7 @@ export class ArtisansController {
     return this.artisansService.onboardProfile(req.user.sub, dto);
   }
 
+  @AllowUnapproved()
   @Get('me/profile')
   @Roles(Role.ARTISAN)
   @ApiOperation({ summary: 'Read your own artisan profile' })
@@ -93,6 +100,7 @@ export class ArtisansController {
     return this.artisansService.getOwnProfile(req.user.sub);
   }
 
+  @AllowUnapproved()
   @Patch('me/profile')
   @Roles(Role.ARTISAN)
   @ApiOperation({ summary: 'Update your own artisan profile (partial)' })
@@ -101,6 +109,7 @@ export class ArtisansController {
     return this.artisansService.updateProfile(req.user.sub, dto);
   }
 
+  @AllowUnapproved()
   @Put('me/account-details')
   @Roles(Role.ARTISAN)
   @ApiOperation({
@@ -112,6 +121,7 @@ export class ArtisansController {
     return this.artisansService.upsertAccountDetails(req.user.sub, dto);
   }
 
+  @AllowUnapproved()
   @Post('me/documents/upload-url')
   @Roles(Role.ARTISAN)
   @ApiOperation({
@@ -126,6 +136,7 @@ export class ArtisansController {
     return this.artisansService.createUploadUrl(req.user.sub, dto.contentType, dto.purpose);
   }
 
+  @AllowUnapproved()
   @Post('me/documents/confirm')
   @Roles(Role.ARTISAN)
   @ApiOperation({
@@ -138,6 +149,7 @@ export class ArtisansController {
     return this.artisansService.confirmDocumentUpload(req.user.sub, dto.key);
   }
 
+  @AllowUnapproved()
   @Post('me/team')
   @Roles(Role.ARTISAN)
   @HttpCode(HttpStatus.CREATED)
@@ -147,6 +159,7 @@ export class ArtisansController {
     return this.artisansService.addTeamMember(req.user.sub, dto);
   }
 
+  @AllowUnapproved()
   @Patch('me/team/:memberId')
   @Roles(Role.ARTISAN)
   @ApiOperation({ summary: 'Update a team member' })
@@ -160,6 +173,7 @@ export class ArtisansController {
     return this.artisansService.updateTeamMember(req.user.sub, memberId, dto);
   }
 
+  @AllowUnapproved()
   @Delete('me/team/:memberId')
   @Roles(Role.ARTISAN)
   @HttpCode(HttpStatus.NO_CONTENT)
@@ -357,6 +371,7 @@ export class ArtisansController {
   // Public read: any authenticated role may view a verified artisan's
   // public (bio-only) profile. 404 for both "doesn't exist" and "not
   // verified" — indistinguishable on purpose (spec §5).
+  @AllowUnapproved()
   @Get(':id/public')
   @ApiOperation({ summary: "A verified artisan's public, bio-only profile" })
   @ApiResponse({ status: 200, description: 'Public profile' })

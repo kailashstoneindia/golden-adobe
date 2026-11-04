@@ -53,6 +53,7 @@ import { CitiesService } from './cities.service';
 import { StockService } from './stock.service';
 import { VendorCatalogSearchService } from './vendor-catalog-search.service';
 import { VendorListingsService } from './vendor-listings.service';
+import { UsersModule } from '../users/users.module';
 
 // Phase 1 (taxonomy) + Phase 2 (master catalog, incl. the attributes_flat /
 // identity_hash trigger layer) + Phase 3 (admin catalog import) + Phase 4
@@ -95,6 +96,9 @@ import { VendorListingsService } from './vendor-listings.service';
 // blocked on the ordering domain, which doesn't exist yet.
 @Module({
   imports: [
+    // ApprovedGuard on this module's vendor/ustaad controllers reads approval
+    // through UsersService (decision 0057).
+    UsersModule,
     SequelizeModule.forFeature([
       UnitOfMeasure,
       HsnCode,
