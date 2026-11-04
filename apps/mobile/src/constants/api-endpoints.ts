@@ -38,8 +38,7 @@ export const API_ENDPOINTS = {
     meHireRequestEstimates: (requestId: string) =>
       `/artisans/me/hire-requests/${requestId}/estimates`,
     meHireRequestAccept: (requestId: string) => `/artisans/me/hire-requests/${requestId}/accept`,
-    meHireRequestDecline: (requestId: string) =>
-      `/artisans/me/hire-requests/${requestId}/decline`,
+    meHireRequestDecline: (requestId: string) => `/artisans/me/hire-requests/${requestId}/decline`,
     meHireRequestStart: (requestId: string) => `/artisans/me/hire-requests/${requestId}/start`,
     meHireRequestComplete: (requestId: string) =>
       `/artisans/me/hire-requests/${requestId}/complete`,

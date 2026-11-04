@@ -69,22 +69,39 @@ export default function PendingApprovalScreen() {
     return null;
   }
 
+  // Decision 0048: an admin can reject a vendor; that is final until they
+  // re-review, so say so instead of showing "pending" forever.
+  const isRejectedVendor = user.vendorProfile?.status === 'REJECTED';
+
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Text variant="label">Almost ready</Text>
           <Text variant="h1" style={styles.title}>
-            Pending admin approval
+            {isRejectedVendor ? 'Application not approved' : 'Pending admin approval'}
           </Text>
-          <Badge label="Pending approval" variant="pending" />
+          <Badge
+            label={isRejectedVendor ? 'Not approved' : 'Pending approval'}
+            variant={isRejectedVendor ? 'error' : 'pending'}
+          />
         </View>
 
-        <Text variant="body" color={Colors.inkSoft}>
-          Your {formatRoleLabel(user.role).toLowerCase()} profile is under review. An admin will
-          verify your account before you can{' '}
-          {isArtisan ? 'take on jobs from customers' : 'list inventory or take on projects'}.
-        </Text>
+        {isRejectedVendor ? (
+          <Text variant="body" color={Colors.inkSoft}>
+            Our team could not approve your shop
+            {user.vendorProfile?.rejectionReason
+              ? `: ${user.vendorProfile.rejectionReason}`
+              : '.'}{' '}
+            Contact support if you have questions or have fixed the issue.
+          </Text>
+        ) : (
+          <Text variant="body" color={Colors.inkSoft}>
+            Your {formatRoleLabel(user.role).toLowerCase()} profile is under review. An admin will
+            verify your account before you can{' '}
+            {isArtisan ? 'take on jobs from customers' : 'list inventory or take on projects'}.
+          </Text>
+        )}
 
         <View style={styles.details}>
           <Text variant="bodyMedium">{user.name}</Text>

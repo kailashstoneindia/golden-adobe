@@ -1,4 +1,5 @@
 import { Role, type ArtisanHireRequestDto } from '@golden-abode/types';
+import { useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Linking, Pressable, StyleSheet, View } from 'react-native';
@@ -10,6 +11,7 @@ import {
   EMPTY_STATE_MESSAGES,
   ERROR_MESSAGES,
   HIRE_REQUEST_STATUS_LABELS,
+  QUERY_KEYS,
   ROUTES,
   TOAST_MESSAGES,
 } from '../../../src/constants';
@@ -74,6 +76,9 @@ function HireRequestDetail({
   isArtisan,
 }: Readonly<{ request: ArtisanHireRequestDto; isArtisan: boolean }>) {
   const { showSuccess, showError } = useToast();
+  const queryClient = useQueryClient();
+  // Covers the request, its estimates and its linked orders in one pull.
+  const refresh = () => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.hireRequests.all });
   const startWork = useStartHireRequestMutation();
   const completeWork = useCompleteHireRequestMutation();
   const cancelRequest = useCancelHireRequestMutation();
@@ -128,7 +133,7 @@ function HireRequestDetail({
   };
 
   return (
-    <DemoScreen title={`Job ${shortId(request.id)}`} showBack>
+    <DemoScreen title={`Job ${shortId(request.id)}`} showBack onRefresh={refresh}>
       <Badge
         label={HIRE_REQUEST_STATUS_LABELS[status]}
         variant={toHireRequestBadgeVariant(status)}

@@ -17,6 +17,7 @@ export default function ShopTabScreen() {
   const { user } = useAuth();
   const isVendor = user?.role === Role.VENDOR;
   const profileQuery = useVendorProfileQuery(isVendor);
+  const refresh = () => profileQuery.refetch();
   const updateProfile = useUpdateVendorProfileMutation();
   const { showSuccess, showError } = useToast();
   const logout = useLogout();
@@ -76,7 +77,7 @@ export default function ShopTabScreen() {
 
   if (!isVendor) {
     return (
-      <DemoScreen title="Shop profile">
+      <DemoScreen onRefresh={refresh} title="Shop profile">
         <EmptyStateCard
           title="Shop profile unavailable"
           message={EMPTY_STATE_MESSAGES.shopProfileEmpty}
@@ -87,7 +88,7 @@ export default function ShopTabScreen() {
 
   if (profileQuery.isLoading) {
     return (
-      <DemoScreen title="Shop profile">
+      <DemoScreen onRefresh={refresh} title="Shop profile">
         <Text variant="body" color={Colors.inkSoft}>
           Loading shop profile…
         </Text>
@@ -97,7 +98,7 @@ export default function ShopTabScreen() {
 
   if (profileQuery.isError || !profileQuery.data) {
     return (
-      <DemoScreen title="Shop profile">
+      <DemoScreen onRefresh={refresh} title="Shop profile">
         <EmptyStateCard
           title="Shop profile unavailable"
           message={ERROR_MESSAGES.vendorProfileFailed}
@@ -111,7 +112,11 @@ export default function ShopTabScreen() {
   const isCityMissing = profile.cityId === null;
 
   return (
-    <DemoScreen title="Shop profile" subtitle="How customers see your business on Kailash Stones">
+    <DemoScreen
+      onRefresh={refresh}
+      title="Shop profile"
+      subtitle="How customers see your business on Kailash Stones"
+    >
       <Text variant="h3">{profile.shopName}</Text>
       <Text variant="caption" color={Colors.inkSoft}>
         {profile.address}
