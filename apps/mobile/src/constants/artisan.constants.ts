@@ -27,15 +27,28 @@ export const TRADE_TYPE_LABELS: Record<TradeType, string> = {
 export const HIRE_REQUEST_STATUS_LABELS: Record<ArtisanHireRequestStatus, string> = {
   PENDING_ADMIN_REVIEW: 'Pending review',
   ADMIN_REJECTED: 'Rejected',
+  PENDING_ARTISAN_RESPONSE: 'Waiting for Ustaad',
+  ARTISAN_DECLINED: 'Declined by Ustaad',
+  EXPIRED: 'Expired',
   ACCEPTED_BY_ARTISAN: 'Accepted',
   IN_PROGRESS: 'In progress',
   COMPLETED: 'Completed',
   CANCELLED: 'Cancelled',
 };
 
-/** Statuses the backend allows `PATCH /artisans/hire-requests/:id/cancel` from. */
+/** Statuses a customer may `PATCH /artisans/hire-requests/:id/cancel` from. */
 export const CANCELLABLE_HIRE_STATUSES: readonly ArtisanHireRequestStatus[] = [
   'PENDING_ADMIN_REVIEW',
+  'PENDING_ARTISAN_RESPONSE',
+  'ACCEPTED_BY_ARTISAN',
+  'IN_PROGRESS',
+];
+
+/**
+ * The Ustaad may only cancel work they accepted; a request still waiting on
+ * them is declined instead (decision 0055).
+ */
+export const ARTISAN_CANCELLABLE_HIRE_STATUSES: readonly ArtisanHireRequestStatus[] = [
   'ACCEPTED_BY_ARTISAN',
   'IN_PROGRESS',
 ];

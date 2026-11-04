@@ -19,7 +19,7 @@ import { useCartQuery } from '../../src/hooks/cart';
 import { useAddressesQuery } from '../../src/hooks/customers';
 import { usePlaceOrder } from '../../src/hooks/payments';
 import { useToast } from '../../src/hooks/useToast';
-import { StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { Colors, Spacing } from '../../src/theme';
 import type { CartVendorGroup } from '../../src/types';
 import {
@@ -74,6 +74,20 @@ export default function CheckoutScreen() {
     }
     await placeOrder(activeAddressId, bookingId ?? undefined);
   };
+
+  if (isPlacing) {
+    return (
+      <DemoScreen title="Checkout">
+        <View style={styles.processing}>
+          <ActivityIndicator color={Colors.navy} />
+          <Text variant="bodyMedium">Completing your order…</Text>
+          <Text variant="caption" color={Colors.inkSoft}>
+            Keep the app open while we confirm your payment.
+          </Text>
+        </View>
+      </DemoScreen>
+    );
+  }
 
   if (cartQuery.isLoading || addressesQuery.isLoading) {
     return (
@@ -162,6 +176,11 @@ export default function CheckoutScreen() {
 }
 
 const styles = StyleSheet.create({
+  processing: {
+    alignItems: 'center',
+    gap: Spacing.sm,
+    paddingVertical: Spacing.xxl,
+  },
   chips: {
     flexDirection: 'row',
     flexWrap: 'wrap',

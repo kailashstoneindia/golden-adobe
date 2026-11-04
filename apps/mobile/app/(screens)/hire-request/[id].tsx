@@ -1,7 +1,7 @@
 import { Role, type ArtisanHireRequestDto } from '@golden-abode/types';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { Alert, Linking, Pressable, StyleSheet, View } from 'react-native';
 
 import { DemoScreen } from '../../../src/components/demo/DemoScreen';
 import { OrderListRow } from '../../../src/components/orders';
@@ -14,9 +14,11 @@ import {
   TOAST_MESSAGES,
 } from '../../../src/constants';
 import {
+  useAcceptHireRequestMutation,
   useAddEstimateMutation,
   useCancelHireRequestMutation,
   useCompleteHireRequestMutation,
+  useDeclineHireRequestMutation,
   useHireRequestEstimatesQuery,
   useHireRequestOrdersQuery,
   useHireRequestQuery,
@@ -27,6 +29,8 @@ import { useToast } from '../../../src/hooks/useToast';
 import { Colors, Spacing } from '../../../src/theme';
 import {
   canCancelHireRequest,
+  formatDateTime,
+  formatResponseTimeLeft,
   formatShortDate,
   getApiErrorMessage,
   isActiveArtisanJob,
@@ -148,10 +152,60 @@ function HireRequestDetail({
         </Text>
       </Card>
 
+      {isArtisan && request.customerPhone ? <CustomerContactCard request={request} /> : null}
+
       {isPendingReview && !isArtisan ? (
         <Text variant="caption" color={Colors.inkSoft}>
           Our team is reviewing this request. The Ustaad is notified once it is approved.
         </Text>
+      ) : null}
+      {status === 'PENDING_ARTISAN_RESPONSE' && !isArtisan ? (
+        <Text variant="caption" color={Colors.inkSoft}>
+          Approved. Waiting for the Ustaad to accept
+          {request.artisanResponseDueAt
+            ? ` (by ${formatDateTime(request.artisanResponseDueAt)})`
+            : ''}
+          .
+        </Text>
+      ) : null}
+      {status === 'PENDING_ARTISAN_RESPONSE' && isArtisan ? (
+        <ArtisanResponseCard request={request} />
+      ) : null}
+      {status === 'ARTISAN_DECLINED' ? (
+        <Card style={styles.card}>
+          <Text variant="bodyMedium">
+            {isArtisan ? 'You declined this job' : 'The Ustaad declined this job'}
+          </Text>
+          {request.artisanDeclineReason ? (
+            <Text variant="body" color={Colors.inkSoft}>
+              {request.artisanDeclineReason}
+            </Text>
+          ) : null}
+          {!isArtisan ? (
+            <Button
+              title="Find another Ustaad"
+              variant="secondary"
+              onPress={() => router.push(ROUTES.screens.findUstaad)}
+            />
+          ) : null}
+        </Card>
+      ) : null}
+      {status === 'EXPIRED' ? (
+        <Card style={styles.card}>
+          <Text variant="bodyMedium">Request expired</Text>
+          <Text variant="body" color={Colors.inkSoft}>
+            {isArtisan
+              ? 'You did not respond within 48 hours, so this request closed.'
+              : 'The Ustaad did not respond within 48 hours. You can send a request to another Ustaad.'}
+          </Text>
+          {!isArtisan ? (
+            <Button
+              title="Find another Ustaad"
+              variant="secondary"
+              onPress={() => router.push(ROUTES.screens.findUstaad)}
+            />
+          ) : null}
+        </Card>
       ) : null}
       {status === 'ADMIN_REJECTED' && request.adminRejectReason ? (
         <Card style={styles.card}>
@@ -204,7 +258,7 @@ function HireRequestDetail({
       <EstimatesSection request={request} isArtisan={isArtisan} />
       <AttributedOrdersSection request={request} />
 
-      {canCancelHireRequest(status) ? (
+      {canCancelHireRequest(status, isArtisan) ? (
         isCancelling ? (
           <Card style={styles.card}>
             <TextInput
@@ -235,6 +289,121 @@ function HireRequestDetail({
         )
       ) : null}
     </DemoScreen>
+  );
+}
+
+function CustomerContactCard({ request }: Readonly<{ request: ArtisanHireRequestDto }>) {
+  const phone = request.customerPhone ?? '';
+  const handleCall = (): void => {
+    void Linking.openURL(`tel:${phone}`);
+  };
+  return (
+    <Card style={styles.card}>
+      <Text variant="caption" color={Colors.inkSoft}>
+        Customer
+      </Text>
+      {request.customerName ? <Text variant="bodyMedium">{request.customerName}</Text> : null}
+      <Pressable
+        onPress={handleCall}
+        accessibilityRole="link"
+        accessibilityLabel={`Call ${phone}`}
+        hitSlop={8}
+      >
+        <Text variant="body" color={Colors.sky}>
+          Call {phone}
+        </Text>
+      </Pressable>
+    </Card>
+  );
+}
+
+// Decision 0055: an admin-approved request waits up to 48 hours for the
+// Ustaad to accept or decline before it expires.
+function ArtisanResponseCard({ request }: Readonly<{ request: ArtisanHireRequestDto }>) {
+  const { showSuccess, showError } = useToast();
+  const acceptRequest = useAcceptHireRequestMutation();
+  const declineRequest = useDeclineHireRequestMutation();
+  const [isDeclining, setIsDeclining] = useState(false);
+  const [declineReason, setDeclineReason] = useState('');
+  const [declineError, setDeclineError] = useState<string | null>(null);
+  const isBusy = acceptRequest.isPending || declineRequest.isPending;
+  const dueAt = request.artisanResponseDueAt;
+  const timeLeft = dueAt ? formatResponseTimeLeft(dueAt) : null;
+
+  const onActionError = (error: unknown): void =>
+    showError(getApiErrorMessage(error, ERROR_MESSAGES.hireRequestActionFailed));
+
+  const handleAccept = (): void => {
+    acceptRequest.mutate(request.id, {
+      onSuccess: () => showSuccess(TOAST_MESSAGES.jobAccepted),
+      onError: onActionError,
+    });
+  };
+
+  const handleConfirmDecline = (): void => {
+    const reason = declineReason.trim();
+    if (!reason) {
+      setDeclineError(ERROR_MESSAGES.declineReasonRequired);
+      return;
+    }
+    setDeclineError(null);
+    declineRequest.mutate(
+      { requestId: request.id, reason },
+      {
+        onSuccess: () => {
+          showSuccess(TOAST_MESSAGES.jobDeclined);
+          setIsDeclining(false);
+          setDeclineReason('');
+        },
+        onError: onActionError,
+      },
+    );
+  };
+
+  return (
+    <Card style={styles.card}>
+      <Text variant="bodyMedium">New job request</Text>
+      <Text variant="caption" color={Colors.inkSoft}>
+        {dueAt
+          ? `Accept or decline by ${formatDateTime(dueAt)}${timeLeft ? ` · ${timeLeft}` : ''}.`
+          : 'Accept or decline this job.'}
+      </Text>
+      {isDeclining ? (
+        <>
+          <TextInput
+            label="Reason for declining"
+            placeholder="Fully booked this week"
+            value={declineReason}
+            onChangeText={setDeclineReason}
+            error={declineError ?? undefined}
+            multiline
+          />
+          <View style={styles.row}>
+            <Button
+              title={declineRequest.isPending ? 'Declining…' : 'Confirm decline'}
+              variant="secondary"
+              disabled={isBusy}
+              onPress={handleConfirmDecline}
+            />
+            <Button title="Back" variant="ghost" onPress={() => setIsDeclining(false)} />
+          </View>
+        </>
+      ) : (
+        <View style={styles.row}>
+          <Button
+            title={acceptRequest.isPending ? 'Accepting…' : 'Accept job'}
+            disabled={isBusy}
+            onPress={handleAccept}
+          />
+          <Button
+            title="Decline"
+            variant="secondary"
+            disabled={isBusy}
+            onPress={() => setIsDeclining(true)}
+          />
+        </View>
+      )}
+    </Card>
   );
 }
 

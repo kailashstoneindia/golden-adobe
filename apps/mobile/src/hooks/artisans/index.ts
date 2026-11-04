@@ -26,4 +26,6 @@ export {
   useHireRequestOrdersQuery,
   useHireRequestQuery,
   useStartHireRequestMutation,
+  useAcceptHireRequestMutation,
+  useDeclineHireRequestMutation,
 } from './useHireRequests';

@@ -76,6 +76,7 @@ export const ERROR_MESSAGES = {
   hireRequestFailed: 'Could not send the hire request. Try again.',
   hireRequestActionFailed: 'Could not update this hire request. Try again.',
   cancelReasonRequired: 'Enter a reason for cancelling.',
+  declineReasonRequired: 'Enter a reason for declining.',
   estimateDaysInvalid: 'Enter the estimate as a whole number of days (1 or more).',
   estimateSaveFailed: 'Could not save the estimate. Try again.',
   artisanSearchFailed: 'Could not load Ustaads. Try again.',

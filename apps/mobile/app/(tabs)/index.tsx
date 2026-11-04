@@ -229,6 +229,9 @@ function ArtisanHome() {
   const jobs = jobsQuery.data ?? [];
   const activeCount = jobs.filter((job) => isActiveArtisanJob(job.status)).length;
   const completedCount = jobs.filter((job) => job.status === 'COMPLETED').length;
+  const awaitingAnswerCount = jobs.filter(
+    (job) => job.status === 'PENDING_ARTISAN_RESPONSE',
+  ).length;
 
   const handleJobsPress = () => router.push(ROUTES.tabs.orders);
   const handleProfilePress = () => router.push(ROUTES.screens.artisanProfile);
@@ -267,6 +270,21 @@ function ArtisanHome() {
         contentContainerStyle={styles.bodyContent}
         showsVerticalScrollIndicator={false}
       >
+        {awaitingAnswerCount > 0 ? (
+          <Pressable onPress={handleJobsPress}>
+            <Card style={styles.statCard}>
+              <Text variant="bodyMedium">
+                {awaitingAnswerCount === 1
+                  ? '1 new job needs your answer'
+                  : `${awaitingAnswerCount} new jobs need your answer`}
+              </Text>
+              <Text variant="caption" color={Colors.inkSoft}>
+                Accept or decline within 48 hours, or the request expires.
+              </Text>
+            </Card>
+          </Pressable>
+        ) : null}
+
         {profile && !profile.isVerified ? (
           <Pressable onPress={handleProfilePress}>
             <Card style={styles.statCard}>

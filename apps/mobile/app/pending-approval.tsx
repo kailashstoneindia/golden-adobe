@@ -13,9 +13,12 @@ import { useLogout } from '../src/hooks/auth/useLogout';
 import { Colors, Spacing } from '../src/theme';
 import { formatRoleLabel, isPendingApproval, needsVendorOnboarding } from '../src/utils/user';
 
+const APPROVAL_POLL_INTERVAL_MS = 15_000;
+
 export default function PendingApprovalScreen() {
   const { isAuthenticated, isHydrated, user } = useAuth();
-  const me = useMe();
+  // Poll so approval shows up without the user tapping "Check status".
+  const me = useMe(APPROVAL_POLL_INTERVAL_MS);
   const queryClient = useQueryClient();
   const logout = useLogout();
   const artisanOnboarding = useArtisanOnboardingStatus(user);

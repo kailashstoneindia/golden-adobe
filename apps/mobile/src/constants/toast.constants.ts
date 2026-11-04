@@ -38,6 +38,8 @@ export const TOAST_MESSAGES = {
   teamMemberRemoved: 'Team member removed',
   hireRequestSent: 'Hire request sent for admin review',
   hireRequestCancelled: 'Hire request cancelled',
+  jobAccepted: 'Job accepted. The customer has been told.',
+  jobDeclined: 'Job declined',
   jobStarted: 'Job marked as started',
   jobCompleted: 'Job marked as completed',
   estimateAdded: 'Estimate added',

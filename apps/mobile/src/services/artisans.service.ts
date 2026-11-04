@@ -12,6 +12,7 @@ import type {
   CancelHireRequestDto,
   CreateCompletionEstimateDto,
   CreateHireRequestDto,
+  DeclineHireRequestDto,
   OrderDto,
   PaginatedArtisanPublicProfilesResponse,
   UpdateArtisanProfileDto,
@@ -73,6 +74,15 @@ export const artisansService = {
       ENDPOINTS.meHireRequestEstimates(requestId),
       body,
     );
+  },
+  acceptHireRequest(requestId: string): Promise<ArtisanHireRequestDto> {
+    return apiClient.patch<ArtisanHireRequestDto>(ENDPOINTS.meHireRequestAccept(requestId));
+  },
+  declineHireRequest(
+    requestId: string,
+    body: DeclineHireRequestDto,
+  ): Promise<ArtisanHireRequestDto> {
+    return apiClient.patch<ArtisanHireRequestDto>(ENDPOINTS.meHireRequestDecline(requestId), body);
   },
   startWork(requestId: string): Promise<ArtisanHireRequestDto> {
     return apiClient.patch<ArtisanHireRequestDto>(ENDPOINTS.meHireRequestStart(requestId));
