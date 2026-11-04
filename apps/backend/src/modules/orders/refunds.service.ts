@@ -5,10 +5,11 @@ import { InjectModel } from '@nestjs/sequelize';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Sequelize } from 'sequelize-typescript';
 import { Op, QueryTypes, Transaction } from 'sequelize';
-import type { AdminRefundDto, RefundDto } from '@golden-abode/types';
+import type { AdminRefundRowDto, RefundDto } from '@golden-abode/types';
 import { Order, OrderStatus } from './models/order.model';
 import { Refund, RefundRail, RefundStatus } from './models/refund.model';
 import { toRefundDto } from './order-display.mapper';
+import { toIsoDate } from '../../common/utils/display-number.util';
 import { projectOrderStatus, REFUNDABLE_ORDER_STATUSES } from './refund-status';
 import { NOTIFICATION_SERVICE, NotificationService } from '../notifications/notification.interface';
 import {
@@ -176,7 +177,7 @@ export class RefundsService {
     return toRefundDto(latest ?? refund);
   }
 
-  async listForOrder(orderId: string): Promise<AdminRefundDto[]> {
+  async listForOrder(orderId: string): Promise<AdminRefundRowDto[]> {
     const order = await this.orderModel.findByPk(orderId, { attributes: ['id'] });
     if (!order) {
       throw new NotFoundException('order not found');
@@ -198,6 +199,8 @@ export class RefundsService {
       ...toRefundDto(refund),
       createdByName: nameById.get(refund.createdBy) ?? null,
       payoutReference: refund.payoutReference ?? null,
+      razorpayPaymentId: refund.razorpayPaymentId ?? null,
+      updatedAt: toIsoDate(refund.updatedAt),
     }));
   }
 

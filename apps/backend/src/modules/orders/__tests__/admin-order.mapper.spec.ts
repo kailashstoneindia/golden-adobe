@@ -37,6 +37,8 @@ function orderRow(over: Record<string, unknown> = {}): Order {
         loadingUnloadingFee: '0',
         status: 'confirmed',
         vendor: { id: 'v1', shopName: 'Stone Mart', user: user('u-vend', 'Vikram', Role.VENDOR) },
+        createdAt: new Date('2026-11-01T01:00:00Z'),
+        updatedAt: new Date('2026-11-02T09:30:00Z'),
         items: [{ id: 'i1' }, { id: 'i2' }],
       },
       {
@@ -94,5 +96,13 @@ describe('toAdminOrderDto', () => {
     const dto = toAdminOrderDto(orderRow({ customer: null }));
     expect(dto.customer).toBeNull();
     expect(dto.customerFullName).toBeNull();
+  });
+});
+
+describe('toAdminOrderDto vendor group times', () => {
+  it('says when each vendor group was created and last changed', () => {
+    const [group] = toAdminOrderDto(orderRow()).vendorGroups;
+    expect(group.createdAt).toBe('2026-11-01T01:00:00.000Z');
+    expect(group.updatedAt).toBe('2026-11-02T09:30:00.000Z');
   });
 });

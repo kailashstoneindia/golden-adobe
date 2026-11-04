@@ -439,7 +439,7 @@ export class OrdersService {
   // point — the reservation this order held no longer exists. Releasing it
   // again here would subtract from whatever OTHER order's reservation now
   // occupies that quantity on the same listing, enabling an oversell.
-  async adminCancel(orderId: string): Promise<OrderDto> {
+  async adminCancel(orderId: string): Promise<AdminOrderDto> {
     const order = await this.orderModel.findByPk(orderId);
     if (!order) {
       throw new NotFoundException('order not found');

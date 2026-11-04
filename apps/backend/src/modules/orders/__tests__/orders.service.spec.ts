@@ -574,6 +574,9 @@ describe('OrdersService', () => {
       expect(pairs).toEqual(
         expect.arrayContaining(['Order>Customer', 'Customer>User', 'Vendor>User']),
       );
+      // Never-render list: the user rows are loaded without secrets.
+      const userIncludes = JSON.stringify(orderModelMock.findByPk.mock.calls[0][1].include);
+      expect(userIncludes).not.toMatch(/passwordHash|deviceToken/);
     });
 
     it('returns the admin shape', async () => {

@@ -1,4 +1,4 @@
-import { Role, type AdminOrderDto, type AdminRefundDto } from '@golden-abode/types';
+import { Role, type AdminOrderDto, type AdminRefundRowDto } from '@golden-abode/types';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -44,7 +44,7 @@ function order(over: Partial<AdminOrderDto> = {}): AdminOrderDto {
   };
 }
 
-function refund(over: Partial<AdminRefundDto> = {}): AdminRefundDto {
+function refund(over: Partial<AdminRefundRowDto> = {}): AdminRefundRowDto {
   return {
     id: 'r1',
     orderId: 'o1111111-1111-4111-8111-111111111111',
@@ -58,13 +58,15 @@ function refund(over: Partial<AdminRefundDto> = {}): AdminRefundDto {
     createdBy: 'admin1',
     createdByName: 'Admin Priya',
     payoutReference: null,
+    razorpayPaymentId: null,
+    updatedAt: '2026-11-02T10:00:00.000Z',
     createdAt: '2026-11-02T10:00:00.000Z',
     ...over,
   };
 }
 
 let orders: AdminOrderDto[];
-let refunds: Record<string, AdminRefundDto[]>;
+let refunds: Record<string, AdminRefundRowDto[]>;
 let refundBodies: unknown[];
 let refundListFetches: number;
 // Holds GET /refunds open until released, or answers it with an error.
@@ -77,7 +79,7 @@ let ordersListFetches: number;
 let refundReply: {
   status: number;
   message?: string;
-  recordRefund?: AdminRefundDto;
+  recordRefund?: AdminRefundRowDto;
   orderStatus?: string;
   networkError?: boolean;
 };
@@ -578,8 +580,7 @@ describe('OrdersPage who and payment details', () => {
           customerId: 'c1',
           label: 'Home',
           addressLine1: '12 MG Road',
-          addressLine2: null,
-          landmark: null,
+          addressLine2: 'Flat 4B, 2nd floor',
           city: 'Bengaluru',
           pincode: '560001',
           lat: 12.97,
@@ -587,7 +588,7 @@ describe('OrdersPage who and payment details', () => {
           isDefault: true,
           createdAt: '2026-11-01T00:00:00.000Z',
           updatedAt: '2026-11-01T00:00:00.000Z',
-        } as AdminOrderDto['deliveryAddress'],
+        },
         vendorGroups: [
           {
             id: 'g1',
@@ -599,6 +600,8 @@ describe('OrdersPage who and payment details', () => {
             status: 'confirmed',
             items: [],
             vendor: vendorContact,
+            createdAt: '2026-11-01T10:00:00.000Z',
+            updatedAt: '2026-11-03T15:30:00.000Z',
           },
         ],
       }),
@@ -607,6 +610,8 @@ describe('OrdersPage who and payment details', () => {
       o1: [
         refund({
           rail: 'manual_payout',
+          orderVendorGroupId: 'g1',
+          razorpayPaymentId: 'pay_rzp1',
           receipt: 'rf_o1_1',
           razorpayRefundId: 'rfnd_123',
           payoutReference: 'UTR998877',
@@ -629,6 +634,7 @@ describe('OrdersPage who and payment details', () => {
               id: 'e1',
               orderId: 'o1',
               eventType: 'payment.captured',
+              eventId: 'evt_RZP789',
               rawPayload: { payment: { entity: { method: 'upi', vpa: 'asha@okbank' } } },
               createdAt: '2026-11-01T10:05:00.000Z',
             },
@@ -660,9 +666,11 @@ describe('OrdersPage who and payment details', () => {
       'href',
       'tel:9123456780',
     );
-    expect(screen.getByText('order_rzp1')).toBeInTheDocument();
-    expect(screen.getByText('pay_rzp1')).toBeInTheDocument();
-    expect(screen.getByText('h1111111-1111-4111-8111-111111111111')).toBeInTheDocument();
+    expect(vendor).toHaveTextContent('Last changed');
+    const payment = screen.getByRole('group', { name: 'Payment' });
+    expect(payment).toHaveTextContent('order_rzp1');
+    expect(payment).toHaveTextContent('pay_rzp1');
+    expect(payment).toHaveTextContent('h1111111-1111-4111-8111-111111111111');
     expect(screen.getByRole('link', { name: 'Open in Maps' })).toHaveAttribute(
       'href',
       'https://maps.google.com/?q=12.97,77.59',
@@ -680,6 +688,8 @@ describe('OrdersPage who and payment details', () => {
     expect(screen.getByText(/UTR998877/)).toBeInTheDocument();
     expect(screen.getByText(/rfnd_123/)).toBeInTheDocument();
     expect(screen.getByText(/Manual payout/)).toBeInTheDocument();
+    expect(screen.getByText(/for Stone Mart/)).toBeInTheDocument();
+    expect(screen.getByText(/payment pay_rzp1/)).toBeInTheDocument();
   });
 
   it('lets the admin read a payment event’s raw data', async () => {
@@ -691,5 +701,74 @@ describe('OrdersPage who and payment details', () => {
 
     expect(await screen.findByText(/payment\.captured/)).toBeInTheDocument();
     expect(screen.getByText(/asha@okbank/, { exact: false })).toBeInTheDocument();
+    expect(screen.getByText(/evt_RZP789/)).toBeInTheDocument();
+  });
+});
+
+// Task 4d review (decision 0058): every stored order fact the admin may need.
+describe('OrdersPage full order facts', () => {
+  beforeEach(() => {
+    orders = [
+      order({
+        id: 'o9999999-9999-4999-8999-999999999999',
+        capturedPaise: null,
+        status: 'confirmed',
+        grandTotal: 750,
+        deliveryAddress: {
+          id: 'd1',
+          customerId: 'c1',
+          label: 'Site',
+          addressLine1: '7 Lake View',
+          addressLine2: 'Flat 4B, 2nd floor',
+          city: 'Pune',
+          pincode: '411001',
+          lat: 18.52,
+          lng: 73.85,
+          isDefault: true,
+          createdAt: '2026-11-01T00:00:00.000Z',
+          updatedAt: '2026-11-01T00:00:00.000Z',
+        },
+      }),
+    ];
+    refunds = {};
+    refundBodies = [];
+    refundListFetches = 0;
+    refundsGate = null;
+    refundsListFails = false;
+    refundPostGate = null;
+    ordersListFetches = 0;
+    useHandlers();
+  });
+
+  it('lists the Razorpay payment id', async () => {
+    renderPage();
+    expect(await screen.findByRole('row', { name: /pay_rzp1/ })).toBeInTheDocument();
+  });
+
+  it('shows the full ids, the whole address and lets the admin copy an id', async () => {
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('row', { name: /Asha Rao/ }));
+
+    const payment = screen.getByRole('group', { name: 'Payment' });
+    expect(payment).toHaveTextContent('o9999999-9999-4999-8999-999999999999');
+    expect(screen.getByText(/Flat 4B, 2nd floor/)).toBeInTheDocument();
+    expect(screen.getByText(/18\.52, 73\.85/)).toBeInTheDocument();
+    expect(screen.getByText(/default address/)).toBeInTheDocument();
+    await user.click(within(payment).getByRole('button', { name: 'Copy Razorpay payment' }));
+    // userEvent.setup() provides the clipboard; read back what was copied.
+    expect(await navigator.clipboard.readText()).toBe('pay_rzp1');
+  });
+
+  it('does not call an old confirmed order "not captured"', async () => {
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('row', { name: /Asha Rao/ }));
+
+    const payment = screen.getByRole('group', { name: 'Payment' });
+    expect(payment).not.toHaveTextContent('Not captured');
+    expect(payment).toHaveTextContent('Not recorded (assumed ₹750)');
   });
 });

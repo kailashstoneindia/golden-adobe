@@ -124,6 +124,8 @@ describe('RefundsService (decision 0054)', () => {
     expect(refund.createdBy).toBe(t.adminUserId);
     expect(refund.createdByName).toBe('Payments Test Admin');
     expect(refund.payoutReference).toBeNull();
+    expect(refund.razorpayPaymentId).toMatch(/^pay_/);
+    expect(typeof refund.updatedAt).toBe('string');
   });
 
   it('submits a full refund once with a stored 32-char key and receipt rf_<hex>_1', async () => {

@@ -4,7 +4,7 @@ import type {
   AdminOrderVendorGroupDto,
   OrderVendorGroupStatus,
   PaymentEventDto,
-  AdminRefundDto,
+  AdminRefundRowDto,
 } from '@golden-abode/types';
 
 // 'done' and 'pending' both mean the refund row exists, so the form is
@@ -41,12 +41,14 @@ export type PaymentEventsListProps = {
 
 export type RefundFormProps = {
   order: AdminOrderDto;
-  refunds: AdminRefundDto[];
+  refunds: AdminRefundRowDto[];
   historyStatus: 'loading' | 'loaded' | 'failed';
   isSubmitting: boolean;
   onRefund: OrderDetailModalProps['onRefund'];
 };
 
 export type RefundHistoryProps = {
-  refunds: AdminRefundDto[];
+  refunds: AdminRefundRowDto[];
+  // To name the shop a partial refund was for.
+  groups: AdminOrderVendorGroupDto[];
 };

@@ -8,6 +8,7 @@ import { isEmpty } from 'lodash';
 import { useRef, useState } from 'react';
 
 import { ContactCell } from '@/components/common/ContactBlock';
+import { labelFor } from '@/constants/labels';
 import { OrderDetailModal } from '@/components/orders/OrderDetailModal';
 import { ERROR_MESSAGES } from '@/constants/error.constants';
 import {
@@ -182,6 +183,7 @@ export function OrdersPage() {
                 <th>Status</th>
                 <th>Total</th>
                 <th>Paid</th>
+                <th>Payment id</th>
                 <th>Shops</th>
                 <th>Created</th>
               </tr>
@@ -199,9 +201,10 @@ export function OrdersPage() {
                 >
                   <td>{order.id.slice(0, 8)}</td>
                   <ContactCell contact={order.customer} />
-                  <td>{ORDER_STATUS_LABELS[order.status]}</td>
+                  <td>{labelFor(ORDER_STATUS_LABELS, order.status)}</td>
                   <td>₹{order.grandTotal}</td>
                   <td>{order.capturedPaise != null ? formatPaise(order.capturedPaise) : '—'}</td>
+                  <td className={styles.mono}>{order.razorpayPaymentId ?? '—'}</td>
                   <td>{order.vendorGroups.length}</td>
                   <td>{formatDateTime(order.createdAt)}</td>
                 </tr>

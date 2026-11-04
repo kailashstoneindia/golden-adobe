@@ -13,6 +13,8 @@ import {
   VENDOR_GROUP_STATUS_OPTIONS,
 } from '@/constants/order.constants';
 import { ContactBlock, Row } from '@/components/common/ContactBlock';
+import { CopyableId } from '@/components/common/CopyButton';
+import { labelFor } from '@/constants/labels';
 import { ERROR_MESSAGES } from '@/constants/error.constants';
 import { useOrderRefundsQuery, usePaymentEventsQuery } from '@/queries/useOrdersQueries';
 import styles from '@/styles/shared.module.css';
@@ -67,15 +69,18 @@ export function OrderDetailModal({
       <div className={styles.modal} onClick={(event) => event.stopPropagation()} role="dialog">
         <h2 className={styles.modalTitle}>Order {order.id.slice(0, 8)}</h2>
         <p className={styles.pageSubtitle}>
-          {ORDER_STATUS_LABELS[order.status]} · ₹{order.grandTotal}
+          {labelFor(ORDER_STATUS_LABELS, order.status)} · ₹{order.grandTotal}
         </p>
         {order.deliveryAddress ? (
           <p className={styles.pageSubtitle}>
-            {order.deliveryAddress.label}: {order.deliveryAddress.addressLine1},{' '}
-            {order.deliveryAddress.city} {order.deliveryAddress.pincode}
+            {order.deliveryAddress.label}: {order.deliveryAddress.addressLine1}
+            {order.deliveryAddress.addressLine2
+              ? `, ${order.deliveryAddress.addressLine2}`
+              : ''}, {order.deliveryAddress.city} {order.deliveryAddress.pincode}
+            {order.deliveryAddress.isDefault ? ' (default address)' : ''}
             {order.deliveryAddress.lat != null && order.deliveryAddress.lng != null ? (
               <>
-                {' · '}
+                {` · ${order.deliveryAddress.lat}, ${order.deliveryAddress.lng} · `}
                 <a
                   href={`https://maps.google.com/?q=${order.deliveryAddress.lat},${order.deliveryAddress.lng}`}
                   target="_blank"
@@ -91,16 +96,29 @@ export function OrderDetailModal({
         <div className={styles.modalBody}>
           <ContactBlock title="Customer" contact={order.customer}>
             <Row label="Full name">{order.customerFullName ?? '—'}</Row>
+            <Row label="Customer id">
+              <CopyableId value={order.customerId} label="customer id" />
+            </Row>
           </ContactBlock>
 
           <section role="group" aria-label="Payment" className={styles.contactBlock}>
             <h3 className={styles.sectionTitle}>Payment</h3>
-            <Row label="Paid">
-              {order.capturedPaise != null ? formatPaise(order.capturedPaise) : 'Not captured'}
+            <Row label="Order id">
+              <CopyableId value={order.id} label="order id" />
             </Row>
-            <Row label="Razorpay order">{order.razorpayOrderId ?? '—'}</Row>
-            <Row label="Razorpay payment">{order.razorpayPaymentId ?? '—'}</Row>
-            <Row label="Hire request">{order.hireRequestId ?? '—'}</Row>
+            <Row label="Paid">{paidText(order)}</Row>
+            <Row label="Razorpay order">
+              <CopyableId value={order.razorpayOrderId} label="Razorpay order" />
+            </Row>
+            <Row label="Razorpay payment">
+              <CopyableId value={order.razorpayPaymentId} label="Razorpay payment" />
+            </Row>
+            <Row label="Hire request">
+              <CopyableId value={order.hireRequestId} label="hire request id" />
+            </Row>
+            <Row label="Delivery address id">
+              <CopyableId value={order.deliveryAddressId} label="delivery address id" />
+            </Row>
             <Row label="Items">{order.itemCount}</Row>
             <Row label="Created">{formatDateTime(order.createdAt)}</Row>
             <Row label="Last updated">{formatDateTime(order.updatedAt)}</Row>
@@ -127,7 +145,7 @@ export function OrderDetailModal({
               {refundNotice.text}
             </p>
           ) : null}
-          <RefundHistory refunds={refunds} />
+          <RefundHistory refunds={refunds} groups={order.vendorGroups} />
 
           <h3 className={styles.modalTitle}>Override group status</h3>
           <label className={styles.pageSubtitle} htmlFor="override-group">
@@ -141,7 +159,7 @@ export function OrderDetailModal({
           >
             {order.vendorGroups.map((group) => (
               <option key={group.id} value={group.id}>
-                {group.shopName} ({VENDOR_GROUP_STATUS_LABELS[group.status]})
+                {group.shopName} ({labelFor(VENDOR_GROUP_STATUS_LABELS, group.status)})
               </option>
             ))}
           </select>
@@ -157,7 +175,7 @@ export function OrderDetailModal({
           >
             {VENDOR_GROUP_STATUS_OPTIONS.map((status) => (
               <option key={status} value={status}>
-                {VENDOR_GROUP_STATUS_LABELS[status]}
+                {labelFor(VENDOR_GROUP_STATUS_LABELS, status)}
               </option>
             ))}
           </select>
@@ -317,7 +335,9 @@ function RefundForm({ order, refunds, historyStatus, isSubmitting, onRefund }: R
   );
 }
 
-function RefundHistory({ refunds }: RefundHistoryProps) {
+function RefundHistory({ refunds, groups }: RefundHistoryProps) {
+  const shopOf = (groupId: string | null) =>
+    groups.find((group) => group.id === groupId)?.shopName ?? null;
   if (refunds.length === 0) {
     return null;
   }
@@ -329,7 +349,8 @@ function RefundHistory({ refunds }: RefundHistoryProps) {
         {newestFirst.map((refund) => (
           <li key={refund.id}>
             <p className={styles.name}>
-              {formatPaise(refund.amountPaise)} · {REFUND_STATUS_LABELS[refund.status]}
+              {formatPaise(refund.amountPaise)} · {labelFor(REFUND_STATUS_LABELS, refund.status)}
+              {shopOf(refund.orderVendorGroupId) ? ` for ${shopOf(refund.orderVendorGroupId)}` : ''}
             </p>
             <p className={styles.meta}>
               {formatDateTime(refund.createdAt)} · {refund.reason}
@@ -337,8 +358,10 @@ function RefundHistory({ refunds }: RefundHistoryProps) {
             <p className={styles.meta}>
               {REFUND_RAIL_LABELS[refund.rail]} · receipt {refund.receipt}
               {refund.razorpayRefundId ? ` · Razorpay ${refund.razorpayRefundId}` : ''}
+              {refund.razorpayPaymentId ? ` · payment ${refund.razorpayPaymentId}` : ''}
               {refund.payoutReference ? ` · payout ref ${refund.payoutReference}` : ''}
-              {` · by ${refund.createdByName ?? 'unknown admin'}`}
+              {` · by ${refund.createdByName ?? `admin ${refund.createdBy}`}`}
+              {` · updated ${formatDateTime(refund.updatedAt)}`}
             </p>
           </li>
         ))}
@@ -351,17 +374,24 @@ function VendorGroupBlock({ group }: VendorGroupBlockProps) {
   return (
     <div className={styles.statCard}>
       <p className={styles.name}>
-        {group.shopName} · {VENDOR_GROUP_STATUS_LABELS[group.status]}
+        {group.shopName} · {labelFor(VENDOR_GROUP_STATUS_LABELS, group.status)}
       </p>
       <p className={styles.meta}>
         Subtotal ₹{group.subtotal} · Loading ₹{group.loadingUnloadingFee}
       </p>
       {group.items.map((item) => (
         <p key={item.id} className={styles.meta}>
-          {item.productName} ({item.productCode}) × {item.quantity} @ ₹{item.unitPriceSnapshot}
+          {item.productName} ({item.productCode}) × {item.quantity} @ ₹{item.unitPriceSnapshot} = ₹
+          {item.quantity * item.unitPriceSnapshot}
         </p>
       ))}
-      <ContactBlock title={`Vendor: ${group.shopName}`} contact={group.vendor} />
+      <ContactBlock title={`Vendor: ${group.shopName}`} contact={group.vendor}>
+        <Row label="Vendor id">
+          <CopyableId value={group.vendorId} label="vendor id" />
+        </Row>
+        <Row label="Created">{formatDateTime(group.createdAt)}</Row>
+        <Row label="Last changed">{formatDateTime(group.updatedAt)}</Row>
+      </ContactBlock>
     </div>
   );
 }
@@ -376,6 +406,7 @@ function PaymentEventsList({ events }: PaymentEventsListProps) {
         <details key={event.id} className={styles.meta}>
           <summary>
             {formatDateTime(event.createdAt)} · {event.eventType}
+            {event.eventId ? ` · ${event.eventId}` : ''}
           </summary>
           <pre className={styles.rawJson}>{JSON.stringify(event.rawPayload, null, 2)}</pre>
         </details>
@@ -387,4 +418,13 @@ function PaymentEventsList({ events }: PaymentEventsListProps) {
 function parseVendorGroupStatus(value: string): OrderVendorGroupStatus | null {
   const match = VENDOR_GROUP_STATUS_OPTIONS.find((status) => status === value);
   return match ?? null;
+}
+
+// Orders captured before captured_paise existed have it null; the refund form
+// already treats those as "captured the grand total", so say the same here
+// rather than "Not captured".
+function paidText(order: { capturedPaise: number | null; status: string; grandTotal: number }) {
+  if (order.capturedPaise != null) return formatPaise(order.capturedPaise);
+  if (order.status === 'pending_payment' || order.status === 'cancelled') return 'Not captured';
+  return `Not recorded (assumed ₹${order.grandTotal})`;
 }

@@ -68,6 +68,9 @@ export type PaginatedAdminHireRequestsResponse = PaginatedResponse<AdminHireRequ
 /** An order as the admin sees it (decision 0058 Task 4d): who is involved and how to reach them. */
 export type AdminOrderVendorGroupDto = OrderVendorGroupDto & {
   vendor: AdminContactDto | null;
+  // When the group was created and last changed (e.g. shipped, delivered).
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type AdminOrderDto = Omit<OrderDto, 'vendorGroups'> & {
@@ -79,7 +82,10 @@ export type AdminOrderDto = Omit<OrderDto, 'vendorGroups'> & {
   hireRequestId: string | null;
 };
 
-export type AdminRefundDto = RefundDto & {
+export type AdminRefundRowDto = RefundDto & {
   createdByName: string | null;
   payoutReference: string | null;
+  razorpayPaymentId: string | null;
+  // Spots a refund stuck in "requested".
+  updatedAt: string;
 };

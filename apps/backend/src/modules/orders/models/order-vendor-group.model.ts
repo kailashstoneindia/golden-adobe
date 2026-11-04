@@ -62,4 +62,7 @@ export class OrderVendorGroup extends Model<OrderVendorGroup> {
 
   @HasMany(() => OrderItem)
   declare items: OrderItem[];
+
+  declare createdAt: Date;
+  declare updatedAt: Date;
 }

@@ -4,7 +4,7 @@ import type {
   AdminOrderDto,
   OrderVendorGroupDto,
   PaymentEventDto,
-  AdminRefundDto,
+  AdminRefundRowDto,
 } from '@golden-abode/types';
 
 import { API_ENDPOINTS } from '@/constants/apiEndpoints';
@@ -31,8 +31,8 @@ export const ordersService = {
     return { order: data, pending: status === 202 };
   },
 
-  listRefunds(orderId: string): Promise<AdminRefundDto[]> {
-    return getRequest<AdminRefundDto[]>(API_ENDPOINTS.admin.orderRefunds(orderId));
+  listRefunds(orderId: string): Promise<AdminRefundRowDto[]> {
+    return getRequest<AdminRefundRowDto[]>(API_ENDPOINTS.admin.orderRefunds(orderId));
   },
 
   cancelOrder(orderId: string): Promise<AdminOrderDto> {
