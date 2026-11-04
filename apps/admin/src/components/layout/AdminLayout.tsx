@@ -28,12 +28,17 @@ export function AdminLayout() {
     // Revoke the refresh token on the server too, otherwise it stays usable for
     // its full 30 days. Best effort: the local logout never waits on the
     // revoke call, only on a refresh already in flight (see tokenRefresh.ts).
-    const refreshToken = await takeRefreshTokenForLogout();
-    if (refreshToken) {
-      authService.logout({ refreshToken }).catch(() => undefined);
+    try {
+      const refreshToken = await takeRefreshTokenForLogout();
+      if (refreshToken) {
+        authService.logout({ refreshToken }).catch(() => undefined);
+      }
+    } finally {
+      // Whatever happened above (storage blocked, lock failure), the admin
+      // must still end up logged out locally.
+      clearSession();
+      navigate(ROUTES.login);
     }
-    clearSession();
-    navigate(ROUTES.login);
   };
 
   return (

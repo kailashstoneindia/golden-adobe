@@ -97,32 +97,44 @@ describe('UsersService ustaads awaiting a document (integration)', () => {
   });
 
   describe('paging', () => {
-    // The list is newest sign-up first. Dating these three in 2099 puts them
-    // at the very top whatever other suites insert meanwhile, so the first
-    // pages are deterministic on the shared database.
-    const futureIds: string[] = [];
+    // Newest sign-up first. These rows are dated in the far future so rows
+    // other suites insert meanwhile (dated now) always sort after them. The
+    // test finds where its own rows sit rather than assuming they are at the
+    // very top, so rows left behind by an earlier killed run can't break it;
+    // a random per-run base keeps it from tying with those leftovers.
+    const base = Date.UTC(2099, 0, 1) + Math.floor(Math.random() * 1e6) * 60_000;
+    const at = (minutes: number) => new Date(base + minutes * 60_000).toISOString();
 
     async function futureUstaad(key: string, signedUp: string, document: boolean) {
       await ustaad(key, { profile: document, document });
-      futureIds.push(ids[key]);
       await User.sequelize!.query('UPDATE users SET created_at = :signedUp WHERE id = :id', {
         replacements: { signedUp, id: ids[key] },
       });
     }
 
     beforeAll(async () => {
-      await futureUstaad('future-with-document', '2099-01-03T00:00:00Z', true);
-      await futureUstaad('future-newer', '2099-01-02T00:00:00Z', false);
-      await futureUstaad('future-older', '2099-01-01T00:00:00Z', false);
+      // Leftovers from earlier runs of this suite that never reached afterAll.
+      await User.sequelize!.query(
+        `DELETE FROM artisans WHERE user_id IN (SELECT id FROM users WHERE name LIKE 'awaitdoc-%' AND created_at >= '2099-01-01');
+         DELETE FROM users WHERE name LIKE 'awaitdoc-%' AND created_at >= '2099-01-01';`,
+      );
+      await futureUstaad('future-with-document', at(3), true);
+      await futureUstaad('future-newer', at(2), false);
+      await futureUstaad('future-older', at(1), false);
     });
 
     it('limit and page walk the filtered list, skipping ustaads with a document', async () => {
-      const first = await service.listArtisansAwaitingDocument(1, 1);
-      const second = await service.listArtisansAwaitingDocument(2, 1);
+      const all = await service.listArtisansAwaitingDocument(1, 1000);
+      const position = all.items.findIndex((item) => item.userId === ids['future-newer']);
+      expect(position).toBeGreaterThanOrEqual(0);
 
-      expect(first.items.map((item) => item.userId)).toEqual([ids['future-newer']]);
-      expect(second.items.map((item) => item.userId)).toEqual([ids['future-older']]);
-      expect(first.totalPages).toBe(first.total);
+      // With limit 1, page n holds row n-1 of the full list.
+      const newer = await service.listArtisansAwaitingDocument(position + 1, 1);
+      const older = await service.listArtisansAwaitingDocument(position + 2, 1);
+
+      expect(newer.items.map((item) => item.userId)).toEqual([ids['future-newer']]);
+      expect(older.items.map((item) => item.userId)).toEqual([ids['future-older']]);
+      expect(all.items.some((item) => item.userId === ids['future-with-document'])).toBe(false);
     });
   });
 

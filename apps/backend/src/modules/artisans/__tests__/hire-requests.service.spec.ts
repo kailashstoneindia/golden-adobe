@@ -723,6 +723,8 @@ describe('HireRequestsService (integration)', () => {
       await ArtisanCompletionEstimate.create({
         hireRequestId: request.id,
         estimatedDays: 5,
+        // A second earlier, so "latest" never depends on two inserts in one millisecond.
+        createdAt: new Date(Date.now() - 1000),
       } as never);
       await ArtisanCompletionEstimate.create({
         hireRequestId: request.id,

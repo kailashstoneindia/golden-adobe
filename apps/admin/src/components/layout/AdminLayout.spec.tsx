@@ -197,3 +197,29 @@ describe('AdminLayout sidebar highlighting', () => {
     expect(heading('Catalog').className).not.toMatch(/navLinkActive/);
   });
 });
+
+describe('AdminLayout log out when storage fails', () => {
+  it('still leaves for the login page', async () => {
+    const realGet = Storage.prototype.getItem;
+    // localStorage throwing (e.g. blocked storage) must not strand the admin.
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(function (this: Storage, key) {
+      if (key === 'admin_refresh_token') throw new Error('storage blocked');
+      return realGet.call(this, key);
+    });
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Routes>
+          <Route element={<AdminLayout />}>
+            <Route path="/" element={<p>Dashboard body</p>} />
+          </Route>
+          <Route path="/login" element={<p>Login page</p>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Log out' }));
+
+    expect(await screen.findByText('Login page')).toBeInTheDocument();
+    vi.restoreAllMocks();
+  });
+});

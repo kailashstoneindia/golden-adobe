@@ -4,6 +4,7 @@ import type { AdminContactDto, AdminContactWithoutEmailDto } from '@golden-abode
 import styles from '@/styles/shared.module.css';
 import { formatDateTime } from '@/utils/date';
 import { formatPhoneDisplay } from '@/utils/phone';
+import { formatRoleLabel } from '@/utils/role';
 
 type ContactBlockProps = {
   title: string;
@@ -38,6 +39,10 @@ export function ContactBlock({ title, contact, children }: ContactBlockProps) {
             </Row>
           ) : null}
           {children}
+          <Row label="Account">
+            {contact.role ? formatRoleLabel(contact.role) : 'No role yet'} ·{' '}
+            {contact.isApproved ? 'approved' : 'not approved'}
+          </Row>
           <Row label="Last login">
             {contact.lastLoginAt ? formatDateTime(contact.lastLoginAt) : 'Never'}
           </Row>

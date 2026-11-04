@@ -3,6 +3,7 @@ import request from 'supertest';
 import { ArtisansTestApp, createArtisansTestApp } from './artisans-test-app';
 import { Artisan } from '../models/artisan.model';
 import { ArtisanHireRequest } from '../models/artisan-hire-request.model';
+import { User } from '../../users/models/user.model';
 
 jest.setTimeout(60_000);
 
@@ -168,6 +169,36 @@ describe('AdminArtisansController (real HTTP, Postgres)', () => {
     expect(res.status).toBe(200);
     expect(res.body.data.page).toBe(1);
     expect(Array.isArray(res.body.data.items)).toBe(true);
+  });
+
+  it('hire-requests JSON carries the customer and the ustaad without email (0056)', async () => {
+    await asArtisan(
+      request(t.app.getHttpServer())
+        .post('/api/artisans/me/profile')
+        .send({ tradeType: 'PLUMBER', servicePincode: '560001' }),
+    );
+    await User.update(
+      { email: `hr-json-${Date.now()}@test.local` },
+      { where: { id: t.artisanUserId } },
+    );
+    const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
+    const hire = await ArtisanHireRequest.create({
+      customerId: t.customerUserId,
+      artisanId: artisan!.id,
+      addressText: '2 Park Lane',
+      status: 'COMPLETED',
+    } as never);
+
+    const res = await asAdmin(
+      request(t.app.getHttpServer()).get('/api/admin/artisans/hire-requests?limit=100'),
+    );
+    await User.update({ email: null }, { where: { id: t.artisanUserId } });
+
+    const row = res.body.data.items.find((r: { id: string }) => r.id === hire.id);
+    expect(row.customer.userId).toBe(t.customerUserId);
+    expect(row.artisan.userId).toBe(t.artisanUserId);
+    expect(row.artisan).not.toHaveProperty('email');
+    expect(JSON.stringify(res.body)).not.toContain('hr-json-');
   });
 
   it('hire-requests lists every status, not just pending', async () => {
