@@ -35,9 +35,6 @@ export function DashboardPage() {
         <Link className={`${styles.tab} ${styles.tabActive}`} to={ROUTES.approvalsVendors}>
           Review vendors
         </Link>
-        <Link className={styles.tab} to={ROUTES.approvalsArtisans}>
-          Review ustaads
-        </Link>
         <Link className={styles.tab} to={ROUTES.artisanVerification}>
           Ustaad verification
         </Link>

@@ -12,6 +12,7 @@ import { ArtisanTeamMember } from './models/artisan-team-member.model';
 import { ArtisanHireRequest } from './models/artisan-hire-request.model';
 import { ArtisanCompletionEstimate } from './models/artisan-completion-estimate.model';
 import { Order } from '../orders/models/order.model';
+import { User } from '../users/models/user.model';
 import { UsersModule } from '../users/users.module';
 import { CatalogModule } from '../catalog/catalog.module';
 import { NotificationsModule } from '../notifications/notifications.module';
@@ -33,6 +34,8 @@ import { NotificationsModule } from '../notifications/notifications.module';
       // class, not ownership of the module that declares it, so this
       // creates no module-to-module import in either direction.
       Order,
+      // ArtisansService.verify() also sets users.is_approved (decision 0056).
+      User,
     ]),
     UsersModule,
     // For OBJECT_STORAGE (decision 0033's presigned-POST S3 plumbing,

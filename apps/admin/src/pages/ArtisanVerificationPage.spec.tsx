@@ -85,6 +85,13 @@ describe('ArtisanVerificationPage', () => {
     expect(await screen.findByText('PLUMBER')).toBeInTheDocument();
   });
 
+  it('tells the admin that verifying also approves the account', async () => {
+    renderPage();
+    expect(
+      await screen.findByText(/Verifying an ustaad also approves their account/),
+    ).toBeInTheDocument();
+  });
+
   it('explains there is nothing to review when the queue is empty', async () => {
     pending = [];
     renderPage();
@@ -96,7 +103,7 @@ describe('ArtisanVerificationPage', () => {
     const user = userEvent.setup();
 
     await user.click(await screen.findByText('PLUMBER'));
-    await user.click(await screen.findByRole('button', { name: 'Verify' }));
+    await user.click(await screen.findByRole('button', { name: 'Verify and approve' }));
 
     await screen.findByText('PLUMBER'); // dialog closes, list re-renders
     expect(verifyCalls).toEqual([artisan().id]);
@@ -111,7 +118,7 @@ describe('ArtisanVerificationPage', () => {
       screen.getByPlaceholderText('Optional, stored in logs only'),
       'Document is blurry',
     );
-    await user.click(await screen.findByRole('button', { name: 'Reject' }));
+    await user.click(await screen.findByRole('button', { name: 'Reject and block' }));
 
     expect(rejectCalls).toEqual([{ id: artisan().id, body: { reason: 'Document is blurry' } }]);
   });
@@ -121,7 +128,7 @@ describe('ArtisanVerificationPage', () => {
     const user = userEvent.setup();
 
     await user.click(await screen.findByText('PLUMBER'));
-    await user.click(await screen.findByRole('button', { name: 'Reject' }));
+    await user.click(await screen.findByRole('button', { name: 'Reject and block' }));
 
     expect(rejectCalls).toEqual([{ id: artisan().id, body: {} }]);
   });

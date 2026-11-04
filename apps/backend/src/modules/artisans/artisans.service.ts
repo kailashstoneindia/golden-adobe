@@ -22,6 +22,7 @@ import {
   PaginatedArtisansResponse,
 } from '@golden-abode/types';
 
+import { User } from '../users/models/user.model';
 import { Artisan } from './models/artisan.model';
 import { ArtisanAccountDetails } from './models/artisan-account-details.model';
 import { ArtisanTeamMember } from './models/artisan-team-member.model';
@@ -64,6 +65,8 @@ export class ArtisansService {
     private readonly artisanAccountDetailsModel: typeof ArtisanAccountDetails,
     @InjectModel(ArtisanTeamMember)
     private readonly artisanTeamMemberModel: typeof ArtisanTeamMember,
+    @InjectModel(User)
+    private readonly userModel: typeof User,
     @Inject(OBJECT_STORAGE) private readonly storage: ObjectStorage,
   ) {}
 
@@ -369,13 +372,17 @@ export class ArtisansService {
   // re-toggleable flag an admin can flip back and forth, so a plain
   // unconditional update (last write wins) is the correct, simpler
   // choice here, not a gap to close with the same guard.
+  //
+  // Decision 0056: verifying also approves the account (users.is_approved),
+  // and rejecting un-approves it, in one transaction — before this an admin
+  // had to set the two flags on two different pages.
   async verify(artisanId: string): Promise<ArtisanProfileDto> {
     const artisan = await this.findByIdOrThrow(artisanId);
     if (!artisan.documentUrl) {
       throw new BadRequestException('cannot verify an artisan with no uploaded document');
     }
 
-    await this.artisanModel.update({ isVerified: true }, { where: { id: artisanId } });
+    await this.setVerifiedAndApproved(artisan, true);
     return toArtisanProfileDto(await this.findByIdOrThrow(artisanId));
   }
 
@@ -383,10 +390,23 @@ export class ArtisansService {
   // AdminService.rejectUser's existing reason-is-log-only pattern. Same
   // last-write-wins reasoning as verify() above applies here too.
   async rejectVerification(artisanId: string, reason?: string): Promise<ArtisanProfileDto> {
-    await this.findByIdOrThrow(artisanId);
-    await this.artisanModel.update({ isVerified: false }, { where: { id: artisanId } });
+    const artisan = await this.findByIdOrThrow(artisanId);
+    await this.setVerifiedAndApproved(artisan, false);
     this.logger.log(`Rejected verification for artisan ${artisanId}${reason ? `: ${reason}` : ''}`);
     return toArtisanProfileDto(await this.findByIdOrThrow(artisanId));
+  }
+
+  private async setVerifiedAndApproved(artisan: Artisan, value: boolean): Promise<void> {
+    await this.artisanModel.sequelize!.transaction(async (transaction) => {
+      await this.artisanModel.update(
+        { isVerified: value },
+        { where: { id: artisan.id }, transaction },
+      );
+      await this.userModel.update(
+        { isApproved: value },
+        { where: { id: artisan.userId }, transaction },
+      );
+    });
   }
 
   private async findByIdOrThrow(artisanId: string): Promise<Artisan> {

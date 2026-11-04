@@ -1,11 +1,9 @@
 import { useMemo, useState } from 'react';
 import type { UserDto } from '@golden-abode/types';
 import { Role } from '@golden-abode/types';
-import { useLocation } from 'react-router-dom';
 import { isEmpty } from 'lodash';
 
 import { ERROR_MESSAGES } from '@/constants/error.constants';
-import { ROUTES } from '@/constants/routes';
 import { ApprovalCard } from '@/components/approvals/ApprovalCard';
 import { UserDetailModal } from '@/components/approvals/UserDetailModal';
 import {
@@ -15,13 +13,12 @@ import {
   useRejectUserMutation,
 } from '@/queries';
 import { useApproveVendorMutation, useRejectVendorMutation } from '@/queries/useVendorsQueries';
-import type { ApprovalCategory } from '@/types';
 import styles from '@/styles/shared.module.css';
 
 export function ApprovalsPage() {
-  const location = useLocation();
-  const category = resolveApprovalCategory(location.pathname);
-  const role = category === 'vendors' ? Role.VENDOR : Role.ARTISAN;
+  // Vendors only: ustaad approval happens on the verification page since
+  // decision 0056 (Verify also sets users.is_approved).
+  const role = Role.VENDOR;
 
   const [selectedUser, setSelectedUser] = useState<UserDto | null>(null);
   const usersQuery = useAdminUsersQuery(getPendingQueryForRole(role));
@@ -30,8 +27,8 @@ export function ApprovalsPage() {
   const approveVendorMutation = useApproveVendorMutation();
   const rejectVendorMutation = useRejectVendorMutation();
 
-  const isVendorCategory = category === 'vendors';
-  const title = isVendorCategory ? 'Vendor approvals' : 'Ustaad approvals';
+  const isVendorCategory = true;
+  const title = 'Vendor approvals';
   const isSubmitting =
     approveMutation.isPending ||
     rejectMutation.isPending ||
@@ -103,11 +100,4 @@ export function ApprovalsPage() {
       ) : null}
     </section>
   );
-}
-
-function resolveApprovalCategory(pathname: string): ApprovalCategory {
-  if (pathname.includes(ROUTES.approvalsArtisans)) {
-    return 'artisans';
-  }
-  return 'vendors';
 }

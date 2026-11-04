@@ -54,7 +54,7 @@ export function ArtisanVerificationPage() {
     <section>
       <h2 className={styles.pageTitle}>Ustaad verification</h2>
       <p className={styles.pageSubtitle}>
-        Document-backed verification — distinct from the generic account approval. Only verified
+        Verifying an ustaad also approves their account, and rejecting blocks it. Only verified
         ustaads are discoverable to customers.
       </p>
 
@@ -163,7 +163,7 @@ function ArtisanVerificationModal({
             disabled={isSubmitting}
             onClick={() => onReject(artisan.id)}
           >
-            Reject
+            Reject and block
           </button>
           <button
             type="button"
@@ -171,7 +171,7 @@ function ArtisanVerificationModal({
             disabled={isSubmitting}
             onClick={() => onVerify(artisan.id)}
           >
-            Verify
+            Verify and approve
           </button>
         </div>
       </div>

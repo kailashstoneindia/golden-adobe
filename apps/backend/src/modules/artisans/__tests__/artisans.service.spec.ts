@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { SequelizeModule } from '@nestjs/sequelize';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -41,7 +41,7 @@ describe('ArtisansService (integration)', () => {
           logging: false,
           models: ARTISAN_TEST_MODELS,
         }),
-        SequelizeModule.forFeature([Artisan, ArtisanAccountDetails, ArtisanTeamMember]),
+        SequelizeModule.forFeature([Artisan, ArtisanAccountDetails, ArtisanTeamMember, User]),
       ],
       providers: [
         ArtisansService,
@@ -292,6 +292,64 @@ describe('ArtisansService (integration)', () => {
 
     const rejected = await service.rejectVerification(profile.id, 'Document is blurry');
     expect(rejected.isVerified).toBe(false);
+  });
+
+  describe('verification sets the account approval too (decision 0056)', () => {
+    async function profileWithDocument() {
+      const profile = await service.onboardProfile(userId, {
+        tradeType: 'PLUMBER',
+        servicePincode: '560001',
+      });
+      const key = `artisans/${profile.id}/doc-key.pdf`;
+      fakeStorage.seed(key);
+      await service.confirmDocumentUpload(userId, key);
+      return profile;
+    }
+
+    async function flags(artisanId: string) {
+      const artisan = await Artisan.findByPk(artisanId);
+      const user = await User.findByPk(userId);
+      return { isVerified: artisan!.isVerified, isApproved: user!.isApproved };
+    }
+
+    it('verify sets artisan.isVerified and user.isApproved', async () => {
+      const profile = await profileWithDocument();
+
+      await service.verify(profile.id);
+
+      expect(await flags(profile.id)).toEqual({ isVerified: true, isApproved: true });
+    });
+
+    it('verify without a document changes neither flag', async () => {
+      const profile = await service.onboardProfile(userId, {
+        tradeType: 'PLUMBER',
+        servicePincode: '560001',
+      });
+
+      await expect(service.verify(profile.id)).rejects.toThrow(BadRequestException);
+
+      expect(await flags(profile.id)).toEqual({ isVerified: false, isApproved: false });
+    });
+
+    it('rejectVerification clears both flags', async () => {
+      const profile = await profileWithDocument();
+      await Artisan.update({ isVerified: true }, { where: { id: profile.id } });
+      await User.update({ isApproved: true }, { where: { id: userId } });
+
+      await service.rejectVerification(profile.id, 'Document is blurry');
+
+      expect(await flags(profile.id)).toEqual({ isVerified: false, isApproved: false });
+    });
+
+    it('verify rolls back when the user update fails', async () => {
+      const profile = await profileWithDocument();
+      const spy = jest.spyOn(User, 'update').mockRejectedValueOnce(new Error('db down'));
+
+      await expect(service.verify(profile.id)).rejects.toThrow('db down');
+      spy.mockRestore();
+
+      expect(await flags(profile.id)).toEqual({ isVerified: false, isApproved: false });
+    });
   });
 
   it('listPendingVerification excludes artisans with no uploaded document', async () => {
