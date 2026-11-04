@@ -123,8 +123,10 @@ export class ArtisanHireRequest extends Model<ArtisanHireRequest> {
   })
   declare completedAt: Date | null;
 
-  // Set exactly once, by cancel, when status moves to CANCELLED from any of
-  // PENDING_ADMIN_REVIEW, ACCEPTED_BY_ARTISAN, or IN_PROGRESS.
+  // Set exactly once, by cancel, when status moves to CANCELLED. The customer
+  // and admin may cancel from PENDING_ADMIN_REVIEW, PENDING_ARTISAN_RESPONSE,
+  // ACCEPTED_BY_ARTISAN or IN_PROGRESS; the ustaad only from the last two —
+  // while a request waits on them they decline instead (0055).
   @Column({
     type: DataType.DATE,
     allowNull: true,

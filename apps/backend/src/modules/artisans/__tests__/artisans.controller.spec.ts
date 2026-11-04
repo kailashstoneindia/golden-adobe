@@ -324,6 +324,7 @@ describe('ArtisansController (real HTTP, Postgres)', () => {
       artisanId: artisan!.id,
       addressText: '1 Park Lane',
       status: 'IN_PROGRESS',
+      adminReviewedAt: new Date(),
     } as never);
 
     const res = await asArtisan(
@@ -687,6 +688,15 @@ describe('ArtisansController (real HTTP, Postgres)', () => {
 
     it('the ustaad cannot read a request the admin blocked (403)', async () => {
       const hireRequest = await waitingRequest('ADMIN_REJECTED');
+      const res = await asArtisan(
+        request(t.app.getHttpServer()).get(`/api/artisans/hire-requests/${hireRequest.id}`),
+      );
+      expect(res.status).toBe(403);
+    });
+
+    it('the ustaad cannot read a request cancelled before the admin reviewed it (403)', async () => {
+      const hireRequest = await waitingRequest('CANCELLED');
+      await hireRequest.update({ adminReviewedAt: null } as never);
       const res = await asArtisan(
         request(t.app.getHttpServer()).get(`/api/artisans/hire-requests/${hireRequest.id}`),
       );

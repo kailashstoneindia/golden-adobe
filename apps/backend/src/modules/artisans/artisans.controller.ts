@@ -23,7 +23,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { ArtisansService } from './artisans.service';
 import { HireRequestsService } from './hire-requests.service';
-import { HIDDEN_FROM_ARTISAN_STATUSES } from './hire-request-rules';
+import { isVisibleToArtisan } from './hire-request-rules';
 import { OnboardArtisanDto } from './dto/onboard-artisan.dto';
 import { UpdateArtisanProfileDto } from './dto/update-artisan-profile.dto';
 import { UpdateAccountDetailsDto } from './dto/update-account-details.dto';
@@ -368,7 +368,12 @@ export class ArtisansController {
   private async assertCanViewHireRequest(
     userId: string,
     role: string,
-    request: { customerId: string; artisanId: string; status: string },
+    request: {
+      customerId: string;
+      artisanId: string;
+      status: string;
+      adminReviewedAt: Date | null;
+    },
   ): Promise<void> {
     if (role === Role.ADMIN) {
       return;
@@ -379,8 +384,9 @@ export class ArtisansController {
     if (role === Role.ARTISAN) {
       // Same admin-gate boundary as listForArtisan: an artisan only sees a
       // request the admin let through, so they can't confirm one exists
-      // via this read while it's PENDING_ADMIN_REVIEW or ADMIN_REJECTED.
-      if ((HIDDEN_FROM_ARTISAN_STATUSES as string[]).includes(request.status)) {
+      // via this read while it's in admin review, was blocked, or was
+      // cancelled before the admin reviewed it.
+      if (!isVisibleToArtisan(request)) {
         throw new ForbiddenException('you may not view this hire request');
       }
       const artisan = await this.artisansService.resolveArtisanByUserId(userId).catch(() => null);
