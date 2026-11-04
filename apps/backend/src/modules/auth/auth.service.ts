@@ -58,13 +58,20 @@ export class AuthService {
   async sendOtp(dto: SendOtpDto): Promise<{ message: string; devOtp?: string }> {
     const { phone } = dto;
 
-    // Rate limiting check (Redis-based)
+    // Per-phone send limit (Redis-based). It exists to stop SMS spam against a
+    // victim's number and to cap MSG91 cost, so it is enforced ONLY when real
+    // SMS is on. In demo mode (USE_MSG91_SMS=false) nothing is sent or billed
+    // and the code comes back in the response, so the limit protects nothing
+    // and only locks testers out of their own accounts (decision 0057). It
+    // switches itself back on with USE_MSG91_SMS=true; the verify-attempt
+    // limit in verifyOtp is unaffected and always applies.
+    const enforceSendLimit = this.useMsg91Sms;
     const rateLimitKey = `otp_rate:${phone}`;
-    const attempts = await this.redisService.get(rateLimitKey);
+    const attempts = enforceSendLimit ? await this.redisService.get(rateLimitKey) : null;
     const maxSends = this.configService.get<number>('throttle.otpSendLimit', 3);
     const rateTtl = this.configService.get<number>('throttle.otpSendTtl', 3600);
 
-    if (attempts && parseInt(attempts, 10) >= maxSends) {
+    if (enforceSendLimit && attempts && parseInt(attempts, 10) >= maxSends) {
       throw new BadRequestException(`OTP send limit exceeded. Try again after some time.`);
     }
 
@@ -79,9 +86,12 @@ export class AuthService {
     const otpKey = `otp:${phone}`;
     await this.redisService.set(otpKey, hashedOtp, 300); // 5 minutes
 
-    // Increment rate limit counter
-    const currentCount = attempts ? parseInt(attempts, 10) : 0;
-    await this.redisService.set(rateLimitKey, (currentCount + 1).toString(), rateTtl);
+    // Increment rate limit counter (real SMS only — in demo mode no counter is
+    // written, so flipping to real SMS starts every number from a clean slate).
+    if (enforceSendLimit) {
+      const currentCount = attempts ? parseInt(attempts, 10) : 0;
+      await this.redisService.set(rateLimitKey, (currentCount + 1).toString(), rateTtl);
+    }
 
     if (this.useMsg91Sms) {
       await this.sendViaMSG91(phone, otp);
