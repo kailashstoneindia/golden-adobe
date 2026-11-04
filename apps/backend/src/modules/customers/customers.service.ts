@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
+import { Transaction } from 'sequelize';
 import type { CustomerAddressDto } from '@golden-abode/types';
 import { Customer } from './models/customer.model';
 import { CustomerAddress } from './models/customer-address.model';
@@ -33,8 +34,16 @@ export class CustomersService {
   // register DTO — so the row is created immediately rather than deferred.
   // Without this, resolveCustomerByUserId 404s on every cart/checkout call
   // a real customer makes.
-  async createForUser(userId: string, fullName: string): Promise<Customer> {
-    return this.customerModel.create({ userId, fullName } as Customer);
+  //
+  // `transaction` ties this row to the user insert in AuthService.register:
+  // as two bare writes, a failure here left a login with no customers row,
+  // which 404s on every cart call and which nothing ever repaired.
+  async createForUser(
+    userId: string,
+    fullName: string,
+    transaction?: Transaction,
+  ): Promise<Customer> {
+    return this.customerModel.create({ userId, fullName } as Customer, { transaction });
   }
 
   async getProfile(userId: string): Promise<Customer> {
