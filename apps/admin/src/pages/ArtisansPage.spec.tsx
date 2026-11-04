@@ -1,9 +1,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ArtisanProfileDto } from '@golden-abode/types';
+import { Role, type AdminArtisanDto } from '@golden-abode/types';
 
 import { server } from '@/test/server';
 
@@ -11,7 +11,7 @@ import { ArtisansPage } from './ArtisansPage';
 
 const BASE = '/api/admin/artisans';
 
-function artisan(over: Partial<ArtisanProfileDto> = {}): ArtisanProfileDto {
+function artisan(over: Partial<AdminArtisanDto> = {}): AdminArtisanDto {
   return {
     id: 'a1111111-1111-4111-8111-111111111111',
     userId: 'u1111111-1111-4111-8111-111111111111',
@@ -24,13 +24,25 @@ function artisan(over: Partial<ArtisanProfileDto> = {}): ArtisanProfileDto {
     isAvailable: true,
     accountDetails: null,
     team: [],
+    owner: {
+      userId: 'u1111111-1111-4111-8111-111111111111',
+      name: 'Mohan Lal',
+      phone: '9988776655',
+      email: 'mohan@example.com',
+      role: Role.ARTISAN,
+      isActive: true,
+      isApproved: false,
+      lastLoginAt: null,
+    },
+    documentViewUrl: null,
+    jobCounts: { active: 1, completed: 5, declined: 0, total: 6 },
     createdAt: '2026-10-29T00:00:00.000Z',
     updatedAt: '2026-10-29T00:00:00.000Z',
     ...over,
   };
 }
 
-let artisans: ArtisanProfileDto[];
+let artisans: AdminArtisanDto[];
 
 function useHandlers() {
   server.use(
@@ -95,6 +107,7 @@ describe('ArtisansPage', () => {
             roleOnTeam: 'Helper',
             phone: '9876543210',
             documentUrl: null,
+            documentViewUrl: null,
             createdAt: '2026-10-29T00:00:00.000Z',
             updatedAt: '2026-10-29T00:00:00.000Z',
           },
@@ -119,6 +132,74 @@ describe('ArtisansPage', () => {
 
     expect(await screen.findByText('Reliable plumber')).toBeInTheDocument();
     expect(screen.getByText('Suresh')).toBeInTheDocument();
-    expect(screen.getByText('SBI')).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Bank' })).toHaveTextContent('SBI, Koramangala');
+  });
+});
+
+// Decision 0058 Task 6: who the ustaad is, their team, and openable documents.
+describe('ArtisansPage full ustaad view', () => {
+  beforeEach(() => {
+    artisans = [
+      artisan({
+        documentUrl: 'artisans/a1/id.pdf',
+        documentViewUrl: 'https://signed.example.test/artisans/a1/id.pdf?sig=1',
+        team: [
+          {
+            id: 't1',
+            artisanId: 'a1111111-1111-4111-8111-111111111111',
+            name: 'Suresh',
+            roleOnTeam: 'Helper',
+            phone: '9876543210',
+            documentUrl: 'artisans/a1/suresh.pdf',
+            documentViewUrl: 'https://signed.example.test/artisans/a1/suresh.pdf?sig=2',
+            createdAt: '2026-10-29T00:00:00.000Z',
+            updatedAt: '2026-10-29T00:00:00.000Z',
+          },
+        ],
+        accountDetails: {
+          id: 'acc1',
+          artisanId: 'a1111111-1111-4111-8111-111111111111',
+          accountHolderName: 'Mohan Lal',
+          bankName: 'SBI',
+          ifscCode: 'SBIN0001234',
+          branchName: 'Koramangala',
+          accountNumber: '998877665544',
+          createdAt: '2026-10-29T00:00:00.000Z',
+          updatedAt: '2026-10-29T00:00:00.000Z',
+        },
+      }),
+    ];
+    useHandlers();
+  });
+
+  it('lists the owner', async () => {
+    renderPage();
+    const row = await screen.findByRole('row', { name: /Mohan Lal/ });
+    expect(row).toHaveTextContent('99887 76655');
+  });
+
+  it('shows the owner, document links, team documents, full account number and jobs', async () => {
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('row', { name: /Mohan Lal/ }));
+
+    expect(await screen.findByRole('group', { name: 'Owner' })).toHaveTextContent(
+      'mohan@example.com',
+    );
+    expect(screen.getByRole('link', { name: 'View ustaad document' })).toHaveAttribute(
+      'href',
+      'https://signed.example.test/artisans/a1/id.pdf?sig=1',
+    );
+    const team = screen.getByRole('group', { name: 'Team' });
+    expect(team).toHaveTextContent('Suresh');
+    expect(within(team).getByRole('link', { name: 'View document for Suresh' })).toHaveAttribute(
+      'href',
+      'https://signed.example.test/artisans/a1/suresh.pdf?sig=2',
+    );
+    expect(screen.getByRole('group', { name: 'Bank' })).toHaveTextContent('998877665544');
+    expect(screen.getByRole('group', { name: 'Jobs' })).toHaveTextContent(
+      '1 active · 5 completed · 0 declined · 6 in total',
+    );
   });
 });

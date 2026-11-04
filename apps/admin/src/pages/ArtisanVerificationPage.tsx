@@ -1,22 +1,24 @@
 import { useMemo, useState } from 'react';
-import type { ArtisanProfileDto } from '@golden-abode/types';
+import type { AdminArtisanDto } from '@golden-abode/types';
 import { isEmpty } from 'lodash';
 
 import { APP_CONSTANTS } from '@/constants/appConstants';
 import { ERROR_MESSAGES } from '@/constants/error.constants';
 import {
+  useArtisanByIdQuery,
   useArtisanPendingVerificationQuery,
   useArtisansAwaitingDocumentQuery,
   useRejectArtisanVerificationMutation,
   useVerifyArtisanMutation,
 } from '@/queries';
 import { labelFor, TRADE_TYPE_LABELS } from '@/constants/labels';
+import { ArtisanDetailBody } from '@/components/artisans/ArtisanDetailBody';
 import styles from '@/styles/shared.module.css';
 import { formatDateTime } from '@/utils/date';
 import { formatPhoneDisplay } from '@/utils/phone';
 
 export function ArtisanVerificationPage() {
-  const [selectedArtisan, setSelectedArtisan] = useState<ArtisanProfileDto | null>(null);
+  const [selectedArtisan, setSelectedArtisan] = useState<AdminArtisanDto | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const pendingQuery = useArtisanPendingVerificationQuery({
     page: 1,
@@ -81,6 +83,7 @@ export function ArtisanVerificationPage() {
                   ? `${artisan.experienceYears} yrs experience`
                   : 'Experience not provided'}
               </p>
+              <p className={styles.meta}>{artisan.owner?.name ?? 'Unknown owner'}</p>
               <p className={styles.meta}>Submitted {formatDateTime(artisan.createdAt)}</p>
             </button>
           ))}
@@ -173,7 +176,7 @@ function AwaitingDocumentSection() {
 }
 
 type ArtisanVerificationModalProps = {
-  artisan: ArtisanProfileDto;
+  artisan: AdminArtisanDto;
   isSubmitting: boolean;
   rejectReason: string;
   onRejectReasonChange: (value: string) => void;
@@ -191,25 +194,23 @@ function ArtisanVerificationModal({
   onVerify,
   onReject,
 }: ArtisanVerificationModalProps) {
+  const detailQuery = useArtisanByIdQuery(artisan.id);
   return (
     <div className={styles.overlay} onClick={onClose} role="presentation">
       <div className={styles.modal} onClick={(event) => event.stopPropagation()} role="dialog">
         <h2 className={styles.modalTitle}>Review verification</h2>
         <p className={styles.pageSubtitle}>{labelFor(TRADE_TYPE_LABELS, artisan.tradeType)}</p>
 
+        {/* The detail call signs the document links (decision 0058 Task 6). */}
+        {detailQuery.data ? (
+          <ArtisanDetailBody artisan={detailQuery.data} />
+        ) : detailQuery.isError ? (
+          <p className={styles.error}>Could not load this ustaad's details.</p>
+        ) : (
+          <p className={styles.pageSubtitle}>Loading details…</p>
+        )}
+
         <div className={styles.modalBody}>
-          <DetailRow label="Trade" value={labelFor(TRADE_TYPE_LABELS, artisan.tradeType)} />
-          <DetailRow
-            label="Experience"
-            value={artisan.experienceYears != null ? `${artisan.experienceYears} years` : '-'}
-          />
-          <DetailRow label="Service pincode" value={artisan.servicePincode || '-'} />
-          <DetailRow label="Bio" value={artisan.bio || '-'} />
-          <DetailRow label="Document" value={artisan.documentUrl ? 'Uploaded' : 'Not uploaded'} />
-          <DetailRow label="Available" value={artisan.isAvailable ? 'Yes' : 'No'} />
-          {artisan.team.length > 0 ? (
-            <DetailRow label="Team size" value={String(artisan.team.length)} />
-          ) : null}
           <div className={styles.detailRow}>
             <span className={styles.detailLabel}>Rejection reason</span>
             <input
@@ -248,20 +249,6 @@ function ArtisanVerificationModal({
           </button>
         </div>
       </div>
-    </div>
-  );
-}
-
-type DetailRowProps = {
-  label: string;
-  value: string;
-};
-
-function DetailRow({ label, value }: DetailRowProps) {
-  return (
-    <div className={styles.detailRow}>
-      <span className={styles.detailLabel}>{label}</span>
-      <span className={styles.detailValue}>{value}</span>
     </div>
   );
 }

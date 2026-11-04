@@ -3,7 +3,8 @@ import type {
   ArtisanHireRequestStatus,
   ArtisanListQuery,
   PaginatedArtisansAwaitingDocumentResponse,
-  PaginatedArtisansResponse,
+  AdminArtisanDto,
+  PaginatedAdminArtisansResponse,
   PaginatedAdminHireRequestsResponse,
   ArtisanProfileDto,
 } from '@golden-abode/types';
@@ -36,18 +37,18 @@ function buildHireRequestQueryString(query: HireRequestListQuery): string {
 }
 
 export const artisansService = {
-  fetchArtisans(query: ArtisanListQuery): Promise<PaginatedArtisansResponse> {
+  fetchArtisans(query: ArtisanListQuery): Promise<PaginatedAdminArtisansResponse> {
     const suffix = buildArtisanQueryString(query);
-    return getRequest<PaginatedArtisansResponse>(`${API_ENDPOINTS.admin.artisans}${suffix}`);
+    return getRequest<PaginatedAdminArtisansResponse>(`${API_ENDPOINTS.admin.artisans}${suffix}`);
   },
 
-  fetchArtisanById(artisanId: string): Promise<ArtisanProfileDto> {
-    return getRequest<ArtisanProfileDto>(API_ENDPOINTS.admin.artisanById(artisanId));
+  fetchArtisanById(artisanId: string): Promise<AdminArtisanDto> {
+    return getRequest<AdminArtisanDto>(API_ENDPOINTS.admin.artisanById(artisanId));
   },
 
-  fetchPendingVerification(query: ArtisanListQuery): Promise<PaginatedArtisansResponse> {
+  fetchPendingVerification(query: ArtisanListQuery): Promise<PaginatedAdminArtisansResponse> {
     const suffix = buildArtisanQueryString(query);
-    return getRequest<PaginatedArtisansResponse>(
+    return getRequest<PaginatedAdminArtisansResponse>(
       `${API_ENDPOINTS.admin.artisansPendingVerification}${suffix}`,
     );
   },

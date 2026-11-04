@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ArtisanAwaitingDocumentDto, ArtisanProfileDto } from '@golden-abode/types';
+import { Role, type AdminArtisanDto, type ArtisanAwaitingDocumentDto } from '@golden-abode/types';
 
 import { server } from '@/test/server';
 
@@ -11,7 +11,7 @@ import { ArtisanVerificationPage } from './ArtisanVerificationPage';
 
 const BASE = '/api/admin/artisans';
 
-function artisan(over: Partial<ArtisanProfileDto> = {}): ArtisanProfileDto {
+function artisan(over: Partial<AdminArtisanDto> = {}): AdminArtisanDto {
   return {
     id: 'a1111111-1111-4111-8111-111111111111',
     userId: 'u1111111-1111-4111-8111-111111111111',
@@ -24,18 +24,41 @@ function artisan(over: Partial<ArtisanProfileDto> = {}): ArtisanProfileDto {
     isAvailable: true,
     accountDetails: null,
     team: [],
+    owner: {
+      userId: 'u1111111-1111-4111-8111-111111111111',
+      name: 'Mohan Lal',
+      phone: '9988776655',
+      email: 'mohan@example.com',
+      role: Role.ARTISAN,
+      isActive: true,
+      isApproved: false,
+      lastLoginAt: null,
+    },
+    documentViewUrl: null,
+    jobCounts: { active: 1, completed: 5, declined: 0, total: 6 },
     createdAt: '2026-10-29T00:00:00.000Z',
     updatedAt: '2026-10-29T00:00:00.000Z',
     ...over,
   };
 }
 
-let pending: ArtisanProfileDto[];
+let pending: AdminArtisanDto[];
 let verifyCalls: string[];
 let rejectCalls: Array<{ id: string; body: unknown }>;
 let awaiting: ArtisanAwaitingDocumentDto[];
 
 function useHandlers() {
+  // Registered first: a later server.use() wins, so the named routes below
+  // match before this catch-all ':id' route.
+  server.use(
+    http.get(`${BASE}/:id`, ({ params }) => {
+      const found = pending.find((a) => a.id === params.id);
+      return HttpResponse.json({
+        success: true,
+        data: found && { ...found, documentViewUrl: 'https://signed.example.test/doc?sig=1' },
+      });
+    }),
+  );
   server.use(
     http.get(`${BASE}/awaiting-document`, () =>
       HttpResponse.json({
@@ -217,5 +240,28 @@ describe('ArtisanVerificationPage', () => {
     await user.click(await screen.findByRole('button', { name: 'Reject' }));
 
     expect(rejectCalls).toEqual([{ id: artisan().id, body: {} }]);
+  });
+});
+
+describe('ArtisanVerificationPage review popup (decision 0058 Task 6)', () => {
+  beforeEach(() => {
+    pending = [artisan()];
+    verifyCalls = [];
+    rejectCalls = [];
+    awaiting = [];
+    useHandlers();
+  });
+
+  it('shows who the ustaad is and lets the admin open their document', async () => {
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByText('Plumber'));
+
+    expect(await screen.findByRole('group', { name: 'Owner' })).toHaveTextContent('99887 76655');
+    expect(await screen.findByRole('link', { name: 'View ustaad document' })).toHaveAttribute(
+      'href',
+      'https://signed.example.test/doc?sig=1',
+    );
   });
 });
