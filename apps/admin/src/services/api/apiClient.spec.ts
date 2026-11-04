@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -71,8 +72,29 @@ describe('apiClient token refresh', () => {
   });
 
   it('parallel 401s share one refresh call', async () => {
-    statsAcceptOnly('a2');
-    refreshAnswers({ accessToken: 'a2', refreshToken: 'r2' });
+    // Hold the refresh answer until all three 401s have arrived, so the test
+    // proves single-flight rather than the stale-token check.
+    let rejected = 0;
+    let allRejected!: () => void;
+    const threeRejected = new Promise<void>((resolve) => (allRejected = resolve));
+    server.use(
+      http.get(STATS, ({ request }) => {
+        if (request.headers.get('Authorization') === 'Bearer a2') {
+          return HttpResponse.json({ success: true, data: { totalUsers: 3 } });
+        }
+        rejected += 1;
+        if (rejected === 3) allRejected();
+        return HttpResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+      }),
+      http.post(REFRESH, async () => {
+        refreshCalls += 1;
+        await threeRejected;
+        return HttpResponse.json({
+          success: true,
+          data: { accessToken: 'a2', refreshToken: 'r2' },
+        });
+      }),
+    );
 
     const results = await Promise.all([
       getRequest('/admin/stats'),
@@ -119,11 +141,14 @@ describe('apiClient token refresh', () => {
   });
 
   it('refresh failure clears tokens and redirects to login', async () => {
-    statsAcceptOnly('a2');
+    const seen: string[] = [];
+    statsAcceptOnly('a2', seen);
     refreshAnswers('fail');
 
     const error = await getRequest('/admin/stats').catch((caught: unknown) => caught);
 
+    expect(refreshCalls).toBe(1);
+    expect(seen).toEqual(['Bearer a1']);
     expect(error).toBeInstanceOf(ApiClientError);
     expect((error as ApiClientError).statusCode).toBe(401);
     expect(tokenStorage.getAccessToken()).toBeNull();
@@ -140,6 +165,23 @@ describe('apiClient token refresh', () => {
 
     expect(refreshCalls).toBe(1);
     expect(seen).toEqual(['Bearer a1', 'Bearer a2']);
+    // A brand-new token being refused means the account itself is gone.
+    expect(tokenStorage.getAccessToken()).toBeNull();
+    expect(assignSpy).toHaveBeenCalledWith('/login');
+  });
+
+  it('builds the refresh URL with axios joining, not string concatenation', async () => {
+    const post = vi.spyOn(axios, 'post');
+    statsAcceptOnly('a2');
+    refreshAnswers({ accessToken: 'a2', refreshToken: 'r2' });
+
+    await getRequest('/admin/stats');
+
+    const [url, , config] = post.mock.calls[0];
+    expect(url).toBe('/auth/refresh');
+    expect(config?.baseURL).toBe('/api');
+    expect(config?.timeout).toBe(15_000);
+    post.mockRestore();
   });
 
   it('login 401 does not refresh', async () => {

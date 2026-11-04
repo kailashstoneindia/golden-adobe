@@ -13,6 +13,7 @@ import { tokenStorage } from '@/services/storage/tokenStorage';
 // token another tab already stored and uses it instead of refreshing again.
 
 const LOCK_NAME = 'admin-token-refresh';
+const REFRESH_TIMEOUT_MS = 15_000;
 
 type TokenPair = { accessToken: string; refreshToken: string };
 
@@ -30,10 +31,17 @@ async function refreshUnderLock(staleAccessToken: string | null): Promise<string
   }
 
   // Bare axios, not apiClient: a 401 here must not re-enter the interceptor.
+  // baseURL lets axios join the paths (a trailing slash in VITE_API_BASE_URL is
+  // fine). The timeout matters because this runs while holding the cross-tab
+  // lock: a stalled request would freeze every admin tab.
   const response = await axios.post<ApiSuccessResponse<TokenPair>>(
-    `${APP_CONSTANTS.apiBaseUrl}${API_ENDPOINTS.auth.refresh}`,
+    API_ENDPOINTS.auth.refresh,
     { refreshToken },
-    { headers: { 'Content-Type': 'application/json' } },
+    {
+      baseURL: APP_CONSTANTS.apiBaseUrl,
+      timeout: REFRESH_TIMEOUT_MS,
+      headers: { 'Content-Type': 'application/json' },
+    },
   );
   const { accessToken, refreshToken: nextRefreshToken } = response.data.data;
   tokenStorage.setTokens(accessToken, nextRefreshToken);
