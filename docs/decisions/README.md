@@ -65,6 +65,7 @@ valid when circumstances change.
 | [0054](0054-payments-mvp-hardening.md)                       | Payments MVP hardening: no rupee the system can't see                                            | 2026-11-03 | Implemented (pending merge)                                   |
 | [0055](0055-artisan-accept-decline-step.md)                  | Ustaad accept/decline step after the admin gate (amends 0045)                                    | 2026-11-04 | Implemented (pending merge)                                   |
 | [0056](0056-customer-profile-backfill.md)                    | Customer profile backfill and atomic registration                                                | 2026-11-04 | Implemented (pending merge)                                   |
+| [0057](0057-otp-send-limit-demo-mode.md)                     | OTP send limit applies only when real SMS is on                                                  | 2026-11-04 | Implemented (pending merge)                                   |
 
 **Numbering note (corrected 2026-10-19):** 0034 was written 2026-10-15 but existed only as an
 uncommitted file until recovered and committed here alongside 0035–0037 — it was never missing
