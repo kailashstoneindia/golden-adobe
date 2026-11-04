@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { isEmpty } from 'lodash';
 
+import { labelFor, VENDOR_STATUS_LABELS } from '@/constants/labels';
 import styles from '@/styles/shared.module.css';
 import type { VendorDetailModalProps, VendorDetailRowProps } from '@/types/vendors.types';
 import { formatDateTime } from '@/utils/date';
@@ -63,7 +64,7 @@ export function VendorDetailModal({
         <p className={styles.pageSubtitle}>Vendor profile and registration scope</p>
 
         <div className={styles.modalBody}>
-          <DetailRow label="Status" value={formatVendorStatus(vendor.status)} />
+          <DetailRow label="Status" value={labelFor(VENDOR_STATUS_LABELS, vendor.status)} />
           {vendor.status === 'REJECTED' && vendor.rejectionReason ? (
             <DetailRow label="Rejection reason" value={vendor.rejectionReason} />
           ) : null}
@@ -225,12 +226,6 @@ function DetailRow({ label, value }: VendorDetailRowProps) {
       <span className={styles.detailValue}>{value}</span>
     </div>
   );
-}
-
-function formatVendorStatus(status: string): string {
-  if (status === 'APPROVED') return 'Approved';
-  if (status === 'REJECTED') return 'Rejected';
-  return 'Pending';
 }
 
 function toggleCategoryId(currentIds: string[], categoryId: string): string[] {

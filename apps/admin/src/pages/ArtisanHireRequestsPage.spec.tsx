@@ -46,7 +46,7 @@ function hireRequest(over: Partial<AdminHireRequestDto> = {}): AdminHireRequestD
     },
     artisan: {
       userId: 'u2222222-2222-4222-8222-222222222222',
-      name: 'Ramesh Plumber',
+      name: 'Ramesh Kumar',
       phone: '9123456780',
       role: Role.ARTISAN,
       isActive: true,
@@ -117,7 +117,7 @@ describe('ArtisanHireRequestsPage', () => {
     const row = await screen.findByRole('row', { name: /Asha Rao/ });
     expect(row).toHaveTextContent('Asha Rao');
     expect(row).toHaveTextContent('98765 43210');
-    expect(row).toHaveTextContent('Ramesh Plumber');
+    expect(row).toHaveTextContent('Ramesh Kumar');
     expect(row).toHaveTextContent('91234 56780');
   });
 
@@ -135,8 +135,8 @@ describe('ArtisanHireRequestsPage', () => {
     );
     expect(within(customer).getByRole('link', { name: 'asha@example.com' })).toBeInTheDocument();
     const ustaad = screen.getByRole('group', { name: 'Ustaad' });
-    expect(ustaad).toHaveTextContent('Ramesh Plumber');
-    expect(ustaad).toHaveTextContent('Plumber');
+    expect(ustaad).toHaveTextContent('Ramesh Kumar');
+    expect(ustaad).toHaveTextContent('TradePlumber');
     expect(within(ustaad).queryByText(/Email/)).not.toBeInTheDocument();
   });
 

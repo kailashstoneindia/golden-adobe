@@ -11,6 +11,8 @@ export async function findOnAnyPage<T>(
     const result = await fetchPage(page);
     const hit = result.items.find(match);
     if (hit) return hit;
-    if (page >= result.totalPages) return undefined;
+    // An empty page, or a response without a usable totalPages, ends the
+    // walk rather than fetching empty pages until the test times out.
+    if (result.items.length === 0 || !(page < result.totalPages)) return undefined;
   }
 }

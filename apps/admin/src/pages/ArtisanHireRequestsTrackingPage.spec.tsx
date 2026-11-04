@@ -47,7 +47,7 @@ function hireRequest(over: Partial<AdminHireRequestDto> = {}): AdminHireRequestD
     },
     artisan: {
       userId: 'u2222222-2222-4222-8222-222222222222',
-      name: 'Ramesh Plumber',
+      name: 'Ramesh Kumar',
       phone: '9123456780',
       role: Role.ARTISAN,
       isActive: true,
@@ -117,7 +117,7 @@ describe('ArtisanHireRequestsTrackingPage', () => {
     renderPage();
 
     const row = await screen.findByRole('row', { name: /Asha Rao/ });
-    expect(row).toHaveTextContent('Ramesh Plumber');
+    expect(row).toHaveTextContent('Ramesh Kumar');
   });
 
   it('the popup shows both contacts, who reviewed it and how many estimates (0058)', async () => {
@@ -140,7 +140,8 @@ describe('ArtisanHireRequestsTrackingPage', () => {
     await user.click(await screen.findByRole('row', { name: /Asha Rao/ }));
 
     expect(screen.getByRole('group', { name: 'Customer' })).toHaveTextContent('Asha Rao');
-    expect(screen.getByRole('group', { name: 'Ustaad' })).toHaveTextContent('Ramesh Plumber');
+    expect(screen.getByRole('group', { name: 'Ustaad' })).toHaveTextContent('Ramesh Kumar');
+    expect(screen.getByRole('group', { name: 'Ustaad' })).toHaveTextContent('TradePlumber');
     expect(screen.getByText('Admin Priya')).toBeInTheDocument();
     expect(screen.getByText('3 (latest: 6 days)')).toBeInTheDocument();
   });

@@ -126,6 +126,24 @@ describe('ArtisanVerificationPage', () => {
     expect(screen.getByText('No profile yet')).toBeInTheDocument();
   });
 
+  it('names the trade of a waiting ustaad who has a profile', async () => {
+    awaiting = [
+      {
+        userId: 'u-await-2',
+        name: 'Suresh Mehta',
+        phone: null,
+        email: null,
+        hasProfile: true,
+        tradeType: 'PLUMBER',
+        servicePincode: '560001',
+        createdAt: '2026-11-01T10:00:00.000Z',
+      },
+    ];
+    renderPage();
+
+    expect(await screen.findByText('Plumber · 560001 · no document')).toBeInTheDocument();
+  });
+
   it('says how many are waiting when the list is longer than one page', async () => {
     awaiting = [
       {

@@ -14,6 +14,13 @@ describe('AdminArtisansController (real HTTP, Postgres)', () => {
   const asAdmin = (req: request.Test) => req.set('Authorization', `Bearer ${t.adminToken}`);
   const asArtisan = (req: request.Test) => req.set('Authorization', `Bearer ${t.artisanToken}`);
 
+  // One page of an admin list; any non-200 fails right here, with its status.
+  async function adminPage(url: string) {
+    const res = await asAdmin(request(t.app.getHttpServer()).get(url));
+    expect(res.status).toBe(200);
+    return res.body.data;
+  }
+
   beforeAll(async () => {
     t = await createArtisansTestApp();
   });
@@ -148,14 +155,7 @@ describe('AdminArtisansController (real HTTP, Postgres)', () => {
     expect(res.body.data.page).toBe(1);
     expect(res.body.data.limit).toBe(10);
     const found = await findOnAnyPage(
-      async (p) =>
-        (
-          await asAdmin(
-            request(t.app.getHttpServer()).get(
-              `/api/admin/artisans/pending-verification?page=${p}&limit=100`,
-            ),
-          )
-        ).body.data,
+      (p) => adminPage(`/api/admin/artisans/pending-verification?page=${p}&limit=100`),
       (a: { id: string }) => a.id === artisan!.id,
     );
     expect(found).toBeDefined();
@@ -232,14 +232,7 @@ describe('AdminArtisansController (real HTTP, Postgres)', () => {
     );
     expect(res.status).toBe(200);
     const found = await findOnAnyPage(
-      async (p) =>
-        (
-          await asAdmin(
-            request(t.app.getHttpServer()).get(
-              `/api/admin/artisans/hire-requests?page=${p}&limit=100`,
-            ),
-          )
-        ).body.data,
+      (p) => adminPage(`/api/admin/artisans/hire-requests?page=${p}&limit=100`),
       (r: { id: string; status: string }) => r.id === completed.id && r.status === 'COMPLETED',
     );
     expect(found).toBeDefined();

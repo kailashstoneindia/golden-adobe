@@ -1,4 +1,4 @@
-import type { ArtisanHireRequestStatus, TradeType } from '@golden-abode/types';
+import type { ArtisanHireRequestStatus, TradeType, VendorProfileDto } from '@golden-abode/types';
 
 import type { ProductStatus } from '@/types/catalog.types';
 
@@ -36,9 +36,20 @@ export const PRODUCT_STATUS_LABELS: Record<ProductStatus, string> = {
   deprecated: 'Deprecated',
 };
 
+export const VENDOR_STATUS_LABELS: Record<VendorProfileDto['status'], string> = {
+  PENDING: 'Pending',
+  APPROVED: 'Approved',
+  REJECTED: 'Rejected',
+};
+
 // For a value that may be missing, or newer than this build of the admin:
-// unknown codes are shown as-is rather than as a blank.
-export function labelFor(labels: Record<string, string>, code: string | null | undefined): string {
+// an unknown code is shown as-is, never as a blank and never as some other
+// status (e.g. an unknown vendor status must not read as "Pending").
+// The map and the code share one type, so a trade map can't be used on a status.
+export function labelFor<Code extends string>(
+  labels: Record<Code, string>,
+  code: Code | null | undefined,
+): string {
   if (!code) return '—';
-  return labels[code] ?? code;
+  return Object.prototype.hasOwnProperty.call(labels, code) ? labels[code] : code;
 }

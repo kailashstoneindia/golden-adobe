@@ -14,6 +14,7 @@ import {
   useVendorCategoriesQuery,
   useVendorsQuery,
 } from '@/queries/useVendorsQueries';
+import { labelFor, VENDOR_STATUS_LABELS } from '@/constants/labels';
 import styles from '@/styles/shared.module.css';
 import type { CategoryNode } from '@/types/catalog.types';
 import { formatDateTime } from '@/utils/date';
@@ -135,7 +136,7 @@ export function VendorsPage() {
                   }}
                 >
                   <td>{vendor.shopName}</td>
-                  <td>{formatVendorStatusLabel(vendor.status)}</td>
+                  <td>{labelFor(VENDOR_STATUS_LABELS, vendor.status)}</td>
                   <td>{vendor.city?.name ?? '—'}</td>
                   <td>{vendor.gstin ?? '—'}</td>
                   <td>{formatDateTime(vendor.updatedAt)}</td>
@@ -173,10 +174,4 @@ function leavesOf(nodes: CategoryNode[]): CategoryNode[] {
 
 function toLeafOption(node: CategoryNode): { id: string; path: string; name: string } {
   return { id: node.id, path: node.path, name: node.name };
-}
-
-function formatVendorStatusLabel(status: string): string {
-  if (status === 'APPROVED') return 'Approved';
-  if (status === 'REJECTED') return 'Rejected';
-  return 'Pending';
 }

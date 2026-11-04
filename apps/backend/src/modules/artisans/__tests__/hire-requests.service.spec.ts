@@ -436,9 +436,9 @@ describe('HireRequestsService (integration)', () => {
     // active rows cause, not an absolute count.
     const pendingBefore = await createHireRequestFixture({ status: 'PENDING_ADMIN_REVIEW' });
     const pendingPages = (p: number) => service.listPendingAdminReview(p, 100);
-    const baselineCount =
-      (await findOnAnyPage(pendingPages, (r) => r.id === pendingBefore.id))
-        ?.artisanActiveJobCount ?? 0;
+    const baselineRow = await findOnAnyPage(pendingPages, (r) => r.id === pendingBefore.id);
+    expect(baselineRow).toBeDefined();
+    const baselineCount = baselineRow?.artisanActiveJobCount ?? 0;
 
     await createHireRequestFixture({
       status: 'ACCEPTED_BY_ARTISAN',
@@ -711,10 +711,12 @@ describe('HireRequestsService (integration)', () => {
       await User.update({ email: `ustaad-${suffix}@test.local` }, { where: { id: artisanUserId } });
       const request = await createHireRequestFixture({ status: 'PENDING_ADMIN_REVIEW' });
 
-      const dto = (await service.listPendingAdminReview(1, 100)).items.find(
+      const dto = await findOnAnyPage(
+        (p) => service.listPendingAdminReview(p, 100),
         (r) => r.id === request.id,
       );
 
+      expect(dto).toBeDefined();
       expect(dto?.artisan).not.toHaveProperty('email');
       await User.update({ email: null }, { where: { id: artisanUserId } });
     });
