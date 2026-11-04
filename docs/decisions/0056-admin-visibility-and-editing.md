@@ -62,6 +62,16 @@ The user then set two broader requirements:
    app only: `ApprovedGuard` exists but no backend route applies it today.
 3. **One approval page (D3).** The separate "Ustaad approvals" tab is removed.
    `/approvals/artisans` redirects to `/artisans/verification`.
+3a. **Ustaads without a document (follow-up ruling, 2026-11-04).** The verification page gets
+   a read-only "Waiting for a document" list (name, phone, email, signed-up date, whether a
+   profile exists). It has no approve action, because an ustaad can't be verified without a
+   document. The dashboard card counts this group and links to it.
+3b. **One writer for ustaad approval (follow-up ruling, 2026-11-04).** The generic
+   `PATCH /admin/users/:id/approve|reject` runs Verify / Reject verification when the user
+   is an ustaad, so the two flags never disagree:
+   - Approve fails with 400 if the ustaad has no profile or no document.
+   - Reject of an ustaad with no profile only clears `is_approved`, because there is no
+     `is_verified` to keep in step.
 4. **Maximum information rule.** Quote verbatim: *"Every admin page shows every stored
    field of the record, except the never-render list."* The never-render list:
    - `passwordHash`

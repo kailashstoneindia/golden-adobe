@@ -18,6 +18,7 @@ export {
   useArtisanByIdQuery,
   useArtisanPendingHireRequestsQuery,
   useArtisanPendingVerificationQuery,
+  useArtisansAwaitingDocumentQuery,
   useArtisansQuery,
   useCancelHireRequestMutation,
   useRejectArtisanVerificationMutation,

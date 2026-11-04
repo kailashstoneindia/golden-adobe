@@ -23,14 +23,27 @@ export function UsersPage() {
   const showApprovalActions =
     selectedUser?.role === Role.VENDOR || selectedUser?.role === Role.ARTISAN;
 
-  const handleApprove = async (userId: string) => {
-    await approveMutation.mutateAsync(userId);
-    setSelectedUser(null);
+  // The server can refuse, e.g. approving an ustaad with no document
+  // (decision 0056 §3b); keep the popup open and show why.
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  const runAction = async (action: () => Promise<unknown>) => {
+    setActionError(null);
+    try {
+      await action();
+      setSelectedUser(null);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Request failed');
+    }
   };
 
-  const handleReject = async (userId: string) => {
-    await rejectMutation.mutateAsync({ userId });
+  const handleApprove = (userId: string) => runAction(() => approveMutation.mutateAsync(userId));
+
+  const handleReject = (userId: string) => runAction(() => rejectMutation.mutateAsync({ userId }));
+
+  const closeModal = () => {
     setSelectedUser(null);
+    setActionError(null);
   };
 
   if (usersQuery.isLoading) {
@@ -86,7 +99,8 @@ export function UsersPage() {
           user={selectedUser}
           isSubmitting={isSubmitting}
           showApprovalActions={showApprovalActions}
-          onClose={() => setSelectedUser(null)}
+          actionError={actionError}
+          onClose={closeModal}
           onApprove={handleApprove}
           onReject={handleReject}
         />

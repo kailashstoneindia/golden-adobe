@@ -10,6 +10,8 @@ export type AdminDashboardStats = {
   approvedArtisans: number;
   pendingArtisanVerifications: number;
   pendingHireRequests: number;
+  // Ustaads with no profile or no document yet (decision 0056 §3a).
+  artisansAwaitingDocument: number;
 };
 
 export type ListUsersQuery = {

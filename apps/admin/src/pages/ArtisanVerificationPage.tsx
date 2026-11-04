@@ -6,11 +6,13 @@ import { APP_CONSTANTS } from '@/constants/appConstants';
 import { ERROR_MESSAGES } from '@/constants/error.constants';
 import {
   useArtisanPendingVerificationQuery,
+  useArtisansAwaitingDocumentQuery,
   useRejectArtisanVerificationMutation,
   useVerifyArtisanMutation,
 } from '@/queries';
 import styles from '@/styles/shared.module.css';
 import { formatDateTime } from '@/utils/date';
+import { formatPhoneDisplay } from '@/utils/phone';
 
 export function ArtisanVerificationPage() {
   const [selectedArtisan, setSelectedArtisan] = useState<ArtisanProfileDto | null>(null);
@@ -84,6 +86,8 @@ export function ArtisanVerificationPage() {
         </div>
       )}
 
+      <AwaitingDocumentSection />
+
       {selectedArtisan ? (
         <ArtisanVerificationModal
           artisan={selectedArtisan}
@@ -96,6 +100,66 @@ export function ArtisanVerificationPage() {
         />
       ) : null}
     </section>
+  );
+}
+
+// Decision 0056 §3a: ustaads who can't be verified yet (no profile, or no
+// document). Read-only on purpose: there is nothing to approve until the
+// document arrives, so the admin's job here is to call them.
+function AwaitingDocumentSection() {
+  const awaitingQuery = useArtisansAwaitingDocumentQuery({
+    page: 1,
+    limit: APP_CONSTANTS.defaultPageSize,
+  });
+  const rows = awaitingQuery.data?.items ?? [];
+
+  return (
+    <div className={styles.section}>
+      <h3 className={styles.sectionTitle}>Waiting for a document</h3>
+      <p className={styles.pageSubtitle}>
+        Signed up as an ustaad but can&apos;t be verified yet. Call them to finish onboarding.
+      </p>
+      {awaitingQuery.isError ? (
+        <p className={styles.error}>{ERROR_MESSAGES.loadUsersFailed}</p>
+      ) : isEmpty(rows) ? (
+        <div className={styles.empty}>Nobody is waiting on a document.</div>
+      ) : (
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Phone</th>
+                <th>Email</th>
+                <th>Profile</th>
+                <th>Signed up</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.userId}>
+                  <td>{row.name}</td>
+                  <td>
+                    {row.phone ? (
+                      <a href={`tel:${row.phone}`}>{formatPhoneDisplay(row.phone)}</a>
+                    ) : (
+                      '—'
+                    )}
+                  </td>
+                  <td>{row.email ? <a href={`mailto:${row.email}`}>{row.email}</a> : '—'}</td>
+                  <td>
+                    {row.hasProfile
+                      ? `${row.tradeType ?? 'Profile'}${row.servicePincode ? ` · ${row.servicePincode}` : ''} · no document`
+                      : 'No profile yet'}
+                  </td>
+                  <td>{formatDateTime(row.createdAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   );
 }
 

@@ -13,9 +13,11 @@ type UserDetailModalProps = {
   showApprovalActions?: boolean;
   // Vendor rejections require a persisted reason (decision 0048) — when
   // true, Reject opens a reason prompt instead of firing immediately.
-  // Artisan rejections keep the old one-click behavior (generic,
-  // log-only reason) until artisans get the same status-field treatment.
+  // Ustaad rejections stay one-click; the server runs Reject verification
+  // for them (decision 0056 §3b).
   requireRejectReason?: boolean;
+  // Shown above the actions when Approve/Reject was refused by the server.
+  actionError?: string | null;
   onClose: () => void;
   onApprove?: (userId: string) => void;
   onReject?: (userId: string, reason?: string) => void;
@@ -26,6 +28,7 @@ export function UserDetailModal({
   isSubmitting,
   showApprovalActions = true,
   requireRejectReason = false,
+  actionError = null,
   onClose,
   onApprove,
   onReject,
@@ -90,6 +93,8 @@ export function UserDetailModal({
             </div>
           ) : null}
         </div>
+
+        {actionError ? <p className={styles.error}>{actionError}</p> : null}
 
         <div className={styles.actions}>
           <button

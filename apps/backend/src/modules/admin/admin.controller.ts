@@ -13,6 +13,7 @@ import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagg
 import { Role } from '@golden-abode/types';
 
 import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { AdminService } from './admin.service';
@@ -48,15 +49,23 @@ export class AdminController {
 
   @Patch('users/:id/approve')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Approve a pending vendor or artisan' })
-  approveUser(@Param('id') userId: string) {
-    return this.adminService.approveUser(userId);
+  @ApiOperation({
+    summary: 'Approve a pending vendor or artisan',
+    description:
+      'For an ustaad this runs Verify (decision 0056): 400 if they have no profile or no document.',
+  })
+  approveUser(@Param('id') userId: string, @CurrentUser('sub') adminUserId: string) {
+    return this.adminService.approveUser(userId, adminUserId);
   }
 
   @Patch('users/:id/reject')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Reject or revoke approval for vendor or artisan' })
-  rejectUser(@Param('id') userId: string, @Body() rejectUserDto: RejectUserDto) {
-    return this.adminService.rejectUser(userId, rejectUserDto.reason);
+  rejectUser(
+    @Param('id') userId: string,
+    @Body() rejectUserDto: RejectUserDto,
+    @CurrentUser('sub') adminUserId: string,
+  ) {
+    return this.adminService.rejectUser(userId, adminUserId, rejectUserDto.reason);
   }
 }

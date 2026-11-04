@@ -21,6 +21,8 @@ import { formatTimestamp, toVendorProfileDto } from '../vendors/vendor-profile.m
 import { toArtisanProfileDto } from '../artisans/artisan-profile.mapper';
 import { PENDING_VERIFICATION_WHERE } from '../artisans/artisans.service';
 import { ListUsersQueryDto } from './dto/list-users-query.dto';
+import { UsersService } from '../users/users.service';
+import { ArtisansService } from '../artisans/artisans.service';
 
 @Injectable()
 export class AdminService {
@@ -46,6 +48,8 @@ export class AdminService {
     private readonly artisanModel: typeof Artisan,
     @InjectModel(ArtisanHireRequest)
     private readonly artisanHireRequestModel: typeof ArtisanHireRequest,
+    private readonly usersService: UsersService,
+    private readonly artisansService: ArtisansService,
   ) {}
 
   async getDashboardStats(): Promise<AdminDashboardStats> {
@@ -57,6 +61,7 @@ export class AdminService {
       approvedArtisans,
       pendingArtisanVerifications,
       pendingHireRequests,
+      artisansAwaitingDocument,
     ] = await Promise.all([
       // Vendor.status, not User.isApproved=false — a rejected vendor is
       // also isApproved=false, which would double-count as "pending" here
@@ -73,6 +78,7 @@ export class AdminService {
       // and the list it's counting can never drift apart.
       this.artisanModel.count({ where: PENDING_VERIFICATION_WHERE }),
       this.artisanHireRequestModel.count({ where: { status: 'PENDING_ADMIN_REVIEW' } }),
+      this.usersService.countArtisansAwaitingDocument(),
     ]);
 
     return {
@@ -83,6 +89,7 @@ export class AdminService {
       approvedArtisans,
       pendingArtisanVerifications,
       pendingHireRequests,
+      artisansAwaitingDocument,
     };
   }
 
@@ -118,17 +125,38 @@ export class AdminService {
     return this.toUserDto(user);
   }
 
-  async approveUser(userId: string): Promise<UserDto> {
+  // Decision 0056 §3b: for an ustaad, approve/reject here run the same
+  // Verify / Reject verification as the verification page, so
+  // users.is_approved and artisans.is_verified never disagree.
+  async approveUser(userId: string, adminUserId: string): Promise<UserDto> {
     const user = await this.findApprovalTarget(userId);
-    await user.update({ isApproved: true });
-    this.logger.log(`Approved user ${userId} (${user.role})`);
+    if (user.role === Role.ARTISAN) {
+      if (!user.artisanProfile) {
+        throw new BadRequestException(
+          'This ustaad has not created a profile or uploaded a document yet',
+        );
+      }
+      await this.artisansService.verify(user.artisanProfile.id, adminUserId);
+    } else {
+      await user.update({ isApproved: true });
+      this.logger.log(`admin ${adminUserId} approve user ${userId} isApproved (${user.role})`);
+    }
     return this.toUserDto(await user.reload({ include: this.userIncludes }));
   }
 
-  async rejectUser(userId: string, reason?: string): Promise<UserDto> {
+  async rejectUser(userId: string, adminUserId: string, reason?: string): Promise<UserDto> {
     const user = await this.findApprovalTarget(userId);
-    await user.update({ isApproved: false });
-    this.logger.log(`Rejected user ${userId} (${user.role})${reason ? `: ${reason}` : ''}`);
+    if (user.role === Role.ARTISAN && user.artisanProfile) {
+      await this.artisansService.rejectVerification(user.artisanProfile.id, adminUserId, reason);
+    } else {
+      // A vendor, or an ustaad with no profile (no is_verified to keep in step).
+      await user.update({ isApproved: false });
+      this.logger.log(
+        `admin ${adminUserId} reject user ${userId} isApproved (${user.role})${
+          reason ? `: ${reason}` : ''
+        }`,
+      );
+    }
     return this.toUserDto(await user.reload({ include: this.userIncludes }));
   }
 

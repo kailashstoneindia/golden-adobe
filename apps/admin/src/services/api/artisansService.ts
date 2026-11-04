@@ -2,6 +2,7 @@ import type {
   ArtisanHireRequestDto,
   ArtisanHireRequestStatus,
   ArtisanListQuery,
+  PaginatedArtisansAwaitingDocumentResponse,
   PaginatedArtisansResponse,
   PaginatedHireRequestsResponse,
   ArtisanProfileDto,
@@ -48,6 +49,15 @@ export const artisansService = {
     const suffix = buildArtisanQueryString(query);
     return getRequest<PaginatedArtisansResponse>(
       `${API_ENDPOINTS.admin.artisansPendingVerification}${suffix}`,
+    );
+  },
+
+  fetchAwaitingDocument(
+    query: ArtisanListQuery,
+  ): Promise<PaginatedArtisansAwaitingDocumentResponse> {
+    const suffix = buildArtisanQueryString(query);
+    return getRequest<PaginatedArtisansAwaitingDocumentResponse>(
+      `${API_ENDPOINTS.admin.artisansAwaitingDocument}${suffix}`,
     );
   },
 

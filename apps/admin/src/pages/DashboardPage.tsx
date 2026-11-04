@@ -24,7 +24,11 @@ export function DashboardPage() {
 
       <div className={styles.statsGrid}>
         <StatCard label="Pending vendors" value={stats.pendingVendors} />
-        <StatCard label="Pending ustaads" value={stats.pendingArtisans} />
+        <StatCard
+          label="Ustaads without a document"
+          value={stats.artisansAwaitingDocument}
+          to={ROUTES.artisanVerification}
+        />
         <StatCard label="Ustaad verifications" value={stats.pendingArtisanVerifications} />
         <StatCard label="Pending hire requests" value={stats.pendingHireRequests} />
         <StatCard label="Approved vendors" value={stats.approvedVendors} />
@@ -52,13 +56,22 @@ export function DashboardPage() {
 type StatCardProps = {
   label: string;
   value: number;
+  // Makes the whole card a link to the list it counts.
+  to?: string;
 };
 
-function StatCard({ label, value }: StatCardProps) {
-  return (
+function StatCard({ label, value, to }: StatCardProps) {
+  const card = (
     <article className={styles.statCard}>
       <div className={styles.statValue}>{value}</div>
       <div className={styles.statLabel}>{label}</div>
     </article>
+  );
+  return to ? (
+    <Link to={to} className={styles.statCardLink}>
+      {card}
+    </Link>
+  ) : (
+    card
   );
 }

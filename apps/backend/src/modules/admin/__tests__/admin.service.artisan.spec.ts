@@ -8,6 +8,12 @@ import { Vendor } from '../../vendors/models/vendor.model';
 import { Artisan } from '../../artisans/models/artisan.model';
 import { ArtisanHireRequest } from '../../artisans/models/artisan-hire-request.model';
 import { AdminService } from '../admin.service';
+import { ArtisansService } from '../../artisans/artisans.service';
+import { ArtisanAccountDetails } from '../../artisans/models/artisan-account-details.model';
+import { ArtisanTeamMember } from '../../artisans/models/artisan-team-member.model';
+import { FakeObjectStorage } from '../../artisans/__tests__/fake-object-storage';
+import { OBJECT_STORAGE } from '../../catalog/media/object-storage';
+import { UsersService } from '../../users/users.service';
 
 describe('AdminService artisan surfacing (integration)', () => {
   let moduleRef: TestingModule;
@@ -29,9 +35,21 @@ describe('AdminService artisan surfacing (integration)', () => {
           logging: false,
           models: ARTISAN_TEST_MODELS,
         }),
-        SequelizeModule.forFeature([User, Vendor, Artisan, ArtisanHireRequest]),
+        SequelizeModule.forFeature([
+          User,
+          Vendor,
+          Artisan,
+          ArtisanAccountDetails,
+          ArtisanTeamMember,
+          ArtisanHireRequest,
+        ]),
       ],
-      providers: [AdminService],
+      providers: [
+        AdminService,
+        ArtisansService,
+        UsersService,
+        { provide: OBJECT_STORAGE, useValue: new FakeObjectStorage() },
+      ],
     }).compile();
 
     adminService = moduleRef.get(AdminService);

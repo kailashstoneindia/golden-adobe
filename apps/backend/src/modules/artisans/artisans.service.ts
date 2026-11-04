@@ -19,6 +19,7 @@ import {
   ArtisanTeamMemberDto,
   ArtisanTeamMemberInputDto,
   PaginatedArtisanPublicProfilesResponse,
+  PaginatedArtisansAwaitingDocumentResponse,
   PaginatedArtisansResponse,
 } from '@golden-abode/types';
 
@@ -402,6 +403,15 @@ export class ArtisansService {
       }`,
     );
     return toArtisanProfileDto(await this.findByIdOrThrow(artisanId));
+  }
+
+  // Ustaads this queue can't show yet: no profile, or no document (decision
+  // 0056 §3a). The query lives in UsersService because some have no artisans row.
+  listAwaitingDocument(
+    page: number,
+    limit: number,
+  ): Promise<PaginatedArtisansAwaitingDocumentResponse> {
+    return this.usersService.listArtisansAwaitingDocument(page, limit);
   }
 
   // UsersService.setApproved is the one writer of users.is_approved, shared

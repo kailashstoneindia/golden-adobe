@@ -30,6 +30,7 @@ export const API_ENDPOINTS = {
     artisans: '/admin/artisans',
     artisanById: (artisanId: string) => `/admin/artisans/${artisanId}`,
     artisansPendingVerification: '/admin/artisans/pending-verification',
+    artisansAwaitingDocument: '/admin/artisans/awaiting-document',
     verifyArtisan: (artisanId: string) => `/admin/artisans/${artisanId}/verify`,
     rejectArtisanVerification: (artisanId: string) =>
       `/admin/artisans/${artisanId}/reject-verification`,

@@ -46,6 +46,8 @@ export function useApproveUserMutation() {
     mutationFn: (userId: string) => adminService.approveUser(userId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin'] });
+      // For an ustaad this ran Verify/Reject (decision 0056 §3b).
+      queryClient.invalidateQueries({ queryKey: ['artisans'] });
     },
   });
 }
@@ -57,6 +59,8 @@ export function useRejectUserMutation() {
       adminService.rejectUser(options.userId, { reason: options.reason }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin'] });
+      // For an ustaad this ran Verify/Reject (decision 0056 §3b).
+      queryClient.invalidateQueries({ queryKey: ['artisans'] });
     },
   });
 }

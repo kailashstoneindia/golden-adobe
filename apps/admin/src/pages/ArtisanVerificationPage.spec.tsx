@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ArtisanProfileDto } from '@golden-abode/types';
+import type { ArtisanAwaitingDocumentDto, ArtisanProfileDto } from '@golden-abode/types';
 
 import { server } from '@/test/server';
 
@@ -33,9 +33,16 @@ function artisan(over: Partial<ArtisanProfileDto> = {}): ArtisanProfileDto {
 let pending: ArtisanProfileDto[];
 let verifyCalls: string[];
 let rejectCalls: Array<{ id: string; body: unknown }>;
+let awaiting: ArtisanAwaitingDocumentDto[];
 
 function useHandlers() {
   server.use(
+    http.get(`${BASE}/awaiting-document`, () =>
+      HttpResponse.json({
+        success: true,
+        data: { items: awaiting, total: awaiting.length, page: 1, limit: 20, totalPages: 1 },
+      }),
+    ),
     http.get(`${BASE}/pending-verification`, () =>
       HttpResponse.json({
         success: true,
@@ -74,6 +81,7 @@ function renderPage() {
 describe('ArtisanVerificationPage', () => {
   beforeEach(() => {
     pending = [artisan()];
+    awaiting = [];
     verifyCalls = [];
     rejectCalls = [];
     useHandlers();
@@ -90,6 +98,32 @@ describe('ArtisanVerificationPage', () => {
     expect(
       await screen.findByText(/Verifying an ustaad also approves their account/),
     ).toBeInTheDocument();
+  });
+
+  it('lists ustaads waiting for a document with a call link (decision 0056)', async () => {
+    awaiting = [
+      {
+        userId: 'u-await',
+        name: 'Ramesh Kumar',
+        phone: '9876543210',
+        email: null,
+        hasProfile: false,
+        tradeType: null,
+        servicePincode: null,
+        createdAt: '2026-11-01T10:00:00.000Z',
+      },
+    ];
+    renderPage();
+
+    expect(
+      await screen.findByRole('heading', { name: 'Waiting for a document' }),
+    ).toBeInTheDocument();
+    expect(await screen.findByText('Ramesh Kumar')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '98765 43210' })).toHaveAttribute(
+      'href',
+      'tel:9876543210',
+    );
+    expect(screen.getByText('No profile yet')).toBeInTheDocument();
   });
 
   it('explains there is nothing to review when the queue is empty', async () => {

@@ -43,6 +43,18 @@ export class AdminArtisansController {
     return this.artisansService.listArtisans(query.page ?? 1, query.limit ?? 20);
   }
 
+  // Declared before ':id' so the UUID route doesn't swallow it.
+  @Get('awaiting-document')
+  @ApiOperation({
+    summary: 'Ustaads who cannot be verified yet',
+    description:
+      'Active ustaads with no profile, or a profile with no document (decision 0056). Read-only: there is nothing to approve until a document arrives.',
+  })
+  @ApiResponse({ status: 200, description: 'Page of ustaads, newest sign-up first' })
+  async awaitingDocument(@Query() query: PaginationQueryDto) {
+    return this.artisansService.listAwaitingDocument(query.page ?? 1, query.limit ?? 20);
+  }
+
   @Get('pending-verification')
   @ApiOperation({
     summary: 'Artisans awaiting verification',

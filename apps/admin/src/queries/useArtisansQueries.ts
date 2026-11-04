@@ -17,6 +17,7 @@ export const ARTISANS_QUERY_KEYS = {
   detail: (artisanId: string) => ['artisans', 'detail', artisanId] as const,
   pendingVerification: (query: ArtisanListQuery) =>
     ['artisans', 'pending-verification', query] as const,
+  awaitingDocument: (query: ArtisanListQuery) => ['artisans', 'awaiting-document', query] as const,
   pendingHireRequests: (query: ArtisanListQuery) =>
     ['artisans', 'hire-requests', 'pending', query] as const,
   allHireRequests: (query: HireRequestListQuery) =>
@@ -36,6 +37,15 @@ export function useArtisanByIdQuery(artisanId: string | null) {
     queryKey: ARTISANS_QUERY_KEYS.detail(artisanId ?? ''),
     queryFn: () => artisansService.fetchArtisanById(artisanId!),
     enabled: artisanId != null,
+    staleTime: APP_CONSTANTS.staleTimeMs,
+  });
+}
+
+// Ustaads with no profile or no document yet (decision 0056 §3a).
+export function useArtisansAwaitingDocumentQuery(query: ArtisanListQuery) {
+  return useQuery({
+    queryKey: ARTISANS_QUERY_KEYS.awaitingDocument(query),
+    queryFn: () => artisansService.fetchAwaitingDocument(query),
     staleTime: APP_CONSTANTS.staleTimeMs,
   });
 }

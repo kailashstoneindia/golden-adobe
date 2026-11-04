@@ -103,6 +103,31 @@ describe('AdminArtisansController (real HTTP, Postgres)', () => {
     expect(res.body.data.status).toBe('PENDING_ARTISAN_RESPONSE');
   });
 
+  it('awaiting-document lists an ustaad with a profile but no document (decision 0056)', async () => {
+    await asArtisan(
+      request(t.app.getHttpServer())
+        .post('/api/artisans/me/profile')
+        .send({ tradeType: 'PLUMBER', servicePincode: '560001' }),
+    );
+
+    const res = await asAdmin(
+      request(t.app.getHttpServer()).get('/api/admin/artisans/awaiting-document?page=1&limit=100'),
+    );
+
+    expect(res.status).toBe(200);
+    const row = res.body.data.items.find(
+      (item: { userId: string }) => item.userId === t.artisanUserId,
+    );
+    expect(row).toMatchObject({ hasProfile: true, tradeType: 'PLUMBER' });
+  });
+
+  it('answers 403 for an artisan calling awaiting-document', async () => {
+    const res = await asArtisan(
+      request(t.app.getHttpServer()).get('/api/admin/artisans/awaiting-document'),
+    );
+    expect(res.status).toBe(403);
+  });
+
   it('pending-verification is a paginated page, not a bare array', async () => {
     await asArtisan(
       request(t.app.getHttpServer())
