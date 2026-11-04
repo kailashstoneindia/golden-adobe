@@ -939,3 +939,11 @@ textarea.input {
 .statCardLink:focus-visible {
   border-color: var(--color-navy);
 }
+
+/* One person's contact details inside an admin popup (ContactBlock). */
+.contactBlock {
+  display: grid;
+  gap: 6px;
+  padding: 12px 0;
+  border-top: 1px solid var(--color-line);
+}

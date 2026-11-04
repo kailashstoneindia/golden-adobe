@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import type { ArtisanHireRequestDto } from '@golden-abode/types';
+import type { AdminHireRequestDto } from '@golden-abode/types';
 import { isEmpty } from 'lodash';
 
 import { APP_CONSTANTS } from '@/constants/appConstants';
+import { ContactBlock, ContactCell, Row } from '@/components/common/ContactBlock';
 import { ERROR_MESSAGES } from '@/constants/error.constants';
 import { useAllHireRequestsQuery, useCancelHireRequestMutation } from '@/queries';
 import styles from '@/styles/shared.module.css';
@@ -20,7 +21,7 @@ const CANCELLABLE_STATUSES = new Set([
 ]);
 
 export function ArtisanHireRequestsTrackingPage() {
-  const [selectedRequest, setSelectedRequest] = useState<ArtisanHireRequestDto | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<AdminHireRequestDto | null>(null);
   const [cancelReason, setCancelReason] = useState('');
   const requestsQuery = useAllHireRequestsQuery({
     page: 1,
@@ -63,6 +64,8 @@ export function ArtisanHireRequestsTrackingPage() {
           <table className={styles.table}>
             <thead>
               <tr>
+                <th>Customer</th>
+                <th>Ustaad</th>
                 <th>Address</th>
                 <th>Status</th>
                 <th>Requested</th>
@@ -75,6 +78,8 @@ export function ArtisanHireRequestsTrackingPage() {
                   className={styles.clickableRow}
                   onClick={() => setSelectedRequest(request)}
                 >
+                  <ContactCell contact={request.customer} />
+                  <ContactCell contact={request.artisan} />
                   <td>{request.addressText}</td>
                   <td>{request.status}</td>
                   <td>{formatDateTime(request.createdAt)}</td>
@@ -92,8 +97,24 @@ export function ArtisanHireRequestsTrackingPage() {
             <p className={styles.pageSubtitle}>{selectedRequest.addressText}</p>
 
             <div className={styles.modalBody}>
+              <ContactBlock title="Customer" contact={selectedRequest.customer} />
+              <ContactBlock title="Ustaad" contact={selectedRequest.artisan}>
+                <Row label="Trade">{selectedRequest.artisanTradeType ?? '—'}</Row>
+              </ContactBlock>
               <DetailRow label="Notes" value={selectedRequest.notes || '—'} />
               <DetailRow label="Requested" value={formatDateTime(selectedRequest.createdAt)} />
+              <DetailRow label="Reviewed by" value={selectedRequest.adminReviewerName ?? '—'} />
+              {selectedRequest.adminRejectReason ? (
+                <DetailRow label="Reject reason" value={selectedRequest.adminRejectReason} />
+              ) : null}
+              <DetailRow
+                label="Estimates"
+                value={
+                  selectedRequest.latestEstimate
+                    ? `${selectedRequest.estimateCount} (latest: ${selectedRequest.latestEstimate.estimatedDays} days)`
+                    : String(selectedRequest.estimateCount)
+                }
+              />
               <DetailRow
                 label="Admin reviewed"
                 value={

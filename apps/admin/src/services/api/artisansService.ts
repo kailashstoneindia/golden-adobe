@@ -4,7 +4,7 @@ import type {
   ArtisanListQuery,
   PaginatedArtisansAwaitingDocumentResponse,
   PaginatedArtisansResponse,
-  PaginatedHireRequestsResponse,
+  PaginatedAdminHireRequestsResponse,
   ArtisanProfileDto,
 } from '@golden-abode/types';
 
@@ -78,9 +78,9 @@ export const artisansService = {
     );
   },
 
-  fetchPendingHireRequests(query: ArtisanListQuery): Promise<PaginatedHireRequestsResponse> {
+  fetchPendingHireRequests(query: ArtisanListQuery): Promise<PaginatedAdminHireRequestsResponse> {
     const suffix = buildArtisanQueryString(query);
-    return getRequest<PaginatedHireRequestsResponse>(
+    return getRequest<PaginatedAdminHireRequestsResponse>(
       `${API_ENDPOINTS.admin.artisanHireRequestsPending}${suffix}`,
     );
   },
@@ -95,9 +95,9 @@ export const artisansService = {
     );
   },
 
-  fetchAllHireRequests(query: HireRequestListQuery): Promise<PaginatedHireRequestsResponse> {
+  fetchAllHireRequests(query: HireRequestListQuery): Promise<PaginatedAdminHireRequestsResponse> {
     const suffix = buildHireRequestQueryString(query);
-    return getRequest<PaginatedHireRequestsResponse>(
+    return getRequest<PaginatedAdminHireRequestsResponse>(
       `${API_ENDPOINTS.admin.artisanHireRequestsAll}${suffix}`,
     );
   },

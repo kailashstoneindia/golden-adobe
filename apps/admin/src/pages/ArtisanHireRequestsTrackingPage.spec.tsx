@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ArtisanHireRequestDto } from '@golden-abode/types';
+import { Role, type AdminHireRequestDto } from '@golden-abode/types';
 
 import { server } from '@/test/server';
 
@@ -12,7 +12,7 @@ import { ArtisanHireRequestsTrackingPage } from './ArtisanHireRequestsTrackingPa
 const BASE = '/api/admin/artisans/hire-requests';
 const CANCEL_BASE = '/api/artisans/hire-requests';
 
-function hireRequest(over: Partial<ArtisanHireRequestDto> = {}): ArtisanHireRequestDto {
+function hireRequest(over: Partial<AdminHireRequestDto> = {}): AdminHireRequestDto {
   return {
     id: 'h1111111-1111-4111-8111-111111111111',
     customerId: 'c1111111-1111-4111-8111-111111111111',
@@ -35,13 +35,35 @@ function hireRequest(over: Partial<ArtisanHireRequestDto> = {}): ArtisanHireRequ
     customerPhone: null,
     artisanActiveJobCount: null,
     artisanTeamSize: null,
+    customer: {
+      userId: 'c1111111-1111-4111-8111-111111111111',
+      name: 'Asha Rao',
+      phone: '9876543210',
+      email: 'asha@example.com',
+      role: Role.CUSTOMER,
+      isActive: true,
+      isApproved: true,
+      lastLoginAt: null,
+    },
+    artisan: {
+      userId: 'u2222222-2222-4222-8222-222222222222',
+      name: 'Ramesh Plumber',
+      phone: '9123456780',
+      role: Role.ARTISAN,
+      isActive: true,
+      isApproved: true,
+      lastLoginAt: null,
+    },
+    artisanTradeType: 'PLUMBER',
+    adminReviewerName: null,
+    estimateCount: 0,
     createdAt: '2026-10-28T00:00:00.000Z',
     updatedAt: '2026-10-29T01:00:00.000Z',
     ...over,
   };
 }
 
-let requests: ArtisanHireRequestDto[];
+let requests: AdminHireRequestDto[];
 let cancelCalls: Array<{ id: string; body: unknown }>;
 
 function useHandlers() {
@@ -89,6 +111,38 @@ describe('ArtisanHireRequestsTrackingPage', () => {
   it('renders a hire request row with its current status', async () => {
     renderPage();
     expect(await screen.findByText('IN_PROGRESS')).toBeInTheDocument();
+  });
+
+  it('lists customer and ustaad for every request (0056)', async () => {
+    renderPage();
+
+    const row = await screen.findByRole('row', { name: /Asha Rao/ });
+    expect(row).toHaveTextContent('Ramesh Plumber');
+  });
+
+  it('the popup shows both contacts, who reviewed it and how many estimates (0056)', async () => {
+    requests = [
+      hireRequest({
+        adminReviewerName: 'Admin Priya',
+        estimateCount: 3,
+        latestEstimate: {
+          id: 'e1',
+          hireRequestId: 'h1111111-1111-4111-8111-111111111111',
+          estimatedDays: 6,
+          note: null,
+          createdAt: '2026-10-30T00:00:00.000Z',
+        },
+      }),
+    ];
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('row', { name: /Asha Rao/ }));
+
+    expect(screen.getByRole('group', { name: 'Customer' })).toHaveTextContent('Asha Rao');
+    expect(screen.getByRole('group', { name: 'Ustaad' })).toHaveTextContent('Ramesh Plumber');
+    expect(screen.getByText('Admin Priya')).toBeInTheDocument();
+    expect(screen.getByText('3 (latest: 6 days)')).toBeInTheDocument();
   });
 
   it('explains there is nothing to show when the list is empty', async () => {

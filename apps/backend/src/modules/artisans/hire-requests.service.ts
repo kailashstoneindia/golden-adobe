@@ -15,7 +15,8 @@ import {
   CreateCompletionEstimateDto,
   CreateHireRequestDto,
   DeclineHireRequestDto,
-  PaginatedHireRequestsResponse,
+  AdminHireRequestDto,
+  PaginatedAdminHireRequestsResponse,
   ReviewHireRequestDto,
   Role,
 } from '@golden-abode/types';
@@ -24,6 +25,7 @@ import { Artisan } from './models/artisan.model';
 import { ArtisanHireRequest } from './models/artisan-hire-request.model';
 import { ArtisanCompletionEstimate } from './models/artisan-completion-estimate.model';
 import { toCompletionEstimateDto, toHireRequestDto } from './artisan-profile.mapper';
+import { ADMIN_HIRE_REQUEST_INCLUDES, toAdminHireRequestDto } from './admin-hire-request.mapper';
 import { NOTIFICATION_SERVICE, NotificationService } from '../notifications/notification.interface';
 import { Order } from '../orders/models/order.model';
 import type { OrderDto } from '@golden-abode/types';
@@ -154,7 +156,7 @@ export class HireRequestsService {
   async listPendingAdminReview(
     page: number,
     limit: number,
-  ): Promise<PaginatedHireRequestsResponse> {
+  ): Promise<PaginatedAdminHireRequestsResponse> {
     return this.listPage(page, limit, { status: 'PENDING_ADMIN_REVIEW' }, 'ASC', true);
   }
 
@@ -165,7 +167,7 @@ export class HireRequestsService {
     page: number,
     limit: number,
     status?: string,
-  ): Promise<PaginatedHireRequestsResponse> {
+  ): Promise<PaginatedAdminHireRequestsResponse> {
     return this.listPage(page, limit, status ? { status } : {}, 'DESC', false);
   }
 
@@ -175,17 +177,17 @@ export class HireRequestsService {
     where: Record<string, unknown>,
     order: 'ASC' | 'DESC',
     withCapacity: boolean,
-  ): Promise<PaginatedHireRequestsResponse> {
+  ): Promise<PaginatedAdminHireRequestsResponse> {
     const offset = (page - 1) * limit;
     const { rows, count } = await this.hireRequestModel.findAndCountAll({
       where,
-      include: [CUSTOMER_CONTACT_INCLUDE],
+      include: ADMIN_HIRE_REQUEST_INCLUDES,
       limit,
       offset,
       order: [['createdAt', order]],
     });
     return {
-      items: await this.withLatestEstimates(rows, withCapacity),
+      items: await this.withAdminDetails(rows, withCapacity),
       total: count,
       page,
       limit,
@@ -663,21 +665,10 @@ export class HireRequestsService {
     withCapacity = false,
   ): Promise<ArtisanHireRequestDto[]> {
     if (requests.length === 0) return [];
-
-    const estimates = await this.completionEstimateModel.findAll({
-      where: { hireRequestId: { [Op.in]: requests.map((request) => request.id) } },
-      order: [['createdAt', 'ASC']],
-    });
-
-    const latestByRequestId = new Map<string, ArtisanCompletionEstimate>();
-    for (const estimate of estimates) {
-      latestByRequestId.set(estimate.hireRequestId, estimate);
-    }
-
-    const capacityByArtisanId = withCapacity
-      ? await this.capacityByArtisanId([...new Set(requests.map((request) => request.artisanId))])
-      : new Map<string, { activeJobCount: number; teamSize: number }>();
-
+    const { latestByRequestId, capacityByArtisanId } = await this.batchDetails(
+      requests,
+      withCapacity,
+    );
     return requests.map((request) =>
       toHireRequestDto(
         request,
@@ -685,5 +676,49 @@ export class HireRequestsService {
         capacityByArtisanId.get(request.artisanId) ?? null,
       ),
     );
+  }
+
+  // Admin lists (decision 0056): the same batch details plus how many
+  // estimates each request has had.
+  private async withAdminDetails(
+    requests: ArtisanHireRequest[],
+    withCapacity: boolean,
+  ): Promise<AdminHireRequestDto[]> {
+    if (requests.length === 0) return [];
+    const { latestByRequestId, countByRequestId, capacityByArtisanId } = await this.batchDetails(
+      requests,
+      withCapacity,
+    );
+    return requests.map((request) =>
+      toAdminHireRequestDto(
+        request,
+        latestByRequestId.get(request.id) ?? null,
+        capacityByArtisanId.get(request.artisanId) ?? null,
+        countByRequestId.get(request.id) ?? 0,
+      ),
+    );
+  }
+
+  private async batchDetails(requests: ArtisanHireRequest[], withCapacity: boolean) {
+    const estimates = await this.completionEstimateModel.findAll({
+      where: { hireRequestId: { [Op.in]: requests.map((request) => request.id) } },
+      order: [['createdAt', 'ASC']],
+    });
+
+    const latestByRequestId = new Map<string, ArtisanCompletionEstimate>();
+    const countByRequestId = new Map<string, number>();
+    for (const estimate of estimates) {
+      latestByRequestId.set(estimate.hireRequestId, estimate);
+      countByRequestId.set(
+        estimate.hireRequestId,
+        (countByRequestId.get(estimate.hireRequestId) ?? 0) + 1,
+      );
+    }
+
+    const capacityByArtisanId = withCapacity
+      ? await this.capacityByArtisanId([...new Set(requests.map((request) => request.artisanId))])
+      : new Map<string, { activeJobCount: number; teamSize: number }>();
+
+    return { latestByRequestId, countByRequestId, capacityByArtisanId };
   }
 }

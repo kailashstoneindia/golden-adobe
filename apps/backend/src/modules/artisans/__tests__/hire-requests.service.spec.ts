@@ -667,6 +667,77 @@ describe('HireRequestsService (integration)', () => {
     });
   });
 
+  describe('admin lists show who is involved (0056)', () => {
+    const ALL_STATUSES = [
+      'PENDING_ADMIN_REVIEW',
+      'ADMIN_REJECTED',
+      'PENDING_ARTISAN_RESPONSE',
+      'ARTISAN_DECLINED',
+      'EXPIRED',
+      'ACCEPTED_BY_ARTISAN',
+      'IN_PROGRESS',
+      'COMPLETED',
+      'CANCELLED',
+    ];
+
+    it('carry customer contact and ustaad name and phone in every status', async () => {
+      for (const status of ALL_STATUSES) {
+        const request = await createHireRequestFixture({ status });
+        const dto = (await service.listAll(1, 100)).items.find((r) => r.id === request.id);
+
+        expect(dto?.customer).toMatchObject({
+          userId: customerId,
+          name: `Customer HR Test ${suffix}`,
+          phone: `8${suffix}`.slice(0, 10),
+          role: Role.CUSTOMER,
+        });
+        expect(dto?.customerName).toBe(`Customer HR Test ${suffix}`);
+        expect(dto?.customerPhone).toBe(`8${suffix}`.slice(0, 10));
+        expect(dto?.artisan).toMatchObject({
+          userId: artisanUserId,
+          name: `Artisan HR Test ${suffix}`,
+          phone: `9${suffix}`.slice(0, 10),
+        });
+        expect(dto?.artisanTradeType).toBe('PLUMBER');
+        await request.destroy();
+      }
+    });
+
+    it('never carry the ustaad email', async () => {
+      await User.update({ email: `ustaad-${suffix}@test.local` }, { where: { id: artisanUserId } });
+      const request = await createHireRequestFixture({ status: 'PENDING_ADMIN_REVIEW' });
+
+      const dto = (await service.listPendingAdminReview(1, 100)).items.find(
+        (r) => r.id === request.id,
+      );
+
+      expect(dto?.artisan).not.toHaveProperty('email');
+      await User.update({ email: null }, { where: { id: artisanUserId } });
+    });
+
+    it('carry the reviewer name and how many estimates were given', async () => {
+      const request = await createHireRequestFixture({ status: 'PENDING_ADMIN_REVIEW' });
+      await service.reviewRequest(adminId, request.id, { approve: true });
+      await request.reload();
+      await request.update({ status: 'IN_PROGRESS' } as never);
+      await ArtisanCompletionEstimate.create({
+        hireRequestId: request.id,
+        estimatedDays: 5,
+      } as never);
+      await ArtisanCompletionEstimate.create({
+        hireRequestId: request.id,
+        estimatedDays: 7,
+      } as never);
+      const admin = await User.findByPk(adminId);
+
+      const dto = (await service.listAll(1, 100)).items.find((r) => r.id === request.id);
+
+      expect(dto?.adminReviewerName).toBe(admin!.name);
+      expect(dto?.estimateCount).toBe(2);
+      expect(dto?.latestEstimate?.estimatedDays).toBe(7);
+    });
+  });
+
   describe('customer contact for the ustaad (0055)', () => {
     it('is shown while waiting, accepted or in progress', async () => {
       for (const status of ['PENDING_ARTISAN_RESPONSE', 'ACCEPTED_BY_ARTISAN', 'IN_PROGRESS']) {

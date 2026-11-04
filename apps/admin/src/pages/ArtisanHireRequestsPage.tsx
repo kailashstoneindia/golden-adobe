@@ -1,15 +1,16 @@
 import { useMemo, useState } from 'react';
-import type { ArtisanHireRequestDto } from '@golden-abode/types';
+import type { AdminHireRequestDto } from '@golden-abode/types';
 import { isEmpty } from 'lodash';
 
 import { APP_CONSTANTS } from '@/constants/appConstants';
+import { ContactBlock, ContactCell, Row } from '@/components/common/ContactBlock';
 import { ERROR_MESSAGES } from '@/constants/error.constants';
 import { useArtisanPendingHireRequestsQuery, useReviewHireRequestMutation } from '@/queries';
 import styles from '@/styles/shared.module.css';
 import { formatDateTime } from '@/utils/date';
 
 export function ArtisanHireRequestsPage() {
-  const [selectedRequest, setSelectedRequest] = useState<ArtisanHireRequestDto | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<AdminHireRequestDto | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const pendingQuery = useArtisanPendingHireRequestsQuery({
     page: 1,
@@ -63,6 +64,8 @@ export function ArtisanHireRequestsPage() {
           <table className={styles.table}>
             <thead>
               <tr>
+                <th>Customer</th>
+                <th>Ustaad</th>
                 <th>Address</th>
                 <th>Notes</th>
                 <th>Requested</th>
@@ -75,6 +78,8 @@ export function ArtisanHireRequestsPage() {
                   className={styles.clickableRow}
                   onClick={() => setSelectedRequest(request)}
                 >
+                  <ContactCell contact={request.customer} />
+                  <ContactCell contact={request.artisan} />
                   <td>{request.addressText}</td>
                   <td>{request.notes || '-'}</td>
                   <td>{formatDateTime(request.createdAt)}</td>
@@ -92,6 +97,10 @@ export function ArtisanHireRequestsPage() {
             <p className={styles.pageSubtitle}>{selectedRequest.addressText}</p>
 
             <div className={styles.modalBody}>
+              <ContactBlock title="Customer" contact={selectedRequest.customer} />
+              <ContactBlock title="Ustaad" contact={selectedRequest.artisan}>
+                <Row label="Trade">{selectedRequest.artisanTradeType ?? '—'}</Row>
+              </ContactBlock>
               <DetailRow label="Notes" value={selectedRequest.notes || '-'} />
               <DetailRow label="Requested" value={formatDateTime(selectedRequest.createdAt)} />
               {selectedRequest.artisanActiveJobCount != null ? (
