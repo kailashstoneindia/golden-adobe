@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import { APP_CONSTANTS } from '@/constants/appConstants';
 import { ROUTES } from '@/constants/routes';
@@ -8,8 +8,16 @@ import { takeRefreshTokenForLogout } from '@/services/api/tokenRefresh';
 import { selectAdminUser, selectClearSession, useAuthStore } from '@/store';
 import styles from '@/styles/shared.module.css';
 
+// A section heading stays lit on every page under it, not only on the page it
+// links to.
+const APPROVALS_SECTION = ['/approvals', '/artisans'];
+const CATALOG_SECTION = ['/catalog'];
+
 export function AdminLayout() {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const inSection = (prefixes: string[]) =>
+    prefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
   const adminUser = useAuthStore(selectAdminUser);
   const clearSession = useAuthStore(selectClearSession);
 
@@ -50,7 +58,7 @@ export function AdminLayout() {
           <NavLink
             to={ROUTES.approvalsVendors}
             className={({ isActive }) =>
-              `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`
+              `${styles.navLink} ${isActive || inSection(APPROVALS_SECTION) ? styles.navLinkActive : ''}`
             }
           >
             Approvals
@@ -66,6 +74,7 @@ export function AdminLayout() {
             </NavLink>
             <NavLink
               to={ROUTES.artisans}
+              end
               className={({ isActive }) =>
                 `${styles.subNavLink} ${isActive ? styles.subNavLinkActive : ''}`
               }
@@ -82,6 +91,7 @@ export function AdminLayout() {
             </NavLink>
             <NavLink
               to={ROUTES.artisanHireRequests}
+              end
               className={({ isActive }) =>
                 `${styles.subNavLink} ${isActive ? styles.subNavLinkActive : ''}`
               }
@@ -124,7 +134,7 @@ export function AdminLayout() {
           <NavLink
             to={ROUTES.catalogProducts}
             className={({ isActive }) =>
-              `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`
+              `${styles.navLink} ${isActive || inSection(CATALOG_SECTION) ? styles.navLinkActive : ''}`
             }
           >
             Catalog

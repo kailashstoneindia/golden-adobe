@@ -235,7 +235,7 @@ function ArtisanVerificationModal({
             disabled={isSubmitting}
             onClick={() => onReject(artisan.id)}
           >
-            Reject and block
+            Reject
           </button>
           <button
             type="button"

@@ -72,7 +72,9 @@ describe('UsersService ustaads awaiting a document (integration)', () => {
 
   async function listedKeys() {
     const page = await service.listArtisansAwaitingDocument(1, 100);
-    return Object.keys(ids).filter((key) => page.items.some((item) => item.userId === ids[key]));
+    return ['noProfile', 'noDocument', 'withDocument', 'inactive'].filter((key) =>
+      page.items.some((item) => item.userId === ids[key]),
+    );
   }
 
   it('lists active ustaads with no profile or no document', async () => {
@@ -92,6 +94,36 @@ describe('UsersService ustaads awaiting a document (integration)', () => {
     expect(noDoc.email).toBe(`${tag}-noDocument@test.local`);
     expect(noProfile).toMatchObject({ hasProfile: false, tradeType: null });
     expect(noProfile.phone).toMatch(/^7\d{9}$/);
+  });
+
+  describe('paging', () => {
+    // The list is newest sign-up first. Dating these three in 2099 puts them
+    // at the very top whatever other suites insert meanwhile, so the first
+    // pages are deterministic on the shared database.
+    const futureIds: string[] = [];
+
+    async function futureUstaad(key: string, signedUp: string, document: boolean) {
+      await ustaad(key, { profile: document, document });
+      futureIds.push(ids[key]);
+      await User.sequelize!.query('UPDATE users SET created_at = :signedUp WHERE id = :id', {
+        replacements: { signedUp, id: ids[key] },
+      });
+    }
+
+    beforeAll(async () => {
+      await futureUstaad('future-with-document', '2099-01-03T00:00:00Z', true);
+      await futureUstaad('future-newer', '2099-01-02T00:00:00Z', false);
+      await futureUstaad('future-older', '2099-01-01T00:00:00Z', false);
+    });
+
+    it('limit and page walk the filtered list, skipping ustaads with a document', async () => {
+      const first = await service.listArtisansAwaitingDocument(1, 1);
+      const second = await service.listArtisansAwaitingDocument(2, 1);
+
+      expect(first.items.map((item) => item.userId)).toEqual([ids['future-newer']]);
+      expect(second.items.map((item) => item.userId)).toEqual([ids['future-older']]);
+      expect(first.totalPages).toBe(first.total);
+    });
   });
 
   it('count agrees with the list', async () => {

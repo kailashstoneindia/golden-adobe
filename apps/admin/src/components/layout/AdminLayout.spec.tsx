@@ -144,3 +144,56 @@ describe('AdminLayout log out', () => {
     expect(tokenStorage.getRefreshToken()).toBeNull();
   });
 });
+
+describe('AdminLayout sidebar highlighting', () => {
+  function renderAt(path: string) {
+    render(
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route element={<AdminLayout />}>
+            <Route path="*" element={<p>Page body</p>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    );
+  }
+
+  const current = () =>
+    screen
+      .getAllByRole('link')
+      .filter((link) => link.getAttribute('aria-current') === 'page')
+      .map((link) => link.textContent);
+
+  const heading = (name: string) => screen.getByRole('link', { name });
+
+  it('lights only Ustaad verification on its page, not Ustaads', () => {
+    renderAt('/artisans/verification');
+    expect(current()).toEqual(['Ustaad verification']);
+  });
+
+  it('lights only All hire requests on its page, not Hire requests', () => {
+    renderAt('/artisans/hire-requests/all');
+    expect(current()).toEqual(['All hire requests']);
+  });
+
+  it('still lights Ustaads on the ustaad directory', () => {
+    renderAt('/artisans');
+    expect(current()).toEqual(['Ustaads']);
+  });
+
+  it('keeps the Approvals heading lit across its whole section', () => {
+    renderAt('/artisans/hire-requests');
+    expect(heading('Approvals').className).toMatch(/navLinkActive/);
+  });
+
+  it('keeps the Catalog heading lit across its whole section', () => {
+    renderAt('/catalog/categories');
+    expect(heading('Catalog').className).toMatch(/navLinkActive/);
+  });
+
+  it('does not light a section heading outside its section', () => {
+    renderAt('/orders');
+    expect(heading('Approvals').className).not.toMatch(/navLinkActive/);
+    expect(heading('Catalog').className).not.toMatch(/navLinkActive/);
+  });
+});

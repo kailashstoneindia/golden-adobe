@@ -186,7 +186,7 @@ describe('ArtisanVerificationPage', () => {
       screen.getByPlaceholderText('Optional, stored in logs only'),
       'Document is blurry',
     );
-    await user.click(await screen.findByRole('button', { name: 'Reject and block' }));
+    await user.click(await screen.findByRole('button', { name: 'Reject' }));
 
     expect(rejectCalls).toEqual([{ id: artisan().id, body: { reason: 'Document is blurry' } }]);
   });
@@ -196,7 +196,7 @@ describe('ArtisanVerificationPage', () => {
     const user = userEvent.setup();
 
     await user.click(await screen.findByText('PLUMBER'));
-    await user.click(await screen.findByRole('button', { name: 'Reject and block' }));
+    await user.click(await screen.findByRole('button', { name: 'Reject' }));
 
     expect(rejectCalls).toEqual([{ id: artisan().id, body: {} }]);
   });
