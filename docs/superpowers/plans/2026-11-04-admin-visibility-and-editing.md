@@ -158,7 +158,34 @@ export type AdminHireRequestDto = ArtisanHireRequestDto & {
 - [ ] **Step 2–4:** fail → implement → pass.
 - [ ] **Step 5:** Commit `Admin: hire requests show customer and ustaad contact (decision 0056)`.
 
-### Task 4: Orders show who, and every payment fact
+### Task 4 (user ruling 2026-11-04): server approval gate, friendly labels, robust old tests, then orders
+
+Task 4 runs as four steps: 4a, 4b, 4c, 4d. 4a is reviewed alone, 4b and 4c together, 4d alone.
+
+#### Task 4a: Server-side approval gate (decision 0057, follow-up F1)
+
+**Files:**
+- Create: `apps/backend/src/common/decorators/allow-unapproved.decorator.ts`
+- Modify: `apps/backend/src/common/guards/approved.guard.ts`, `common/filters/global-exception.filter.ts` (pass `code` through)
+- Modify: the five controllers in 0057 §1, adding the guard at class level and `@AllowUnapproved()` on the 0057 §3 routes
+- Modify: `catalog.module.ts`, `orders.module.ts` (import `UsersModule`)
+- Test: `apps/backend/src/common/guards/__tests__/approved.guard.spec.ts` (unit), plus HTTP tests in `artisans/__tests__/artisans.controller.spec.ts` and the vendor controller spec
+
+**Interfaces:** `AllowUnapproved = () => SetMetadata(ALLOW_UNAPPROVED_KEY, true)`. The guard throws `ForbiddenException({ message, code: 'ACCOUNT_NOT_APPROVED' })`.
+
+- [ ] Tests:
+  - unit: customer and admin pass; approved vendor passes; unapproved vendor gets 403 with the code; `@AllowUnapproved` route passes when unapproved; a user deleted mid-session gets 403.
+  - HTTP: a pending ustaad can create and read their profile but gets 403 on `GET /artisans/me/hire-requests`; approving them opens it with no new login; a pending vendor can `GET /vendors/me` but gets 403 on `GET /vendor/listings` and `GET /vendors/order-groups`.
+
+#### Task 4b: Friendly labels on admin pages (follow-up F10)
+
+One `apps/admin/src/utils/labels.ts` with `formatTradeType`, `formatHireRequestStatus`, `formatOrderStatus`, `formatVendorGroupStatus`, `formatListingStatus`. Every admin page renders through it. Unknown codes fall back to the raw code. Tests: each map covers every value of its union type (type-checked with `satisfies Record<…>`), and the pages show labels.
+
+#### Task 4c: Robust older hire-request tests (follow-up F11)
+
+The older `listPendingAdminReview(1, 20)` and `listAll(1, 20)` lookups in `hire-requests.service.spec.ts` and `admin-artisans.controller.spec.ts` find their row without depending on how many other rows exist (limit 100 plus a lookup by id, or a `status` filter).
+
+#### Task 4d: Orders show who, and every payment fact
 
 **Files:**
 - Modify: `packages/types/src/admin.types.ts`
@@ -326,6 +353,6 @@ Every edit task follows the same pattern, so each is specified by its endpoint a
 ## Execution order and review gates
 
 ```
-0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → (D5) → 9 → 10 → 11 → 12 → 13 → whole-branch review → PR
+0 → 1 → 2 → 3 → 4a → 4b → 4c → 4d → 5 → 6 → 7 → 8 → (D5) → 9 → 10 → 11 → 12 → 13 → whole-branch review → PR
 ```
 After each task: tests + lint + typecheck green, a fresh reviewer checks the task's diff against this plan, then the user OKs before the next task starts.

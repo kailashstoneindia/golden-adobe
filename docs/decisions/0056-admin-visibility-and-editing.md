@@ -133,7 +133,7 @@ none blocks it. Update the status here when one is picked up.
 
 | # | Item | Found in | Why not now |
 |---|---|---|---|
-| F1 | `ApprovedGuard` exists but no backend route applies it. A rejected or unapproved ustaad or vendor is held back only by the mobile app's "pending approval" screen; the API still serves them. | Task 2 review | Applying the guard changes what every vendor and ustaad endpoint accepts. Needs its own decision and mobile testing. |
+| F1 | **Resolved by [0057](0057-server-side-approval-gate.md).** `ApprovedGuard` exists but no backend route applies it. A rejected or unapproved ustaad or vendor is held back only by the mobile app's "pending approval" screen; the API still serves them. | Task 2 review | Applying the guard changes what every vendor and ustaad endpoint accepts. Needs its own decision and mobile testing. |
 | F2 | *All users* → Approve/Reject for a **vendor** sets only `users.is_approved` and leaves `vendors.status` (decision 0048) unchanged. This is the same kind of drift §3b fixed for ustaads. | Task 2 review | Existed before this work; the vendor approvals page uses the right endpoints. Fix the same way as §3b when touching vendors (Task 5/10). |
 | F3 | A rejected ustaad who has a document goes straight back into the verification queue. No rejection reason or state is stored. | Task 2 review | Product question: should a rejection persist until they upload a new document? |
 | F4 | `pendingArtisans` is still computed in the dashboard stats but no longer shown. | Task 2 review | Harmless. Remove when the stats type is next changed. |
