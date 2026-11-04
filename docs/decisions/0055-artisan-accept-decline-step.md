@@ -1,7 +1,7 @@
 # 0055 — Ustaad accept/decline step after the admin gate
 
 - **Date:** 2026-11-04
-- **Status:** Accepted
+- **Status:** Implemented on `feat/artisan-accept-decline` (backend + admin tracking page; mobile not started)
 - **Supersedes / Superseded by:** Amends [0045](0045-artisan-hire-lifecycle-and-order-attribution.md)
   (admin approval no longer lands on `ACCEPTED_BY_ARTISAN`)
 

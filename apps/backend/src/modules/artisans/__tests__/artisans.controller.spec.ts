@@ -622,4 +622,88 @@ describe('ArtisansController (real HTTP, Postgres)', () => {
     );
     expect(res.status).toBe(201);
   });
+
+  describe('ustaad accept/decline (0055)', () => {
+    async function waitingRequest(status = 'PENDING_ARTISAN_RESPONSE') {
+      await asArtisan(
+        request(t.app.getHttpServer())
+          .post('/api/artisans/me/profile')
+          .send({ tradeType: 'MASON', servicePincode: '560001' }),
+      );
+      const artisan = await Artisan.findOne({ where: { userId: t.artisanUserId } });
+      return ArtisanHireRequest.create({
+        customerId: t.customerUserId,
+        artisanId: artisan!.id,
+        addressText: '1 Park Lane',
+        status,
+        adminReviewedAt: new Date(),
+      } as never);
+    }
+
+    it('the ustaad sees the customer contact on a request waiting for them, and can accept it', async () => {
+      const hireRequest = await waitingRequest();
+
+      const read = await asArtisan(
+        request(t.app.getHttpServer()).get(`/api/artisans/hire-requests/${hireRequest.id}`),
+      );
+      expect(read.status).toBe(200);
+      expect(read.body.data.customerPhone).toEqual(expect.any(String));
+      expect(read.body.data.artisanResponseDueAt).toEqual(expect.any(String));
+
+      const accept = await asArtisan(
+        request(t.app.getHttpServer()).patch(
+          `/api/artisans/me/hire-requests/${hireRequest.id}/accept`,
+        ),
+      );
+      expect(accept.status).toBe(200);
+      expect(accept.body.data.status).toBe('ACCEPTED_BY_ARTISAN');
+    });
+
+    it('decline needs a reason (400) and records it (200)', async () => {
+      const hireRequest = await waitingRequest();
+      const url = `/api/artisans/me/hire-requests/${hireRequest.id}/decline`;
+
+      const missing = await asArtisan(request(t.app.getHttpServer()).patch(url).send({}));
+      expect(missing.status).toBe(400);
+
+      const ok = await asArtisan(
+        request(t.app.getHttpServer()).patch(url).send({ reason: 'Fully booked' }),
+      );
+      expect(ok.status).toBe(200);
+      expect(ok.body.data.status).toBe('ARTISAN_DECLINED');
+      expect(ok.body.data.artisanDeclineReason).toBe('Fully booked');
+      expect(ok.body.data.customerPhone).toBeNull();
+    });
+
+    it('a customer cannot accept on the ustaad behalf (403)', async () => {
+      const hireRequest = await waitingRequest();
+      const res = await asCustomer(
+        request(t.app.getHttpServer()).patch(
+          `/api/artisans/me/hire-requests/${hireRequest.id}/accept`,
+        ),
+      );
+      expect(res.status).toBe(403);
+    });
+
+    it('the ustaad cannot read a request the admin blocked (403)', async () => {
+      const hireRequest = await waitingRequest('ADMIN_REJECTED');
+      const res = await asArtisan(
+        request(t.app.getHttpServer()).get(`/api/artisans/hire-requests/${hireRequest.id}`),
+      );
+      expect(res.status).toBe(403);
+    });
+
+    it('a customer gets 409 for a second open request to the same ustaad', async () => {
+      const first = await waitingRequest();
+      await Artisan.update({ isAvailable: true }, { where: { id: first.artisanId } });
+      await Artisan.update({ isVerified: true }, { where: { id: first.artisanId } });
+
+      const res = await asCustomer(
+        request(t.app.getHttpServer())
+          .post('/api/artisans/hire-requests')
+          .send({ artisanId: first.artisanId, addressText: '2 Park Lane' }),
+      );
+      expect(res.status).toBe(409);
+    });
+  });
 });

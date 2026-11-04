@@ -5,6 +5,7 @@ import { ArtisansController } from './artisans.controller';
 import { AdminArtisansController } from './admin-artisans.controller';
 import { ArtisansService } from './artisans.service';
 import { HireRequestsService } from './hire-requests.service';
+import { HireRequestExpirySweep } from './hire-request-expiry.sweep';
 import { Artisan } from './models/artisan.model';
 import { ArtisanAccountDetails } from './models/artisan-account-details.model';
 import { ArtisanTeamMember } from './models/artisan-team-member.model';
@@ -40,7 +41,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     NotificationsModule,
   ],
   controllers: [ArtisansController, AdminArtisansController],
-  providers: [ArtisansService, HireRequestsService],
+  providers: [ArtisansService, HireRequestsService, HireRequestExpirySweep],
   exports: [ArtisansService, HireRequestsService],
 })
 export class ArtisansModule {}

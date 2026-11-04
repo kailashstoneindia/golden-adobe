@@ -27,6 +27,11 @@ function hireRequest(over: Partial<ArtisanHireRequestDto> = {}): ArtisanHireRequ
     completedAt: null,
     cancelledAt: null,
     cancelReason: null,
+    artisanRespondedAt: null,
+    artisanDeclineReason: null,
+    artisanResponseDueAt: null,
+    customerName: null,
+    customerPhone: null,
     artisanActiveJobCount: null,
     artisanTeamSize: null,
     createdAt: '2026-10-29T00:00:00.000Z',
@@ -51,7 +56,7 @@ function useHandlers() {
       reviewCalls.push({ id: String(params.id), body });
       return HttpResponse.json({
         success: true,
-        data: { ...pending[0], status: 'ACCEPTED_BY_ARTISAN' },
+        data: { ...pending[0], status: 'PENDING_ARTISAN_RESPONSE' },
       });
     }),
   );

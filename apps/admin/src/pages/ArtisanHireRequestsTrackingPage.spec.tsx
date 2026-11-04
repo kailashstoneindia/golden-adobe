@@ -28,6 +28,11 @@ function hireRequest(over: Partial<ArtisanHireRequestDto> = {}): ArtisanHireRequ
     completedAt: null,
     cancelledAt: null,
     cancelReason: null,
+    artisanRespondedAt: null,
+    artisanDeclineReason: null,
+    artisanResponseDueAt: null,
+    customerName: null,
+    customerPhone: null,
     artisanActiveJobCount: null,
     artisanTeamSize: null,
     createdAt: '2026-10-28T00:00:00.000Z',
@@ -125,6 +130,41 @@ describe('ArtisanHireRequestsTrackingPage', () => {
 
     await user.click(await screen.findByText('COMPLETED'));
 
+    expect(screen.queryByRole('button', { name: 'Cancel request' })).not.toBeInTheDocument();
+  });
+
+  it('shows the response deadline and lets the admin cancel a request waiting on the artisan (0055)', async () => {
+    requests = [
+      hireRequest({
+        status: 'PENDING_ARTISAN_RESPONSE',
+        startedAt: null,
+        artisanResponseDueAt: '2026-10-31T00:00:00.000Z',
+      }),
+    ];
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByText('PENDING_ARTISAN_RESPONSE'));
+
+    expect(await screen.findByText('Artisan must respond by')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancel request' })).toBeInTheDocument();
+  });
+
+  it('shows the artisan decline reason and offers no cancel on a declined request (0055)', async () => {
+    requests = [
+      hireRequest({
+        status: 'ARTISAN_DECLINED',
+        startedAt: null,
+        artisanRespondedAt: '2026-10-29T05:00:00.000Z',
+        artisanDeclineReason: 'Fully booked',
+      }),
+    ];
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByText('ARTISAN_DECLINED'));
+
+    expect(await screen.findByText('Fully booked')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Cancel request' })).not.toBeInTheDocument();
   });
 });
