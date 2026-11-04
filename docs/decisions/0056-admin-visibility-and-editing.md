@@ -120,3 +120,25 @@ someone.
   goes back into the verification queue. `pendingArtisans` is still computed for the
   shared stats type but is no longer shown.
 - Plan: [2026-11-04-admin-visibility-and-editing.md](../superpowers/plans/2026-11-04-admin-visibility-and-editing.md).
+
+## Hire-request contact scope (ruling, 2026-11-04)
+
+In hire requests the admin sees the **customer's** name, phone and email, and the
+**ustaad's** name and phone only. Ustaad email is not needed there.
+
+## Open follow-ups
+
+These are left for later on purpose. Each was found during this work, mostly by code review;
+none blocks it. Update the status here when one is picked up.
+
+| # | Item | Found in | Why not now |
+|---|---|---|---|
+| F1 | `ApprovedGuard` exists but no backend route applies it. A rejected or unapproved ustaad or vendor is held back only by the mobile app's "pending approval" screen; the API still serves them. | Task 2 review | Applying the guard changes what every vendor and ustaad endpoint accepts. Needs its own decision and mobile testing. |
+| F2 | *All users* → Approve/Reject for a **vendor** sets only `users.is_approved` and leaves `vendors.status` (decision 0048) unchanged. This is the same kind of drift §3b fixed for ustaads. | Task 2 review | Existed before this work; the vendor approvals page uses the right endpoints. Fix the same way as §3b when touching vendors (Task 5/10). |
+| F3 | A rejected ustaad who has a document goes straight back into the verification queue. No rejection reason or state is stored. | Task 2 review | Product question: should a rejection persist until they upload a new document? |
+| F4 | `pendingArtisans` is still computed in the dashboard stats but no longer shown. | Task 2 review | Harmless. Remove when the stats type is next changed. |
+| F5 | Browsers without Web Locks (Safari before 15.4, Firefox before 96, plain-HTTP origins) fall back to per-tab refresh. Two tabs there could trigger reuse detection and log the admin out everywhere. | Task 1 review | Accepted in Decision item 1. Prod admin is served over HTTPS on current browsers. |
+| F6 | A 401 on a file download (`downloadRequest`) shows "Request failed" because the body is a Blob. | Task 1 review | Existed before this work. Small fix: read the Blob's text before building the error. |
+| F7 | 24 `no-explicit-any` lint warnings: 22 in the artisan controllers, 2 in `users.service.ts`. | Task 2 | Existed before this work. Clean up in a lint-only change. |
+| F8 | The "Waiting for a document" list shows the first 20 rows with "Showing X of Y" and has no pager. | Task 2 review | Fine at current volume. Add paging when it is regularly over 20. |
+| F9 | Ustaad onboarding and document upload exist only on the unmerged `feat/artisan-mobile` branch. Until it merges, new ustaads can't upload a document, so they stay in "Waiting for a document". | Task 2 review | Mobile track, not this plan. |

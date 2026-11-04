@@ -135,9 +135,11 @@ export type AdminContactDto = {
   userId: string; name: string; phone: string | null; email: string | null;
   role: Role; isActive: boolean; isApproved: boolean; lastLoginAt: string | null;
 };
+// User ruling 2026-11-04: no ustaad email in hire requests.
+export type AdminContactWithoutEmailDto = Omit<AdminContactDto, 'email'>;
 export type AdminHireRequestDto = ArtisanHireRequestDto & {
   customer: AdminContactDto | null;
-  artisan: AdminContactDto | null;
+  artisan: AdminContactWithoutEmailDto | null;
   artisanTradeType: TradeType | null;
   adminReviewerName: string | null;
   estimateCount: number;
@@ -152,6 +154,7 @@ export type AdminHireRequestDto = ArtisanHireRequestDto & {
   - service: `admin list includes customer and ustaad contact in every status` (one request per status in 0055's enum).
   - service: `ustaad view still hides contact while PENDING_ADMIN_REVIEW` (regression for `listForArtisan`).
   - page: list row shows customer name + phone and ustaad name + phone; detail shows reviewer name, estimate count, all timestamps.
+  - service: `admin hire request never carries the ustaad's email` (`'email' in dto.artisan` is false).
 - [ ] **Step 2–4:** fail → implement → pass.
 - [ ] **Step 5:** Commit `Admin: hire requests show customer and ustaad contact (decision 0056)`.
 
