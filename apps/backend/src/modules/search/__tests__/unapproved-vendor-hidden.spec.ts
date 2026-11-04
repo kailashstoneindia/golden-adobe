@@ -167,6 +167,28 @@ describe('unapproved vendors are hidden from search (integration)', () => {
     expect(await outboxRows()).toBe(before);
   });
 
+  it('queues the product for the vendor’s own city', async () => {
+    await setApproved(true);
+    await setApproved(false);
+
+    const [row] = await User.sequelize!.query<{ city_id: string | null }>(
+      `SELECT city_id FROM search_outbox
+        WHERE entity_type = 'master_product' AND entity_id = :productId
+          AND reason = 'vendor approval changed'
+        ORDER BY id DESC LIMIT 1`,
+      { replacements: { productId }, type: QueryTypes.SELECT },
+    );
+    expect(row.city_id).toBe(cityId);
+  });
+
+  it('queues nothing when approval is set to the value it already has', async () => {
+    await setApproved(true);
+    const before = await outboxRows();
+    await setApproved(true);
+
+    expect(await outboxRows()).toBe(before);
+  });
+
   async function outboxRows(): Promise<number> {
     const [row] = await User.sequelize!.query<{ n: string }>(
       `SELECT count(*) AS n FROM search_outbox
