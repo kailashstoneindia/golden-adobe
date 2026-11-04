@@ -80,7 +80,7 @@ describe('AdminArtisansController (real HTTP, Postgres)', () => {
     expect(res.status).toBe(403);
   });
 
-  it('admin approving a pending hire request moves it to ACCEPTED_BY_ARTISAN', async () => {
+  it('admin approving a pending hire request sends it to the artisan (PENDING_ARTISAN_RESPONSE, 0055)', async () => {
     await asArtisan(
       request(t.app.getHttpServer())
         .post('/api/artisans/me/profile')
@@ -100,7 +100,7 @@ describe('AdminArtisansController (real HTTP, Postgres)', () => {
         .send({ approve: true }),
     );
     expect(res.status).toBe(200);
-    expect(res.body.data.status).toBe('ACCEPTED_BY_ARTISAN');
+    expect(res.body.data.status).toBe('PENDING_ARTISAN_RESPONSE');
   });
 
   it('pending-verification is a paginated page, not a bare array', async () => {

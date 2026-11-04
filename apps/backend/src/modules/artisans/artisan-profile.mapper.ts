@@ -13,6 +13,7 @@ import { ArtisanTeamMember } from './models/artisan-team-member.model';
 import { ArtisanHireRequest } from './models/artisan-hire-request.model';
 import { ArtisanCompletionEstimate } from './models/artisan-completion-estimate.model';
 import { formatTimestamp } from '../vendors/vendor-profile.mapper';
+import { CUSTOMER_CONTACT_VISIBLE_STATUSES, artisanResponseDueAt } from './hire-request-rules';
 
 // All DTO mapping for this module lives here, mirroring
 // vendor-profile.mapper.ts's rationale: plain functions, not an
@@ -114,6 +115,7 @@ export function toHireRequestDto(
   latestEstimate?: ArtisanCompletionEstimate | null,
   capacity?: { activeJobCount: number; teamSize: number } | null,
 ): ArtisanHireRequestDto {
+  const contactVisible = CUSTOMER_CONTACT_VISIBLE_STATUSES.has(request.status);
   return {
     id: request.id,
     customerId: request.customerId,
@@ -129,6 +131,16 @@ export function toHireRequestDto(
     completedAt: formatTimestamp(request.completedAt) || null,
     cancelledAt: formatTimestamp(request.cancelledAt) || null,
     cancelReason: request.cancelReason,
+    artisanRespondedAt: formatTimestamp(request.artisanRespondedAt) || null,
+    artisanDeclineReason: request.artisanDeclineReason ?? null,
+    artisanResponseDueAt:
+      request.status === 'PENDING_ARTISAN_RESPONSE' && request.adminReviewedAt
+        ? artisanResponseDueAt(request.adminReviewedAt).toISOString()
+        : null,
+    // Decision 0055: contact only while the ustaad is deciding or working the
+    // job. Callers that want it must include the customer association.
+    customerName: contactVisible ? (request.customer?.name ?? null) : null,
+    customerPhone: contactVisible ? (request.customer?.phone ?? null) : null,
     artisanActiveJobCount: capacity?.activeJobCount ?? null,
     artisanTeamSize: capacity?.teamSize ?? null,
     createdAt: formatTimestamp(request.get('createdAt')),

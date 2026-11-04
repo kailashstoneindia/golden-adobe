@@ -10,7 +10,7 @@ import { Artisan } from '../models/artisan.model';
 import { ArtisanHireRequest } from '../models/artisan-hire-request.model';
 import { ArtisanCompletionEstimate } from '../models/artisan-completion-estimate.model';
 import { Order } from '../../orders/models/order.model';
-import { HireRequestsService } from '../hire-requests.service';
+import { ARTISAN_RESPONSE_WINDOW_MS, HireRequestsService } from '../hire-requests.service';
 
 describe('HireRequestsService (integration)', () => {
   let moduleRef: TestingModule;
@@ -25,6 +25,23 @@ describe('HireRequestsService (integration)', () => {
   let customerId: string;
   let artisanUserId: string;
   let artisanId: string;
+  // Decision 0055 allows one open request per customer–ustaad pair, so a
+  // test that needs several open requests with this suite's one ustaad
+  // gives each its own customer.
+  const extraCustomerIds: string[] = [];
+  let extraCustomerCount = 0;
+
+  async function createExtraCustomer(): Promise<string> {
+    extraCustomerCount += 1;
+    const user = await User.create({
+      name: `Extra Customer ${extraCustomerCount} ${suffix}`,
+      phone: `1${extraCustomerCount}${suffix}`.slice(0, 10),
+      role: Role.CUSTOMER,
+      isActive: true,
+    } as never);
+    extraCustomerIds.push(user.id);
+    return user.id;
+  }
 
   beforeAll(async () => {
     notificationsMock = { sendHireRequestStatusChanged: jest.fn() };
@@ -90,33 +107,41 @@ describe('HireRequestsService (integration)', () => {
     artisanId = artisan.id;
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     notificationsMock.sendHireRequestStatusChanged.mockClear();
+    await ArtisanHireRequest.destroy({ where: { artisanId } });
   });
 
   afterAll(async () => {
     await ArtisanHireRequest.destroy({ where: { artisanId } });
     await Artisan.destroy({ where: { id: artisanId } });
-    await User.destroy({ where: { id: [adminId, customerId, artisanUserId] } });
+    await User.destroy({
+      where: { id: [adminId, customerId, artisanUserId, ...extraCustomerIds] },
+    });
     await moduleRef.close();
   });
 
   async function createHireRequestFixture(
-    overrides: Partial<{ status: string }> = {},
+    overrides: Partial<{ status: string; customerId: string; adminReviewedAt: Date }> = {},
   ): Promise<ArtisanHireRequest> {
+    const status = overrides.status ?? 'PENDING_ADMIN_REVIEW';
     return ArtisanHireRequest.create({
-      customerId,
+      customerId: overrides.customerId ?? customerId,
       artisanId,
       addressText: '12 MG Road, Bengaluru',
-      status: overrides.status ?? 'PENDING_ADMIN_REVIEW',
+      status,
+      // A request past the admin gate was reviewed at some point; the
+      // ustaad's response window runs from then (0055).
+      adminReviewedAt:
+        overrides.adminReviewedAt ?? (status === 'PENDING_ADMIN_REVIEW' ? null : new Date()),
     } as never);
   }
 
-  it('never transitions PENDING_ADMIN_REVIEW directly to IN_PROGRESS or COMPLETED', async () => {
+  it('admin allow moves PENDING_ADMIN_REVIEW to PENDING_ARTISAN_RESPONSE, not ACCEPTED_BY_ARTISAN (0055)', async () => {
     const request = await createHireRequestFixture({ status: 'PENDING_ADMIN_REVIEW' });
     await expect(
       service.reviewRequest(adminId, request.id, { approve: true }),
-    ).resolves.toMatchObject({ status: 'ACCEPTED_BY_ARTISAN' });
+    ).resolves.toMatchObject({ status: 'PENDING_ARTISAN_RESPONSE' });
 
     await expect(service.reviewRequest(adminId, request.id, { approve: true })).rejects.toThrow(
       ConflictException,
@@ -129,7 +154,7 @@ describe('HireRequestsService (integration)', () => {
     expect(notificationsMock.sendHireRequestStatusChanged).toHaveBeenCalledWith(
       artisanUserId,
       request.id,
-      'ACCEPTED_BY_ARTISAN',
+      'PENDING_ARTISAN_RESPONSE',
     );
   });
 
@@ -144,11 +169,16 @@ describe('HireRequestsService (integration)', () => {
     );
   });
 
-  it('excludes PENDING_ADMIN_REVIEW requests from listForArtisan', async () => {
+  it('excludes PENDING_ADMIN_REVIEW and ADMIN_REJECTED requests from listForArtisan', async () => {
     await createHireRequestFixture({ status: 'PENDING_ADMIN_REVIEW' });
-    await createHireRequestFixture({ status: 'ACCEPTED_BY_ARTISAN' });
+    await createHireRequestFixture({ status: 'ADMIN_REJECTED' });
+    await createHireRequestFixture({
+      status: 'ACCEPTED_BY_ARTISAN',
+      customerId: await createExtraCustomer(),
+    });
     const list = await service.listForArtisan(artisanUserId);
     expect(list.every((r) => r.status !== 'PENDING_ADMIN_REVIEW')).toBe(true);
+    expect(list.every((r) => r.status !== 'ADMIN_REJECTED')).toBe(true);
     expect(list.some((r) => r.status === 'ACCEPTED_BY_ARTISAN')).toBe(true);
   });
 
@@ -209,7 +239,10 @@ describe('HireRequestsService (integration)', () => {
 
   it('listPendingAdminReview paginates and attaches each request its own latest estimate', async () => {
     const requestA = await createHireRequestFixture({ status: 'PENDING_ADMIN_REVIEW' });
-    const requestB = await createHireRequestFixture({ status: 'PENDING_ADMIN_REVIEW' });
+    const requestB = await createHireRequestFixture({
+      status: 'PENDING_ADMIN_REVIEW',
+      customerId: await createExtraCustomer(),
+    });
 
     // Estimates only attach to non-pending requests in the real flow, but
     // the batching in withLatestEstimates doesn't care about status —
@@ -303,7 +336,12 @@ describe('HireRequestsService (integration)', () => {
   });
 
   it('cancel moves PENDING_ADMIN_REVIEW, ACCEPTED_BY_ARTISAN, or IN_PROGRESS to CANCELLED', async () => {
-    for (const status of ['PENDING_ADMIN_REVIEW', 'ACCEPTED_BY_ARTISAN', 'IN_PROGRESS']) {
+    for (const status of [
+      'PENDING_ADMIN_REVIEW',
+      'PENDING_ARTISAN_RESPONSE',
+      'ACCEPTED_BY_ARTISAN',
+      'IN_PROGRESS',
+    ]) {
       const request = await createHireRequestFixture({ status });
       const result = await service.cancel(customerId, Role.CUSTOMER, request.id, {
         reason: 'Changed my mind',
@@ -394,10 +432,24 @@ describe('HireRequestsService (integration)', () => {
     const baselineCount =
       before.items.find((r) => r.id === pendingBefore.id)?.artisanActiveJobCount ?? 0;
 
-    await createHireRequestFixture({ status: 'ACCEPTED_BY_ARTISAN' });
-    await createHireRequestFixture({ status: 'IN_PROGRESS' });
+    await createHireRequestFixture({
+      status: 'ACCEPTED_BY_ARTISAN',
+      customerId: await createExtraCustomer(),
+    });
+    await createHireRequestFixture({
+      status: 'IN_PROGRESS',
+      customerId: await createExtraCustomer(),
+    });
     await createHireRequestFixture({ status: 'COMPLETED' }); // not active, excluded from count
-    const pending = await createHireRequestFixture({ status: 'PENDING_ADMIN_REVIEW' });
+    // Waiting on the ustaad is not an active job either (0055).
+    await createHireRequestFixture({
+      status: 'PENDING_ARTISAN_RESPONSE',
+      customerId: await createExtraCustomer(),
+    });
+    const pending = await createHireRequestFixture({
+      status: 'PENDING_ADMIN_REVIEW',
+      customerId: await createExtraCustomer(),
+    });
 
     const page = await service.listPendingAdminReview(1, 20);
     const dto = page.items.find((r) => r.id === pending.id);
@@ -470,5 +522,210 @@ describe('HireRequestsService (integration)', () => {
 
     await Artisan.destroy({ where: { id: unverifiedArtisan.id } });
     await User.destroy({ where: { id: unverifiedUser.id } });
+  });
+
+  describe('ustaad response (0055)', () => {
+    const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000);
+
+    it('accept moves PENDING_ARTISAN_RESPONSE to ACCEPTED_BY_ARTISAN and notifies the customer', async () => {
+      const request = await createHireRequestFixture({ status: 'PENDING_ARTISAN_RESPONSE' });
+      const result = await service.acceptRequest(artisanUserId, request.id);
+      expect(result.status).toBe('ACCEPTED_BY_ARTISAN');
+      expect(result.artisanRespondedAt).not.toBeNull();
+      expect(notificationsMock.sendHireRequestStatusChanged).toHaveBeenCalledWith(
+        customerId,
+        request.id,
+        'ACCEPTED_BY_ARTISAN',
+      );
+    });
+
+    it('accept rejects an ustaad who does not own the request', async () => {
+      const otherUser = await User.create({
+        name: `Other Accept Artisan ${suffix}`,
+        phone: `0${suffix}`.slice(0, 10),
+        role: Role.ARTISAN,
+        isActive: true,
+      } as never);
+      const other = await Artisan.create({
+        userId: otherUser.id,
+        tradeType: 'MASON',
+        isVerified: true,
+      } as never);
+
+      const request = await createHireRequestFixture({ status: 'PENDING_ARTISAN_RESPONSE' });
+      await expect(service.acceptRequest(otherUser.id, request.id)).rejects.toThrow(
+        ForbiddenException,
+      );
+
+      await Artisan.destroy({ where: { id: other.id } });
+      await User.destroy({ where: { id: otherUser.id } });
+    });
+
+    it('accept rejects a request that is not waiting on the ustaad', async () => {
+      for (const status of ['PENDING_ADMIN_REVIEW', 'ACCEPTED_BY_ARTISAN', 'ARTISAN_DECLINED']) {
+        const request = await createHireRequestFixture({ status });
+        await expect(service.acceptRequest(artisanUserId, request.id)).rejects.toThrow(
+          ConflictException,
+        );
+        await request.destroy();
+      }
+    });
+
+    it('accept and decline both fail once the 48-hour window has passed, even before the sweep', async () => {
+      const request = await createHireRequestFixture({
+        status: 'PENDING_ARTISAN_RESPONSE',
+        adminReviewedAt: hoursAgo(49),
+      });
+      await expect(service.acceptRequest(artisanUserId, request.id)).rejects.toThrow(
+        ConflictException,
+      );
+      await expect(
+        service.declineRequest(artisanUserId, request.id, { reason: 'busy' }),
+      ).rejects.toThrow(ConflictException);
+      await request.reload();
+      expect(request.status).toBe('PENDING_ARTISAN_RESPONSE');
+    });
+
+    it('decline moves PENDING_ARTISAN_RESPONSE to ARTISAN_DECLINED with the reason and notifies the customer', async () => {
+      const request = await createHireRequestFixture({ status: 'PENDING_ARTISAN_RESPONSE' });
+      const result = await service.declineRequest(artisanUserId, request.id, {
+        reason: 'No bandwidth this week',
+      });
+      expect(result.status).toBe('ARTISAN_DECLINED');
+      expect(result.artisanDeclineReason).toBe('No bandwidth this week');
+      expect(result.artisanRespondedAt).not.toBeNull();
+      expect(notificationsMock.sendHireRequestStatusChanged).toHaveBeenCalledWith(
+        customerId,
+        request.id,
+        'ARTISAN_DECLINED',
+      );
+    });
+
+    it('the ustaad cannot cancel a request waiting on them (they decline instead); the customer can', async () => {
+      const request = await createHireRequestFixture({ status: 'PENDING_ARTISAN_RESPONSE' });
+      await expect(
+        service.cancel(artisanUserId, Role.ARTISAN, request.id, { reason: 'nope' }),
+      ).rejects.toThrow(ConflictException);
+      await expect(
+        service.cancel(customerId, Role.CUSTOMER, request.id, { reason: 'found someone' }),
+      ).resolves.toMatchObject({ status: 'CANCELLED' });
+    });
+
+    it('expireStaleResponses expires only requests past the window and notifies both sides', async () => {
+      const stale = await createHireRequestFixture({
+        status: 'PENDING_ARTISAN_RESPONSE',
+        adminReviewedAt: hoursAgo(49),
+      });
+      const fresh = await createHireRequestFixture({
+        status: 'PENDING_ARTISAN_RESPONSE',
+        adminReviewedAt: hoursAgo(47),
+        customerId: await createExtraCustomer(),
+      });
+
+      const expired = await service.expireStaleResponses();
+      expect(expired).toBeGreaterThanOrEqual(1);
+
+      await stale.reload();
+      await fresh.reload();
+      expect(stale.status).toBe('EXPIRED');
+      expect(fresh.status).toBe('PENDING_ARTISAN_RESPONSE');
+      expect(notificationsMock.sendHireRequestStatusChanged).toHaveBeenCalledWith(
+        customerId,
+        stale.id,
+        'EXPIRED',
+      );
+      expect(notificationsMock.sendHireRequestStatusChanged).toHaveBeenCalledWith(
+        artisanUserId,
+        stale.id,
+        'EXPIRED',
+      );
+    });
+
+    it('artisanResponseDueAt is 48 hours after admin allowed it, and only while waiting', async () => {
+      const reviewedAt = hoursAgo(10);
+      await createHireRequestFixture({
+        status: 'PENDING_ARTISAN_RESPONSE',
+        adminReviewedAt: reviewedAt,
+      });
+      await createHireRequestFixture({
+        status: 'IN_PROGRESS',
+        customerId: await createExtraCustomer(),
+      });
+      const list = await service.listForArtisan(artisanUserId);
+      const waiting = list.find((r) => r.status === 'PENDING_ARTISAN_RESPONSE');
+      const working = list.find((r) => r.status === 'IN_PROGRESS');
+      expect(waiting?.artisanResponseDueAt).toBe(
+        new Date(reviewedAt.getTime() + ARTISAN_RESPONSE_WINDOW_MS).toISOString(),
+      );
+      expect(working?.artisanResponseDueAt).toBeNull();
+    });
+  });
+
+  describe('customer contact for the ustaad (0055)', () => {
+    it('is shown while waiting, accepted or in progress', async () => {
+      for (const status of ['PENDING_ARTISAN_RESPONSE', 'ACCEPTED_BY_ARTISAN', 'IN_PROGRESS']) {
+        const request = await createHireRequestFixture({ status });
+        const dto = (await service.listForArtisan(artisanUserId)).find((r) => r.id === request.id);
+        expect(dto?.customerName).toBe(`Customer HR Test ${suffix}`);
+        expect(dto?.customerPhone).toBe(`8${suffix}`.slice(0, 10));
+        await request.destroy();
+      }
+    });
+
+    it('is hidden once the request is declined, expired, cancelled or completed', async () => {
+      for (const status of ['ARTISAN_DECLINED', 'EXPIRED', 'CANCELLED', 'COMPLETED']) {
+        const request = await createHireRequestFixture({ status });
+        const dto = (await service.listForArtisan(artisanUserId)).find((r) => r.id === request.id);
+        expect(dto?.customerName).toBeNull();
+        expect(dto?.customerPhone).toBeNull();
+      }
+    });
+
+    it('is also carried on the accept response so the ustaad keeps it after accepting', async () => {
+      const request = await createHireRequestFixture({ status: 'PENDING_ARTISAN_RESPONSE' });
+      const result = await service.acceptRequest(artisanUserId, request.id);
+      expect(result.customerPhone).toBe(`8${suffix}`.slice(0, 10));
+    });
+  });
+
+  describe('one open request per customer–ustaad pair (0055)', () => {
+    beforeEach(async () => {
+      await Artisan.update({ isAvailable: true }, { where: { id: artisanId } });
+    });
+
+    it('rejects a second open request to the same ustaad', async () => {
+      for (const status of [
+        'PENDING_ADMIN_REVIEW',
+        'PENDING_ARTISAN_RESPONSE',
+        'ACCEPTED_BY_ARTISAN',
+        'IN_PROGRESS',
+      ]) {
+        const open = await createHireRequestFixture({ status });
+        await expect(
+          service.createRequest(customerId, { artisanId, addressText: 'Again' }),
+        ).rejects.toThrow(ConflictException);
+        await open.destroy();
+      }
+    });
+
+    it('allows asking the same ustaad again once the earlier request has ended', async () => {
+      for (const status of [
+        'ARTISAN_DECLINED',
+        'EXPIRED',
+        'ADMIN_REJECTED',
+        'CANCELLED',
+        'COMPLETED',
+      ]) {
+        await createHireRequestFixture({ status });
+      }
+      await expect(
+        service.createRequest(customerId, { artisanId, addressText: 'Second try' }),
+      ).resolves.toMatchObject({ status: 'PENDING_ADMIN_REVIEW' });
+    });
+
+    it('the database index blocks a duplicate open request even if the service check is bypassed', async () => {
+      await createHireRequestFixture({ status: 'PENDING_ADMIN_REVIEW' });
+      await expect(createHireRequestFixture({ status: 'IN_PROGRESS' })).rejects.toThrow();
+    });
   });
 });
