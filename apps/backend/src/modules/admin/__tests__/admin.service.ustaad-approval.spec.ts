@@ -15,6 +15,11 @@ import { User } from '../../users/models/user.model';
 import { UsersService } from '../../users/users.service';
 import { Vendor } from '../../vendors/models/vendor.model';
 import { AdminService } from '../admin.service';
+import { VendorsService } from '../../vendors/vendors.service';
+import { VendorAccountDetails } from '../../vendors/models/vendor-account-details.model';
+import { CityResolverService } from '../../catalog/city-resolver.service';
+import { City } from '../../catalog/models/city.model';
+import { PincodeCityMap } from '../../catalog/models/pincode-city-map.model';
 
 // Decision 0058 §3b: the generic users-page approve/reject must keep an
 // ustaad's two flags (users.is_approved, artisans.is_verified) in step.
@@ -34,11 +39,14 @@ describe('AdminService ustaad approval from the users page (integration)', () =>
           password: process.env.TEST_DB_PASS ?? 'postgres',
           database: process.env.TEST_DB_NAME ?? 'golden_abode_test',
           logging: false,
-          models: ARTISAN_TEST_MODELS,
+          models: [...ARTISAN_TEST_MODELS, PincodeCityMap],
         }),
         SequelizeModule.forFeature([
           User,
           Vendor,
+          VendorAccountDetails,
+          City,
+          PincodeCityMap,
           Artisan,
           ArtisanAccountDetails,
           ArtisanTeamMember,
@@ -49,6 +57,8 @@ describe('AdminService ustaad approval from the users page (integration)', () =>
         AdminService,
         ArtisansService,
         UsersService,
+        VendorsService,
+        CityResolverService,
         { provide: OBJECT_STORAGE, useValue: new FakeObjectStorage() },
       ],
     }).compile();

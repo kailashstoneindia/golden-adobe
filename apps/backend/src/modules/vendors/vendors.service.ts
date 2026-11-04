@@ -204,18 +204,6 @@ export class VendorsService {
     return toVendorProfileDto(await this.findByIdOrThrow(vendor.id));
   }
 
-  async listVendors(): Promise<VendorProfileDto[]> {
-    const vendors = await this.vendorModel.findAll({
-      include: [VendorAccountDetails, City],
-      order: [['createdAt', 'DESC']],
-    });
-    return vendors.map((vendor) => toVendorProfileDto(vendor));
-  }
-
-  async getVendorById(vendorId: string): Promise<VendorProfileDto> {
-    return toVendorProfileDto(await this.findByIdOrThrow(vendorId));
-  }
-
   // The admin override (decision 0019). Passing null clears the pin and
   // hands the city back to GPS resolution on the vendor's next address
   // change — it does NOT immediately re-resolve, because an admin clearing
@@ -249,7 +237,7 @@ export class VendorsService {
   // User.isApproved (the gate every guard already reads) in one
   // transaction — two call sites writing these independently is how they
   // drift.
-  async approveVendor(vendorId: string): Promise<VendorProfileDto> {
+  async approveVendor(vendorId: string, adminUserId: string): Promise<VendorProfileDto> {
     const vendor = await this.findByIdOrThrow(vendorId);
 
     await this.sequelize.transaction(async (transaction) => {
@@ -259,6 +247,7 @@ export class VendorsService {
       );
       await this.usersService.setApproved(vendor.userId, true, transaction);
     });
+    this.logger.log(`admin ${adminUserId} approve vendor ${vendorId} status,isApproved`);
 
     return toVendorProfileDto(await this.findByIdOrThrow(vendorId));
   }
@@ -266,7 +255,11 @@ export class VendorsService {
   // reason is required here (unlike AdminService.rejectUser's optional,
   // log-only reason) — a persisted reason with no value defeats the point
   // of persisting it. See decision 0048.
-  async rejectVendor(vendorId: string, reason: string): Promise<VendorProfileDto> {
+  async rejectVendor(
+    vendorId: string,
+    adminUserId: string,
+    reason: string,
+  ): Promise<VendorProfileDto> {
     const vendor = await this.findByIdOrThrow(vendorId);
 
     await this.sequelize.transaction(async (transaction) => {
@@ -276,6 +269,9 @@ export class VendorsService {
       );
       await this.usersService.setApproved(vendor.userId, false, transaction);
     });
+    this.logger.log(
+      `admin ${adminUserId} reject vendor ${vendorId} status,isApproved,rejectionReason: ${reason}`,
+    );
 
     return toVendorProfileDto(await this.findByIdOrThrow(vendorId));
   }

@@ -19,6 +19,7 @@ import { CityResolverService } from '../../catalog/city-resolver.service';
 import { VENDOR_TEST_MODELS } from './test-db';
 import { AdminVendorsController } from '../admin-vendors.controller';
 import { VendorsService } from '../vendors.service';
+import { AdminVendorsService } from '../admin-vendors.service';
 import { VendorCategoriesService } from '../../catalog/vendor-categories.service';
 import { Category } from '../../catalog/models/category.model';
 import { VendorCategory } from '../../catalog/models/vendor-category.model';
@@ -78,6 +79,7 @@ export async function createVendorsTestApp(): Promise<VendorsTestApp> {
       UsersService,
       JwtStrategy,
       VendorsService,
+      AdminVendorsService,
       CityResolverService,
       VendorCategoriesService,
     ],

@@ -23,6 +23,7 @@ import { PENDING_VERIFICATION_WHERE } from '../artisans/artisans.service';
 import { ListUsersQueryDto } from './dto/list-users-query.dto';
 import { UsersService } from '../users/users.service';
 import { ArtisansService } from '../artisans/artisans.service';
+import { VendorsService } from '../vendors/vendors.service';
 
 @Injectable()
 export class AdminService {
@@ -50,6 +51,7 @@ export class AdminService {
     private readonly artisanHireRequestModel: typeof ArtisanHireRequest,
     private readonly usersService: UsersService,
     private readonly artisansService: ArtisansService,
+    private readonly vendorsService: VendorsService,
   ) {}
 
   async getDashboardStats(): Promise<AdminDashboardStats> {
@@ -137,6 +139,9 @@ export class AdminService {
         );
       }
       await this.artisansService.verify(user.artisanProfile.id, adminUserId);
+    } else if (user.role === Role.VENDOR && user.vendorProfile) {
+      // Follow-up F2: keep vendors.status in step (decision 0048).
+      await this.vendorsService.approveVendor(user.vendorProfile.id, adminUserId);
     } else {
       await user.update({ isApproved: true });
       this.logger.log(`admin ${adminUserId} approve user ${userId} isApproved (${user.role})`);
@@ -148,6 +153,12 @@ export class AdminService {
     const user = await this.findApprovalTarget(userId);
     if (user.role === Role.ARTISAN && user.artisanProfile) {
       await this.artisansService.rejectVerification(user.artisanProfile.id, adminUserId, reason);
+    } else if (user.role === Role.VENDOR && user.vendorProfile) {
+      // Follow-up F2: a vendor rejection stores its reason (decision 0048).
+      if (!reason?.trim()) {
+        throw new BadRequestException('A reason is required to reject a vendor');
+      }
+      await this.vendorsService.rejectVendor(user.vendorProfile.id, adminUserId, reason.trim());
     } else {
       // A vendor, or an ustaad with no profile (no is_verified to keep in step).
       await user.update({ isApproved: false });

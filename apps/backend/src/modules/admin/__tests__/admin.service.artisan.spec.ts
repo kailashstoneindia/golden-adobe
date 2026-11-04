@@ -8,6 +8,11 @@ import { Vendor } from '../../vendors/models/vendor.model';
 import { Artisan } from '../../artisans/models/artisan.model';
 import { ArtisanHireRequest } from '../../artisans/models/artisan-hire-request.model';
 import { AdminService } from '../admin.service';
+import { VendorsService } from '../../vendors/vendors.service';
+import { VendorAccountDetails } from '../../vendors/models/vendor-account-details.model';
+import { CityResolverService } from '../../catalog/city-resolver.service';
+import { City } from '../../catalog/models/city.model';
+import { PincodeCityMap } from '../../catalog/models/pincode-city-map.model';
 import { ArtisansService } from '../../artisans/artisans.service';
 import { ArtisanAccountDetails } from '../../artisans/models/artisan-account-details.model';
 import { ArtisanTeamMember } from '../../artisans/models/artisan-team-member.model';
@@ -33,11 +38,14 @@ describe('AdminService artisan surfacing (integration)', () => {
           password: process.env.TEST_DB_PASS ?? 'postgres',
           database: process.env.TEST_DB_NAME ?? 'golden_abode_test',
           logging: false,
-          models: ARTISAN_TEST_MODELS,
+          models: [...ARTISAN_TEST_MODELS, PincodeCityMap],
         }),
         SequelizeModule.forFeature([
           User,
           Vendor,
+          VendorAccountDetails,
+          City,
+          PincodeCityMap,
           Artisan,
           ArtisanAccountDetails,
           ArtisanTeamMember,
@@ -48,6 +56,8 @@ describe('AdminService artisan surfacing (integration)', () => {
         AdminService,
         ArtisansService,
         UsersService,
+        VendorsService,
+        CityResolverService,
         { provide: OBJECT_STORAGE, useValue: new FakeObjectStorage() },
       ],
     }).compile();

@@ -3,6 +3,7 @@ import { UserDto } from './user.types';
 import { PaginatedResponse } from './pagination.types';
 import type { ArtisanHireRequestDto, TradeType } from './artisan.types';
 import type { OrderDto, OrderVendorGroupDto, RefundDto } from './order.types';
+import type { VendorProfileDto } from './vendor.types';
 
 export type AdminDashboardStats = {
   pendingVendors: number;
@@ -89,3 +90,41 @@ export type AdminRefundRowDto = RefundDto & {
   // Spots a refund stuck in "requested".
   updatedAt: string;
 };
+
+// ─── Vendors (decision 0058 Task 5) ──────────────────────────────────────
+
+export type AdminWarehouseDto = {
+  id: string;
+  name: string;
+  address: string | null;
+  isActive: boolean;
+};
+
+export type AdminVendorDto = VendorProfileDto & {
+  owner: AdminContactDto | null;
+  categoryCount: number;
+  listingCounts: { active: number; paused: number; outOfStock: number };
+  // Listing flags not yet resolved (vendor_listing_flag.resolved_at IS NULL).
+  openFlagCount: number;
+  orderGroupCount: number;
+  warehouses: AdminWarehouseDto[];
+};
+
+export type AdminVendorListingDto = {
+  id: string;
+  masterProductId: string;
+  productName: string;
+  productCode: string | null;
+  vendorSku: string | null;
+  price: number;
+  mrp: number | null;
+  minOrderQty: number | null;
+  statedGrade: string | null;
+  status: 'active' | 'paused' | 'out_of_stock';
+  quantityAvailable: number | null;
+  quantityReserved: number | null;
+  openFlags: string[];
+  updatedAt: string;
+};
+
+export type PaginatedAdminVendorListingsResponse = PaginatedResponse<AdminVendorListingDto>;
