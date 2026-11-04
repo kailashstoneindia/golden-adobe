@@ -6,11 +6,13 @@ import {
   ORDER_STATUS_LABELS,
   REFUND_MIN_AMOUNT_PAISE,
   REFUND_REASON_MAX_LENGTH,
+  REFUND_RAIL_LABELS,
   REFUND_REASON_MIN_LENGTH,
   REFUND_STATUS_LABELS,
   VENDOR_GROUP_STATUS_LABELS,
   VENDOR_GROUP_STATUS_OPTIONS,
 } from '@/constants/order.constants';
+import { ContactBlock, Row } from '@/components/common/ContactBlock';
 import { ERROR_MESSAGES } from '@/constants/error.constants';
 import { useOrderRefundsQuery, usePaymentEventsQuery } from '@/queries/useOrdersQueries';
 import styles from '@/styles/shared.module.css';
@@ -71,10 +73,39 @@ export function OrderDetailModal({
           <p className={styles.pageSubtitle}>
             {order.deliveryAddress.label}: {order.deliveryAddress.addressLine1},{' '}
             {order.deliveryAddress.city} {order.deliveryAddress.pincode}
+            {order.deliveryAddress.lat != null && order.deliveryAddress.lng != null ? (
+              <>
+                {' · '}
+                <a
+                  href={`https://maps.google.com/?q=${order.deliveryAddress.lat},${order.deliveryAddress.lng}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Open in Maps
+                </a>
+              </>
+            ) : null}
           </p>
         ) : null}
 
         <div className={styles.modalBody}>
+          <ContactBlock title="Customer" contact={order.customer}>
+            <Row label="Full name">{order.customerFullName ?? '—'}</Row>
+          </ContactBlock>
+
+          <section role="group" aria-label="Payment" className={styles.contactBlock}>
+            <h3 className={styles.sectionTitle}>Payment</h3>
+            <Row label="Paid">
+              {order.capturedPaise != null ? formatPaise(order.capturedPaise) : 'Not captured'}
+            </Row>
+            <Row label="Razorpay order">{order.razorpayOrderId ?? '—'}</Row>
+            <Row label="Razorpay payment">{order.razorpayPaymentId ?? '—'}</Row>
+            <Row label="Hire request">{order.hireRequestId ?? '—'}</Row>
+            <Row label="Items">{order.itemCount}</Row>
+            <Row label="Created">{formatDateTime(order.createdAt)}</Row>
+            <Row label="Last updated">{formatDateTime(order.updatedAt)}</Row>
+          </section>
+
           {order.vendorGroups.map((group) => (
             <VendorGroupBlock key={group.id} group={group} />
           ))}
@@ -303,6 +334,12 @@ function RefundHistory({ refunds }: RefundHistoryProps) {
             <p className={styles.meta}>
               {formatDateTime(refund.createdAt)} · {refund.reason}
             </p>
+            <p className={styles.meta}>
+              {REFUND_RAIL_LABELS[refund.rail]} · receipt {refund.receipt}
+              {refund.razorpayRefundId ? ` · Razorpay ${refund.razorpayRefundId}` : ''}
+              {refund.payoutReference ? ` · payout ref ${refund.payoutReference}` : ''}
+              {` · by ${refund.createdByName ?? 'unknown admin'}`}
+            </p>
           </li>
         ))}
       </ul>
@@ -324,6 +361,7 @@ function VendorGroupBlock({ group }: VendorGroupBlockProps) {
           {item.productName} ({item.productCode}) × {item.quantity} @ ₹{item.unitPriceSnapshot}
         </p>
       ))}
+      <ContactBlock title={`Vendor: ${group.shopName}`} contact={group.vendor} />
     </div>
   );
 }
@@ -335,9 +373,12 @@ function PaymentEventsList({ events }: PaymentEventsListProps) {
   return (
     <div>
       {events.map((event) => (
-        <p key={event.id} className={styles.meta}>
-          {formatDateTime(event.createdAt)} · {event.eventType}
-        </p>
+        <details key={event.id} className={styles.meta}>
+          <summary>
+            {formatDateTime(event.createdAt)} · {event.eventType}
+          </summary>
+          <pre className={styles.rawJson}>{JSON.stringify(event.rawPayload, null, 2)}</pre>
+        </details>
       ))}
     </div>
   );

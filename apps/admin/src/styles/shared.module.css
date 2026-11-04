@@ -947,3 +947,17 @@ textarea.input {
   padding: 12px 0;
   border-top: 1px solid var(--color-line);
 }
+
+/* Raw JSON, e.g. a payment event's payload, in an admin popup. */
+.rawJson {
+  margin: 6px 0 0;
+  padding: 8px;
+  max-height: 240px;
+  overflow: auto;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--color-white);
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+}

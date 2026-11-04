@@ -12,6 +12,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { Sequelize } from 'sequelize-typescript';
 import { Op, QueryTypes } from 'sequelize';
 import type {
+  AdminOrderDto,
   ArtisanOrderDto,
   OrderDto,
   OrderVendorGroupDto,
@@ -43,6 +44,7 @@ import {
   toOrderVendorGroupDto,
   toPaymentEventDto,
 } from './order-display.mapper';
+import { toAdminOrderDto } from './admin-order.mapper';
 
 // Decision 0049. Slightly above the typical 5-15 minute industry range
 // for a checkout hold, since payment.failed's own handling already
@@ -396,22 +398,22 @@ export class OrdersService {
     return this.getForVendor(vendorId, groupId);
   }
 
-  async listForAdmin(): Promise<OrderDto[]> {
+  async listForAdmin(): Promise<AdminOrderDto[]> {
     const orders = await this.orderModel.findAll({
       include: ADMIN_ORDER_DISPLAY_INCLUDE,
       order: [['createdAt', 'DESC']],
     });
-    return orders.map((order) => toOrderDto(order, true));
+    return orders.map(toAdminOrderDto);
   }
 
-  async getForAdmin(orderId: string): Promise<OrderDto> {
+  async getForAdmin(orderId: string): Promise<AdminOrderDto> {
     const order = await this.orderModel.findByPk(orderId, {
       include: ADMIN_ORDER_DISPLAY_INCLUDE,
     });
     if (!order) {
       throw new NotFoundException('order not found');
     }
-    return toOrderDto(order, true);
+    return toAdminOrderDto(order);
   }
 
   // Admin may cancel from pending_payment (nothing was ever charged — same

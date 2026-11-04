@@ -553,6 +553,44 @@ describe('OrdersService', () => {
     });
   });
 
+  describe('getForAdmin (decision 0058)', () => {
+    // Every include in the tree, flattened, as [parent model, child model].
+    function includePairs(include: unknown[], parent = 'Order'): string[] {
+      return include.flatMap((entry) => {
+        const { model, include: nested } = entry as {
+          model: { name: string };
+          include?: unknown[];
+        };
+        return [`${parent}>${model.name}`, ...includePairs(nested ?? [], model.name)];
+      });
+    }
+
+    it('loads the customer’s and each vendor’s user account', async () => {
+      orderModelMock.findByPk.mockResolvedValue({ id: 'o1', vendorGroups: [] });
+
+      await service.getForAdmin('o1');
+
+      const pairs = includePairs(orderModelMock.findByPk.mock.calls[0][1].include);
+      expect(pairs).toEqual(
+        expect.arrayContaining(['Order>Customer', 'Customer>User', 'Vendor>User']),
+      );
+    });
+
+    it('returns the admin shape', async () => {
+      orderModelMock.findByPk.mockResolvedValue({
+        id: 'o1',
+        grandTotal: '10',
+        bookingId: null,
+        vendorGroups: [],
+        customer: null,
+      });
+
+      const dto = await service.getForAdmin('o1');
+
+      expect(dto).toMatchObject({ customer: null, itemCount: 0, hireRequestId: null });
+    });
+  });
+
   describe('getPaymentEvents', () => {
     it('returns events for an order in chronological order', async () => {
       orderModelMock.findByPk.mockResolvedValue({ id: 'order-1' });

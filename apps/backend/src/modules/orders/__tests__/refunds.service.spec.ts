@@ -110,6 +110,22 @@ describe('RefundsService (decision 0054)', () => {
 
   const serverError = () => new ProviderRequestError('server', 'razorpay is down', 503);
 
+  it('admin refund list names who created each refund (decision 0058)', async () => {
+    const { o } = await confirmedOrder();
+    t.provider.refundOutcome('pending');
+    await service.requestRefund({
+      orderId: o.orderId,
+      adminUserId: t.adminUserId,
+      reason: 'customer changed mind',
+    });
+
+    const [refund] = await service.listForOrder(o.orderId);
+
+    expect(refund.createdBy).toBe(t.adminUserId);
+    expect(refund.createdByName).toBe('Payments Test Admin');
+    expect(refund.payoutReference).toBeNull();
+  });
+
   it('submits a full refund once with a stored 32-char key and receipt rf_<hex>_1', async () => {
     const { o, paymentId } = await confirmedOrder();
     t.provider.refundOutcome('pending');

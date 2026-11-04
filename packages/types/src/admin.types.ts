@@ -2,6 +2,7 @@ import { Role } from './role.enum';
 import { UserDto } from './user.types';
 import { PaginatedResponse } from './pagination.types';
 import type { ArtisanHireRequestDto, TradeType } from './artisan.types';
+import type { OrderDto, OrderVendorGroupDto, RefundDto } from './order.types';
 
 export type AdminDashboardStats = {
   pendingVendors: number;
@@ -63,3 +64,22 @@ export type AdminHireRequestDto = ArtisanHireRequestDto & {
 };
 
 export type PaginatedAdminHireRequestsResponse = PaginatedResponse<AdminHireRequestDto>;
+
+/** An order as the admin sees it (decision 0058 Task 4d): who is involved and how to reach them. */
+export type AdminOrderVendorGroupDto = OrderVendorGroupDto & {
+  vendor: AdminContactDto | null;
+};
+
+export type AdminOrderDto = Omit<OrderDto, 'vendorGroups'> & {
+  customer: AdminContactDto | null;
+  customerFullName: string | null;
+  vendorGroups: AdminOrderVendorGroupDto[];
+  itemCount: number;
+  // The hire request this order is booked against (orders.booking_id), if any.
+  hireRequestId: string | null;
+};
+
+export type AdminRefundDto = RefundDto & {
+  createdByName: string | null;
+  payoutReference: string | null;
+};

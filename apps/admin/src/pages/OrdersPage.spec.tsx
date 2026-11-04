@@ -1,4 +1,4 @@
-import type { OrderDto, RefundDto } from '@golden-abode/types';
+import { Role, type AdminOrderDto, type AdminRefundDto } from '@golden-abode/types';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -12,7 +12,7 @@ import { OrdersPage } from './OrdersPage';
 
 const BASE = '/api/admin/orders';
 
-function order(over: Partial<OrderDto> = {}): OrderDto {
+function order(over: Partial<AdminOrderDto> = {}): AdminOrderDto {
   return {
     id: 'o1111111-1111-4111-8111-111111111111',
     customerId: 'c1111111-1111-4111-8111-111111111111',
@@ -27,11 +27,24 @@ function order(over: Partial<OrderDto> = {}): OrderDto {
     updatedAt: '2026-11-01T10:00:00.000Z',
     deliveryAddress: null,
     vendorGroups: [],
+    customer: {
+      userId: 'u-cust',
+      name: 'Asha Rao',
+      phone: '9876543210',
+      email: 'asha@example.com',
+      role: Role.CUSTOMER,
+      isActive: true,
+      isApproved: true,
+      lastLoginAt: null,
+    },
+    customerFullName: 'Asha Rao Kumar',
+    itemCount: 0,
+    hireRequestId: null,
     ...over,
   };
 }
 
-function refund(over: Partial<RefundDto> = {}): RefundDto {
+function refund(over: Partial<AdminRefundDto> = {}): AdminRefundDto {
   return {
     id: 'r1',
     orderId: 'o1111111-1111-4111-8111-111111111111',
@@ -43,13 +56,15 @@ function refund(over: Partial<RefundDto> = {}): RefundDto {
     status: 'submitted',
     reason: 'Vendor cancelled',
     createdBy: 'admin1',
+    createdByName: 'Admin Priya',
+    payoutReference: null,
     createdAt: '2026-11-02T10:00:00.000Z',
     ...over,
   };
 }
 
-let orders: OrderDto[];
-let refunds: Record<string, RefundDto[]>;
+let orders: AdminOrderDto[];
+let refunds: Record<string, AdminRefundDto[]>;
 let refundBodies: unknown[];
 let refundListFetches: number;
 // Holds GET /refunds open until released, or answers it with an error.
@@ -62,7 +77,7 @@ let ordersListFetches: number;
 let refundReply: {
   status: number;
   message?: string;
-  recordRefund?: RefundDto;
+  recordRefund?: AdminRefundDto;
   orderStatus?: string;
   networkError?: boolean;
 };
@@ -97,7 +112,11 @@ function useHandlers() {
       if (refundReply.orderStatus) {
         orders = orders.map((o) =>
           o.id === id
-            ? { ...o, status: refundReply.orderStatus as OrderDto['status'], updatedAt: 'later' }
+            ? {
+                ...o,
+                status: refundReply.orderStatus as AdminOrderDto['status'],
+                updatedAt: 'later',
+              }
             : o,
         );
       }
@@ -532,5 +551,145 @@ describe('OrdersPage refunds', () => {
       expect(screen.getByLabelText('Refund amount (₹)')).toHaveValue(250.5);
       expect(screen.getByLabelText('Refund reason')).toHaveValue('Partial return');
     });
+  });
+});
+
+// Decision 0058 Task 4d: the admin sees who is involved and every payment fact.
+describe('OrdersPage who and payment details', () => {
+  const vendorContact = {
+    userId: 'u-vend',
+    name: 'Vikram Stones',
+    phone: '9123456780',
+    email: 'vikram@example.com',
+    role: Role.VENDOR,
+    isActive: true,
+    isApproved: true,
+    lastLoginAt: null,
+  };
+
+  beforeEach(() => {
+    orders = [
+      order({
+        id: 'o1',
+        capturedPaise: 50000,
+        hireRequestId: 'h1111111-1111-4111-8111-111111111111',
+        deliveryAddress: {
+          id: 'd1',
+          customerId: 'c1',
+          label: 'Home',
+          addressLine1: '12 MG Road',
+          addressLine2: null,
+          landmark: null,
+          city: 'Bengaluru',
+          pincode: '560001',
+          lat: 12.97,
+          lng: 77.59,
+          isDefault: true,
+          createdAt: '2026-11-01T00:00:00.000Z',
+          updatedAt: '2026-11-01T00:00:00.000Z',
+        } as AdminOrderDto['deliveryAddress'],
+        vendorGroups: [
+          {
+            id: 'g1',
+            orderId: 'o1',
+            vendorId: 'v1',
+            shopName: 'Stone Mart',
+            subtotal: 500,
+            loadingUnloadingFee: 0,
+            status: 'confirmed',
+            items: [],
+            vendor: vendorContact,
+          },
+        ],
+      }),
+    ];
+    refunds = {
+      o1: [
+        refund({
+          rail: 'manual_payout',
+          receipt: 'rf_o1_1',
+          razorpayRefundId: 'rfnd_123',
+          payoutReference: 'UTR998877',
+        }),
+      ],
+    };
+    refundBodies = [];
+    refundListFetches = 0;
+    refundsGate = null;
+    refundsListFails = false;
+    refundPostGate = null;
+    ordersListFetches = 0;
+    useHandlers();
+    server.use(
+      http.get(`${BASE}/:id/payment-events`, () =>
+        HttpResponse.json({
+          success: true,
+          data: [
+            {
+              id: 'e1',
+              orderId: 'o1',
+              eventType: 'payment.captured',
+              rawPayload: { payment: { entity: { method: 'upi', vpa: 'asha@okbank' } } },
+              createdAt: '2026-11-01T10:05:00.000Z',
+            },
+          ],
+        }),
+      ),
+    );
+  });
+
+  it('lists the customer and the amount actually paid', async () => {
+    renderPage();
+
+    const row = await screen.findByRole('row', { name: /Asha Rao/ });
+    expect(row).toHaveTextContent('98765 43210');
+    expect(row).toHaveTextContent('₹500.00');
+  });
+
+  it('shows the customer, each vendor, Razorpay ids, hire request and a map link', async () => {
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('row', { name: /Asha Rao/ }));
+
+    const customer = screen.getByRole('group', { name: 'Customer' });
+    expect(customer).toHaveTextContent('Asha Rao Kumar');
+    expect(customer).toHaveTextContent('asha@example.com');
+    const vendor = screen.getByRole('group', { name: 'Vendor: Stone Mart' });
+    expect(within(vendor).getByRole('link', { name: '91234 56780' })).toHaveAttribute(
+      'href',
+      'tel:9123456780',
+    );
+    expect(screen.getByText('order_rzp1')).toBeInTheDocument();
+    expect(screen.getByText('pay_rzp1')).toBeInTheDocument();
+    expect(screen.getByText('h1111111-1111-4111-8111-111111111111')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Open in Maps' })).toHaveAttribute(
+      'href',
+      'https://maps.google.com/?q=12.97,77.59',
+    );
+  });
+
+  it('shows who created each refund and its payout details', async () => {
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('row', { name: /Asha Rao/ }));
+
+    const history = await screen.findByText(/Admin Priya/);
+    expect(history).toBeInTheDocument();
+    expect(screen.getByText(/UTR998877/)).toBeInTheDocument();
+    expect(screen.getByText(/rfnd_123/)).toBeInTheDocument();
+    expect(screen.getByText(/Manual payout/)).toBeInTheDocument();
+  });
+
+  it('lets the admin read a payment event’s raw data', async () => {
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('row', { name: /Asha Rao/ }));
+    await user.click(screen.getByRole('button', { name: 'Show payment events' }));
+
+    expect(await screen.findByText(/payment\.captured/)).toBeInTheDocument();
+    expect(screen.getByText(/asha@okbank/, { exact: false })).toBeInTheDocument();
   });
 });
