@@ -1,9 +1,19 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import type { ApiErrorResponse, ApiSuccessResponse } from '@golden-abode/types';
 
+import { API_ENDPOINTS } from '@/constants/apiEndpoints';
 import { APP_CONSTANTS } from '@/constants/appConstants';
 import { ROUTES } from '@/constants/routes';
 import { tokenStorage } from '@/services/storage/tokenStorage';
+
+import { getFreshAccessToken } from './tokenRefresh';
+
+declare module 'axios' {
+  export interface AxiosRequestConfig {
+    /** Set on the one retry after a token refresh, so a second 401 ends the session. */
+    _retry?: boolean;
+  }
+}
 
 export class ApiClientError extends Error {
   readonly statusCode: number;
@@ -28,18 +38,58 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   return config;
 });
 
+// A 401 from these means "wrong credentials", not "access token expired".
+const NO_REFRESH_ENDPOINTS: readonly string[] = [
+  API_ENDPOINTS.auth.adminLogin,
+  API_ENDPOINTS.auth.adminRegister,
+  API_ENDPOINTS.auth.refresh,
+];
+
+function toClientError(error: AxiosError<ApiErrorResponse>): ApiClientError {
+  const message = error.response?.data?.message ?? 'Request failed';
+  const statusCode = error.response?.status ?? 500;
+  return new ApiClientError(message, statusCode);
+}
+
+function bearerToken(config: InternalAxiosRequestConfig): string | null {
+  const header = config.headers.Authorization;
+  return typeof header === 'string' && header.startsWith('Bearer ') ? header.slice(7) : null;
+}
+
+function endSession(): void {
+  tokenStorage.clearTokens();
+  if (window.location.pathname !== ROUTES.login) {
+    window.location.assign(ROUTES.login);
+  }
+}
+
 apiClient.interceptors.response.use(
   (response) => response,
-  (error: AxiosError<ApiErrorResponse>) => {
-    if (error.response?.status === 401) {
-      tokenStorage.clearTokens();
-      if (window.location.pathname !== ROUTES.login) {
-        window.location.assign(ROUTES.login);
-      }
+  async (error: AxiosError<ApiErrorResponse>) => {
+    const original = error.config;
+    if (
+      error.response?.status !== 401 ||
+      !original ||
+      NO_REFRESH_ENDPOINTS.some((endpoint) => original.url?.endsWith(endpoint))
+    ) {
+      return Promise.reject(toClientError(error));
     }
-    const message = error.response?.data?.message ?? 'Request failed';
-    const statusCode = error.response?.status ?? 500;
-    return Promise.reject(new ApiClientError(message, statusCode));
+
+    if (original._retry) {
+      endSession();
+      return Promise.reject(toClientError(error));
+    }
+
+    original._retry = true;
+    let accessToken: string;
+    try {
+      accessToken = await getFreshAccessToken(bearerToken(original));
+    } catch {
+      endSession();
+      return Promise.reject(toClientError(error));
+    }
+    original.headers.Authorization = `Bearer ${accessToken}`;
+    return apiClient(original);
   },
 );
 
