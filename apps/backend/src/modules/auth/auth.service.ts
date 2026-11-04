@@ -9,6 +9,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/sequelize';
+import { Sequelize } from 'sequelize-typescript';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 
@@ -45,6 +46,7 @@ export class AuthService {
     private usersService: UsersService,
     private customersService: CustomersService,
     private redisService: RedisService,
+    private readonly sequelize: Sequelize,
     @InjectModel(RefreshToken)
     private refreshTokenModel: typeof RefreshToken,
   ) {
@@ -188,21 +190,27 @@ export class AuthService {
       throw new ConflictException('User with this phone number already exists');
     }
 
-    // Create user
-    const user = await this.usersService.create({
-      name,
-      phone: payload.phone,
-      role,
-    });
-
     // CUSTOMER has no separate onboarding step (unlike VENDOR, which
     // collects shop/address/GPS data afterward via POST /vendors/onboard) —
     // every cart/order service resolves a customers row by user id and 404s
-    // without one, so it must exist the moment registration completes.
-    // Decision 0041's own named gap: no code path created this row until now.
-    if (role === Role.CUSTOMER) {
-      await this.customersService.createForUser(user.id, name);
-    }
+    // ("no customer profile found for this user") without one, so it must
+    // exist the moment registration completes.
+    //
+    // The user row and the customers row are ONE unit of work. As two bare
+    // writes, a failure of the second left a login with no shopping profile
+    // — a half-created account that nothing repaired. Inside a transaction
+    // that failure rolls the user insert back too, so the caller can simply
+    // register again.
+    const user = await this.sequelize.transaction(async (transaction) => {
+      const created = await this.usersService.create(
+        { name, phone: payload.phone, role },
+        transaction,
+      );
+      if (role === Role.CUSTOMER) {
+        await this.customersService.createForUser(created.id, name, transaction);
+      }
+      return created;
+    });
 
     // Generate tokens
     const tokens = await this.generateTokenPair(user);

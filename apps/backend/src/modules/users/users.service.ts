@@ -27,16 +27,25 @@ export class UsersService {
     return this.userModel.findByPk(id, { include });
   }
 
-  async create(data: { name: string; phone: string; role: Role }): Promise<User> {
+  // `transaction` lets AuthService.register write the user and its customers
+  // row as one unit. The re-read below must use it too: inside an open
+  // transaction the freshly inserted row is invisible to any other connection.
+  async create(
+    data: { name: string; phone: string; role: Role },
+    transaction?: Transaction,
+  ): Promise<User> {
     const isVendor = data.role === Role.VENDOR;
-    const created = await this.userModel.create({
-      name: data.name,
-      phone: data.phone,
-      role: data.role,
-      onboardingCompleted: !isVendor,
-      onboardingStage: isVendor ? VENDOR_ONBOARDING_STAGES.basicDetails : null,
-    } as any);
-    const user = await this.userModel.findByPk(created.id);
+    const created = await this.userModel.create(
+      {
+        name: data.name,
+        phone: data.phone,
+        role: data.role,
+        onboardingCompleted: !isVendor,
+        onboardingStage: isVendor ? VENDOR_ONBOARDING_STAGES.basicDetails : null,
+      } as any,
+      { transaction },
+    );
+    const user = await this.userModel.findByPk(created.id, { transaction });
     return user!;
   }
 
