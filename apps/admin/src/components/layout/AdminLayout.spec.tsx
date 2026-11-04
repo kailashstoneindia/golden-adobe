@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { getFreshAccessToken } from '@/services/api/tokenRefresh';
 import { tokenStorage } from '@/services/storage/tokenStorage';
@@ -24,6 +24,10 @@ function renderLayout() {
     </MemoryRouter>,
   );
 }
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 beforeEach(() => {
   tokenStorage.setTokens('a1', 'r1');
@@ -78,6 +82,56 @@ describe('AdminLayout log out', () => {
     await waitFor(() => expect(logoutBodies).toEqual([{ refreshToken: 'r2' }]));
     expect(await screen.findByText('Login page')).toBeInTheDocument();
     expect(tokenStorage.getRefreshToken()).toBeNull();
+  });
+
+  it('clears the tokens while holding the cross-tab refresh lock', async () => {
+    // Another tab waiting on the lock must find no refresh token, or it would
+    // refresh with the one being revoked (reuse → every session revoked).
+    let insideLock: string | null | undefined;
+    const request = vi.fn(async (_name: string, callback: () => unknown) => {
+      const result = await callback();
+      insideLock = tokenStorage.getRefreshToken();
+      return result;
+    });
+    vi.stubGlobal('navigator', { ...navigator, locks: { request } });
+    const bodies: unknown[] = [];
+    server.use(
+      http.post(LOGOUT, async ({ request: req }) => {
+        bodies.push(await req.json());
+        return HttpResponse.json({ success: true, data: { message: 'ok' } });
+      }),
+    );
+    renderLayout();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Log out' }));
+
+    await waitFor(() => expect(bodies).toEqual([{ refreshToken: 'r1' }]));
+    expect(request).toHaveBeenCalledWith('admin-token-refresh', expect.any(Function));
+    expect(insideLock).toBeNull();
+  });
+
+  it('shows that it is logging out while it waits', async () => {
+    let releaseRefresh!: () => void;
+    const refreshHeld = new Promise<void>((resolve) => (releaseRefresh = resolve));
+    server.use(
+      http.post('/api/auth/refresh', async () => {
+        await refreshHeld;
+        return HttpResponse.json({
+          success: true,
+          data: { accessToken: 'a2', refreshToken: 'r2' },
+        });
+      }),
+      http.post(LOGOUT, () => HttpResponse.json({ success: true, data: { message: 'ok' } })),
+    );
+    renderLayout();
+    const pending = getFreshAccessToken('a1').catch(() => undefined);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Log out' }));
+
+    expect(screen.getByRole('button', { name: 'Logging out…' })).toBeDisabled();
+    releaseRefresh();
+    await pending;
+    expect(await screen.findByText('Login page')).toBeInTheDocument();
   });
 
   it('still logs out locally when the server call fails', async () => {

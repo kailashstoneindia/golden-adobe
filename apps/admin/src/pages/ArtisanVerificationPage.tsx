@@ -112,6 +112,7 @@ function AwaitingDocumentSection() {
     limit: APP_CONSTANTS.defaultPageSize,
   });
   const rows = awaitingQuery.data?.items ?? [];
+  const total = awaitingQuery.data?.total ?? 0;
 
   return (
     <div className={styles.section}>
@@ -119,7 +120,14 @@ function AwaitingDocumentSection() {
       <p className={styles.pageSubtitle}>
         Signed up as an ustaad but can&apos;t be verified yet. Call them to finish onboarding.
       </p>
-      {awaitingQuery.isError ? (
+      {total > rows.length ? (
+        <p className={styles.pageSubtitle}>
+          Showing {rows.length} of {total}
+        </p>
+      ) : null}
+      {awaitingQuery.isLoading ? (
+        <p className={styles.pageSubtitle}>Loading…</p>
+      ) : awaitingQuery.isError ? (
         <p className={styles.error}>{ERROR_MESSAGES.loadUsersFailed}</p>
       ) : isEmpty(rows) ? (
         <div className={styles.empty}>Nobody is waiting on a document.</div>

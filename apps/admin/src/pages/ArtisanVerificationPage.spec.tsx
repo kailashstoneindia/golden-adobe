@@ -126,6 +126,40 @@ describe('ArtisanVerificationPage', () => {
     expect(screen.getByText('No profile yet')).toBeInTheDocument();
   });
 
+  it('says how many are waiting when the list is longer than one page', async () => {
+    awaiting = [
+      {
+        userId: 'u-1',
+        name: 'First Waiting',
+        phone: null,
+        email: null,
+        hasProfile: true,
+        tradeType: 'PLUMBER',
+        servicePincode: null,
+        createdAt: '2026-11-01T10:00:00.000Z',
+      },
+    ];
+    server.use(
+      http.get(`${BASE}/awaiting-document`, () =>
+        HttpResponse.json({
+          success: true,
+          data: { items: awaiting, total: 35, page: 1, limit: 20, totalPages: 2 },
+        }),
+      ),
+    );
+    renderPage();
+
+    expect(await screen.findByText('Showing 1 of 35')).toBeInTheDocument();
+  });
+
+  it('does not claim nobody is waiting while the list is still loading', async () => {
+    server.use(http.get(`${BASE}/awaiting-document`, () => new Promise(() => undefined)));
+    renderPage();
+
+    expect(await screen.findByText('Loading…')).toBeInTheDocument();
+    expect(screen.queryByText('Nobody is waiting on a document.')).not.toBeInTheDocument();
+  });
+
   it('explains there is nothing to review when the queue is empty', async () => {
     pending = [];
     renderPage();

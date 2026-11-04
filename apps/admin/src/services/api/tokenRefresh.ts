@@ -58,18 +58,24 @@ async function runExclusive(staleAccessToken: string | null): Promise<string> {
 }
 
 /**
- * Resolves once no refresh is running in this tab or any other. Log out waits
- * on this so it revokes the token that is current, not one a refresh is about
- * to rotate (revoking that one would look like reuse and end every session).
+ * Waits until no refresh is running in this tab or any other, then removes the
+ * stored tokens and returns the refresh token to revoke. Log out uses this so
+ * it revokes the token that is current, not one a refresh is about to rotate
+ * (revoking that one would look like reuse and end every session).
  */
-export async function waitForPendingRefresh(): Promise<void> {
+export async function takeRefreshTokenForLogout(): Promise<string | null> {
   if (inFlight) {
     await inFlight.catch(() => undefined);
   }
+  // Read and clear under the same lock refreshes use, so a tab queued behind
+  // us finds no refresh token instead of refreshing with the one we revoke.
+  const take = () => {
+    const refreshToken = tokenStorage.getRefreshToken();
+    tokenStorage.clearTokens();
+    return refreshToken;
+  };
   const locks = typeof navigator !== 'undefined' ? navigator.locks : undefined;
-  if (locks) {
-    await locks.request(LOCK_NAME, () => undefined);
-  }
+  return locks ? await locks.request(LOCK_NAME, take) : take();
 }
 
 /**

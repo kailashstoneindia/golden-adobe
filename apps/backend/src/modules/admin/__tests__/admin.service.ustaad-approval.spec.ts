@@ -128,13 +128,14 @@ describe('AdminService ustaad approval from the users page (integration)', () =>
     expect(await flags()).toEqual({ isApproved: false, isVerified: null });
   });
 
-  it('dashboard counts ustaads waiting for a document', async () => {
-    const before = (await admin.getDashboardStats()).artisansAwaitingDocument;
-    await profile(false);
+  // Suites run in parallel on one database, so a global count can't be
+  // asserted exactly. Which users are counted is covered by
+  // users.service.awaiting-document.spec; here, only that the number is used.
+  it('dashboard reports the awaiting-document count from UsersService', async () => {
+    jest
+      .spyOn(moduleRef.get(UsersService), 'countArtisansAwaitingDocument')
+      .mockResolvedValueOnce(42);
 
-    expect((await admin.getDashboardStats()).artisansAwaitingDocument).toBe(before);
-    // This user was already counted (no profile); with a document they drop out.
-    await Artisan.update({ documentUrl: `artisans/${userId}/doc.pdf` }, { where: { userId } });
-    expect((await admin.getDashboardStats()).artisansAwaitingDocument).toBe(before - 1);
+    expect((await admin.getDashboardStats()).artisansAwaitingDocument).toBe(42);
   });
 });

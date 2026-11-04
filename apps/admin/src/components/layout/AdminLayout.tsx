@@ -1,10 +1,10 @@
+import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 
 import { APP_CONSTANTS } from '@/constants/appConstants';
 import { ROUTES } from '@/constants/routes';
 import { authService } from '@/services/api/authService';
-import { waitForPendingRefresh } from '@/services/api/tokenRefresh';
-import { tokenStorage } from '@/services/storage/tokenStorage';
+import { takeRefreshTokenForLogout } from '@/services/api/tokenRefresh';
 import { selectAdminUser, selectClearSession, useAuthStore } from '@/store';
 import styles from '@/styles/shared.module.css';
 
@@ -13,12 +13,14 @@ export function AdminLayout() {
   const adminUser = useAuthStore(selectAdminUser);
   const clearSession = useAuthStore(selectClearSession);
 
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
   const handleLogout = async () => {
+    setIsLoggingOut(true);
     // Revoke the refresh token on the server too, otherwise it stays usable for
     // its full 30 days. Best effort: the local logout never waits on the
     // revoke call, only on a refresh already in flight (see tokenRefresh.ts).
-    await waitForPendingRefresh();
-    const refreshToken = tokenStorage.getRefreshToken();
+    const refreshToken = await takeRefreshTokenForLogout();
     if (refreshToken) {
       authService.logout({ refreshToken }).catch(() => undefined);
     }
@@ -164,8 +166,13 @@ export function AdminLayout() {
         </nav>
         <div className={styles.sidebarFooter}>
           <p className={styles.sidebarUser}>{adminUser?.email ?? adminUser?.name ?? 'Admin'}</p>
-          <button type="button" className={styles.sidebarLogout} onClick={handleLogout}>
-            Log out
+          <button
+            type="button"
+            className={styles.sidebarLogout}
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+          >
+            {isLoggingOut ? 'Logging out…' : 'Log out'}
           </button>
         </div>
       </aside>

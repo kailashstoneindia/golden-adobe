@@ -115,8 +115,8 @@ someone.
 - `@aws-sdk/s3-request-presigner` becomes a backend dependency. It is used for signed
   document read links.
 - The admin's `UserDto` responses stop carrying `deviceToken`.
-- The dashboard counters "pending ustaads" (`is_approved = false`) and "pending
-  verifications" (`is_verified = false`) do **not** move together. "Pending ustaads" also
-  counts ustaads who have not uploaded a document yet (they cannot be verified) and every
-  rejected ustaad; no page lists that group since the ustaad approvals tab was removed.
+- The dashboard's "Pending ustaads" card is replaced by "Ustaads without a document" (§3a),
+  which links to that list on the verification page. A rejected ustaad who has a document
+  goes back into the verification queue. `pendingArtisans` is still computed for the
+  shared stats type but is no longer shown.
 - Plan: [2026-11-04-admin-visibility-and-editing.md](../superpowers/plans/2026-11-04-admin-visibility-and-editing.md).
