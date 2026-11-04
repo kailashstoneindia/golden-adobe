@@ -164,6 +164,7 @@ describe('VendorsPage', () => {
     expect(business).toHaveTextContent('12 active · 2 paused · 1 out of stock');
     expect(business).toHaveTextContent('1 open flag');
     expect(business).toHaveTextContent('7 order groups');
+    expect(business).toHaveTextContent('4 categories');
     expect(screen.getByRole('group', { name: 'Warehouses' })).toHaveTextContent('Main yard');
   });
 

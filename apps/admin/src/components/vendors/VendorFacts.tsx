@@ -13,7 +13,8 @@ import { formatDateTime } from '@/utils/date';
 
 export function VendorFacts({ vendor }: { vendor: AdminVendorDto }) {
   const account = vendor.accountDetails;
-  const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`;
+  const plural = (count: number, one: string, many = `${one}s`) =>
+    `${count} ${count === 1 ? one : many}`;
   return (
     <>
       <ContactBlock title="Owner" contact={vendor.owner}>
@@ -66,7 +67,7 @@ export function VendorFacts({ vendor }: { vendor: AdminVendorDto }) {
         </Row>
         <Row label="Flags">{plural(vendor.openFlagCount, 'open flag')}</Row>
         <Row label="Orders">{plural(vendor.orderGroupCount, 'order group')}</Row>
-        <Row label="Categories">{plural(vendor.categoryCount, 'category')}</Row>
+        <Row label="Categories">{plural(vendor.categoryCount, 'category', 'categories')}</Row>
         <Row label="Joined">{formatDateTime(vendor.createdAt)}</Row>
       </Group>
 
