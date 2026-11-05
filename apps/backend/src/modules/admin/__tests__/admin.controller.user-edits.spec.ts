@@ -98,6 +98,15 @@ describe('AdminController user edit routes', () => {
       expect(service.updateUser).not.toHaveBeenCalled();
     });
 
+    it.each([
+      ['phone', { phone: null }],
+      ['name', { name: null }],
+      ['email', { email: null }],
+    ])('rejects a null %s instead of erasing it or failing with a 500', async (_field, body) => {
+      expect((await patch(`/admin/users/${ID}`, body)).status).toBe(400);
+      expect(service.updateUser).not.toHaveBeenCalled();
+    });
+
     it('refuses a malformed id', async () => {
       expect((await patch('/admin/users/nope', { name: 'X' })).status).toBe(400);
     });

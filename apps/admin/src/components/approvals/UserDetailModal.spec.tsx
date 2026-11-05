@@ -271,3 +271,71 @@ describe('UserDetailModal account actions', () => {
     expect(screen.queryByRole('button', { name: 'Sign out everywhere' })).not.toBeInTheDocument();
   });
 });
+
+// Decision 0058 Task 9 review.
+describe('UserDetailModal account actions, review fixes', () => {
+  function renderFor(
+    user: AdminUserDetailDto,
+    extra: { currentAdminId?: string; onSetActive?: () => Promise<void> } = {},
+  ) {
+    render(
+      <MemoryRouter>
+        <UserDetailModal
+          user={user}
+          isSubmitting={false}
+          showApprovalActions={false}
+          onClose={() => undefined}
+          onSaveDetails={async () => undefined}
+          onSetActive={extra.onSetActive ?? (async () => undefined)}
+          onRevokeSessions={async () => undefined}
+          currentAdminId={extra.currentAdminId}
+        />
+      </MemoryRouter>,
+    );
+  }
+
+  it('does not offer the admin a way to deactivate their own account', () => {
+    renderFor(detail({ id: 'me', role: Role.ADMIN }), { currentAdminId: 'me' });
+
+    expect(screen.queryByRole('button', { name: 'Deactivate account' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Edit details' })).toBeInTheDocument();
+  });
+
+  it('still offers it on other people’s accounts', () => {
+    renderFor(detail({ id: 'someone-else' }), { currentAdminId: 'me' });
+
+    expect(screen.getByRole('button', { name: 'Deactivate account' })).toBeInTheDocument();
+  });
+
+  it('announces a refusal to screen readers', async () => {
+    renderFor(detail(), {
+      onSetActive: async () => {
+        throw new Error('Something went wrong');
+      },
+    });
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole('button', { name: 'Deactivate account' }));
+    await user.click(screen.getByRole('button', { name: 'Confirm deactivate' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Something went wrong');
+  });
+
+  it('warns that changing an admin’s email changes how they log in', async () => {
+    renderFor(detail({ role: Role.ADMIN }));
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole('button', { name: 'Edit details' }));
+
+    expect(screen.getByText(/changes the email they log in with/)).toBeInTheDocument();
+  });
+
+  it('does not show that warning for other roles', async () => {
+    renderFor(detail());
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole('button', { name: 'Edit details' }));
+
+    expect(screen.queryByText(/changes the email they log in with/)).not.toBeInTheDocument();
+  });
+});

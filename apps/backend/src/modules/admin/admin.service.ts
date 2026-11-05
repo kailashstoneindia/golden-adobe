@@ -205,14 +205,15 @@ export class AdminService {
     }
 
     const changes: { name?: string; email?: string; phone?: string } = {};
-    if (dto.name !== undefined && dto.name.trim() !== user.name) {
+    // typeof, not !== undefined: a null must never get as far as erasing a field.
+    if (typeof dto.name === 'string' && dto.name.trim() !== user.name) {
       changes.name = dto.name.trim();
     }
-    if (dto.email !== undefined) {
+    if (typeof dto.email === 'string') {
       const email = dto.email.trim().toLowerCase();
       if (email !== user.email) changes.email = email;
     }
-    if (dto.phone !== undefined && dto.phone !== user.phone) {
+    if (typeof dto.phone === 'string' && dto.phone !== user.phone) {
       changes.phone = dto.phone;
     }
     const fields = Object.keys(changes);
@@ -227,7 +228,16 @@ export class AdminService {
       throw new ConflictException('This email is already used by another account');
     }
     try {
-      await user.update(changes);
+      await this.sequelize.transaction(async (transaction) => {
+        await user.update(changes, { transaction });
+        // The customer profile keeps its own copy of the name (set at sign-up).
+        if (changes.name) {
+          await this.customerModel.update(
+            { fullName: changes.name },
+            { where: { userId }, transaction },
+          );
+        }
+      });
     } catch (error) {
       // Two admins racing for the same number: the database has the last word.
       if (error instanceof UniqueConstraintError) {
@@ -248,12 +258,16 @@ export class AdminService {
     adminUserId: string,
     isActive: boolean,
   ): Promise<AdminUserDetailDto> {
-    if (!isActive && userId === adminUserId) {
+    // Compared without case: a UUID in capitals reaches the same row.
+    if (!isActive && userId.toLowerCase() === adminUserId.toLowerCase()) {
       throw new BadRequestException('You cannot deactivate your own account');
     }
     const user = await this.userModel.findByPk(userId);
     if (!user) {
       throw new NotFoundException(`User ${userId} not found`);
+    }
+    if (user.isActive === isActive) {
+      return this.getUserById(userId);
     }
     await this.sequelize.transaction(async (transaction) => {
       await user.update({ isActive }, { transaction });

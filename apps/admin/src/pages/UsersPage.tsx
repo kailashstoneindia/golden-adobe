@@ -15,6 +15,7 @@ import {
   useSetUserActiveMutation,
   useUpdateUserMutation,
 } from '@/queries';
+import { selectAdminUser, useAuthStore } from '@/store/useAuthStore';
 import styles from '@/styles/shared.module.css';
 import { formatPhoneDisplay } from '@/utils/phone';
 import { formatRoleLabel } from '@/utils/role';
@@ -35,6 +36,7 @@ export function UsersPage() {
   const rejectMutation = useRejectUserMutation();
   // Decision 0058 Task 9. The popup shows a refusal (409 phone taken, 400 own
   // account) itself, so these just pass the rejection on.
+  const currentAdmin = useAuthStore(selectAdminUser);
   const updateMutation = useUpdateUserMutation();
   const activeMutation = useSetUserActiveMutation();
   const revokeMutation = useRevokeUserSessionsMutation();
@@ -167,6 +169,7 @@ export function UsersPage() {
           onSetActive={async (userId, isActive) => {
             await activeMutation.mutateAsync({ userId, isActive });
           }}
+          currentAdminId={currentAdmin?.id}
           onRevokeSessions={async (userId) => {
             await revokeMutation.mutateAsync(userId);
           }}

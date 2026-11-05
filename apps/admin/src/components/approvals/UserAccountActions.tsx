@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Role } from '@golden-abode/types';
 import type { AdminUserDetailDto, AdminUserDto, UpdateAdminUserRequest } from '@golden-abode/types';
 
 import styles from '@/styles/shared.module.css';
@@ -10,6 +11,8 @@ type UserAccountActionsProps = {
   onSaveDetails?: (userId: string, body: UpdateAdminUserRequest) => Promise<void>;
   onSetActive?: (userId: string, isActive: boolean) => Promise<void>;
   onRevokeSessions?: (userId: string) => Promise<void>;
+  // The signed-in admin: their own row never offers Deactivate.
+  currentAdminId?: string;
 };
 
 // Decision 0058 Task 9: what an admin may do to an account — fix its name,
@@ -20,6 +23,7 @@ export function UserAccountActions({
   onSaveDetails,
   onSetActive,
   onRevokeSessions,
+  currentAdminId,
 }: UserAccountActionsProps) {
   const [mode, setMode] = useState<Mode>('idle');
   const [draft, setDraft] = useState({ name: '', email: '', phone: '' });
@@ -85,8 +89,13 @@ export function UserAccountActions({
           ))}
           <p className={styles.meta}>
             The phone number is how this person logs in, so it must be a +91 number nobody else
-            uses.
+            uses. They stay signed in on their current devices until you sign them out.
           </p>
+          {user.role === Role.ADMIN ? (
+            <p className={styles.meta}>
+              Changing an admin’s email changes the email they log in with.
+            </p>
+          ) : null}
           <div className={styles.actions}>
             <button type="button" className={button('Ghost')} disabled={busy} onClick={cancel}>
               Cancel
@@ -164,7 +173,7 @@ export function UserAccountActions({
               Sign out everywhere
             </button>
           ) : null}
-          {onSetActive ? (
+          {onSetActive && user.id !== currentAdminId ? (
             user.isActive ? (
               <button
                 type="button"
@@ -187,7 +196,11 @@ export function UserAccountActions({
         </div>
       ) : null}
 
-      {error ? <p className={styles.error}>{error}</p> : null}
+      {error ? (
+        <p className={styles.error} role="alert">
+          {error}
+        </p>
+      ) : null}
     </section>
   );
 }

@@ -45,6 +45,8 @@ type UserDetailModalProps = {
   onSaveDetails?: (userId: string, body: UpdateAdminUserRequest) => Promise<void>;
   onSetActive?: (userId: string, isActive: boolean) => Promise<void>;
   onRevokeSessions?: (userId: string) => Promise<void>;
+  // The signed-in admin: their own row never offers Deactivate.
+  currentAdminId?: string;
 };
 
 export function UserDetailModal({
@@ -60,6 +62,7 @@ export function UserDetailModal({
   onSaveDetails,
   onSetActive,
   onRevokeSessions,
+  currentAdminId,
 }: UserDetailModalProps) {
   const [rejectReason, setRejectReason] = useState('');
   const [isRejecting, setIsRejecting] = useState(false);
@@ -134,6 +137,7 @@ export function UserDetailModal({
             onSaveDetails={onSaveDetails}
             onSetActive={onSetActive}
             onRevokeSessions={onRevokeSessions}
+            currentAdminId={currentAdminId}
           />
 
           {isRejecting ? (

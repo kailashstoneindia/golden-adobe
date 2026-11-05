@@ -184,6 +184,29 @@ describe('AdminService user edits (integration)', () => {
       ).resolves.toMatchObject({ name: 'Same Phone' });
     });
 
+    it('keeps the customer profile name in step with the account name', async () => {
+      const user = await newUser();
+      await Customer.create({ userId: user.id, fullName: 'Old Name' } as never);
+
+      await admin.updateUser(user.id, ADMIN_ID, { name: 'New Name' });
+
+      const customer = await Customer.findOne({ where: { userId: user.id } });
+      expect(customer!.fullName).toBe('New Name');
+    });
+
+    it('answers 409, not 500, when the database catches a clash the pre-check missed', async () => {
+      const taken = await newUser();
+      const user = await newUser();
+      // Two admins racing: the pre-check saw the number free a moment ago.
+      jest
+        .spyOn(admin as unknown as { isTaken: () => Promise<boolean> }, 'isTaken')
+        .mockResolvedValue(false);
+
+      await expect(admin.updateUser(user.id, ADMIN_ID, { phone: taken.phone! })).rejects.toThrow(
+        ConflictException,
+      );
+    });
+
     it('404s for an unknown user', async () => {
       await expect(admin.updateUser(randomUUID(), ADMIN_ID, { name: 'X' })).rejects.toThrow(
         NotFoundException,
@@ -230,10 +253,31 @@ describe('AdminService user edits (integration)', () => {
 
     it('reactivating switches the account back on without restoring sessions', async () => {
       const user = await newUser({ isActive: false });
+      await sessions(user.id, true);
 
       const result = await admin.setUserActive(user.id, ADMIN_ID, true);
 
       expect(result).toMatchObject({ isActive: true, activeSessionCount: 0 });
+      expect(await revokedCount(user.id)).toBe(1);
+    });
+
+    it('refuses self-deactivation even when the id is written in upper case', async () => {
+      const self = await newUser({ role: Role.ADMIN });
+
+      await expect(admin.setUserActive(self.id.toUpperCase(), self.id, false)).rejects.toThrow(
+        BadRequestException,
+      );
+
+      expect((await User.findByPk(self.id))!.isActive).toBe(true);
+    });
+
+    it('changes nothing and logs nothing when the account is already in that state', async () => {
+      const user = await newUser();
+      const log = jest.spyOn(Logger.prototype, 'log');
+
+      await admin.setUserActive(user.id, ADMIN_ID, true);
+
+      expect(log).not.toHaveBeenCalled();
     });
 
     it('refuses to deactivate the admin’s own account', async () => {
