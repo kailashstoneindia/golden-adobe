@@ -5,6 +5,7 @@ import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Role, type AdminArtisanDto } from '@golden-abode/types';
 
+import { MemoryRouter } from 'react-router-dom';
 import { server } from '@/test/server';
 
 import { ArtisansPage } from './ArtisansPage';
@@ -61,13 +62,15 @@ function useHandlers() {
   );
 }
 
-function renderPage() {
+function renderPage(path = '/') {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   return render(
     <QueryClientProvider client={client}>
-      <ArtisansPage />
+      <MemoryRouter initialEntries={[path]}>
+        <ArtisansPage />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -247,5 +250,19 @@ describe('ArtisansPage document problems', () => {
     expect(await openWith({ documentLinks: 'signing_failed' })).toHaveTextContent(
       'Uploaded, but a link could not be made right now',
     );
+  });
+});
+
+// Decision 0058 Task 7: the user popup's "Open in Ustaads" link.
+describe('ArtisansPage opened for one ustaad', () => {
+  beforeEach(() => {
+    artisans = [artisan()];
+    useHandlers();
+  });
+
+  it('opens that ustaad’s popup', async () => {
+    renderPage(`/artisans?artisanId=${artisans[0].id}`);
+
+    expect(await screen.findByRole('dialog')).toHaveTextContent('mohan@example.com');
   });
 });

@@ -6,6 +6,7 @@ import { http, HttpResponse } from 'msw';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { ERROR_MESSAGES } from '@/constants/error.constants';
+import { MemoryRouter } from 'react-router-dom';
 import { server } from '@/test/server';
 
 import { OrdersPage } from './OrdersPage';
@@ -140,13 +141,15 @@ function useHandlers() {
   );
 }
 
-function renderPage() {
+function renderPage(path = '/') {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   return render(
     <QueryClientProvider client={client}>
-      <OrdersPage />
+      <MemoryRouter initialEntries={[path]}>
+        <OrdersPage />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -770,5 +773,49 @@ describe('OrdersPage full order facts', () => {
     const payment = screen.getByRole('group', { name: 'Payment' });
     expect(payment).not.toHaveTextContent('Not captured');
     expect(payment).toHaveTextContent('Not recorded (assumed ₹750)');
+  });
+});
+
+// Decision 0058 Task 7: the user popup links to one customer's orders.
+describe('OrdersPage for one customer', () => {
+  beforeEach(() => {
+    orders = [order({ id: 'o1', status: 'confirmed', grandTotal: 500 })];
+    refunds = {};
+    ordersListFetches = 0;
+  });
+
+  it('asks the server for that customer’s orders and offers the way back to all', async () => {
+    const urls: string[] = [];
+    server.use(
+      http.get(BASE, ({ request }) => {
+        urls.push(request.url);
+        return HttpResponse.json({ success: true, data: orders });
+      }),
+    );
+
+    renderPage('/orders?customerId=c-9');
+
+    expect(await screen.findByText(/Showing one customer’s orders/)).toBeInTheDocument();
+    expect(new URL(urls[0]).searchParams.get('customerId')).toBe('c-9');
+    expect(screen.getByRole('link', { name: 'Show all orders' })).toHaveAttribute(
+      'href',
+      '/orders',
+    );
+  });
+
+  it('asks for everyone’s orders without the filter', async () => {
+    const urls: string[] = [];
+    server.use(
+      http.get(BASE, ({ request }) => {
+        urls.push(request.url);
+        return HttpResponse.json({ success: true, data: orders });
+      }),
+    );
+
+    renderPage('/orders');
+
+    await screen.findByRole('row', { name: /Asha Rao/ });
+    expect(new URL(urls[0]).searchParams.has('customerId')).toBe(false);
+    expect(screen.queryByText(/Showing one customer’s orders/)).not.toBeInTheDocument();
   });
 });

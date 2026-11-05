@@ -3,7 +3,8 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
-import { Role, type UserDto } from '@golden-abode/types';
+import { Role, type AdminUserDetailDto, type AdminUserDto } from '@golden-abode/types';
+import { MemoryRouter } from 'react-router-dom';
 
 import { server } from '@/test/server';
 
@@ -15,7 +16,7 @@ const ustaad = {
   phone: '9876500000',
   email: null,
   role: Role.ARTISAN,
-  deviceToken: null,
+  pushEnabled: false,
   isActive: true,
   isApproved: false,
   onboardingCompleted: true,
@@ -24,7 +25,7 @@ const ustaad = {
   lastLoginAt: null,
   createdAt: '2026-11-01T00:00:00.000Z',
   updatedAt: '2026-11-01T00:00:00.000Z',
-} satisfies UserDto;
+} satisfies AdminUserDto;
 
 describe('UsersPage', () => {
   it('shows the server reason when approving an ustaad fails (decision 0058)', async () => {
@@ -49,7 +50,9 @@ describe('UsersPage', () => {
       <QueryClientProvider
         client={new QueryClient({ defaultOptions: { mutations: { retry: false } } })}
       >
-        <UsersPage />
+        <MemoryRouter>
+          <UsersPage />
+        </MemoryRouter>
       </QueryClientProvider>,
     );
     const user = userEvent.setup();
@@ -81,7 +84,9 @@ describe('UsersPage vendor rejection (decision 0058 F2)', () => {
     );
     render(
       <QueryClientProvider client={new QueryClient()}>
-        <UsersPage />
+        <MemoryRouter>
+          <UsersPage />
+        </MemoryRouter>
       </QueryClientProvider>,
     );
     const user = userEvent.setup();
@@ -92,5 +97,89 @@ describe('UsersPage vendor rejection (decision 0058 F2)', () => {
     await user.click(screen.getByRole('button', { name: 'Confirm reject' }));
 
     await waitFor(() => expect(bodies).toEqual([{ reason: 'GSTIN does not match' }]));
+  });
+});
+
+// Decision 0058 Task 7.
+describe('UsersPage list and popup', () => {
+  it('lists email, active and onboarding stage, and the popup shows the server’s detail', async () => {
+    const vendorUser = {
+      ...ustaad,
+      id: 'u-vendor',
+      name: 'Vikram Vendor',
+      role: Role.VENDOR,
+      email: 'vikram@example.com',
+      isActive: false,
+      onboardingStage: 'BANK_DETAILS' as const,
+    } satisfies AdminUserDto;
+    const detail: AdminUserDetailDto = {
+      ...vendorUser,
+      pushEnabled: true,
+      activeSessionCount: 3,
+      customerProfile: null,
+    };
+    server.use(
+      http.get('/api/admin/users', () =>
+        HttpResponse.json({
+          success: true,
+          data: { items: [vendorUser], total: 1, page: 1, limit: 20, totalPages: 1 },
+        }),
+      ),
+      http.get('/api/admin/users/:id', () => HttpResponse.json({ success: true, data: detail })),
+    );
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <UsersPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    const user = userEvent.setup();
+
+    const row = await screen.findByRole('row', { name: /Vikram Vendor/ });
+    expect(row).toHaveTextContent('vikram@example.com');
+    expect(row).toHaveTextContent('Deactivated');
+    expect(row).toHaveTextContent('Bank details');
+
+    await user.click(row);
+
+    expect(await screen.findByText('Signed-in devices')).toBeInTheDocument();
+    expect(screen.getByText('3')).toBeInTheDocument();
+  });
+
+  it('pages through users beyond the first page', async () => {
+    const pages: string[] = [];
+    server.use(
+      http.get('/api/admin/users', ({ request }) => {
+        const page = new URL(request.url).searchParams.get('page') ?? '1';
+        pages.push(page);
+        const name = page === '2' ? 'Second Page User' : 'First Page User';
+        return HttpResponse.json({
+          success: true,
+          data: {
+            items: [{ ...ustaad, id: `u-${page}`, name }],
+            total: 21,
+            page: Number(page),
+            limit: 20,
+            totalPages: 2,
+          },
+        });
+      }),
+    );
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <UsersPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    const user = userEvent.setup();
+
+    await screen.findByText('First Page User');
+    expect(screen.getByText('Page 1 of 2 (21 users)')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(await screen.findByText('Second Page User')).toBeInTheDocument();
+    expect(pages).toContain('2');
   });
 });

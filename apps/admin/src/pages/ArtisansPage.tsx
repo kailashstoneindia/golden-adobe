@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { isEmpty } from 'lodash';
 
 import { APP_CONSTANTS } from '@/constants/appConstants';
@@ -11,7 +12,11 @@ import styles from '@/styles/shared.module.css';
 import { formatDateTime } from '@/utils/date';
 
 export function ArtisansPage() {
-  const [selectedArtisanId, setSelectedArtisanId] = useState<string | null>(null);
+  // A user popup's "Open in Ustaads" link opens this page on that ustaad.
+  const [searchParams] = useSearchParams();
+  const [selectedArtisanId, setSelectedArtisanId] = useState<string | null>(
+    searchParams.get('artisanId'),
+  );
   const artisansQuery = useArtisansQuery({ page: 1, limit: APP_CONSTANTS.defaultPageSize });
   const detailQuery = useArtisanByIdQuery(selectedArtisanId);
 

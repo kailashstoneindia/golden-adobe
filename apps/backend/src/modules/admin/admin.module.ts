@@ -12,6 +12,8 @@ import { ArtisanAccountDetails } from '../artisans/models/artisan-account-detail
 import { ArtisanTeamMember } from '../artisans/models/artisan-team-member.model';
 import { ArtisanHireRequest } from '../artisans/models/artisan-hire-request.model';
 import { ArtisanCompletionEstimate } from '../artisans/models/artisan-completion-estimate.model';
+import { Customer } from '../customers/models/customer.model';
+import { CustomerAddress } from '../customers/models/customer-address.model';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 
@@ -26,6 +28,8 @@ import { AdminService } from './admin.service';
       ArtisanTeamMember,
       ArtisanHireRequest,
       ArtisanCompletionEstimate,
+      Customer,
+      CustomerAddress,
     ]),
     // AdminService delegates ustaad approve/reject to ArtisansService and reads
     // the awaiting-document count from UsersService (decision 0058).

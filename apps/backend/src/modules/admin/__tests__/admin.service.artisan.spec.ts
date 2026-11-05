@@ -8,6 +8,8 @@ import { Vendor } from '../../vendors/models/vendor.model';
 import { Artisan } from '../../artisans/models/artisan.model';
 import { ArtisanHireRequest } from '../../artisans/models/artisan-hire-request.model';
 import { AdminService } from '../admin.service';
+import { Customer } from '../../customers/models/customer.model';
+import { CustomerAddress } from '../../customers/models/customer-address.model';
 import { VendorsService } from '../../vendors/vendors.service';
 import { VendorAccountDetails } from '../../vendors/models/vendor-account-details.model';
 import { CityResolverService } from '../../catalog/city-resolver.service';
@@ -38,7 +40,7 @@ describe('AdminService artisan surfacing (integration)', () => {
           password: process.env.TEST_DB_PASS ?? 'postgres',
           database: process.env.TEST_DB_NAME ?? 'golden_abode_test',
           logging: false,
-          models: [...ARTISAN_TEST_MODELS, PincodeCityMap],
+          models: [...ARTISAN_TEST_MODELS, PincodeCityMap, Customer, CustomerAddress],
         }),
         SequelizeModule.forFeature([
           User,
@@ -50,6 +52,7 @@ describe('AdminService artisan surfacing (integration)', () => {
           ArtisanAccountDetails,
           ArtisanTeamMember,
           ArtisanHireRequest,
+          Customer,
         ]),
       ],
       providers: [

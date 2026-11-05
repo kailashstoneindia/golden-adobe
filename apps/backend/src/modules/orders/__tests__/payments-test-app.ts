@@ -112,6 +112,7 @@ export type PaymentsTestApp = {
   adminUserId: string;
   customerToken: string;
   customerUserId: string;
+  customerId: string;
   vendorToken: string;
   vendorUserId: string;
   seedPendingOrder: (opts?: { grandTotal?: string; quantity?: number }) => Promise<SeededOrder>;
@@ -316,6 +317,7 @@ export async function createPaymentsTestApp(): Promise<PaymentsTestApp> {
     adminUserId: admin.id,
     customerToken: jwt.sign({ sub: customerUser.id, role: Role.CUSTOMER }),
     customerUserId: customerUser.id,
+    customerId: customer.id,
     vendorToken: jwt.sign({ sub: vendorUser.id, role: Role.VENDOR }),
     vendorUserId: vendorUser.id,
     seedPendingOrder,

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import type { UserDto } from '@golden-abode/types';
+import type { AdminUserDto } from '@golden-abode/types';
 import { Role } from '@golden-abode/types';
 import { isEmpty } from 'lodash';
 
@@ -19,7 +19,7 @@ export function ApprovalsPage() {
   // Vendors only: ustaad approval happens on the verification page since
   // decision 0058 (Verify also sets users.is_approved).
 
-  const [selectedUser, setSelectedUser] = useState<UserDto | null>(null);
+  const [selectedUser, setSelectedUser] = useState<AdminUserDto | null>(null);
   const usersQuery = useAdminUsersQuery(getPendingQueryForRole(Role.VENDOR));
   const approveMutation = useApproveUserMutation();
   const rejectMutation = useRejectUserMutation();

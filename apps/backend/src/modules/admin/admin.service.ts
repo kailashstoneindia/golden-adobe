@@ -1,12 +1,14 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
-import { Includeable, Op, WhereOptions } from 'sequelize';
+import { Includeable, Op, QueryTypes, WhereOptions } from 'sequelize';
+import { Sequelize } from 'sequelize-typescript';
 import {
+  AdminCustomerProfileDto,
   AdminDashboardStats,
+  AdminUserDetailDto,
+  AdminUserDto,
   PaginatedUsersResponse,
   Role,
-  UserDto,
-  VENDOR_ONBOARDING_STAGES,
 } from '@golden-abode/types';
 
 import { User } from '../users/models/user.model';
@@ -17,8 +19,10 @@ import { Artisan } from '../artisans/models/artisan.model';
 import { ArtisanAccountDetails } from '../artisans/models/artisan-account-details.model';
 import { ArtisanTeamMember } from '../artisans/models/artisan-team-member.model';
 import { ArtisanHireRequest } from '../artisans/models/artisan-hire-request.model';
-import { formatTimestamp, toVendorProfileDto } from '../vendors/vendor-profile.mapper';
-import { toArtisanProfileDto } from '../artisans/artisan-profile.mapper';
+import { Customer } from '../customers/models/customer.model';
+import { CustomerAddress } from '../customers/models/customer-address.model';
+import { toCustomerAddressDto } from '../customers/customer-address.mapper';
+import { toAdminUserDto } from './admin-user.mapper';
 import { PENDING_VERIFICATION_WHERE } from '../artisans/artisans.service';
 import { ListUsersQueryDto } from './dto/list-users-query.dto';
 import { UsersService } from '../users/users.service';
@@ -49,6 +53,9 @@ export class AdminService {
     private readonly artisanModel: typeof Artisan,
     @InjectModel(ArtisanHireRequest)
     private readonly artisanHireRequestModel: typeof ArtisanHireRequest,
+    @InjectModel(Customer)
+    private readonly customerModel: typeof Customer,
+    private readonly sequelize: Sequelize,
     private readonly usersService: UsersService,
     private readonly artisansService: ArtisansService,
     private readonly vendorsService: VendorsService,
@@ -111,7 +118,7 @@ export class AdminService {
     });
 
     return {
-      items: rows.map((user) => this.toUserDto(user)),
+      items: rows.map(toAdminUserDto),
       total: count,
       page,
       limit,
@@ -119,18 +126,62 @@ export class AdminService {
     };
   }
 
-  async getUserById(userId: string): Promise<UserDto> {
+  async getUserById(userId: string): Promise<AdminUserDetailDto> {
     const user = await this.userModel.findByPk(userId, { include: this.userIncludes });
     if (!user) {
       throw new NotFoundException(`User ${userId} not found`);
     }
-    return this.toUserDto(user);
+    const [activeSessionCount, customerProfile] = await Promise.all([
+      this.countActiveSessions(userId),
+      this.customerProfile(userId),
+    ]);
+    return { ...toAdminUserDto(user), activeSessionCount, customerProfile };
+  }
+
+  // Devices still signed in: refresh tokens neither revoked nor expired.
+  private async countActiveSessions(userId: string): Promise<number> {
+    const [row] = await this.sequelize.query<{ n: string }>(
+      `SELECT count(*) AS n FROM refresh_tokens
+        WHERE user_id = :userId AND NOT is_revoked AND expires_at > now()`,
+      { replacements: { userId }, type: QueryTypes.SELECT },
+    );
+    return Number(row.n);
+  }
+
+  private async customerProfile(userId: string): Promise<AdminCustomerProfileDto | null> {
+    const customer = await this.customerModel.findOne({
+      where: { userId },
+      include: [CustomerAddress],
+    });
+    if (!customer) return null;
+    // Orders hang off the customer record; hire requests off the user.
+    const [totals] = await this.sequelize.query<{
+      order_count: string;
+      paid_paise: string;
+      hire_count: string;
+    }>(
+      `SELECT
+         (SELECT count(*) FROM orders WHERE customer_id = :customerId) AS order_count,
+         (SELECT coalesce(sum(captured_paise), 0) FROM orders WHERE customer_id = :customerId) AS paid_paise,
+         (SELECT count(*) FROM artisan_hire_requests WHERE customer_id = :userId) AS hire_count`,
+      { replacements: { customerId: customer.id, userId }, type: QueryTypes.SELECT },
+    );
+    return {
+      customerId: customer.id,
+      fullName: customer.fullName,
+      addresses: (customer.addresses ?? [])
+        .map(toCustomerAddressDto)
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
+      orderCount: Number(totals.order_count),
+      paidTotalPaise: Number(totals.paid_paise),
+      hireRequestCount: Number(totals.hire_count),
+    };
   }
 
   // Decision 0058 §3b: for an ustaad, approve/reject here run the same
   // Verify / Reject verification as the verification page, so
   // users.is_approved and artisans.is_verified never disagree.
-  async approveUser(userId: string, adminUserId: string): Promise<UserDto> {
+  async approveUser(userId: string, adminUserId: string): Promise<AdminUserDto> {
     const user = await this.findApprovalTarget(userId);
     if (user.role === Role.ARTISAN) {
       if (!user.artisanProfile) {
@@ -146,10 +197,10 @@ export class AdminService {
       await user.update({ isApproved: true });
       this.logger.log(`admin ${adminUserId} approve user ${userId} isApproved (${user.role})`);
     }
-    return this.toUserDto(await user.reload({ include: this.userIncludes }));
+    return toAdminUserDto(await user.reload({ include: this.userIncludes }));
   }
 
-  async rejectUser(userId: string, adminUserId: string, reason?: string): Promise<UserDto> {
+  async rejectUser(userId: string, adminUserId: string, reason?: string): Promise<AdminUserDto> {
     const user = await this.findApprovalTarget(userId);
     if (user.role === Role.ARTISAN && user.artisanProfile) {
       await this.artisansService.rejectVerification(user.artisanProfile.id, adminUserId, reason);
@@ -169,7 +220,7 @@ export class AdminService {
         }`,
       );
     }
-    return this.toUserDto(await user.reload({ include: this.userIncludes }));
+    return toAdminUserDto(await user.reload({ include: this.userIncludes }));
   }
 
   private buildListWhereClause(query: ListUsersQueryDto): WhereOptions<User> {
@@ -207,28 +258,5 @@ export class AdminService {
       throw new BadRequestException('Only vendors and artisans require approval');
     }
     return user;
-  }
-
-  private toUserDto(user: User): UserDto {
-    return {
-      id: user.id,
-      name: user.name,
-      phone: user.phone,
-      email: user.email,
-      role: user.role as Role,
-      deviceToken: user.deviceToken,
-      isActive: user.isActive,
-      isApproved: user.isApproved,
-      onboardingCompleted: user.onboardingCompleted ?? Boolean(user.vendorProfile),
-      onboardingCompletedAt: formatTimestamp(user.get('onboardingCompletedAt')) || null,
-      onboardingStage:
-        (user.onboardingStage as UserDto['onboardingStage']) ??
-        (user.vendorProfile ? VENDOR_ONBOARDING_STAGES.completed : null),
-      vendorProfile: toVendorProfileDto(user.vendorProfile),
-      artisan: user.artisanProfile ? toArtisanProfileDto(user.artisanProfile) : undefined,
-      lastLoginAt: formatTimestamp(user.get('lastLoginAt')) || null,
-      createdAt: formatTimestamp(user.get('createdAt')),
-      updatedAt: formatTimestamp(user.get('updatedAt')),
-    };
   }
 }

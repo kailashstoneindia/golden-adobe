@@ -1,5 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ListUsersQuery } from '@golden-abode/types';
+import { useMutation, useQuery, useQueryClient, type UseQueryOptions } from '@tanstack/react-query';
+import type { ListUsersQuery, PaginatedUsersResponse } from '@golden-abode/types';
 import { Role } from '@golden-abode/types';
 
 import { APP_CONSTANTS } from '@/constants/appConstants';
@@ -23,8 +23,12 @@ export function useAdminStatsQuery() {
   });
 }
 
-export function useAdminUsersQuery(query: ListUsersQuery) {
+export function useAdminUsersQuery(
+  query: ListUsersQuery,
+  options: Pick<UseQueryOptions<PaginatedUsersResponse>, 'placeholderData'> = {},
+) {
   return useQuery({
+    ...options,
     queryKey: ADMIN_QUERY_KEYS.users(query),
     queryFn: () => adminService.fetchUsers(query),
     staleTime: APP_CONSTANTS.staleTimeMs,

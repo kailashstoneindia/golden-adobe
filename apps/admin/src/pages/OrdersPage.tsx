@@ -6,11 +6,13 @@ import type {
 import { ORDER_STATUSES } from '@golden-abode/types';
 import { isEmpty } from 'lodash';
 import { useRef, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 
 import { ContactCell } from '@/components/common/ContactBlock';
 import { labelFor } from '@/constants/labels';
 import { OrderDetailModal } from '@/components/orders/OrderDetailModal';
 import { ERROR_MESSAGES } from '@/constants/error.constants';
+import { ROUTES } from '@/constants/routes';
 import {
   ORDER_STATUS_FILTER_OPTIONS,
   ORDER_STATUS_FILTERS,
@@ -47,7 +49,10 @@ export function OrdersPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [refundNotice, setRefundNotice] = useState<RefundNotice | null>(null);
   const [statusFilter, setStatusFilter] = useState<OrderStatusFilter>(ORDER_STATUS_FILTERS.ALL);
-  const ordersQuery = useOrdersQuery();
+  // Opened from a user popup: only that customer's orders (decision 0058 Task 7).
+  const [searchParams] = useSearchParams();
+  const customerId = searchParams.get('customerId');
+  const ordersQuery = useOrdersQuery(customerId);
   const refundMutation = useRefundOrderMutation();
   const cancelMutation = useCancelAdminOrderMutation();
   const overrideMutation = useOverrideVendorGroupStatusMutation();
@@ -150,6 +155,11 @@ export function OrdersPage() {
       <p className={styles.pageSubtitle}>
         Refund, cancel, and override fulfilment for customer orders.
       </p>
+      {customerId ? (
+        <p className={styles.pageSubtitle}>
+          Showing one customer’s orders. <Link to={ROUTES.orders}>Show all orders</Link>
+        </p>
+      ) : null}
 
       <label className={styles.label} htmlFor="order-status-filter">
         Status filter

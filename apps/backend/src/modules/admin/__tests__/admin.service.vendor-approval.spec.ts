@@ -20,6 +20,8 @@ import { Vendor } from '../../vendors/models/vendor.model';
 import { VendorAccountDetails } from '../../vendors/models/vendor-account-details.model';
 import { VendorsService } from '../../vendors/vendors.service';
 import { AdminService } from '../admin.service';
+import { Customer } from '../../customers/models/customer.model';
+import { CustomerAddress } from '../../customers/models/customer-address.model';
 
 // Follow-up F2 (decision 0058): the generic users-page approve/reject must
 // keep a vendor's two records in step (vendors.status and users.is_approved),
@@ -40,7 +42,7 @@ describe('AdminService vendor approval from the users page (integration)', () =>
           password: process.env.TEST_DB_PASS ?? 'postgres',
           database: process.env.TEST_DB_NAME ?? 'golden_abode_test',
           logging: false,
-          models: [...ARTISAN_TEST_MODELS, PincodeCityMap],
+          models: [...ARTISAN_TEST_MODELS, PincodeCityMap, Customer, CustomerAddress],
         }),
         SequelizeModule.forFeature([
           User,
@@ -52,6 +54,7 @@ describe('AdminService vendor approval from the users page (integration)', () =>
           ArtisanAccountDetails,
           ArtisanTeamMember,
           ArtisanHireRequest,
+          Customer,
         ]),
       ],
       providers: [

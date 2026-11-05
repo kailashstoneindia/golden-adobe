@@ -9,16 +9,16 @@ import { ordersService } from '@/services/api/ordersService';
 
 export const ORDERS_QUERY_KEYS = {
   all: ['orders'] as const,
-  list: ['orders', 'list'] as const,
+  list: (customerId: string | null) => ['orders', 'list', customerId ?? 'all'] as const,
   detail: (orderId: string) => ['orders', 'detail', orderId] as const,
   paymentEvents: (orderId: string) => ['orders', 'payment-events', orderId] as const,
   refunds: (orderId: string) => ['orders', 'refunds', orderId] as const,
 };
 
-export function useOrdersQuery() {
+export function useOrdersQuery(customerId: string | null = null) {
   return useQuery({
-    queryKey: ORDERS_QUERY_KEYS.list,
-    queryFn: () => ordersService.fetchOrders(),
+    queryKey: ORDERS_QUERY_KEYS.list(customerId),
+    queryFn: () => ordersService.fetchOrders(customerId),
     staleTime: APP_CONSTANTS.staleTimeMs,
   });
 }

@@ -5,6 +5,7 @@ import { http, HttpResponse } from 'msw';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Role, type AdminVendorDto, type AdminVendorListingDto } from '@golden-abode/types';
 
+import { MemoryRouter } from 'react-router-dom';
 import { server } from '@/test/server';
 
 import { VendorsPage } from './VendorsPage';
@@ -116,13 +117,15 @@ function useHandlers() {
   );
 }
 
-function renderPage() {
+function renderPage(path = '/') {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   return render(
     <QueryClientProvider client={client}>
-      <VendorsPage />
+      <MemoryRouter initialEntries={[path]}>
+        <VendorsPage />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -204,5 +207,22 @@ describe('VendorsPage', () => {
 
     await waitFor(() => expect(screen.getByRole('dialog')).toHaveTextContent('Approved'));
     expect(screen.getByRole('group', { name: 'Owner' })).toHaveTextContent('Vikram Singh');
+  });
+});
+
+// Decision 0058 Task 7: the user popup's "Open in Vendors" link.
+describe('VendorsPage opened for one vendor', () => {
+  beforeEach(() => {
+    vendors = [vendor()];
+    listingRequests = [];
+    useHandlers();
+  });
+
+  it('opens that vendor’s popup', async () => {
+    renderPage(`/vendors?vendorId=${VENDOR_ID}`);
+
+    expect(await screen.findByRole('group', { name: 'Owner' })).toHaveTextContent(
+      'vikram@example.com',
+    );
   });
 });

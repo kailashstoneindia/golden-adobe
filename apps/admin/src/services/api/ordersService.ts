@@ -11,8 +11,10 @@ import { API_ENDPOINTS } from '@/constants/apiEndpoints';
 import { getRequest, patchRequest, postRequestWithStatus } from '@/services/api/apiClient';
 
 export const ordersService = {
-  fetchOrders(): Promise<AdminOrderDto[]> {
-    return getRequest<AdminOrderDto[]>(API_ENDPOINTS.admin.orders);
+  // customerId: only that customer's orders (decision 0058 Task 7).
+  fetchOrders(customerId?: string | null): Promise<AdminOrderDto[]> {
+    const suffix = customerId ? `?customerId=${encodeURIComponent(customerId)}` : '';
+    return getRequest<AdminOrderDto[]>(`${API_ENDPOINTS.admin.orders}${suffix}`);
   },
 
   fetchOrder(orderId: string): Promise<AdminOrderDto> {

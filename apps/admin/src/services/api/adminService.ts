@@ -1,9 +1,10 @@
 import type {
   AdminDashboardStats,
   ListUsersQuery,
+  AdminUserDetailDto,
+  AdminUserDto,
   PaginatedUsersResponse,
   RejectUserRequest,
-  UserDto,
 } from '@golden-abode/types';
 
 import { API_ENDPOINTS } from '@/constants/apiEndpoints';
@@ -31,15 +32,20 @@ export const adminService = {
     return getRequest<PaginatedUsersResponse>(`${API_ENDPOINTS.admin.users}${suffix}`);
   },
 
-  fetchUserById(userId: string): Promise<UserDto> {
-    return getRequest<UserDto>(API_ENDPOINTS.admin.userById(userId));
+  fetchUserById(userId: string): Promise<AdminUserDetailDto> {
+    return getRequest<AdminUserDetailDto>(API_ENDPOINTS.admin.userById(userId));
   },
 
-  approveUser(userId: string): Promise<UserDto> {
-    return patchRequest<UserDto, Record<string, never>>(API_ENDPOINTS.admin.approveUser(userId));
+  approveUser(userId: string): Promise<AdminUserDto> {
+    return patchRequest<AdminUserDto, Record<string, never>>(
+      API_ENDPOINTS.admin.approveUser(userId),
+    );
   },
 
-  rejectUser(userId: string, body: RejectUserRequest): Promise<UserDto> {
-    return patchRequest<UserDto, RejectUserRequest>(API_ENDPOINTS.admin.rejectUser(userId), body);
+  rejectUser(userId: string, body: RejectUserRequest): Promise<AdminUserDto> {
+    return patchRequest<AdminUserDto, RejectUserRequest>(
+      API_ENDPOINTS.admin.rejectUser(userId),
+      body,
+    );
   },
 };

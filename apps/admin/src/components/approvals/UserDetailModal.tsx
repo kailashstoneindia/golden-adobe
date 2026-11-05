@@ -1,14 +1,28 @@
 import { useState, type ReactNode } from 'react';
-import type { UserDto, VendorAccountDetailsDto, VendorProfileDto } from '@golden-abode/types';
+import type {
+  AdminCustomerProfileDto,
+  AdminUserDetailDto,
+  AdminUserDto,
+  CustomerAddressDto,
+  VendorAccountDetailsDto,
+  VendorProfileDto,
+} from '@golden-abode/types';
 import { Role } from '@golden-abode/types';
 
+import { Link } from 'react-router-dom';
+
 import styles from '@/styles/shared.module.css';
+import { CopyableId } from '@/components/common/CopyButton';
+import { ROUTES } from '@/constants/routes';
+import { formatPaise } from '@/utils/money';
+import { formatOnboardingStage } from '@/utils/onboarding';
 import { formatRoleLabel } from '@/utils/role';
 import { formatPhoneDisplay } from '@/utils/phone';
 import { formatDateTime } from '@/utils/date';
 
 type UserDetailModalProps = {
-  user: UserDto;
+  // The list row, or the full detail once it has loaded (decision 0058 Task 7).
+  user: AdminUserDto | AdminUserDetailDto;
   isSubmitting: boolean;
   showApprovalActions?: boolean;
   // Vendor rejections require a persisted reason (decision 0048) — when
@@ -61,6 +75,7 @@ export function UserDetailModal({
         <div className={styles.modalBody}>
           <DetailRow label="Role" value={formatRoleLabel(user.role)} />
           <DetailRow label="Phone" value={formatPhoneDisplay(user.phone)} />
+          <DetailRow label="Email" value={user.email ?? '-'} />
           <DetailRow label="Status" value={user.isApproved ? 'Approved' : 'Pending approval'} />
           <DetailRow label="Active" value={user.isActive ? 'Yes' : 'No'} />
           <DetailRow label="Onboarding completed" value={user.onboardingCompleted ? 'Yes' : 'No'} />
@@ -74,6 +89,27 @@ export function UserDetailModal({
             label="Last login"
             value={user.lastLoginAt ? formatDateTime(user.lastLoginAt) : 'Never'}
           />
+          <DetailRow label="Push notifications" value={user.pushEnabled ? 'On' : 'Off'} />
+          {'activeSessionCount' in user ? (
+            <DetailRow label="Signed-in devices" value={String(user.activeSessionCount)} />
+          ) : null}
+          <DetailRow label="User id" value={<CopyableId value={user.id} label="user id" />} />
+          {user.role === Role.VENDOR && user.vendorProfile ? (
+            <p>
+              <Link to={`${ROUTES.vendors}?vendorId=${user.vendorProfile.id}`}>
+                Open in Vendors
+              </Link>
+            </p>
+          ) : null}
+          {user.role === Role.ARTISAN && user.artisan ? (
+            <p>
+              <Link to={`${ROUTES.artisans}?artisanId=${user.artisan.id}`}>Open in Ustaads</Link>
+            </p>
+          ) : null}
+
+          {'customerProfile' in user && user.customerProfile ? (
+            <CustomerSection profile={user.customerProfile} />
+          ) : null}
 
           {vendorProfile ? <VendorProfileSections profile={vendorProfile} /> : null}
 
@@ -149,6 +185,44 @@ export function UserDetailModal({
       </div>
     </div>
   );
+}
+
+function CustomerSection({ profile }: { profile: AdminCustomerProfileDto }) {
+  return (
+    <section role="group" aria-label="Customer" className={styles.detailSections}>
+      <h3 className={styles.sectionTitle}>Customer</h3>
+      <DetailRow label="Full name" value={profile.fullName} />
+      <DetailRow
+        label="Orders"
+        value={
+          <Link to={`${ROUTES.orders}?customerId=${profile.customerId}`}>
+            {profile.orderCount} {profile.orderCount === 1 ? 'order' : 'orders'}
+          </Link>
+        }
+      />
+      <DetailRow
+        label="Paid in total (before refunds)"
+        value={formatPaise(profile.paidTotalPaise)}
+      />
+      <DetailRow label="Hire requests" value={String(profile.hireRequestCount)} />
+      {profile.addresses.length === 0 ? (
+        <p className={styles.sectionEmpty}>No saved addresses.</p>
+      ) : (
+        profile.addresses.map((address) => (
+          <DetailRow
+            key={address.id}
+            label={`${address.label}${address.isDefault ? ' (default)' : ''}`}
+            value={formatAddress(address)}
+          />
+        ))
+      )}
+    </section>
+  );
+}
+
+function formatAddress(address: CustomerAddressDto): string {
+  const lines = [address.addressLine1, address.addressLine2].filter(Boolean).join(', ');
+  return `${lines}, ${address.city} ${address.pincode}`;
 }
 
 type VendorProfileSectionsProps = {
@@ -228,7 +302,7 @@ function CollapsibleSection({ title, defaultOpen = false, children }: Collapsibl
 
 type DetailRowProps = {
   label: string;
-  value: string;
+  value: ReactNode;
 };
 
 function DetailRow({ label, value }: DetailRowProps) {
@@ -242,29 +316,4 @@ function DetailRow({ label, value }: DetailRowProps) {
 
 function formatLocation(latitude: number, longitude: number): string {
   return `${latitude}, ${longitude}`;
-}
-
-function formatOnboardingStage(user: UserDto): string {
-  if (user.role !== Role.VENDOR) {
-    return '-';
-  }
-
-  if (!user.onboardingStage) {
-    return '-';
-  }
-
-  if (user.onboardingStage === 'BASIC_DETAILS') {
-    return 'Basic details';
-  }
-  if (user.onboardingStage === 'SHOP_DETAILS') {
-    return 'Shop details';
-  }
-  if (user.onboardingStage === 'BANK_DETAILS') {
-    return 'Bank details';
-  }
-  if (user.onboardingStage === 'COMPLETED') {
-    return 'Completed';
-  }
-
-  return user.onboardingStage;
 }

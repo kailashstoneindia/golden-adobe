@@ -398,8 +398,9 @@ export class OrdersService {
     return this.getForVendor(vendorId, groupId);
   }
 
-  async listForAdmin(): Promise<AdminOrderDto[]> {
+  async listForAdmin(customerId?: string): Promise<AdminOrderDto[]> {
     const orders = await this.orderModel.findAll({
+      where: customerId ? { customerId } : {},
       include: ADMIN_ORDER_DISPLAY_INCLUDE,
       order: [['createdAt', 'DESC']],
     });

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { isEmpty } from 'lodash';
 
 import { VendorDetailModal } from '@/components/vendors/VendorDetailModal';
@@ -22,7 +23,11 @@ import { formatDateTime } from '@/utils/date';
 export function VendorsPage() {
   // The id only: the popup always shows the latest list entry, so action
   // replies (the plain vendor profile) never replace the admin view.
-  const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
+  // A user popup's "Open in Vendors" link opens this page on that vendor.
+  const [searchParams] = useSearchParams();
+  const [selectedVendorId, setSelectedVendorId] = useState<string | null>(
+    searchParams.get('vendorId'),
+  );
   const [actionError, setActionError] = useState<string | null>(null);
 
   const vendorsQuery = useVendorsQuery();

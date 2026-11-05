@@ -7,7 +7,12 @@ import type {
   ArtisanTeamMemberDto,
   TradeType,
 } from './artisan.types';
-import type { OrderDto, OrderVendorGroupDto, RefundDto } from './order.types';
+import type {
+  CustomerAddressDto,
+  OrderDto,
+  OrderVendorGroupDto,
+  RefundDto,
+} from './order.types';
 import type { VendorProfileDto } from './vendor.types';
 
 export type AdminDashboardStats = {
@@ -31,7 +36,36 @@ export type ListUsersQuery = {
   limit?: number;
 };
 
-export type PaginatedUsersResponse = PaginatedResponse<UserDto>;
+/**
+ * A user as the admin lists them (decision 0058 Task 7). The device token is
+ * a push credential, not something to read: the admin sees only whether push
+ * is on.
+ */
+export type AdminUserDto = Omit<UserDto, 'deviceToken'> & {
+  pushEnabled: boolean;
+};
+
+export type AdminCustomerProfileDto = {
+  customerId: string;
+  fullName: string;
+  /** Oldest first. */
+  addresses: CustomerAddressDto[];
+  /** Every order, whatever its status. */
+  orderCount: number;
+  /** What Razorpay captured across all orders, before any refunds. */
+  paidTotalPaise: number;
+  hireRequestCount: number;
+};
+
+/** One user in the admin popup. */
+export type AdminUserDetailDto = AdminUserDto & {
+  /** Refresh tokens neither revoked nor expired: devices still signed in. */
+  activeSessionCount: number;
+  /** Null for anyone who has never set up a customer profile. */
+  customerProfile: AdminCustomerProfileDto | null;
+};
+
+export type PaginatedUsersResponse = PaginatedResponse<AdminUserDto>;
 
 export type RejectUserRequest = {
   reason?: string;
@@ -39,7 +73,7 @@ export type RejectUserRequest = {
 
 export type AdminActionResponse = {
   message: string;
-  user: UserDto;
+  user: AdminUserDto;
 };
 
 // ─── Admin-only views (decision 0058) ────────────────────────────────────
