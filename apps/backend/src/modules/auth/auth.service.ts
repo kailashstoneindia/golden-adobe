@@ -148,6 +148,11 @@ export class AuthService {
     const existingUser = await this.usersService.findByPhone(phone);
 
     if (existingUser) {
+      // Decision 0058 Task 9: an admin switched this account off. The OTP was
+      // right, but no tokens are issued (they would be refused on first use).
+      if (!existingUser.isActive) {
+        throw new UnauthorizedException('Account is deactivated');
+      }
       // Existing user → generate tokens and return login response
       const tokens = await this.generateTokenPair(existingUser);
       await this.usersService.recordLogin(existingUser.id);

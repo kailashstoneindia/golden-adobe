@@ -1,5 +1,9 @@
 import { useMutation, useQuery, useQueryClient, type UseQueryOptions } from '@tanstack/react-query';
-import type { ListUsersQuery, PaginatedUsersResponse } from '@golden-abode/types';
+import type {
+  ListUsersQuery,
+  PaginatedUsersResponse,
+  UpdateAdminUserRequest,
+} from '@golden-abode/types';
 import { Role } from '@golden-abode/types';
 
 import { APP_CONSTANTS } from '@/constants/appConstants';
@@ -102,4 +106,32 @@ export function getPendingQueryForRole(role: Role): ListUsersQuery {
     page: 1,
     limit: APP_CONSTANTS.defaultPageSize,
   };
+}
+
+// Decision 0058 Task 9. Each reply is the refreshed detail; invalidating
+// ['admin'] reloads the list and the open popup.
+export function useUpdateUserMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (options: { userId: string; body: UpdateAdminUserRequest }) =>
+      adminService.updateUser(options.userId, options.body),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin'] }),
+  });
+}
+
+export function useSetUserActiveMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (options: { userId: string; isActive: boolean }) =>
+      adminService.setUserActive(options.userId, options.isActive),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin'] }),
+  });
+}
+
+export function useRevokeUserSessionsMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: string) => adminService.revokeUserSessions(userId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin'] }),
+  });
 }

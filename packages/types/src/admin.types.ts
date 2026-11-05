@@ -71,6 +71,17 @@ export type RejectUserRequest = {
   reason?: string;
 };
 
+/** Decision 0058 Task 9: the only user fields an admin may edit. */
+export type UpdateAdminUserRequest = {
+  name?: string;
+  email?: string;
+  phone?: string;
+};
+
+export type SetUserActiveRequest = {
+  isActive: boolean;
+};
+
 export type AdminActionResponse = {
   message: string;
   user: AdminUserDto;

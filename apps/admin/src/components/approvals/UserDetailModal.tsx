@@ -4,6 +4,7 @@ import type {
   AdminUserDetailDto,
   AdminUserDto,
   CustomerAddressDto,
+  UpdateAdminUserRequest,
   VendorAccountDetailsDto,
   VendorProfileDto,
 } from '@golden-abode/types';
@@ -19,6 +20,7 @@ import { formatOnboardingStage } from '@/utils/onboarding';
 import { formatRoleLabel } from '@/utils/role';
 import { formatPhoneDisplay } from '@/utils/phone';
 import { formatDateTime } from '@/utils/date';
+import { UserAccountActions } from '@/components/approvals/UserAccountActions';
 
 type UserDetailModalProps = {
   // The list row, or the full detail once it has loaded (decision 0058 Task 7).
@@ -38,6 +40,11 @@ type UserDetailModalProps = {
   onClose: () => void;
   onApprove?: (userId: string) => void;
   onReject?: (userId: string, reason?: string) => void;
+  // Decision 0058 Task 9: given only by the Users page. Each rejects with the
+  // server's reason, which the popup shows.
+  onSaveDetails?: (userId: string, body: UpdateAdminUserRequest) => Promise<void>;
+  onSetActive?: (userId: string, isActive: boolean) => Promise<void>;
+  onRevokeSessions?: (userId: string) => Promise<void>;
 };
 
 export function UserDetailModal({
@@ -50,6 +57,9 @@ export function UserDetailModal({
   onClose,
   onApprove,
   onReject,
+  onSaveDetails,
+  onSetActive,
+  onRevokeSessions,
 }: UserDetailModalProps) {
   const [rejectReason, setRejectReason] = useState('');
   const [isRejecting, setIsRejecting] = useState(false);
@@ -118,6 +128,13 @@ export function UserDetailModal({
           ) : null}
 
           {vendorProfile ? <VendorProfileSections profile={vendorProfile} /> : null}
+
+          <UserAccountActions
+            user={user}
+            onSaveDetails={onSaveDetails}
+            onSetActive={onSetActive}
+            onRevokeSessions={onRevokeSessions}
+          />
 
           {isRejecting ? (
             <div className={styles.detailSections}>

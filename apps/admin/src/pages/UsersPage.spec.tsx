@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { Role, type AdminUserDetailDto, type AdminUserDto } from '@golden-abode/types';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -225,5 +225,127 @@ describe('UsersPage popup while the detail is not there', () => {
     expect(
       await screen.findByText('Could not load sessions and customer details.'),
     ).toBeInTheDocument();
+  });
+});
+
+// Decision 0058 Task 9: edit and save updates the popup and the list.
+describe('UsersPage edits', () => {
+  let stored: AdminUserDetailDto;
+  const requests: { method: string; url: string; body: unknown }[] = [];
+
+  beforeEach(() => {
+    requests.length = 0;
+    stored = {
+      ...ustaad,
+      id: 'u-edit',
+      name: 'Asha Rao',
+      role: Role.CUSTOMER,
+      email: 'asha@example.com',
+      phone: '+919876543210',
+      isActive: true,
+      isApproved: true,
+      pushEnabled: true,
+      activeSessionCount: 2,
+      customerProfile: null,
+    };
+    server.use(
+      http.get('/api/admin/users', () =>
+        HttpResponse.json({
+          success: true,
+          data: { items: [stored], total: 1, page: 1, limit: 20, totalPages: 1 },
+        }),
+      ),
+      http.get('/api/admin/users/:id', () => HttpResponse.json({ success: true, data: stored })),
+      http.patch('/api/admin/users/:id', async ({ request }) => {
+        const body = (await request.json()) as Record<string, string>;
+        requests.push({ method: 'PATCH', url: request.url, body });
+        if (body.phone === '+919000000001') {
+          return HttpResponse.json(
+            { success: false, message: 'This phone number is already used by another account' },
+            { status: 409 },
+          );
+        }
+        stored = { ...stored, ...body };
+        return HttpResponse.json({ success: true, data: stored });
+      }),
+      http.patch('/api/admin/users/:id/active', async ({ request }) => {
+        const body = (await request.json()) as { isActive: boolean };
+        requests.push({ method: 'PATCH', url: request.url, body });
+        stored = { ...stored, isActive: body.isActive, activeSessionCount: 0 };
+        return HttpResponse.json({ success: true, data: stored });
+      }),
+      http.post('/api/admin/users/:id/revoke-sessions', async ({ request }) => {
+        requests.push({ method: 'POST', url: request.url, body: null });
+        stored = { ...stored, activeSessionCount: 0 };
+        return HttpResponse.json({ success: true, data: stored });
+      }),
+    );
+  });
+
+  function renderUsers() {
+    render(
+      <QueryClientProvider
+        client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+      >
+        <MemoryRouter>
+          <UsersPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    return userEvent.setup();
+  }
+
+  it('saves a corrected name and shows it in the popup and the list', async () => {
+    const user = renderUsers();
+
+    await user.click(await screen.findByRole('row', { name: /Asha Rao/ }));
+    await user.click(await screen.findByRole('button', { name: 'Edit details' }));
+    await user.clear(screen.getByLabelText('Name'));
+    await user.type(screen.getByLabelText('Name'), 'Asha R. Rao');
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    expect(await screen.findByRole('row', { name: /Asha R\. Rao/ })).toBeInTheDocument();
+    expect(requests[0].body).toEqual({ name: 'Asha R. Rao' });
+    expect(screen.getByRole('dialog')).toHaveTextContent('Asha R. Rao');
+    expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeInTheDocument();
+  });
+
+  it('shows the server’s reason when the phone belongs to someone else', async () => {
+    const user = renderUsers();
+
+    await user.click(await screen.findByRole('row', { name: /Asha Rao/ }));
+    await user.click(await screen.findByRole('button', { name: 'Edit details' }));
+    await user.clear(screen.getByLabelText('Phone'));
+    await user.type(screen.getByLabelText('Phone'), '+919000000001');
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    expect(
+      await screen.findByText('This phone number is already used by another account'),
+    ).toBeInTheDocument();
+  });
+
+  it('deactivates after a confirm, and the popup then offers to reactivate', async () => {
+    const user = renderUsers();
+
+    await user.click(await screen.findByRole('row', { name: /Asha Rao/ }));
+    await user.click(await screen.findByRole('button', { name: 'Deactivate account' }));
+    await user.click(screen.getByRole('button', { name: 'Confirm deactivate' }));
+
+    expect(await screen.findByRole('button', { name: 'Reactivate account' })).toBeInTheDocument();
+    expect(requests[0]).toMatchObject({ method: 'PATCH', body: { isActive: false } });
+    expect(screen.getByRole('row', { name: /Asha Rao/ })).toHaveTextContent('Deactivated');
+  });
+
+  it('signs out everywhere and the device count drops to zero', async () => {
+    const user = renderUsers();
+
+    await user.click(await screen.findByRole('row', { name: /Asha Rao/ }));
+    await user.click(await screen.findByRole('button', { name: 'Sign out everywhere' }));
+    await user.click(screen.getByRole('button', { name: 'Confirm sign out' }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Sign out everywhere' })).toBeDisabled(),
+    );
+    expect(requests[0].method).toBe('POST');
   });
 });

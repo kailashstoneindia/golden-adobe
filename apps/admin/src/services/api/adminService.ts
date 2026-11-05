@@ -5,10 +5,12 @@ import type {
   AdminUserDto,
   PaginatedUsersResponse,
   RejectUserRequest,
+  SetUserActiveRequest,
+  UpdateAdminUserRequest,
 } from '@golden-abode/types';
 
 import { API_ENDPOINTS } from '@/constants/apiEndpoints';
-import { getRequest, patchRequest } from '@/services/api/apiClient';
+import { getRequest, patchRequest, postRequest } from '@/services/api/apiClient';
 
 function buildUsersQueryString(query: ListUsersQuery): string {
   const params = new URLSearchParams();
@@ -39,6 +41,28 @@ export const adminService = {
   approveUser(userId: string): Promise<AdminUserDto> {
     return patchRequest<AdminUserDto, Record<string, never>>(
       API_ENDPOINTS.admin.approveUser(userId),
+    );
+  },
+
+  // Decision 0058 Task 9. Each answers with the refreshed admin detail.
+  updateUser(userId: string, body: UpdateAdminUserRequest): Promise<AdminUserDetailDto> {
+    return patchRequest<AdminUserDetailDto, UpdateAdminUserRequest>(
+      API_ENDPOINTS.admin.userById(userId),
+      body,
+    );
+  },
+
+  setUserActive(userId: string, isActive: boolean): Promise<AdminUserDetailDto> {
+    return patchRequest<AdminUserDetailDto, SetUserActiveRequest>(
+      API_ENDPOINTS.admin.userActive(userId),
+      { isActive },
+    );
+  },
+
+  revokeUserSessions(userId: string): Promise<AdminUserDetailDto> {
+    return postRequest<AdminUserDetailDto, Record<string, never>>(
+      API_ENDPOINTS.admin.userRevokeSessions(userId),
+      {},
     );
   },
 

@@ -12,6 +12,8 @@ export const API_ENDPOINTS = {
     userById: (userId: string) => `/admin/users/${userId}`,
     approveUser: (userId: string) => `/admin/users/${userId}/approve`,
     rejectUser: (userId: string) => `/admin/users/${userId}/reject`,
+    userActive: (userId: string) => `/admin/users/${userId}/active`,
+    userRevokeSessions: (userId: string) => `/admin/users/${userId}/revoke-sessions`,
     vendors: '/admin/vendors',
     vendorById: (vendorId: string) => `/admin/vendors/${vendorId}`,
     vendorCity: (vendorId: string) => `/admin/vendors/${vendorId}/city`,

@@ -8,6 +8,9 @@ export {
   useAdminUserQuery,
   useAdminUsersQuery,
   useApproveUserMutation,
+  useRevokeUserSessionsMutation,
+  useSetUserActiveMutation,
+  useUpdateUserMutation,
   useMeQuery,
   useRejectUserMutation,
 } from './useAdminQueries';

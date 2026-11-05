@@ -1,6 +1,19 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
-import { Includeable, Op, QueryTypes, WhereOptions } from 'sequelize';
+import {
+  Includeable,
+  Op,
+  QueryTypes,
+  Transaction,
+  UniqueConstraintError,
+  WhereOptions,
+} from 'sequelize';
 import { Sequelize } from 'sequelize-typescript';
 import {
   AdminCustomerProfileDto,
@@ -25,6 +38,7 @@ import { toCustomerAddressDto } from '../customers/customer-address.mapper';
 import { toAdminUserDto } from './admin-user.mapper';
 import { PENDING_VERIFICATION_WHERE } from '../artisans/artisans.service';
 import { ListUsersQueryDto } from './dto/list-users-query.dto';
+import { UpdateAdminUserDto } from './dto/update-admin-user.dto';
 import { UsersService } from '../users/users.service';
 import { ArtisansService } from '../artisans/artisans.service';
 import { VendorsService } from '../vendors/vendors.service';
@@ -176,6 +190,111 @@ export class AdminService {
       paidTotalPaise: Number(totals.paid_paise),
       hireRequestCount: Number(totals.hire_count),
     };
+  }
+
+  // Decision 0058 Task 9: fix a user's name, email or phone. Only fields that
+  // actually change are written and logged.
+  async updateUser(
+    userId: string,
+    adminUserId: string,
+    dto: UpdateAdminUserDto,
+  ): Promise<AdminUserDetailDto> {
+    const user = await this.userModel.findByPk(userId);
+    if (!user) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
+
+    const changes: { name?: string; email?: string; phone?: string } = {};
+    if (dto.name !== undefined && dto.name.trim() !== user.name) {
+      changes.name = dto.name.trim();
+    }
+    if (dto.email !== undefined) {
+      const email = dto.email.trim().toLowerCase();
+      if (email !== user.email) changes.email = email;
+    }
+    if (dto.phone !== undefined && dto.phone !== user.phone) {
+      changes.phone = dto.phone;
+    }
+    const fields = Object.keys(changes);
+    if (fields.length === 0) {
+      return this.getUserById(userId);
+    }
+
+    if (changes.phone && (await this.isTaken('phone', changes.phone, userId))) {
+      throw new ConflictException('This phone number is already used by another account');
+    }
+    if (changes.email && (await this.isTaken('email', changes.email, userId))) {
+      throw new ConflictException('This email is already used by another account');
+    }
+    try {
+      await user.update(changes);
+    } catch (error) {
+      // Two admins racing for the same number: the database has the last word.
+      if (error instanceof UniqueConstraintError) {
+        throw new ConflictException(
+          'That phone number or email is already used by another account',
+        );
+      }
+      throw error;
+    }
+    this.logger.log(`admin ${adminUserId} update user ${userId} ${fields.join(',')}`);
+    return this.getUserById(userId);
+  }
+
+  // Deactivating also signs the user out everywhere, so a stolen or lost phone
+  // stops working at once. Reactivating does not bring old sessions back.
+  async setUserActive(
+    userId: string,
+    adminUserId: string,
+    isActive: boolean,
+  ): Promise<AdminUserDetailDto> {
+    if (!isActive && userId === adminUserId) {
+      throw new BadRequestException('You cannot deactivate your own account');
+    }
+    const user = await this.userModel.findByPk(userId);
+    if (!user) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
+    await this.sequelize.transaction(async (transaction) => {
+      await user.update({ isActive }, { transaction });
+      if (!isActive) {
+        await this.revokeSessions(userId, transaction);
+      }
+    });
+    this.logger.log(
+      `admin ${adminUserId} ${isActive ? 'reactivate' : 'deactivate'} user ${userId} ${
+        isActive ? 'isActive' : 'isActive,sessions'
+      }`,
+    );
+    return this.getUserById(userId);
+  }
+
+  // Refresh tokens stop working at once; an access token already issued lasts
+  // until it expires (minutes) unless the account is deactivated too.
+  async revokeUserSessions(userId: string, adminUserId: string): Promise<AdminUserDetailDto> {
+    const user = await this.userModel.findByPk(userId);
+    if (!user) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
+    await this.revokeSessions(userId);
+    this.logger.log(`admin ${adminUserId} revoke-sessions user ${userId} sessions`);
+    return this.getUserById(userId);
+  }
+
+  private async revokeSessions(userId: string, transaction?: Transaction): Promise<void> {
+    await this.sequelize.query(
+      `UPDATE refresh_tokens SET is_revoked = true, updated_at = now()
+        WHERE user_id = :userId AND NOT is_revoked`,
+      { replacements: { userId }, type: QueryTypes.UPDATE, transaction },
+    );
+  }
+
+  private async isTaken(field: 'phone' | 'email', value: string, exceptUserId: string) {
+    const other = await this.userModel.findOne({
+      where: { [field]: value, id: { [Op.ne]: exceptUserId } },
+      attributes: ['id'],
+    });
+    return other !== null;
   }
 
   // Decision 0058 §3b: for an ustaad, approve/reject here run the same

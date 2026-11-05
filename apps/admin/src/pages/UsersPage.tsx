@@ -11,6 +11,9 @@ import {
   useAdminUsersQuery,
   useApproveUserMutation,
   useRejectUserMutation,
+  useRevokeUserSessionsMutation,
+  useSetUserActiveMutation,
+  useUpdateUserMutation,
 } from '@/queries';
 import styles from '@/styles/shared.module.css';
 import { formatPhoneDisplay } from '@/utils/phone';
@@ -30,6 +33,11 @@ export function UsersPage() {
   const detailQuery = useAdminUserQuery(selectedUserId);
   const approveMutation = useApproveUserMutation();
   const rejectMutation = useRejectUserMutation();
+  // Decision 0058 Task 9. The popup shows a refusal (409 phone taken, 400 own
+  // account) itself, so these just pass the rejection on.
+  const updateMutation = useUpdateUserMutation();
+  const activeMutation = useSetUserActiveMutation();
+  const revokeMutation = useRevokeUserSessionsMutation();
 
   const users = useMemo(() => usersQuery.data?.items ?? [], [usersQuery.data?.items]);
   const selectedUser = detailQuery.data ?? users.find((user) => user.id === selectedUserId) ?? null;
@@ -153,6 +161,15 @@ export function UsersPage() {
           onClose={closeModal}
           onApprove={handleApprove}
           onReject={handleReject}
+          onSaveDetails={async (userId, body) => {
+            await updateMutation.mutateAsync({ userId, body });
+          }}
+          onSetActive={async (userId, isActive) => {
+            await activeMutation.mutateAsync({ userId, isActive });
+          }}
+          onRevokeSessions={async (userId) => {
+            await revokeMutation.mutateAsync(userId);
+          }}
         />
       ) : null}
     </section>
