@@ -63,40 +63,44 @@ export function ArtisanEditors({ artisan }: { artisan: AdminArtisanDto }) {
 function ProfileForm({ artisan, onDone }: { artisan: AdminArtisanDto; onDone: () => void }) {
   const mutation = useUpdateArtisanProfileMutation();
   const [error, setError] = useState<string | null>(null);
+  // What the form was opened with. Changes are worked out against this, not
+  // against the live record: the popup refreshes in the background, and an
+  // untouched field must not overwrite a change made elsewhere meanwhile.
+  const [base] = useState(artisan);
   const [draft, setDraft] = useState({
-    tradeType: artisan.tradeType,
-    experienceYears: artisan.experienceYears == null ? '' : String(artisan.experienceYears),
-    servicePincode: artisan.servicePincode ?? '',
-    bio: artisan.bio ?? '',
-    isAvailable: artisan.isAvailable,
+    tradeType: base.tradeType,
+    experienceYears: base.experienceYears == null ? '' : String(base.experienceYears),
+    servicePincode: base.servicePincode ?? '',
+    bio: base.bio ?? '',
+    isAvailable: base.isAvailable,
   });
 
   // Only what the admin changed goes to the server. The server cannot clear a
   // bio, pincode or experience, so a blank box means "leave it".
   const changes: UpdateArtisanProfileDto = {};
-  if (draft.tradeType !== artisan.tradeType) changes.tradeType = draft.tradeType;
+  if (draft.tradeType !== base.tradeType) changes.tradeType = draft.tradeType;
   const experience = Number(draft.experienceYears);
   const experienceIsValid =
     draft.experienceYears.trim() === '' || (Number.isInteger(experience) && experience >= 0);
   if (
     draft.experienceYears.trim() !== '' &&
     experienceIsValid &&
-    experience !== artisan.experienceYears
+    experience !== base.experienceYears
   ) {
     changes.experienceYears = experience;
   }
   const pincode = draft.servicePincode.trim();
-  if (pincode !== '' && pincode !== (artisan.servicePincode ?? '')) {
+  if (pincode !== '' && pincode !== (base.servicePincode ?? '')) {
     changes.servicePincode = pincode;
   }
   const bio = draft.bio.trim();
-  if (bio !== '' && bio !== (artisan.bio ?? '')) changes.bio = bio;
-  if (draft.isAvailable !== artisan.isAvailable) changes.isAvailable = draft.isAvailable;
+  if (bio !== '' && bio !== (base.bio ?? '')) changes.bio = bio;
+  if (draft.isAvailable !== base.isAvailable) changes.isAvailable = draft.isAvailable;
 
   const clearedSomething =
-    (pincode === '' && !!artisan.servicePincode) ||
-    (bio === '' && !!artisan.bio) ||
-    (draft.experienceYears.trim() === '' && artisan.experienceYears != null);
+    (pincode === '' && !!base.servicePincode) ||
+    (bio === '' && !!base.bio) ||
+    (draft.experienceYears.trim() === '' && base.experienceYears != null);
   const busy = mutation.isPending;
   const canSave = Object.keys(changes).length > 0 && experienceIsValid && !busy;
 
@@ -140,6 +144,7 @@ function ProfileForm({ artisan, onDone }: { artisan: AdminArtisanDto; onDone: ()
         disabled={busy}
         onChange={(value) => setDraft({ ...draft, experienceYears: value })}
       />
+      {experienceIsValid ? null : <p className={styles.error}>Whole years only</p>}
       <FormField
         id="artisan-pincode"
         label="Service pincode"
@@ -212,10 +217,15 @@ export function TeamMemberActions({ artisanId, member }: { artisanId: string; me
   const [mode, setMode] = useState<MemberMode>('idle');
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState({ name: '', roleOnTeam: '', phone: '' });
-  const label = member.name || 'team member';
+  // What the row held when editing began; changes are worked out against this, not
+  // the live row, so a refresh in the background cannot be undone by an untouched box.
+  const [base, setBase] = useState<Member>(member);
+  // The role tells two members with the same name apart for screen readers.
+  const label = `${member.name || 'team member'}${member.roleOnTeam ? ` (${member.roleOnTeam})` : ''}`;
   const busy = updateMutation.isPending || removeMutation.isPending;
 
   const startEditing = () => {
+    setBase(member);
     setDraft({
       name: member.name ?? '',
       roleOnTeam: member.roleOnTeam ?? '',
@@ -242,7 +252,7 @@ export function TeamMemberActions({ artisanId, member }: { artisanId: string; me
   const changes: { name?: string; roleOnTeam?: string; phone?: string } = {};
   for (const field of ['name', 'roleOnTeam', 'phone'] as const) {
     const value = draft[field].trim();
-    if (value !== '' && value !== (member[field] ?? '')) changes[field] = value;
+    if (value !== '' && value !== (base[field] ?? '')) changes[field] = value;
   }
   const button = (variant: 'Ghost' | 'Danger' | 'Primary') =>
     `${styles.button} ${styles[`button${variant}`]}`;
@@ -292,7 +302,10 @@ export function TeamMemberActions({ artisanId, member }: { artisanId: string; me
         </div>
       ) : mode === 'confirm-remove' ? (
         <div>
-          <p>Remove {label} from this ustaad's team? Their details are deleted.</p>
+          <p>
+            Remove {member.name || 'this team member'} from this ustaad's team? Their details are
+            deleted.
+          </p>
           <div className={styles.actions}>
             <button type="button" className={button('Ghost')} disabled={busy} onClick={cancel}>
               Keep member

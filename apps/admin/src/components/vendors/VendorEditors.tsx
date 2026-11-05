@@ -45,9 +45,13 @@ export function VendorEditors({ vendor }: { vendor: AdminVendorDto }) {
   );
 }
 
-function ProfileForm({ vendor, onDone }: { vendor: AdminVendorDto; onDone: () => void }) {
+function ProfileForm({ vendor: live, onDone }: { vendor: AdminVendorDto; onDone: () => void }) {
   const mutation = useUpdateVendorProfileMutation();
   const [error, setError] = useState<string | null>(null);
+  // What the form was opened with. Changes are worked out against this, not the
+  // live record: the popup refreshes in the background, and an untouched box must
+  // not overwrite a change made elsewhere meanwhile.
+  const [vendor] = useState(live);
   const [draft, setDraft] = useState({
     shopName: vendor.shopName,
     address: vendor.address,

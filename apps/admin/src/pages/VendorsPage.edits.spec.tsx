@@ -90,14 +90,20 @@ type Sent = { method: string; url: string; body: unknown };
 let sent: Sent[];
 let vendors: AdminVendorDto[];
 let listingState: AdminVendorListingDto;
+let vendorFetches: number;
+let client: QueryClient;
 
 beforeEach(() => {
   sent = [];
+  vendorFetches = 0;
   vendors = [vendor()];
   listingState = listing();
   const empty = { success: true, data: [] };
   server.use(
-    http.get('/api/admin/vendors', () => HttpResponse.json({ success: true, data: vendors })),
+    http.get('/api/admin/vendors', () => {
+      vendorFetches += 1;
+      return HttpResponse.json({ success: true, data: vendors });
+    }),
     http.get('/api/admin/cities', () => HttpResponse.json(empty)),
     http.get('/api/admin/catalog/categories', () => HttpResponse.json(empty)),
     http.get('/api/admin/vendors/:id/categories', () => HttpResponse.json(empty)),
@@ -146,14 +152,11 @@ beforeEach(() => {
 });
 
 async function openPopup() {
+  client = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
   render(
-    <QueryClientProvider
-      client={
-        new QueryClient({
-          defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-        })
-      }
-    >
+    <QueryClientProvider client={client}>
       <MemoryRouter>
         <VendorsPage />
       </MemoryRouter>
@@ -327,5 +330,23 @@ describe('VendorsPage edits', () => {
     await user.selectOptions(screen.getByLabelText('Listing status'), 'paused');
 
     await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+  });
+
+  // Task 11 review: diff against what the form was opened with, not the live
+  // record, so an untouched box cannot undo a change made elsewhere meanwhile.
+  it('does not undo a change made elsewhere while the form was open', async () => {
+    const user = await openPopup();
+
+    await user.click(await screen.findByRole('button', { name: 'Edit profile' }));
+    const fetchesBefore = vendorFetches;
+    vendors = [vendor({ hasLoadingUnloadingTeam: false })];
+    await client.invalidateQueries({ queryKey: ['vendors'] });
+    await waitFor(() => expect(vendorFetches).toBeGreaterThan(fetchesBefore));
+    await user.clear(screen.getByLabelText('Shop name'));
+    await user.type(screen.getByLabelText('Shop name'), 'Stone Mart Jaipur');
+    await user.click(screen.getByRole('button', { name: 'Save profile' }));
+
+    await waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0].body).toEqual({ shopName: 'Stone Mart Jaipur' });
   });
 });

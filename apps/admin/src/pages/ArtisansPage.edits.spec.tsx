@@ -73,14 +73,20 @@ function artisan(over: Partial<AdminArtisanDto> = {}): AdminArtisanDto {
 type Sent = { method: string; url: string; body: unknown };
 let sent: Sent[];
 let current: AdminArtisanDto;
+let detailFetches: number;
+let client: QueryClient;
 
 beforeEach(() => {
   sent = [];
   current = artisan();
+  detailFetches = 0;
   const page = () => ({ items: [current], total: 1, page: 1, limit: 20, totalPages: 1 });
   server.use(
     http.get(BASE, () => HttpResponse.json({ success: true, data: page() })),
-    http.get(`${BASE}/:id`, () => HttpResponse.json({ success: true, data: current })),
+    http.get(`${BASE}/:id`, () => {
+      detailFetches += 1;
+      return HttpResponse.json({ success: true, data: current });
+    }),
     http.patch(`${BASE}/:id`, async ({ request }) => {
       const body = (await request.json()) as Record<string, unknown>;
       sent.push({ method: 'PATCH', url: request.url, body });
@@ -114,14 +120,11 @@ beforeEach(() => {
 });
 
 async function openPopup() {
+  client = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
   render(
-    <QueryClientProvider
-      client={
-        new QueryClient({
-          defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-        })
-      }
-    >
+    <QueryClientProvider client={client}>
       <MemoryRouter>
         <ArtisansPage />
       </MemoryRouter>
@@ -220,7 +223,7 @@ describe('ArtisansPage edits', () => {
   it('corrects a team member and sends only what changed', async () => {
     const user = await openPopup();
 
-    await user.click(await screen.findByRole('button', { name: 'Edit Suresh' }));
+    await user.click(await screen.findByRole('button', { name: 'Edit Suresh (Helper)' }));
     expect(screen.getByLabelText('Member name')).toHaveValue('Suresh');
     await user.clear(screen.getByLabelText('Member name'));
     await user.type(screen.getByLabelText('Member name'), 'Suresh Kumar');
@@ -235,7 +238,7 @@ describe('ArtisansPage edits', () => {
   it('removes a team member only after a confirm', async () => {
     const user = await openPopup();
 
-    await user.click(await screen.findByRole('button', { name: 'Remove Suresh' }));
+    await user.click(await screen.findByRole('button', { name: 'Remove Suresh (Helper)' }));
     expect(sent).toHaveLength(0);
     expect(screen.getByText(/Remove Suresh from this ustaad's team/)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Confirm remove' }));
@@ -248,10 +251,61 @@ describe('ArtisansPage edits', () => {
   it('lets the admin back out of removing a member', async () => {
     const user = await openPopup();
 
-    await user.click(await screen.findByRole('button', { name: 'Remove Suresh' }));
+    await user.click(await screen.findByRole('button', { name: 'Remove Suresh (Helper)' }));
     await user.click(screen.getByRole('button', { name: 'Keep member' }));
 
     expect(sent).toHaveLength(0);
-    expect(screen.getByRole('button', { name: 'Remove Suresh' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Remove Suresh (Helper)' })).toBeInTheDocument();
+  });
+
+  // Task 11 review: the form must diff against what it was opened with, not
+  // against the live record, or an untouched field can undo someone else's change.
+  it('does not undo a change made elsewhere while the form was open', async () => {
+    const user = await openPopup();
+
+    await user.click(await screen.findByRole('button', { name: 'Edit profile' }));
+    const fetchesBefore = detailFetches;
+    // The ustaad switches themselves off in the app; the popup refreshes.
+    current = artisan({ isAvailable: false });
+    await client.invalidateQueries({ queryKey: ['artisans'] });
+    await waitFor(() => expect(detailFetches).toBeGreaterThan(fetchesBefore));
+    await user.clear(screen.getByLabelText('Bio'));
+    await user.type(screen.getByLabelText('Bio'), 'Updated bio');
+    await user.click(screen.getByRole('button', { name: 'Save profile' }));
+
+    await waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0].body).toEqual({ bio: 'Updated bio' });
+  });
+
+  it('says why a fractional experience cannot be saved', async () => {
+    const user = await openPopup();
+
+    await user.click(await screen.findByRole('button', { name: 'Edit profile' }));
+    await user.clear(screen.getByLabelText('Experience (years)'));
+    await user.type(screen.getByLabelText('Experience (years)'), '2.5');
+
+    expect(screen.getByText('Whole years only')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save profile' })).toBeDisabled();
+  });
+
+  it('tells two members with the same name apart by their role', async () => {
+    current = artisan({
+      team: [
+        artisan().team[0],
+        { ...artisan().team[0], id: 'm2222222-2222-4222-8222-222222222222', roleOnTeam: 'Mason' },
+      ],
+    });
+    await openPopup();
+
+    expect(await screen.findByRole('button', { name: 'Edit Suresh (Helper)' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Edit Suresh (Mason)' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Remove Suresh (Mason)' })).toBeInTheDocument();
+  });
+
+  it('gives a member with no name a usable button label', async () => {
+    current = artisan({ team: [{ ...artisan().team[0], name: null, roleOnTeam: null }] });
+    await openPopup();
+
+    expect(await screen.findByRole('button', { name: 'Edit team member' })).toBeInTheDocument();
   });
 });

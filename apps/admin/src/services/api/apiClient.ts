@@ -126,7 +126,8 @@ export async function putRequest<TResponse, TBody>(url: string, body: TBody): Pr
   return response.data.data;
 }
 
-// For endpoints that answer 204 with no body.
+// For endpoints whose reply body is not needed (a 204, or a 200 whose body the
+// caller refetches anyway, like removing a team member).
 export async function deleteRequest(url: string): Promise<void> {
   await apiClient.delete(url);
 }

@@ -95,6 +95,8 @@ describe('Admin ustaad edits (real HTTP, Postgres)', () => {
       ['a trade that does not exist', { tradeType: 'WIZARD' }],
       ['negative experience', { experienceYears: -1 }],
       ['a blank bio', { bio: '   ' }],
+      ['an absurd amount of experience', { experienceYears: 120 }],
+      ['a pincode longer than the column', { servicePincode: '12345678901' }],
       ['a null bio', { bio: null }],
       ['a null trade', { tradeType: null }],
       ['a null availability', { isAvailable: null }],
@@ -146,6 +148,14 @@ describe('Admin ustaad edits (real HTTP, Postgres)', () => {
       expect(res.status).toBe(200);
       expect(logLines(log).filter((line) => line.startsWith('admin '))).toEqual([]);
     });
+
+    it('writes nothing at all when nothing changed', async () => {
+      const before = (await Artisan.findByPk(artisanId))!.updatedAt.getTime();
+
+      await patchProfile(artisanId, { servicePincode: '560001', tradeType: 'MASON' });
+
+      expect((await Artisan.findByPk(artisanId))!.updatedAt.getTime()).toBe(before);
+    });
   });
 
   describe('PUT /admin/artisans/:id/account-details', () => {
@@ -177,6 +187,17 @@ describe('Admin ustaad edits (real HTTP, Postgres)', () => {
 
     it('refuses an unknown field', async () => {
       expect((await putBank(artisanId, { ...BANK, artisanId: MISSING })).status).toBe(400);
+    });
+
+    it('writes nothing when the bank details are sent unchanged', async () => {
+      await putBank(artisanId, { ...BANK, ifscCode: 'SBIN0001234' });
+      const before = (await ArtisanAccountDetails.findOne({ where: { artisanId } }))!.updatedAt;
+
+      const res = await putBank(artisanId, { ...BANK, ifscCode: 'SBIN0001234' });
+
+      expect(res.status).toBe(200);
+      const after = (await ArtisanAccountDetails.findOne({ where: { artisanId } }))!.updatedAt;
+      expect(after.getTime()).toBe(before.getTime());
     });
 
     it('404s for an unknown ustaad, and is closed to an ustaad', async () => {
@@ -266,6 +287,21 @@ describe('Admin ustaad edits (real HTTP, Postgres)', () => {
       expect((await ArtisanTeamMember.findByPk(theirs.id))!.name).toBe('Not yours');
       await ArtisanTeamMember.destroy({ where: { artisanId: other.id } });
       await Artisan.destroy({ where: { id: other.id } });
+    });
+
+    it('writes nothing when a correction changes nothing', async () => {
+      const before = (await ArtisanTeamMember.findByPk(memberId))!.updatedAt.getTime();
+
+      const res = await patchMember(artisanId, memberId, { name: 'Suresh', phone: '9876543210' });
+
+      expect(res.status).toBe(200);
+      expect((await ArtisanTeamMember.findByPk(memberId))!.updatedAt.getTime()).toBe(before);
+    });
+
+    it('answers 404 the second time a member is removed', async () => {
+      expect((await removeMember(artisanId, memberId)).status).toBe(200);
+
+      expect((await removeMember(artisanId, memberId)).status).toBe(404);
     });
 
     it('removes a member, and answers with the ustaad', async () => {
