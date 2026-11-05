@@ -178,6 +178,51 @@ describe('ArtisanHireRequestsTrackingPage', () => {
     ]);
   });
 
+  // Decision 0058 Task 12: admin cancel already existed; a refusal (e.g. the
+  // customer cancelled a moment earlier) used to vanish as an unhandled error.
+  it('shows why a cancel was refused, and keeps the popup and the reason', async () => {
+    server.use(
+      http.patch(`${CANCEL_BASE}/:id/cancel`, () =>
+        HttpResponse.json(
+          {
+            success: false,
+            message: 'this hire request is not in a status that allows this transition',
+          },
+          { status: 409 },
+        ),
+      ),
+    );
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByText('In progress'));
+    await user.type(screen.getByPlaceholderText('Required to cancel'), 'Customer backed out');
+    await user.click(await screen.findByRole('button', { name: 'Cancel request' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('not in a status that allows');
+    expect(screen.getByPlaceholderText('Required to cancel')).toHaveValue('Customer backed out');
+    expect(screen.getByRole('button', { name: 'Cancel request' })).toBeInTheDocument();
+  });
+
+  it('clears an earlier refusal when the admin closes the popup', async () => {
+    server.use(
+      http.patch(`${CANCEL_BASE}/:id/cancel`, () =>
+        HttpResponse.json({ success: false, message: 'Nope' }, { status: 409 }),
+      ),
+    );
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByText('In progress'));
+    await user.type(screen.getByPlaceholderText('Required to cancel'), 'Because');
+    await user.click(await screen.findByRole('button', { name: 'Cancel request' }));
+    await screen.findByRole('alert');
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+    await user.click(await screen.findByText('In progress'));
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
   it('does not allow cancelling an already-terminal request', async () => {
     requests = [hireRequest({ status: 'COMPLETED', completedAt: '2026-10-29T02:00:00.000Z' })];
     renderPage();

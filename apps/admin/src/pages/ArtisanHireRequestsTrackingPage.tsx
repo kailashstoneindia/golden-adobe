@@ -32,14 +32,24 @@ export function ArtisanHireRequestsTrackingPage() {
 
   const requests = requestsQuery.data?.items ?? [];
 
+  // Why the server refused a cancel (e.g. the customer cancelled a moment
+  // earlier). Shown in the popup, which stays open with the reason kept.
+  const [cancelError, setCancelError] = useState<string | null>(null);
+
   const handleClose = () => {
     setSelectedRequest(null);
     setCancelReason('');
+    setCancelError(null);
   };
 
   const handleCancel = async (requestId: string) => {
-    await cancelMutation.mutateAsync({ requestId, body: { reason: cancelReason } });
-    handleClose();
+    setCancelError(null);
+    try {
+      await cancelMutation.mutateAsync({ requestId, body: { reason: cancelReason } });
+      handleClose();
+    } catch (error) {
+      setCancelError(error instanceof Error ? error.message : 'Request failed');
+    }
   };
 
   if (requestsQuery.isLoading) {
@@ -178,6 +188,12 @@ export function ArtisanHireRequestsTrackingPage() {
                 </div>
               ) : null}
             </div>
+
+            {cancelError ? (
+              <p className={styles.error} role="alert">
+                {cancelError}
+              </p>
+            ) : null}
 
             <div className={styles.actions}>
               <button
