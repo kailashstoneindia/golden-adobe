@@ -4,6 +4,7 @@ import { ArtisansTestApp, createArtisansTestApp } from './artisans-test-app';
 import { Artisan } from '../models/artisan.model';
 import { ArtisanAccountDetails } from '../models/artisan-account-details.model';
 import { ArtisanHireRequest } from '../models/artisan-hire-request.model';
+import { User } from '../../users/models/user.model';
 
 jest.setTimeout(60_000);
 
@@ -31,6 +32,101 @@ describe('ArtisansController (real HTTP, Postgres)', () => {
       await ArtisanHireRequest.destroy({ where: { artisanId: artisan.id } });
       await artisan.destroy();
     }
+  });
+
+  describe('approval gate (0059)', () => {
+    it('a pending ustaad can set up their profile and upload a document', async () => {
+      const pending = await t.newArtisanUser({ approved: false });
+      const as = (req: request.Test) => req.set('Authorization', `Bearer ${pending.token}`);
+      const server = t.app.getHttpServer();
+
+      expect(
+        (
+          await as(
+            request(server)
+              .post('/api/artisans/me/profile')
+              .send({ tradeType: 'PLUMBER', servicePincode: '560001' }),
+          )
+        ).status,
+      ).toBe(201);
+      expect((await as(request(server).get('/api/artisans/me/profile'))).status).toBe(200);
+      expect(
+        (await as(request(server).patch('/api/artisans/me/profile').send({ bio: 'Ten years' })))
+          .status,
+      ).toBe(200);
+      expect(
+        (
+          await as(
+            request(server)
+              .post('/api/artisans/me/documents/upload-url')
+              .send({ contentType: 'application/pdf', purpose: 'lead' }),
+          )
+        ).status,
+      ).toBeLessThan(300);
+      const member = await as(
+        request(server).post('/api/artisans/me/team').send({ name: 'Ramesh' }),
+      );
+      expect(member.status).toBe(201);
+
+      // The rest of onboarding, still as a pending ustaad.
+      const profile = await as(request(server).get('/api/artisans/me/profile'));
+      const key = `artisans/${profile.body.data.id}/doc-pending.pdf`;
+      t.storage.seed(key);
+      expect(
+        (await as(request(server).post('/api/artisans/me/documents/confirm').send({ key }))).status,
+      ).toBeLessThan(300);
+      expect(
+        (
+          await as(
+            request(server).put('/api/artisans/me/account-details').send({
+              accountHolderName: 'Pending Ustaad',
+              bankName: 'State Bank of India',
+              ifscCode: 'SBIN0001234',
+              branchName: 'MG Road',
+              accountNumber: '123456789012',
+            }),
+          )
+        ).status,
+      ).toBeLessThan(300);
+      const memberPath = `/api/artisans/me/team/${member.body.data.id}`;
+      expect(
+        (await as(request(server).patch(memberPath).send({ roleOnTeam: 'Helper' }))).status,
+      ).toBe(200);
+      expect((await as(request(server).delete(memberPath))).status).toBeLessThan(300);
+    });
+
+    it('a pending ustaad cannot see or act on hire requests', async () => {
+      const pending = await t.newArtisanUser({ approved: false });
+      const res = await request(t.app.getHttpServer())
+        .get('/api/artisans/me/hire-requests')
+        .set('Authorization', `Bearer ${pending.token}`);
+
+      expect(res.status).toBe(403);
+      expect(res.body.code).toBe('ACCOUNT_NOT_APPROVED');
+      expect(res.body.error).toBe('Forbidden');
+    });
+
+    it('approving the ustaad opens hire requests without a new login', async () => {
+      const pending = await t.newArtisanUser({ approved: false });
+      await request(t.app.getHttpServer())
+        .post('/api/artisans/me/profile')
+        .set('Authorization', `Bearer ${pending.token}`)
+        .send({ tradeType: 'PLUMBER', servicePincode: '560001' });
+      await User.update({ isApproved: true }, { where: { id: pending.id } });
+
+      const res = await request(t.app.getHttpServer())
+        .get('/api/artisans/me/hire-requests')
+        .set('Authorization', `Bearer ${pending.token}`);
+
+      expect(res.status).toBe(200);
+    });
+
+    it('customers are never gated', async () => {
+      const res = await request(t.app.getHttpServer())
+        .get('/api/artisans/hire-requests/mine')
+        .set('Authorization', `Bearer ${t.customerToken}`);
+      expect(res.status).toBe(200);
+    });
   });
 
   it('answers 401 without a token', async () => {

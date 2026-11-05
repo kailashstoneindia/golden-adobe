@@ -1,13 +1,16 @@
 import type {
   AdminDashboardStats,
   ListUsersQuery,
+  AdminUserDetailDto,
+  AdminUserDto,
   PaginatedUsersResponse,
   RejectUserRequest,
-  UserDto,
+  SetUserActiveRequest,
+  UpdateAdminUserRequest,
 } from '@golden-abode/types';
 
 import { API_ENDPOINTS } from '@/constants/apiEndpoints';
-import { getRequest, patchRequest } from '@/services/api/apiClient';
+import { getRequest, patchRequest, postRequest } from '@/services/api/apiClient';
 
 function buildUsersQueryString(query: ListUsersQuery): string {
   const params = new URLSearchParams();
@@ -31,15 +34,42 @@ export const adminService = {
     return getRequest<PaginatedUsersResponse>(`${API_ENDPOINTS.admin.users}${suffix}`);
   },
 
-  fetchUserById(userId: string): Promise<UserDto> {
-    return getRequest<UserDto>(API_ENDPOINTS.admin.userById(userId));
+  fetchUserById(userId: string): Promise<AdminUserDetailDto> {
+    return getRequest<AdminUserDetailDto>(API_ENDPOINTS.admin.userById(userId));
   },
 
-  approveUser(userId: string): Promise<UserDto> {
-    return patchRequest<UserDto, Record<string, never>>(API_ENDPOINTS.admin.approveUser(userId));
+  approveUser(userId: string): Promise<AdminUserDto> {
+    return patchRequest<AdminUserDto, Record<string, never>>(
+      API_ENDPOINTS.admin.approveUser(userId),
+    );
   },
 
-  rejectUser(userId: string, body: RejectUserRequest): Promise<UserDto> {
-    return patchRequest<UserDto, RejectUserRequest>(API_ENDPOINTS.admin.rejectUser(userId), body);
+  // Decision 0058 Task 9. Each answers with the refreshed admin detail.
+  updateUser(userId: string, body: UpdateAdminUserRequest): Promise<AdminUserDetailDto> {
+    return patchRequest<AdminUserDetailDto, UpdateAdminUserRequest>(
+      API_ENDPOINTS.admin.userById(userId),
+      body,
+    );
+  },
+
+  setUserActive(userId: string, isActive: boolean): Promise<AdminUserDetailDto> {
+    return patchRequest<AdminUserDetailDto, SetUserActiveRequest>(
+      API_ENDPOINTS.admin.userActive(userId),
+      { isActive },
+    );
+  },
+
+  revokeUserSessions(userId: string): Promise<AdminUserDetailDto> {
+    return postRequest<AdminUserDetailDto, Record<string, never>>(
+      API_ENDPOINTS.admin.userRevokeSessions(userId),
+      {},
+    );
+  },
+
+  rejectUser(userId: string, body: RejectUserRequest): Promise<AdminUserDto> {
+    return patchRequest<AdminUserDto, RejectUserRequest>(
+      API_ENDPOINTS.admin.rejectUser(userId),
+      body,
+    );
   },
 };

@@ -1,4 +1,4 @@
-import { ConflictException, ForbiddenException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Logger } from '@nestjs/common';
 import { SequelizeModule, getModelToken } from '@nestjs/sequelize';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Role } from '@golden-abode/types';
@@ -12,6 +12,7 @@ import { ArtisanCompletionEstimate } from '../models/artisan-completion-estimate
 import { Order } from '../../orders/models/order.model';
 import { HireRequestsService } from '../hire-requests.service';
 import { ARTISAN_RESPONSE_WINDOW_MS } from '../hire-request-rules';
+import { findOnAnyPage } from './find-on-any-page';
 
 describe('HireRequestsService (integration)', () => {
   let moduleRef: TestingModule;
@@ -263,8 +264,9 @@ describe('HireRequestsService (integration)', () => {
     } as never);
 
     const page = await service.listPendingAdminReview(1, 20);
-    const dtoA = page.items.find((r) => r.id === requestA.id);
-    const dtoB = page.items.find((r) => r.id === requestB.id);
+    const pending = (p: number) => service.listPendingAdminReview(p, 100);
+    const dtoA = await findOnAnyPage(pending, (r) => r.id === requestA.id);
+    const dtoB = await findOnAnyPage(pending, (r) => r.id === requestB.id);
     expect(dtoA?.latestEstimate?.estimatedDays).toBe(2);
     expect(dtoB?.latestEstimate?.estimatedDays).toBe(9);
     expect(page.page).toBe(1);
@@ -413,11 +415,11 @@ describe('HireRequestsService (integration)', () => {
   });
 
   it('listAll returns every status when no filter is given', async () => {
-    await createHireRequestFixture({ status: 'PENDING_ADMIN_REVIEW' });
-    await createHireRequestFixture({ status: 'COMPLETED' });
-    const page = await service.listAll(1, 20);
-    expect(page.items.some((r) => r.status === 'PENDING_ADMIN_REVIEW')).toBe(true);
-    expect(page.items.some((r) => r.status === 'COMPLETED')).toBe(true);
+    const pending = await createHireRequestFixture({ status: 'PENDING_ADMIN_REVIEW' });
+    const completed = await createHireRequestFixture({ status: 'COMPLETED' });
+    const all = (p: number) => service.listAll(p, 100);
+    expect(await findOnAnyPage(all, (r) => r.id === pending.id)).toBeDefined();
+    expect(await findOnAnyPage(all, (r) => r.id === completed.id)).toBeDefined();
   });
 
   it('listAll filters to a single status when given one', async () => {
@@ -433,9 +435,10 @@ describe('HireRequestsService (integration)', () => {
     // includes rows other tests left behind — measure the delta two new
     // active rows cause, not an absolute count.
     const pendingBefore = await createHireRequestFixture({ status: 'PENDING_ADMIN_REVIEW' });
-    const before = await service.listPendingAdminReview(1, 20);
-    const baselineCount =
-      before.items.find((r) => r.id === pendingBefore.id)?.artisanActiveJobCount ?? 0;
+    const pendingPages = (p: number) => service.listPendingAdminReview(p, 100);
+    const baselineRow = await findOnAnyPage(pendingPages, (r) => r.id === pendingBefore.id);
+    expect(baselineRow).toBeDefined();
+    const baselineCount = baselineRow?.artisanActiveJobCount ?? 0;
 
     await createHireRequestFixture({
       status: 'ACCEPTED_BY_ARTISAN',
@@ -457,16 +460,17 @@ describe('HireRequestsService (integration)', () => {
       customerId: await createExtraCustomer(),
     });
 
-    const page = await service.listPendingAdminReview(1, 20);
-    const dto = page.items.find((r) => r.id === pending.id);
+    const dto = await findOnAnyPage(pendingPages, (r) => r.id === pending.id);
     expect(dto?.artisanActiveJobCount).toBe(baselineCount + 3);
     expect(dto?.artisanTeamSize).toBe(0);
   });
 
   it('listAll does not attach capacity info (admin review surface only)', async () => {
     const request = await createHireRequestFixture({ status: 'COMPLETED' });
-    const page = await service.listAll(1, 20);
-    const dto = page.items.find((r) => r.id === request.id);
+    const dto = await findOnAnyPage(
+      (p) => service.listAll(p, 100),
+      (r) => r.id === request.id,
+    );
     expect(dto?.artisanActiveJobCount).toBeNull();
     expect(dto?.artisanTeamSize).toBeNull();
   });
@@ -667,6 +671,81 @@ describe('HireRequestsService (integration)', () => {
     });
   });
 
+  describe('admin lists show who is involved (0058)', () => {
+    const ALL_STATUSES = [
+      'PENDING_ADMIN_REVIEW',
+      'ADMIN_REJECTED',
+      'PENDING_ARTISAN_RESPONSE',
+      'ARTISAN_DECLINED',
+      'EXPIRED',
+      'ACCEPTED_BY_ARTISAN',
+      'IN_PROGRESS',
+      'COMPLETED',
+      'CANCELLED',
+    ];
+
+    it('carry customer contact and ustaad name and phone in every status', async () => {
+      for (const status of ALL_STATUSES) {
+        const request = await createHireRequestFixture({ status });
+        const dto = (await service.listAll(1, 100)).items.find((r) => r.id === request.id);
+
+        expect(dto?.customer).toMatchObject({
+          userId: customerId,
+          name: `Customer HR Test ${suffix}`,
+          phone: `8${suffix}`.slice(0, 10),
+          role: Role.CUSTOMER,
+        });
+        expect(dto?.customerName).toBe(`Customer HR Test ${suffix}`);
+        expect(dto?.customerPhone).toBe(`8${suffix}`.slice(0, 10));
+        expect(dto?.artisan).toMatchObject({
+          userId: artisanUserId,
+          name: `Artisan HR Test ${suffix}`,
+          phone: `9${suffix}`.slice(0, 10),
+        });
+        expect(dto?.artisanTradeType).toBe('PLUMBER');
+        await request.destroy();
+      }
+    });
+
+    it('never carry the ustaad email', async () => {
+      await User.update({ email: `ustaad-${suffix}@test.local` }, { where: { id: artisanUserId } });
+      const request = await createHireRequestFixture({ status: 'PENDING_ADMIN_REVIEW' });
+
+      const dto = await findOnAnyPage(
+        (p) => service.listPendingAdminReview(p, 100),
+        (r) => r.id === request.id,
+      );
+
+      expect(dto).toBeDefined();
+      expect(dto?.artisan).not.toHaveProperty('email');
+      await User.update({ email: null }, { where: { id: artisanUserId } });
+    });
+
+    it('carry the reviewer name and how many estimates were given', async () => {
+      const request = await createHireRequestFixture({ status: 'PENDING_ADMIN_REVIEW' });
+      await service.reviewRequest(adminId, request.id, { approve: true });
+      await request.reload();
+      await request.update({ status: 'IN_PROGRESS' } as never);
+      await ArtisanCompletionEstimate.create({
+        hireRequestId: request.id,
+        estimatedDays: 5,
+        // A second earlier, so "latest" never depends on two inserts in one millisecond.
+        createdAt: new Date(Date.now() - 1000),
+      } as never);
+      await ArtisanCompletionEstimate.create({
+        hireRequestId: request.id,
+        estimatedDays: 7,
+      } as never);
+      const admin = await User.findByPk(adminId);
+
+      const dto = (await service.listAll(1, 100)).items.find((r) => r.id === request.id);
+
+      expect(dto?.adminReviewerName).toBe(admin!.name);
+      expect(dto?.estimateCount).toBe(2);
+      expect(dto?.latestEstimate?.estimatedDays).toBe(7);
+    });
+  });
+
   describe('customer contact for the ustaad (0055)', () => {
     it('is shown while waiting, accepted or in progress', async () => {
       for (const status of ['PENDING_ARTISAN_RESPONSE', 'ACCEPTED_BY_ARTISAN', 'IN_PROGRESS']) {
@@ -806,6 +885,76 @@ describe('HireRequestsService (integration)', () => {
       await expect(second).rejects.toThrow(ConflictException);
       await expect(second).rejects.not.toThrow(/time to respond/);
       spy.mockRestore();
+    });
+  });
+
+  // Whole-branch review: every admin write logs who did what.
+  describe('admin audit log', () => {
+    const adminLines = (spy: jest.SpyInstance) =>
+      spy.mock.calls.map((call) => String(call[0])).filter((line) => line.startsWith('admin '));
+
+    afterEach(() => jest.restoreAllMocks());
+
+    it('logs an admin cancelling a request, with the fields that changed', async () => {
+      const request = await createHireRequestFixture({ status: 'IN_PROGRESS' });
+      const log = jest.spyOn(Logger.prototype, 'log');
+
+      await service.cancel(adminId, Role.ADMIN, request.id, { reason: 'admin override' });
+
+      expect(adminLines(log)).toEqual([
+        `admin ${adminId} cancel hire-request ${request.id} status,cancelledAt,cancelReason`,
+      ]);
+    });
+
+    it('does not log a customer cancelling their own request as an admin action', async () => {
+      const request = await createHireRequestFixture({ status: 'ACCEPTED_BY_ARTISAN' });
+      const log = jest.spyOn(Logger.prototype, 'log');
+
+      await service.cancel(customerId, Role.CUSTOMER, request.id, { reason: 'changed my mind' });
+
+      expect(adminLines(log)).toEqual([]);
+    });
+
+    it('does not log an ustaad cancelling their own job as an admin action', async () => {
+      const request = await createHireRequestFixture({ status: 'ACCEPTED_BY_ARTISAN' });
+      const log = jest.spyOn(Logger.prototype, 'log');
+
+      await service.cancel(artisanUserId, Role.ARTISAN, request.id, { reason: 'not available' });
+
+      expect(adminLines(log)).toEqual([]);
+    });
+
+    it('logs nothing when an admin cancel is refused', async () => {
+      const request = await createHireRequestFixture({ status: 'COMPLETED' });
+      const log = jest.spyOn(Logger.prototype, 'log');
+
+      await expect(
+        service.cancel(adminId, Role.ADMIN, request.id, { reason: 'too late' }),
+      ).rejects.toThrow(ConflictException);
+
+      expect(adminLines(log)).toEqual([]);
+    });
+
+    it('logs an admin approving a request', async () => {
+      const request = await createHireRequestFixture({ status: 'PENDING_ADMIN_REVIEW' });
+      const log = jest.spyOn(Logger.prototype, 'log');
+
+      await service.reviewRequest(adminId, request.id, { approve: true });
+
+      expect(adminLines(log)).toEqual([
+        `admin ${adminId} approve hire-request ${request.id} status,adminReviewedBy,adminReviewedAt`,
+      ]);
+    });
+
+    it('logs an admin rejecting a request, with the reason field', async () => {
+      const request = await createHireRequestFixture({ status: 'PENDING_ADMIN_REVIEW' });
+      const log = jest.spyOn(Logger.prototype, 'log');
+
+      await service.reviewRequest(adminId, request.id, { approve: false, rejectReason: 'no' });
+
+      expect(adminLines(log)).toEqual([
+        `admin ${adminId} reject hire-request ${request.id} status,adminReviewedBy,adminReviewedAt,adminRejectReason`,
+      ]);
     });
   });
 });

@@ -1,10 +1,18 @@
-import type { AdminRefundRequest, OrderDto, OrderVendorGroupStatus } from '@golden-abode/types';
+import type {
+  AdminRefundRequest,
+  AdminOrderDto,
+  OrderVendorGroupStatus,
+} from '@golden-abode/types';
 import { ORDER_STATUSES } from '@golden-abode/types';
 import { isEmpty } from 'lodash';
 import { useRef, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 
+import { ContactCell } from '@/components/common/ContactBlock';
+import { labelFor } from '@/constants/labels';
 import { OrderDetailModal } from '@/components/orders/OrderDetailModal';
 import { ERROR_MESSAGES } from '@/constants/error.constants';
+import { ROUTES } from '@/constants/routes';
 import {
   ORDER_STATUS_FILTER_OPTIONS,
   ORDER_STATUS_FILTERS,
@@ -21,18 +29,19 @@ import { ApiClientError } from '@/services/api/apiClient';
 import styles from '@/styles/shared.module.css';
 import type { RefundNotice, RefundOutcome } from '@/types/orders.types';
 import { formatDateTime } from '@/utils/date';
+import { formatPaise } from '@/utils/money';
 
 export function OrdersPage() {
-  const [selectedOrder, setSelectedOrderState] = useState<OrderDto | null>(null);
+  const [selectedOrder, setSelectedOrderState] = useState<AdminOrderDto | null>(null);
   // Mirrors selectedOrder so an async handler can ask, when its response
   // arrives, whether its order is still the one open.
   const selectedOrderIdRef = useRef<string | null>(null);
-  const setSelectedOrder = (order: OrderDto | null): void => {
+  const setSelectedOrder = (order: AdminOrderDto | null): void => {
     selectedOrderIdRef.current = order?.id ?? null;
     setSelectedOrderState(order);
   };
   // A late response must never re-open a closed modal or replace another order.
-  const updateSelectedOrderIfOpen = (order: OrderDto): void => {
+  const updateSelectedOrderIfOpen = (order: AdminOrderDto): void => {
     if (selectedOrderIdRef.current === order.id) {
       setSelectedOrder(order);
     }
@@ -40,7 +49,10 @@ export function OrdersPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [refundNotice, setRefundNotice] = useState<RefundNotice | null>(null);
   const [statusFilter, setStatusFilter] = useState<OrderStatusFilter>(ORDER_STATUS_FILTERS.ALL);
-  const ordersQuery = useOrdersQuery();
+  // Opened from a user popup: only that customer's orders (decision 0058 Task 7).
+  const [searchParams] = useSearchParams();
+  const customerId = searchParams.get('customerId');
+  const ordersQuery = useOrdersQuery(customerId);
   const refundMutation = useRefundOrderMutation();
   const cancelMutation = useCancelAdminOrderMutation();
   const overrideMutation = useOverrideVendorGroupStatusMutation();
@@ -143,6 +155,11 @@ export function OrdersPage() {
       <p className={styles.pageSubtitle}>
         Refund, cancel, and override fulfilment for customer orders.
       </p>
+      {customerId ? (
+        <p className={styles.pageSubtitle}>
+          Showing one customer’s orders. <Link to={ROUTES.orders}>Show all orders</Link>
+        </p>
+      ) : null}
 
       <label className={styles.label} htmlFor="order-status-filter">
         Status filter
@@ -172,8 +189,11 @@ export function OrdersPage() {
             <thead>
               <tr>
                 <th>Order</th>
+                <th>Customer</th>
                 <th>Status</th>
                 <th>Total</th>
+                <th>Paid</th>
+                <th>Payment id</th>
                 <th>Shops</th>
                 <th>Created</th>
               </tr>
@@ -190,8 +210,11 @@ export function OrdersPage() {
                   }}
                 >
                   <td>{order.id.slice(0, 8)}</td>
-                  <td>{ORDER_STATUS_LABELS[order.status]}</td>
+                  <ContactCell contact={order.customer} />
+                  <td>{labelFor(ORDER_STATUS_LABELS, order.status)}</td>
                   <td>₹{order.grandTotal}</td>
+                  <td>{order.capturedPaise != null ? formatPaise(order.capturedPaise) : '—'}</td>
+                  <td className={styles.mono}>{order.razorpayPaymentId ?? '—'}</td>
                   <td>{order.vendorGroups.length}</td>
                   <td>{formatDateTime(order.createdAt)}</td>
                 </tr>
@@ -218,7 +241,7 @@ export function OrdersPage() {
 }
 
 // "Needs refund" is a work queue, so the longest-waiting order comes first.
-function filterOrders(orders: OrderDto[], filter: OrderStatusFilter): OrderDto[] {
+function filterOrders(orders: AdminOrderDto[], filter: OrderStatusFilter): AdminOrderDto[] {
   if (filter === ORDER_STATUS_FILTERS.NEEDS_REFUND) {
     return orders
       .filter((order) => order.status === ORDER_STATUSES.REFUND_REQUIRED)

@@ -8,6 +8,19 @@ import { Vendor } from '../../vendors/models/vendor.model';
 import { Artisan } from '../../artisans/models/artisan.model';
 import { ArtisanHireRequest } from '../../artisans/models/artisan-hire-request.model';
 import { AdminService } from '../admin.service';
+import { Customer } from '../../customers/models/customer.model';
+import { CustomerAddress } from '../../customers/models/customer-address.model';
+import { VendorsService } from '../../vendors/vendors.service';
+import { VendorAccountDetails } from '../../vendors/models/vendor-account-details.model';
+import { CityResolverService } from '../../catalog/city-resolver.service';
+import { City } from '../../catalog/models/city.model';
+import { PincodeCityMap } from '../../catalog/models/pincode-city-map.model';
+import { ArtisansService } from '../../artisans/artisans.service';
+import { ArtisanAccountDetails } from '../../artisans/models/artisan-account-details.model';
+import { ArtisanTeamMember } from '../../artisans/models/artisan-team-member.model';
+import { FakeObjectStorage } from '../../artisans/__tests__/fake-object-storage';
+import { OBJECT_STORAGE } from '../../catalog/media/object-storage';
+import { UsersService } from '../../users/users.service';
 
 describe('AdminService artisan surfacing (integration)', () => {
   let moduleRef: TestingModule;
@@ -27,11 +40,29 @@ describe('AdminService artisan surfacing (integration)', () => {
           password: process.env.TEST_DB_PASS ?? 'postgres',
           database: process.env.TEST_DB_NAME ?? 'golden_abode_test',
           logging: false,
-          models: ARTISAN_TEST_MODELS,
+          models: [...ARTISAN_TEST_MODELS, PincodeCityMap, Customer, CustomerAddress],
         }),
-        SequelizeModule.forFeature([User, Vendor, Artisan, ArtisanHireRequest]),
+        SequelizeModule.forFeature([
+          User,
+          Vendor,
+          VendorAccountDetails,
+          City,
+          PincodeCityMap,
+          Artisan,
+          ArtisanAccountDetails,
+          ArtisanTeamMember,
+          ArtisanHireRequest,
+          Customer,
+        ]),
       ],
-      providers: [AdminService],
+      providers: [
+        AdminService,
+        ArtisansService,
+        UsersService,
+        VendorsService,
+        CityResolverService,
+        { provide: OBJECT_STORAGE, useValue: new FakeObjectStorage() },
+      ],
     }).compile();
 
     adminService = moduleRef.get(AdminService);

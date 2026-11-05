@@ -114,6 +114,8 @@ export class PostgresSearchService {
       "vl.status = 'active'",
       'c.is_active = true',
       'v.city_id = :cityId',
+      // Decision 0059 G1: an unapproved vendor's listings are not for sale.
+      'u.is_approved = true',
     ];
 
     if (input.query) {
@@ -196,6 +198,7 @@ export class PostgresSearchService {
         (
           SELECT vl2.id FROM vendor_listing vl2
           JOIN vendors v2 ON v2.id = vl2.vendor_id
+          JOIN users u2 ON u2.id = v2.user_id AND u2.is_approved
           WHERE vl2.master_product_id = mp.id
             AND vl2.status = 'active'
             AND v2.city_id = :cityId
@@ -205,6 +208,7 @@ export class PostgresSearchService {
       FROM master_product mp
       JOIN vendor_listing vl ON vl.master_product_id = mp.id
       JOIN vendors v         ON v.id = vl.vendor_id
+      JOIN users u           ON u.id = v.user_id
       JOIN city c            ON c.id = v.city_id
       JOIN category cat      ON cat.id = mp.category_id
       LEFT JOIN brand b      ON b.id = mp.brand_id
@@ -367,6 +371,7 @@ export class PostgresSearchService {
          inv.quantity_reserved
        FROM vendor_listing vl
        JOIN vendors v ON v.id = vl.vendor_id
+       JOIN users u ON u.id = v.user_id AND u.is_approved
        JOIN master_product mp ON mp.id = vl.master_product_id
        LEFT JOIN inventory inv
          ON inv.vendor_listing_id = vl.id AND inv.warehouse_id IS NULL

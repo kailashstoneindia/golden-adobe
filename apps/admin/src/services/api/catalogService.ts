@@ -55,6 +55,13 @@ export const catalogService = {
     return patchRequest<ProductDetail, undefined>(API_ENDPOINTS.catalog.publishProduct(productId));
   },
 
+  renameProduct(productId: string, name: string): Promise<ProductDetail> {
+    return patchRequest<ProductDetail, { name: string }>(
+      API_ENDPOINTS.catalog.productById(productId),
+      { name },
+    );
+  },
+
   unpublishProduct(productId: string): Promise<ProductDetail> {
     return patchRequest<ProductDetail, undefined>(
       API_ENDPOINTS.catalog.unpublishProduct(productId),

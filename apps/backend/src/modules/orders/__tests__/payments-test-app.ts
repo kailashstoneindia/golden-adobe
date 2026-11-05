@@ -112,7 +112,9 @@ export type PaymentsTestApp = {
   adminUserId: string;
   customerToken: string;
   customerUserId: string;
+  customerId: string;
   vendorToken: string;
+  vendorUserId: string;
   seedPendingOrder: (opts?: { grandTotal?: string; quantity?: number }) => Promise<SeededOrder>;
   signWebhook: (rawBody: string) => string;
   query: <T>(sql: string, replacements?: object) => Promise<T[]>;
@@ -199,6 +201,7 @@ export async function createPaymentsTestApp(): Promise<PaymentsTestApp> {
     phone: `9${suffix}`.slice(0, 10),
     role: Role.VENDOR,
     isActive: true,
+    isApproved: true,
   } as never);
   const customer = await Customer.create({
     userId: customerUser.id,
@@ -314,7 +317,9 @@ export async function createPaymentsTestApp(): Promise<PaymentsTestApp> {
     adminUserId: admin.id,
     customerToken: jwt.sign({ sub: customerUser.id, role: Role.CUSTOMER }),
     customerUserId: customerUser.id,
+    customerId: customer.id,
     vendorToken: jwt.sign({ sub: vendorUser.id, role: Role.VENDOR }),
+    vendorUserId: vendorUser.id,
     seedPendingOrder,
     signWebhook: (rawBody: string) =>
       createHmac('sha256', TEST_WEBHOOK_SECRET).update(rawBody).digest('hex'),

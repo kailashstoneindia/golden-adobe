@@ -19,9 +19,10 @@ import {
   ArtisanTeamMemberDto,
   ArtisanTeamMemberInputDto,
   PaginatedArtisanPublicProfilesResponse,
-  PaginatedArtisansResponse,
+  PaginatedArtisansAwaitingDocumentResponse,
 } from '@golden-abode/types';
 
+import { UsersService } from '../users/users.service';
 import { Artisan } from './models/artisan.model';
 import { ArtisanAccountDetails } from './models/artisan-account-details.model';
 import { ArtisanTeamMember } from './models/artisan-team-member.model';
@@ -41,7 +42,7 @@ const DEFAULT_INCLUDES = [ArtisanAccountDetails, ArtisanTeamMember];
 // media presigns — this module has no document-specific config of its
 // own, and inventing one is not worth it for a single upload shape.
 const DOCUMENT_MAX_BYTES = 10 * 1024 * 1024;
-const DOCUMENT_PRESIGN_TTL_SECONDS = 300;
+export const DOCUMENT_PRESIGN_TTL_SECONDS = 300;
 const ALLOWED_DOCUMENT_CONTENT_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
 
 // The single definition of "pending verification" (isVerified = false AND
@@ -64,6 +65,7 @@ export class ArtisansService {
     private readonly artisanAccountDetailsModel: typeof ArtisanAccountDetails,
     @InjectModel(ArtisanTeamMember)
     private readonly artisanTeamMemberModel: typeof ArtisanTeamMember,
+    private readonly usersService: UsersService,
     @Inject(OBJECT_STORAGE) private readonly storage: ObjectStorage,
   ) {}
 
@@ -318,50 +320,6 @@ export class ArtisansService {
     return toArtisanPublicProfileDto(artisan);
   }
 
-  async listArtisans(page: number, limit: number): Promise<PaginatedArtisansResponse> {
-    const offset = (page - 1) * limit;
-    const { rows, count } = await this.artisanModel.findAndCountAll({
-      include: DEFAULT_INCLUDES,
-      distinct: true,
-      limit,
-      offset,
-      order: [['createdAt', 'DESC']],
-    });
-    return {
-      items: rows.map((artisan) => toArtisanProfileDto(artisan)),
-      total: count,
-      page,
-      limit,
-      totalPages: Math.ceil(count / limit) || 1,
-    };
-  }
-
-  async getArtisanById(artisanId: string): Promise<ArtisanProfileDto> {
-    return toArtisanProfileDto(await this.findByIdOrThrow(artisanId));
-  }
-
-  async listPendingVerification(page: number, limit: number): Promise<PaginatedArtisansResponse> {
-    // Review Focus item from the implementation plan, LLD §4.8: an
-    // artisan with no document yet is "incomplete", not "pending" —
-    // excluded by PENDING_VERIFICATION_WHERE itself, in SQL, not here.
-    const offset = (page - 1) * limit;
-    const { rows, count } = await this.artisanModel.findAndCountAll({
-      where: PENDING_VERIFICATION_WHERE,
-      include: DEFAULT_INCLUDES,
-      distinct: true,
-      limit,
-      offset,
-      order: [['createdAt', 'ASC']],
-    });
-    return {
-      items: rows.map((artisan) => toArtisanProfileDto(artisan)),
-      total: count,
-      page,
-      limit,
-      totalPages: Math.ceil(count / limit) || 1,
-    };
-  }
-
   // Document-backed check (spec §3 scope decision, §6): cannot verify an
   // artisan who never uploaded a document. Unlike HireRequestsService's
   // conditional-UPDATE review gate, isVerified has no terminal state and
@@ -369,24 +327,58 @@ export class ArtisansService {
   // re-toggleable flag an admin can flip back and forth, so a plain
   // unconditional update (last write wins) is the correct, simpler
   // choice here, not a gap to close with the same guard.
-  async verify(artisanId: string): Promise<ArtisanProfileDto> {
+  //
+  // Decision 0058: verifying also approves the account (users.is_approved),
+  // and rejecting un-approves it, in one transaction — before this an admin
+  // had to set the two flags on two different pages.
+  async verify(artisanId: string, adminUserId: string): Promise<ArtisanProfileDto> {
     const artisan = await this.findByIdOrThrow(artisanId);
     if (!artisan.documentUrl) {
       throw new BadRequestException('cannot verify an artisan with no uploaded document');
     }
 
-    await this.artisanModel.update({ isVerified: true }, { where: { id: artisanId } });
+    await this.setVerifiedAndApproved(artisan, true);
+    this.logger.log(`admin ${adminUserId} verify artisan ${artisanId} isVerified,isApproved`);
     return toArtisanProfileDto(await this.findByIdOrThrow(artisanId));
   }
 
   // No persisted reason column in the §4.1 schema — logged only, matching
   // AdminService.rejectUser's existing reason-is-log-only pattern. Same
   // last-write-wins reasoning as verify() above applies here too.
-  async rejectVerification(artisanId: string, reason?: string): Promise<ArtisanProfileDto> {
-    await this.findByIdOrThrow(artisanId);
-    await this.artisanModel.update({ isVerified: false }, { where: { id: artisanId } });
-    this.logger.log(`Rejected verification for artisan ${artisanId}${reason ? `: ${reason}` : ''}`);
+  async rejectVerification(
+    artisanId: string,
+    adminUserId: string,
+    reason?: string,
+  ): Promise<ArtisanProfileDto> {
+    const artisan = await this.findByIdOrThrow(artisanId);
+    await this.setVerifiedAndApproved(artisan, false);
+    this.logger.log(
+      `admin ${adminUserId} reject-verification artisan ${artisanId} isVerified,isApproved${
+        reason ? `: ${reason}` : ''
+      }`,
+    );
     return toArtisanProfileDto(await this.findByIdOrThrow(artisanId));
+  }
+
+  // Ustaads this queue can't show yet: no profile, or no document (decision
+  // 0058 §3a). The query lives in UsersService because some have no artisans row.
+  listAwaitingDocument(
+    page: number,
+    limit: number,
+  ): Promise<PaginatedArtisansAwaitingDocumentResponse> {
+    return this.usersService.listArtisansAwaitingDocument(page, limit);
+  }
+
+  // UsersService.setApproved is the one writer of users.is_approved, shared
+  // with VendorsService.approveVendor/rejectVendor (decision 0048).
+  private async setVerifiedAndApproved(artisan: Artisan, value: boolean): Promise<void> {
+    await this.artisanModel.sequelize!.transaction(async (transaction) => {
+      await this.artisanModel.update(
+        { isVerified: value },
+        { where: { id: artisan.id }, transaction },
+      );
+      await this.usersService.setApproved(artisan.userId, value, transaction);
+    });
   }
 
   private async findByIdOrThrow(artisanId: string): Promise<Artisan> {

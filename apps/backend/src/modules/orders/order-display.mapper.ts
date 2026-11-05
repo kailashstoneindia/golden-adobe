@@ -20,6 +20,18 @@ import { toFiniteNumber, toIsoDate } from '../../common/utils/display-number.uti
 
 export function toOrderDto(order: Order, includeDeliveryAddress: boolean): OrderDto {
   return {
+    ...toOrderFields(order, includeDeliveryAddress),
+    vendorGroups: (order.vendorGroups ?? []).map(toOrderVendorGroupDto),
+  };
+}
+
+// Everything on OrderDto except the vendor groups, so the admin mapper can
+// build its own richer groups without mapping them twice.
+export function toOrderFields(
+  order: Order,
+  includeDeliveryAddress: boolean,
+): Omit<OrderDto, 'vendorGroups'> {
+  return {
     id: order.id,
     customerId: order.customerId,
     deliveryAddressId: order.deliveryAddressId,
@@ -35,7 +47,6 @@ export function toOrderDto(order: Order, includeDeliveryAddress: boolean): Order
       includeDeliveryAddress && order.deliveryAddress
         ? toCustomerAddressDto(order.deliveryAddress)
         : null,
-    vendorGroups: (order.vendorGroups ?? []).map(toOrderVendorGroupDto),
   };
 }
 
@@ -87,6 +98,7 @@ export function toPaymentEventDto(event: PaymentEvent): PaymentEventDto {
     id: event.id,
     orderId: event.orderId,
     eventType: event.eventType,
+    eventId: event.eventId ?? null,
     rawPayload: event.rawPayload ?? {},
     createdAt: toIsoDate(event.createdAt),
   };

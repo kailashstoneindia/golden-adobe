@@ -11,7 +11,7 @@ import { ResponseInterceptor } from '../../../common/interceptors/response.inter
 import { JwtStrategy } from '../../auth/strategies/jwt.strategy';
 import { User } from '../../users/models/user.model';
 import { UsersService } from '../../users/users.service';
-import { loadStorageConfig } from '../../../config/storage.config';
+import { loadStorageConfig, type StorageConfig } from '../../../config/storage.config';
 import { MEDIA_STORAGE_CONFIG, OBJECT_STORAGE } from '../../catalog/media/object-storage';
 import { ARTISAN_TEST_MODELS } from './test-db';
 import { FakeObjectStorage } from './fake-object-storage';
@@ -25,6 +25,7 @@ import { ArtisansController } from '../artisans.controller';
 import { AdminArtisansController } from '../admin-artisans.controller';
 import { ArtisansService } from '../artisans.service';
 import { HireRequestsService } from '../hire-requests.service';
+import { AdminArtisansService } from '../admin-artisans.service';
 import { NOTIFICATION_SERVICE } from '../../notifications/notification.interface';
 import { LogNotificationService } from '../../notifications/log-notification.service';
 
@@ -33,17 +34,21 @@ export const JWT_SECRET = 'artisans-controller-test-jwt-secret-1234567890';
 export type ArtisansTestApp = {
   app: INestApplication;
   adminToken: string;
+  adminUserId: string;
   artisanToken: string;
   artisanUserId: string;
   customerToken: string;
   customerUserId: string;
   storage: FakeObjectStorage;
+  storageConfig: StorageConfig;
   // Mocked, not a real model — Order's own association graph (Customer,
   // CustomerAddress, OrderVendorGroup) is out of scope for this
   // artisan-focused fixture. Exposed so a spec can set findAll's return
   // value to exercise GET hire-requests/:id/orders meaningfully.
   orderModel: { findAll: jest.Mock };
-  newArtisanUser: () => Promise<{ id: string; token: string }>;
+  // Approved by default, like the main ustaad; pass approved: false for a
+  // pending one (decision 0059).
+  newArtisanUser: (options?: { approved?: boolean }) => Promise<{ id: string; token: string }>;
   close: () => Promise<void>;
 };
 
@@ -64,6 +69,7 @@ export async function createArtisansTestApp(): Promise<ArtisansTestApp> {
   const suffix = Math.random().toString(36).slice(2, 10);
   const extraUserIds: string[] = [];
   const storage = new FakeObjectStorage();
+  const storageConfig: StorageConfig = { ...loadStorageConfig(), enabled: true };
   const orderModel = { findAll: jest.fn().mockResolvedValue([]) };
 
   const moduleRef: TestingModule = await Test.createTestingModule({
@@ -105,12 +111,12 @@ export async function createArtisansTestApp(): Promise<ArtisansTestApp> {
       JwtStrategy,
       ArtisansService,
       HireRequestsService,
+      AdminArtisansService,
       { provide: NOTIFICATION_SERVICE, useClass: LogNotificationService },
       { provide: getModelToken(Order), useValue: orderModel },
-      {
-        provide: MEDIA_STORAGE_CONFIG,
-        useFactory: () => loadStorageConfig(),
-      },
+      // One shared object: a test can switch storage "off" (enabled = false) to
+      // act like an environment with no media bucket.
+      { provide: MEDIA_STORAGE_CONFIG, useValue: storageConfig },
       { provide: OBJECT_STORAGE, useValue: storage },
     ],
   }).compile();
@@ -137,6 +143,8 @@ export async function createArtisansTestApp(): Promise<ArtisansTestApp> {
     phone: `9${suffix}`.slice(0, 10),
     role: Role.ARTISAN,
     isActive: true,
+    // Business-as-usual ustaad: approved, so the gate (0059) lets them work.
+    isApproved: true,
   } as never);
   const customerUser = await User.create({
     name: 'Artisans Test Customer',
@@ -148,18 +156,21 @@ export async function createArtisansTestApp(): Promise<ArtisansTestApp> {
   return {
     app,
     adminToken: jwt.sign({ sub: admin.id, role: Role.ADMIN }),
+    adminUserId: admin.id,
     artisanToken: jwt.sign({ sub: artisanUser.id, role: Role.ARTISAN }),
     artisanUserId: artisanUser.id,
     customerToken: jwt.sign({ sub: customerUser.id, role: Role.CUSTOMER }),
     customerUserId: customerUser.id,
     storage,
+    storageConfig,
     orderModel,
-    async newArtisanUser() {
+    async newArtisanUser(options: { approved?: boolean } = {}) {
       const user = await User.create({
         name: `Artisans Test Artisan ${extraUserIds.length}`,
         phone: `6${suffix}${extraUserIds.length}`.slice(0, 10),
         role: Role.ARTISAN,
         isActive: true,
+        isApproved: options.approved ?? true,
       } as never);
       extraUserIds.push(user.id);
       return { id: user.id, token: jwt.sign({ sub: user.id, role: Role.ARTISAN }) };

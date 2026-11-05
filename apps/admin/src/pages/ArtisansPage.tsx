@@ -1,14 +1,27 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { isEmpty } from 'lodash';
 
 import { APP_CONSTANTS } from '@/constants/appConstants';
 import { ERROR_MESSAGES } from '@/constants/error.constants';
 import { useArtisanByIdQuery, useArtisansQuery } from '@/queries';
+import { labelFor, TRADE_TYPE_LABELS } from '@/constants/labels';
+import { ArtisanDetailBody } from '@/components/artisans/ArtisanDetailBody';
+import { ContactCell } from '@/components/common/ContactBlock';
 import styles from '@/styles/shared.module.css';
 import { formatDateTime } from '@/utils/date';
 
 export function ArtisansPage() {
-  const [selectedArtisanId, setSelectedArtisanId] = useState<string | null>(null);
+  // A user popup's "Open in Ustaads" link opens this page on that ustaad.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [selectedArtisanId, setSelectedArtisanId] = useState<string | null>(
+    searchParams.get('artisanId'),
+  );
+  const closeDetail = () => {
+    setSelectedArtisanId(null);
+    // So a reload does not reopen it.
+    setSearchParams({}, { replace: true });
+  };
   const artisansQuery = useArtisansQuery({ page: 1, limit: APP_CONSTANTS.defaultPageSize });
   const detailQuery = useArtisanByIdQuery(selectedArtisanId);
 
@@ -37,6 +50,7 @@ export function ArtisansPage() {
           <table className={styles.table}>
             <thead>
               <tr>
+                <th>Owner</th>
                 <th>Trade</th>
                 <th>Pincode</th>
                 <th>Status</th>
@@ -50,7 +64,8 @@ export function ArtisansPage() {
                   className={styles.clickableRow}
                   onClick={() => setSelectedArtisanId(artisan.id)}
                 >
-                  <td>{artisan.tradeType}</td>
+                  <ContactCell contact={artisan.owner} />
+                  <td>{labelFor(TRADE_TYPE_LABELS, artisan.tradeType)}</td>
                   <td>{artisan.servicePincode || '—'}</td>
                   <td>
                     <span className={styles.badge}>
@@ -66,14 +81,12 @@ export function ArtisansPage() {
       )}
 
       {selectedArtisanId ? (
-        <div
-          className={styles.overlay}
-          onClick={() => setSelectedArtisanId(null)}
-          role="presentation"
-        >
+        <div className={styles.overlay} onClick={closeDetail} role="presentation">
           <div className={styles.modal} onClick={(event) => event.stopPropagation()} role="dialog">
             <h2 className={styles.modalTitle}>
-              {detailQuery.data?.tradeType ?? 'Artisan profile'}
+              {detailQuery.data
+                ? labelFor(TRADE_TYPE_LABELS, detailQuery.data.tradeType)
+                : 'Artisan profile'}
             </h2>
             <p className={styles.pageSubtitle}>Read-only profile — team and account details</p>
 
@@ -89,7 +102,7 @@ export function ArtisansPage() {
               <button
                 type="button"
                 className={`${styles.button} ${styles.buttonGhost}`}
-                onClick={() => setSelectedArtisanId(null)}
+                onClick={closeDetail}
               >
                 Close
               </button>
@@ -98,82 +111,5 @@ export function ArtisansPage() {
         </div>
       ) : null}
     </section>
-  );
-}
-
-type ArtisanDetailBodyProps = {
-  artisan: NonNullable<ReturnType<typeof useArtisanByIdQuery>['data']>;
-};
-
-function ArtisanDetailBody({ artisan }: ArtisanDetailBodyProps) {
-  return (
-    <div className={styles.modalBody}>
-      <DetailRow label="Trade" value={artisan.tradeType} />
-      <DetailRow
-        label="Experience"
-        value={artisan.experienceYears != null ? `${artisan.experienceYears} years` : '—'}
-      />
-      <DetailRow label="Service pincode" value={artisan.servicePincode || '—'} />
-      <DetailRow label="Bio" value={artisan.bio || '—'} />
-      <DetailRow label="Available" value={artisan.isAvailable ? 'Yes' : 'No'} />
-      <DetailRow label="Verified" value={artisan.isVerified ? 'Yes' : 'No'} />
-      <DetailRow label="Updated" value={formatDateTime(artisan.updatedAt)} />
-
-      <section className={styles.detailSections}>
-        <h3 className={styles.sectionTitle}>Team ({artisan.team.length})</h3>
-        {isEmpty(artisan.team) ? (
-          <p className={styles.sectionEmpty}>No team members added.</p>
-        ) : (
-          <div className={styles.tableWrap}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Role</th>
-                  <th>Phone</th>
-                </tr>
-              </thead>
-              <tbody>
-                {artisan.team.map((member) => (
-                  <tr key={member.id}>
-                    <td>{member.name || '—'}</td>
-                    <td>{member.roleOnTeam || '—'}</td>
-                    <td>{member.phone || '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
-      <section className={styles.detailSections}>
-        <h3 className={styles.sectionTitle}>Bank account details</h3>
-        {artisan.accountDetails ? (
-          <>
-            <DetailRow label="Account holder" value={artisan.accountDetails.accountHolderName} />
-            <DetailRow label="Bank" value={artisan.accountDetails.bankName} />
-            <DetailRow label="IFSC" value={artisan.accountDetails.ifscCode} />
-            <DetailRow label="Branch" value={artisan.accountDetails.branchName} />
-          </>
-        ) : (
-          <p className={styles.sectionEmpty}>No account details on file.</p>
-        )}
-      </section>
-    </div>
-  );
-}
-
-type DetailRowProps = {
-  label: string;
-  value: string;
-};
-
-function DetailRow({ label, value }: DetailRowProps) {
-  return (
-    <div className={styles.detailRow}>
-      <span className={styles.detailLabel}>{label}</span>
-      <span className={styles.detailValue}>{value}</span>
-    </div>
   );
 }

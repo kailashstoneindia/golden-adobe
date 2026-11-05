@@ -53,6 +53,7 @@ import { CitiesService } from './cities.service';
 import { StockService } from './stock.service';
 import { VendorCatalogSearchService } from './vendor-catalog-search.service';
 import { VendorListingsService } from './vendor-listings.service';
+import { UsersModule } from '../users/users.module';
 
 // Phase 1 (taxonomy) + Phase 2 (master catalog, incl. the attributes_flat /
 // identity_hash trigger layer) + Phase 3 (admin catalog import) + Phase 4
@@ -95,6 +96,9 @@ import { VendorListingsService } from './vendor-listings.service';
 // blocked on the ordering domain, which doesn't exist yet.
 @Module({
   imports: [
+    // ApprovedGuard on this module's vendor/ustaad controllers reads approval
+    // through UsersService (decision 0059).
+    UsersModule,
     SequelizeModule.forFeature([
       UnitOfMeasure,
       HsnCode,
@@ -187,9 +191,11 @@ import { VendorListingsService } from './vendor-listings.service';
     VendorListingsService,
     // Lets ArtisansModule reuse the existing presigned-POST S3 plumbing
     // (decision 0033) for KYC document uploads instead of building a
-    // second object-storage integration. MEDIA_STORAGE_CONFIG stays
-    // un-exported — nothing outside this module needs it directly.
+    // second object-storage integration. MEDIA_STORAGE_CONFIG is
+    // exported too, so the admin ustaad view can ask whether a bucket is
+    // configured instead of inferring it from signing errors (decision 0058).
     OBJECT_STORAGE,
+    MEDIA_STORAGE_CONFIG,
   ],
 })
 export class CatalogModule {}

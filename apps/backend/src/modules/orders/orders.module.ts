@@ -20,9 +20,13 @@ import { CustomersModule } from '../customers/customers.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { CatalogModule } from '../catalog/catalog.module';
+import { UsersModule } from '../users/users.module';
 
 @Module({
   imports: [
+    // ApprovedGuard on this module's vendor/ustaad controllers reads approval
+    // through UsersService (decision 0059).
+    UsersModule,
     SequelizeModule.forFeature([
       Order,
       OrderVendorGroup,

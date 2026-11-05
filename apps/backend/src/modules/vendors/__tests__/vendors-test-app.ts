@@ -18,7 +18,9 @@ import { PincodeCityMap } from '../../catalog/models/pincode-city-map.model';
 import { CityResolverService } from '../../catalog/city-resolver.service';
 import { VENDOR_TEST_MODELS } from './test-db';
 import { AdminVendorsController } from '../admin-vendors.controller';
+import { AdminVendorListingsController } from '../admin-vendor-listings.controller';
 import { VendorsService } from '../vendors.service';
+import { AdminVendorsService } from '../admin-vendors.service';
 import { VendorCategoriesService } from '../../catalog/vendor-categories.service';
 import { Category } from '../../catalog/models/category.model';
 import { VendorCategory } from '../../catalog/models/vendor-category.model';
@@ -28,6 +30,7 @@ export const JWT_SECRET = 'vendors-controller-test-jwt-secret-1234567890';
 export type VendorsTestApp = {
   app: INestApplication;
   adminToken: string;
+  adminUserId: string;
   vendorToken: string;
   vendorUserId: string;
   newVendor: () => Promise<{ userId: string; vendorId: string }>;
@@ -73,11 +76,12 @@ export async function createVendorsTestApp(): Promise<VendorsTestApp> {
       PassportModule.register({ defaultStrategy: 'jwt' }),
       JwtModule.register({ secret: JWT_SECRET, signOptions: { expiresIn: '15m' } }),
     ],
-    controllers: [AdminVendorsController],
+    controllers: [AdminVendorsController, AdminVendorListingsController],
     providers: [
       UsersService,
       JwtStrategy,
       VendorsService,
+      AdminVendorsService,
       CityResolverService,
       VendorCategoriesService,
     ],
@@ -118,6 +122,7 @@ export async function createVendorsTestApp(): Promise<VendorsTestApp> {
   return {
     app,
     adminToken: jwt.sign({ sub: admin.id, role: Role.ADMIN }),
+    adminUserId: admin.id,
     vendorToken: jwt.sign({ sub: vendorUser.id, role: Role.VENDOR }),
     vendorUserId: vendorUser.id,
     async newVendor() {

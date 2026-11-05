@@ -204,6 +204,8 @@ describe('primary image in search (real Postgres)', () => {
       name: `Search Image Vendor ${suffix}`,
       phone: `+91${suffix.slice(-10).padStart(10, '9')}`,
       role: 'VENDOR',
+      // Search only shows approved vendors' listings (decision 0059 G1).
+      isApproved: true,
     } as never);
     userId = user.id;
     const vendor = await Vendor.create({

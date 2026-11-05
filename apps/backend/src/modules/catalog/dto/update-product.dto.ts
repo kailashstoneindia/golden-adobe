@@ -1,6 +1,13 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { IsArray, IsOptional, IsString, MinLength, ValidateNested } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import {
+  IsArray,
+  IsString,
+  MaxLength,
+  MinLength,
+  ValidateIf,
+  ValidateNested,
+} from 'class-validator';
 import { AttributeValueInputDto } from './attribute-value-input.dto';
 
 // Correction, not re-classification (decision 0023): category is
@@ -15,9 +22,13 @@ import { AttributeValueInputDto } from './attribute-value-input.dto';
 // leave attribute values untouched.
 export class UpdateProductDto {
   @ApiPropertyOptional()
-  @IsOptional()
+  // Absent is fine; null is not (IsOptional would let null through to erase the name).
+  @ValidateIf((_object, value) => value !== undefined)
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
   @MinLength(1)
+  // master_product.name is STRING(255): a longer one would be a database error (500).
+  @MaxLength(255)
   name?: string;
 
   @ApiPropertyOptional({
@@ -27,7 +38,7 @@ export class UpdateProductDto {
       'untouched; send [] to clear all of them (blocked at publish time if any cleared ' +
       'attribute is variant-defining on a live product).',
   })
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => AttributeValueInputDto)

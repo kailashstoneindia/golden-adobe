@@ -8,6 +8,9 @@ export {
   useAdminUserQuery,
   useAdminUsersQuery,
   useApproveUserMutation,
+  useRevokeUserSessionsMutation,
+  useSetUserActiveMutation,
+  useUpdateUserMutation,
   useMeQuery,
   useRejectUserMutation,
 } from './useAdminQueries';
@@ -18,6 +21,7 @@ export {
   useArtisanByIdQuery,
   useArtisanPendingHireRequestsQuery,
   useArtisanPendingVerificationQuery,
+  useArtisansAwaitingDocumentQuery,
   useArtisansQuery,
   useCancelHireRequestMutation,
   useRejectArtisanVerificationMutation,

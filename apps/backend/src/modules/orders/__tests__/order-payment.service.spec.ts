@@ -225,6 +225,70 @@ describe('OrderPaymentService (decision 0054)', () => {
       expect(calls).toHaveLength(before + 1);
       expect(calls[calls.length - 1].args.slice(1)).toEqual([o.orderId, 'refund_required']);
     });
+
+    // Decision 0059 G5: a vendor rejected between checkout and payment never
+    // gets the order. The money is refunded and the stock hold released.
+    describe('when the vendor is no longer approved at capture', () => {
+      const setVendorApproved = (isApproved: boolean) =>
+        t.query(`UPDATE users SET is_approved = :isApproved WHERE id = :id`, {
+          isApproved,
+          id: t.vendorUserId,
+        });
+
+      afterEach(async () => {
+        await setVendorApproved(true);
+      });
+
+      it('lands the order on refund_required with the stock released and the group cancelled', async () => {
+        const o = await t.seedPendingOrder();
+        await setVendorApproved(false);
+        const p = payment(o, 'captured');
+        const warnLog = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+
+        try {
+          expect(await service.applyCapture(await load(o), p)).toBe('refund_required');
+          expect(warnLog).toHaveBeenCalledWith(expect.stringContaining(o.orderId));
+        } finally {
+          warnLog.mockRestore();
+        }
+
+        const [row] = await t.query<{ status: string; razorpay_payment_id: string }>(
+          `SELECT status, razorpay_payment_id FROM orders WHERE id = :id`,
+          { id: o.orderId },
+        );
+        expect(row).toEqual({ status: 'refund_required', razorpay_payment_id: p.id });
+        const [inv] = await t.query<{ quantity_available: number; quantity_reserved: number }>(
+          `SELECT quantity_available, quantity_reserved FROM inventory WHERE vendor_listing_id = :id`,
+          { id: o.listingId },
+        );
+        expect([Number(inv.quantity_available), Number(inv.quantity_reserved)]).toEqual([10, 0]);
+        const groups = await t.query<{ status: string }>(
+          `SELECT status FROM order_vendor_group WHERE order_id = :id`,
+          { id: o.orderId },
+        );
+        expect(groups.map((g) => g.status)).toEqual(['cancelled']);
+      });
+
+      it('tells the customer, and never tells the vendor', async () => {
+        const o = await t.seedPendingOrder();
+        await setVendorApproved(false);
+        const vendorCalls = t.notifications.callsTo('sendNewOrderToVendor').length;
+
+        await service.applyCapture(await load(o), payment(o, 'captured'));
+
+        const calls = t.notifications.callsTo('sendOrderStatusChanged');
+        expect(calls[calls.length - 1].args.slice(1)).toEqual([o.orderId, 'refund_required']);
+        expect(t.notifications.callsTo('sendNewOrderToVendor')).toHaveLength(vendorCalls);
+      });
+
+      it('still confirms once the vendor is approved again before the capture', async () => {
+        const o = await t.seedPendingOrder();
+        await setVendorApproved(false);
+        await setVendorApproved(true);
+
+        expect(await service.applyCapture(await load(o), payment(o, 'captured'))).toBe('confirmed');
+      });
+    });
   });
 
   describe('checkProviderPayments', () => {

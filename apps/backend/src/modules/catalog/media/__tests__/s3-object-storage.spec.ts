@@ -104,6 +104,32 @@ describe('S3ObjectStorage (real MinIO)', () => {
     });
   });
 
+  // Decision 0058 Task 6: the admin opens private ustaad documents through a
+  // short-lived signed download link.
+  describe('presignGet', () => {
+    it('gives a link that downloads the object', async () => {
+      const key = newKey('artisans/test');
+      await storage.put(key, jpegOfSize(80), 'image/jpeg');
+
+      const url = await storage.presignGet(key, 60);
+      const res = await fetch(url);
+
+      expect(res.status).toBe(200);
+      expect(Buffer.from(await res.arrayBuffer()).length).toBe(80);
+
+      // Negative control: the same object without the signature is refused,
+      // so the 200 above is the signature at work, not public access.
+      const unsigned = new URL(url);
+      unsigned.search = '';
+      expect((await fetch(unsigned)).status).toBe(403);
+    });
+
+    it('signs the link to expire after the given time', async () => {
+      const url = new URL(await storage.presignGet(newKey('artisans/test'), 90));
+      expect(url.searchParams.get('X-Amz-Expires')).toBe('90');
+    });
+  });
+
   describe('objects', () => {
     it('head returns null for a missing object', async () => {
       expect(await storage.head(newKey())).toBeNull();

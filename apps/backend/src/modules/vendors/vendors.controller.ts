@@ -22,6 +22,8 @@ import { UpdateAccountDetailsDto } from './dto/update-account-details.dto';
 import { UpdateVendorOnboardingProgressDto } from './dto/update-vendor-onboarding-progress.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { ApprovedGuard } from '../../common/guards/approved.guard';
+import { AllowUnapproved } from '../../common/decorators/allow-unapproved.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '@golden-abode/types';
 
@@ -36,7 +38,9 @@ class UpdateOrderGroupStatusDto {
 // with the risk that a sixth route added later forgets them.
 @ApiTags('Vendors')
 @Controller('vendors')
-@UseGuards(JwtAuthGuard, RolesGuard)
+// Decision 0059: vendors and ustaads need an approved account here unless a
+// route is marked @AllowUnapproved() (onboarding and own profile).
+@UseGuards(JwtAuthGuard, RolesGuard, ApprovedGuard)
 @Roles(Role.VENDOR)
 @ApiBearerAuth()
 export class VendorsController {
@@ -46,6 +50,7 @@ export class VendorsController {
     private readonly ordersService: OrdersService,
   ) {}
 
+  @AllowUnapproved()
   @Post('onboard')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
@@ -62,6 +67,7 @@ export class VendorsController {
     return profile;
   }
 
+  @AllowUnapproved()
   @Get('me')
   @ApiOperation({
     summary: 'Read your own vendor profile',
@@ -73,6 +79,7 @@ export class VendorsController {
     return this.vendorsService.getProfileByUserId(req.user.sub);
   }
 
+  @AllowUnapproved()
   @Patch('me')
   @ApiOperation({
     summary: 'Update your own vendor profile',
@@ -85,6 +92,7 @@ export class VendorsController {
     return this.vendorsService.updateProfile(req.user.sub, dto);
   }
 
+  @AllowUnapproved()
   @Patch('me/account-details')
   @ApiOperation({
     summary: 'Update your bank account details',
@@ -96,6 +104,7 @@ export class VendorsController {
     return this.vendorsService.updateAccountDetails(req.user.sub, dto);
   }
 
+  @AllowUnapproved()
   @Get('me/categories')
   @ApiOperation({
     summary: 'The categories your shop is registered for',
@@ -108,6 +117,7 @@ export class VendorsController {
     return this.vendorCategoriesService.listForVendor(vendor.id);
   }
 
+  @AllowUnapproved()
   @Patch('onboarding-progress')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Persist vendor onboarding progress stage' })

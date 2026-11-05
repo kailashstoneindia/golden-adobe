@@ -1,10 +1,12 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
   Patch,
+  Put,
   Query,
   Req,
   UseGuards,
@@ -15,10 +17,15 @@ import { Role } from '@golden-abode/types';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ArtisansService } from './artisans.service';
 import { HireRequestsService } from './hire-requests.service';
+import { AdminArtisansService } from './admin-artisans.service';
 import { ReviewHireRequestDto } from './dto/review-hire-request.dto';
 import { RejectArtisanVerificationDto } from './dto/reject-artisan-verification.dto';
+import { AdminUpdateTeamMemberDto } from './dto/admin-update-team-member.dto';
+import { UpdateAccountDetailsDto } from './dto/update-account-details.dto';
+import { UpdateArtisanProfileDto } from './dto/update-artisan-profile.dto';
 import { PaginationQueryDto } from './dto/pagination-query.dto';
 
 // Admin-facing artisan administration. Mirrors AdminVendorsController's
@@ -33,13 +40,26 @@ export class AdminArtisansController {
   constructor(
     private readonly artisansService: ArtisansService,
     private readonly hireRequestsService: HireRequestsService,
+    private readonly adminArtisansService: AdminArtisansService,
   ) {}
 
   @Get()
   @ApiOperation({ summary: 'List all artisan profiles' })
   @ApiResponse({ status: 200, description: 'Page of artisan profiles, newest first' })
   async list(@Query() query: PaginationQueryDto) {
-    return this.artisansService.listArtisans(query.page ?? 1, query.limit ?? 20);
+    return this.adminArtisansService.list(query.page ?? 1, query.limit ?? 20);
+  }
+
+  // Declared before ':id' so the UUID route doesn't swallow it.
+  @Get('awaiting-document')
+  @ApiOperation({
+    summary: 'Ustaads who cannot be verified yet',
+    description:
+      'Active ustaads with no profile, or a profile with no document (decision 0058). Read-only: there is nothing to approve until a document arrives.',
+  })
+  @ApiResponse({ status: 200, description: 'Page of ustaads, newest sign-up first' })
+  async awaitingDocument(@Query() query: PaginationQueryDto) {
+    return this.artisansService.listAwaitingDocument(query.page ?? 1, query.limit ?? 20);
   }
 
   @Get('pending-verification')
@@ -50,7 +70,7 @@ export class AdminArtisansController {
   })
   @ApiResponse({ status: 200, description: 'Page of artisans ready for an admin to review' })
   async pendingVerification(@Query() query: PaginationQueryDto) {
-    return this.artisansService.listPendingVerification(query.page ?? 1, query.limit ?? 20);
+    return this.adminArtisansService.listPendingVerification(query.page ?? 1, query.limit ?? 20);
   }
 
   @Get('hire-requests/pending')
@@ -87,12 +107,71 @@ export class AdminArtisansController {
     return this.hireRequestsService.reviewRequest(req.user.sub, id, dto);
   }
 
+  @Patch(':id')
+  @ApiOperation({
+    summary: 'Fix an ustaad’s profile',
+    description:
+      'Trade, experience, bio, service pincode and availability (decision 0058 Task 11). Same rules as the ustaad’s own edit; never changes verification. A null is refused.',
+  })
+  @ApiResponse({ status: 200, description: 'The updated ustaad, admin view' })
+  @ApiResponse({ status: 404, description: 'No such ustaad' })
+  async updateProfile(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateArtisanProfileDto,
+    @CurrentUser('sub') adminUserId: string,
+  ) {
+    return this.adminArtisansService.updateProfile(id, adminUserId, dto);
+  }
+
+  @Put(':id/account-details')
+  @ApiOperation({
+    summary: 'Replace an ustaad’s bank account details',
+    description: 'All five fields every time; creates the record if there is none.',
+  })
+  @ApiResponse({ status: 200, description: 'The updated ustaad, admin view' })
+  @ApiResponse({ status: 404, description: 'No such ustaad' })
+  async updateAccountDetails(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateAccountDetailsDto,
+    @CurrentUser('sub') adminUserId: string,
+  ) {
+    return this.adminArtisansService.updateAccountDetails(id, adminUserId, dto);
+  }
+
+  @Patch(':id/team/:memberId')
+  @ApiOperation({
+    summary: 'Correct a team member’s name, role or phone',
+    description: 'The member’s document cannot be changed here.',
+  })
+  @ApiResponse({ status: 200, description: 'The ustaad, admin view' })
+  @ApiResponse({ status: 404, description: 'No such member under this ustaad' })
+  async updateTeamMember(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('memberId', ParseUUIDPipe) memberId: string,
+    @Body() dto: AdminUpdateTeamMemberDto,
+    @CurrentUser('sub') adminUserId: string,
+  ) {
+    return this.adminArtisansService.updateTeamMember(id, memberId, adminUserId, dto);
+  }
+
+  @Delete(':id/team/:memberId')
+  @ApiOperation({ summary: 'Remove a team member from an ustaad' })
+  @ApiResponse({ status: 200, description: 'The ustaad, admin view' })
+  @ApiResponse({ status: 404, description: 'No such member under this ustaad' })
+  async removeTeamMember(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('memberId', ParseUUIDPipe) memberId: string,
+    @CurrentUser('sub') adminUserId: string,
+  ) {
+    return this.adminArtisansService.removeTeamMember(id, memberId, adminUserId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Read one artisan profile by id' })
   @ApiResponse({ status: 200, description: 'The artisan profile' })
   @ApiResponse({ status: 404, description: 'No such artisan' })
   async getOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.artisansService.getArtisanById(id);
+    return this.adminArtisansService.get(id);
   }
 
   @Patch(':id/verify')
@@ -102,8 +181,8 @@ export class AdminArtisansController {
   })
   @ApiResponse({ status: 200, description: 'Updated profile, isVerified: true' })
   @ApiResponse({ status: 400, description: 'No uploaded document to review' })
-  async verify(@Param('id', ParseUUIDPipe) id: string) {
-    return this.artisansService.verify(id);
+  async verify(@Param('id', ParseUUIDPipe) id: string, @CurrentUser('sub') adminUserId: string) {
+    return this.artisansService.verify(id, adminUserId);
   }
 
   @Patch(':id/reject-verification')
@@ -116,7 +195,8 @@ export class AdminArtisansController {
   async rejectVerification(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: RejectArtisanVerificationDto,
+    @CurrentUser('sub') adminUserId: string,
   ) {
-    return this.artisansService.rejectVerification(id, dto.reason);
+    return this.artisansService.rejectVerification(id, adminUserId, dto.reason);
   }
 }

@@ -32,6 +32,19 @@ describe('UsersController device token (real HTTP, Postgres)', () => {
     expect(user!.deviceToken).toBe('ExponentPushToken[abc123]');
   });
 
+  // Decision 0058 whole-branch review: approval has one writer (AdminService, which keeps
+  // users.is_approved, artisans.is_verified and vendors.status in step and logs the admin).
+  // This old route set the bare flag and is gone: 404, where it used to answer 403 here.
+  it('no longer has a bare approve route', async () => {
+    const res = await asCustomer(
+      request(t.app.getHttpServer()).patch(
+        '/api/users/11111111-1111-4111-8111-111111111111/approve',
+      ),
+    );
+
+    expect(res.status).toBe(404);
+  });
+
   it('answers 400 for an empty device token', async () => {
     const res = await asCustomer(
       request(t.app.getHttpServer()).patch('/api/users/me/device-token').send({ deviceToken: '' }),

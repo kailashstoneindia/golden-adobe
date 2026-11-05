@@ -1,12 +1,12 @@
-import type { UserDto } from '@golden-abode/types';
+import type { AdminUserDto } from '@golden-abode/types';
 
 import styles from '@/styles/shared.module.css';
 import { formatRoleLabel } from '@/utils/role';
 import { formatPhoneDisplay } from '@/utils/phone';
 
 type ApprovalCardProps = {
-  user: UserDto;
-  onSelect: (user: UserDto) => void;
+  user: AdminUserDto;
+  onSelect: (user: AdminUserDto) => void;
 };
 
 export function ApprovalCard({ user, onSelect }: ApprovalCardProps) {

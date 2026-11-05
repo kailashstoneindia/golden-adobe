@@ -55,6 +55,23 @@ describe('Vendor onboarding and city resolution (real HTTP, Postgres)', () => {
     await t.close();
   });
 
+  describe('approval gate (0059)', () => {
+    it('a pending vendor can onboard and read their profile but not their orders', async () => {
+      const vendor = await t.newVendorUser();
+      const as = (req: request.Test) => req.set('Authorization', `Bearer ${vendor.token}`);
+      const server = t.app.getHttpServer();
+
+      expect(
+        (await as(request(server).post('/api/vendors/onboard').send(onboardBody()))).status,
+      ).toBe(201);
+      expect((await as(request(server).get('/api/vendors/me'))).status).toBe(200);
+      const orders = await as(request(server).get('/api/vendors/order-groups'));
+
+      expect(orders.status).toBe(403);
+      expect(orders.body.code).toBe('ACCOUNT_NOT_APPROVED');
+    });
+  });
+
   it('onboards, resolves the nearest active city, and sets citySource to gps', async () => {
     const vendor = await t.newVendorUser();
     const city = await t.createCity({ centroidLat: 28.7041, centroidLng: 77.1025 });

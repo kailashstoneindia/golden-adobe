@@ -193,6 +193,8 @@ export type PaymentEventDto = {
   id: string;
   orderId: string;
   eventType: string;
+  // Razorpay's x-razorpay-event-id; null for events without one.
+  eventId: string | null;
   rawPayload: Record<string, unknown>;
   createdAt: string;
 };

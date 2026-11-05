@@ -1,15 +1,30 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Put, Patch, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Put,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Role } from '@golden-abode/types';
 
 import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { VendorsService } from './vendors.service';
+import { AdminVendorsService } from './admin-vendors.service';
+import { AdminVendorListingsQueryDto } from './dto/admin-vendor-listings-query.dto';
 import { VendorCategoriesService } from '../catalog/vendor-categories.service';
 import { SetVendorCategoriesDto } from '../catalog/dto/set-vendor-categories.dto';
 import { SetVendorCityDto } from './dto/set-vendor-city.dto';
 import { RejectVendorDto } from './dto/reject-vendor.dto';
+import { UpdateAccountDetailsDto } from './dto/update-account-details.dto';
+import { UpdateVendorProfileDto } from './dto/update-vendor-profile.dto';
 
 // Admin-facing vendor administration. Vendor data was previously reachable
 // only nested inside GET /admin/users/:id, which meant no way to list
@@ -28,6 +43,7 @@ import { RejectVendorDto } from './dto/reject-vendor.dto';
 export class AdminVendorsController {
   constructor(
     private readonly vendorsService: VendorsService,
+    private readonly adminVendorsService: AdminVendorsService,
     private readonly vendorCategoriesService: VendorCategoriesService,
   ) {}
 
@@ -38,7 +54,7 @@ export class AdminVendorsController {
   })
   @ApiResponse({ status: 200, description: 'All vendor profiles, newest first' })
   async list() {
-    return this.vendorsService.listVendors();
+    return this.adminVendorsService.list();
   }
 
   @Get(':id')
@@ -46,7 +62,55 @@ export class AdminVendorsController {
   @ApiResponse({ status: 200, description: 'The vendor profile' })
   @ApiResponse({ status: 404, description: 'No such vendor' })
   async getOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.vendorsService.getVendorById(id);
+    return this.adminVendorsService.get(id);
+  }
+
+  @Patch(':id')
+  @ApiOperation({
+    summary: 'Fix a vendor’s profile',
+    description:
+      'Shop name, address, coordinates (together), GSTIN, UPI, bank note, minimum order and loading team (decision 0058 Task 10). Same rules as the vendor’s own edit; a null is refused.',
+  })
+  @ApiResponse({ status: 200, description: 'The updated vendor, admin view' })
+  @ApiResponse({ status: 404, description: 'No such vendor' })
+  async updateProfile(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateVendorProfileDto,
+    @CurrentUser('sub') adminUserId: string,
+  ) {
+    return this.adminVendorsService.updateProfile(id, adminUserId, dto);
+  }
+
+  @Put(':id/account-details')
+  @ApiOperation({
+    summary: 'Replace a vendor’s bank account details',
+    description: 'All five fields every time; creates the record if there is none.',
+  })
+  @ApiResponse({ status: 200, description: 'The updated vendor, admin view' })
+  @ApiResponse({ status: 404, description: 'No such vendor' })
+  async updateAccountDetails(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateAccountDetailsDto,
+    @CurrentUser('sub') adminUserId: string,
+  ) {
+    return this.adminVendorsService.updateAccountDetails(id, adminUserId, dto);
+  }
+
+  @Get(':id/listings')
+  @ApiOperation({
+    summary: "A vendor's listings with product, stock and open flags",
+    description: 'Paged, newest first, optionally one status (decision 0058 Task 5).',
+  })
+  @ApiResponse({ status: 404, description: 'No such vendor' })
+  async listings(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() query: AdminVendorListingsQueryDto,
+  ) {
+    return this.adminVendorsService.listListings(id, {
+      status: query.status,
+      page: query.page ?? 1,
+      limit: query.limit ?? 20,
+    });
   }
 
   @Patch(':id/city')
@@ -90,8 +154,8 @@ export class AdminVendorsController {
   })
   @ApiResponse({ status: 200, description: 'The approved vendor profile' })
   @ApiResponse({ status: 404, description: 'No such vendor' })
-  async approve(@Param('id', ParseUUIDPipe) id: string) {
-    return this.vendorsService.approveVendor(id);
+  async approve(@Param('id', ParseUUIDPipe) id: string, @CurrentUser('sub') adminUserId: string) {
+    return this.vendorsService.approveVendor(id, adminUserId);
   }
 
   @Patch(':id/reject')
@@ -102,7 +166,11 @@ export class AdminVendorsController {
   })
   @ApiResponse({ status: 200, description: 'The rejected vendor profile' })
   @ApiResponse({ status: 404, description: 'No such vendor' })
-  async reject(@Param('id', ParseUUIDPipe) id: string, @Body() dto: RejectVendorDto) {
-    return this.vendorsService.rejectVendor(id, dto.reason);
+  async reject(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: RejectVendorDto,
+    @CurrentUser('sub') adminUserId: string,
+  ) {
+    return this.vendorsService.rejectVendor(id, adminUserId, dto.reason);
   }
 }

@@ -1,5 +1,15 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ListUsersQuery } from '@golden-abode/types';
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+  type UseQueryOptions,
+} from '@tanstack/react-query';
+import type {
+  ListUsersQuery,
+  PaginatedUsersResponse,
+  UpdateAdminUserRequest,
+} from '@golden-abode/types';
 import { Role } from '@golden-abode/types';
 
 import { APP_CONSTANTS } from '@/constants/appConstants';
@@ -23,8 +33,12 @@ export function useAdminStatsQuery() {
   });
 }
 
-export function useAdminUsersQuery(query: ListUsersQuery) {
+export function useAdminUsersQuery(
+  query: ListUsersQuery,
+  options: Pick<UseQueryOptions<PaginatedUsersResponse>, 'placeholderData'> = {},
+) {
   return useQuery({
+    ...options,
     queryKey: ADMIN_QUERY_KEYS.users(query),
     queryFn: () => adminService.fetchUsers(query),
     staleTime: APP_CONSTANTS.staleTimeMs,
@@ -46,6 +60,10 @@ export function useApproveUserMutation() {
     mutationFn: (userId: string) => adminService.approveUser(userId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin'] });
+      // For an ustaad this ran Verify/Reject (decision 0058 §3b).
+      queryClient.invalidateQueries({ queryKey: ['artisans'] });
+      // For a vendor this also changed the vendor record (F2).
+      queryClient.invalidateQueries({ queryKey: ['vendors'] });
     },
   });
 }
@@ -57,6 +75,10 @@ export function useRejectUserMutation() {
       adminService.rejectUser(options.userId, { reason: options.reason }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin'] });
+      // For an ustaad this ran Verify/Reject (decision 0058 §3b).
+      queryClient.invalidateQueries({ queryKey: ['artisans'] });
+      // For a vendor this also changed the vendor record (F2).
+      queryClient.invalidateQueries({ queryKey: ['vendors'] });
     },
   });
 }
@@ -90,4 +112,42 @@ export function getPendingQueryForRole(role: Role): ListUsersQuery {
     page: 1,
     limit: APP_CONSTANTS.defaultPageSize,
   };
+}
+
+// Decision 0058 Task 9. A user's name, phone and active badge also show in the
+// vendor, ustaad and order popups (the owner or customer block), so an edit
+// reloads those too, not just the users list and popup.
+function refreshEverywhereTheUserShows(queryClient: QueryClient) {
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: ['admin'] }),
+    queryClient.invalidateQueries({ queryKey: ['vendors'] }),
+    queryClient.invalidateQueries({ queryKey: ['artisans'] }),
+    queryClient.invalidateQueries({ queryKey: ['orders'] }),
+  ]);
+}
+
+export function useUpdateUserMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (options: { userId: string; body: UpdateAdminUserRequest }) =>
+      adminService.updateUser(options.userId, options.body),
+    onSuccess: () => refreshEverywhereTheUserShows(queryClient),
+  });
+}
+
+export function useSetUserActiveMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (options: { userId: string; isActive: boolean }) =>
+      adminService.setUserActive(options.userId, options.isActive),
+    onSuccess: () => refreshEverywhereTheUserShows(queryClient),
+  });
+}
+
+export function useRevokeUserSessionsMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: string) => adminService.revokeUserSessions(userId),
+    onSuccess: () => refreshEverywhereTheUserShows(queryClient),
+  });
 }

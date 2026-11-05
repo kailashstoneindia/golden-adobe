@@ -1,10 +1,15 @@
+import type { ReactNode } from 'react';
 import { isEmpty } from 'lodash';
 
 import { ProductMediaPanel } from '@/components/catalog/media/ProductMediaPanel';
 import { useProductQuery } from '@/queries/useCatalogQueries';
+import { ProductNameEditor } from '@/components/catalog/ProductNameEditor';
+import { labelFor, PRODUCT_STATUS_LABELS } from '@/constants/labels';
 import styles from '@/styles/shared.module.css';
 import catalogStyles from '@/styles/catalog.module.css';
 import { formatDateTime } from '@/utils/date';
+import { formatPaise, rupeesToPaise } from '@/utils/money';
+import type { ProductDetail, ProductListing } from '@/types/catalog.types';
 
 type ProductDetailModalProps = {
   productId: string;
@@ -33,10 +38,14 @@ export function ProductDetailModal({
           <p className={styles.error}>Could not load this product.</p>
         ) : (
           <>
-            <h3 className={styles.modalTitle}>{product.name}</h3>
+            <ProductNameEditor productId={product.id} name={product.name} />
             <p className={catalogStyles.detailPath}>
               <code>{product.productCode}</code> · {product.categoryPath}
             </p>
+
+            {product.description ? (
+              <p className={styles.pageSubtitle}>{product.description}</p>
+            ) : null}
 
             <div className={styles.modalBody}>
               <div className={styles.detailSections}>
@@ -44,7 +53,7 @@ export function ProductDetailModal({
                   <span className={styles.detailLabel}>Status</span>
                   <span className={styles.detailValue}>
                     <span className={catalogStyles[`status_${product.status}`]}>
-                      {product.status}
+                      {labelFor(PRODUCT_STATUS_LABELS, product.status)}
                     </span>
                   </span>
                 </div>
@@ -72,6 +81,19 @@ export function ProductDetailModal({
                   <span className={styles.detailLabel}>Country of origin</span>
                   <span className={styles.detailValue}>{product.countryOfOrigin}</span>
                 </div>
+                <Row label="Family">{product.productFamily ?? '—'}</Row>
+                <Row label="Stone variety">{product.stoneVariety ?? '—'}</Row>
+                <Row label="Unit">{product.unitOfMeasure ?? '—'}</Row>
+                <Row label="Sold as">{soldAs(product)}</Row>
+                <Row label="Natural variation">{product.hasNaturalVariation ? 'Yes' : 'No'}</Row>
+                <Row label="Importer">{product.importerDetails ?? '—'}</Row>
+                <Row label="Best price">
+                  {product.bestPrice === null
+                    ? '—'
+                    : `${rupees(product.bestPrice)}${
+                        product.bestVendorName ? ` at ${product.bestVendorName}` : ''
+                      }`}
+                </Row>
                 <div className={styles.detailRow}>
                   <span className={styles.detailLabel}>Active vendor listings</span>
                   <span className={styles.detailValue}>{product.listingCount}</span>
@@ -107,6 +129,11 @@ export function ProductDetailModal({
                 </ul>
               )}
 
+              <VendorListings
+                listings={product.listings}
+                tintedToOrder={product.saleUnitType === 'tinted_to_order'}
+              />
+
               <ProductMediaPanel productId={product.id} />
             </div>
 
@@ -138,5 +165,106 @@ export function ProductDetailModal({
         )}
       </div>
     </div>
+  );
+}
+
+function Row({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className={styles.detailRow}>
+      <span className={styles.detailLabel}>{label}</span>
+      <span className={styles.detailValue}>{children}</span>
+    </div>
+  );
+}
+
+const SALE_UNIT_TEXT: Record<ProductDetail['saleUnitType'], string> = {
+  discrete: 'Single items',
+  cut_to_length: 'Cut to length',
+  tinted_to_order: 'Tinted to order',
+};
+
+const LISTING_STATUS_TEXT: Record<ProductListing['status'], string> = {
+  active: 'Active',
+  paused: 'Paused',
+  out_of_stock: 'Out of stock',
+};
+
+function soldAs(product: ProductDetail): string {
+  const unit = SALE_UNIT_TEXT[product.saleUnitType] ?? product.saleUnitType;
+  return product.packContentQty ? `${unit} · ${product.packContentQty} per pack` : unit;
+}
+
+// vendor_listing.price is stored in rupees.
+function rupees(amount: number): string {
+  return formatPaise(rupeesToPaise(amount));
+}
+
+// What a customer could buy is available minus held, the same sum checkout
+// and search use. Paint is made to order and never has a stock row.
+function stockText(listing: ProductListing, tintedToOrder: boolean): string {
+  if (listing.quantityAvailable === null) {
+    return tintedToOrder ? 'Not tracked (made to order)' : 'No stock row';
+  }
+  const held = listing.quantityReserved ?? 0;
+  const free = Math.max(listing.quantityAvailable - held, 0);
+  return `${listing.quantityAvailable} in stock · ${held} held · ${free} free`;
+}
+
+// Decision 0058 Task 8: everyone selling this product, live ones first.
+function VendorListings({
+  listings,
+  tintedToOrder,
+}: {
+  listings: ProductListing[];
+  tintedToOrder: boolean;
+}) {
+  return (
+    <section role="group" aria-label="Vendor listings">
+      <h4 className={catalogStyles.detailTitle}>Vendor listings</h4>
+      {isEmpty(listings) ? (
+        <div className={styles.sectionEmpty}>No vendor sells this product yet.</div>
+      ) : (
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Shop</th>
+                <th>Price</th>
+                <th>Stock</th>
+                <th>Status</th>
+                <th>Updated</th>
+              </tr>
+            </thead>
+            <tbody>
+              {listings.map((listing) => (
+                <tr key={listing.id}>
+                  <td>
+                    <div>{listing.shopName}</div>
+                    <div className={styles.meta}>
+                      {listing.vendorApproved ? 'Vendor approved' : 'Vendor not approved'}
+                    </div>
+                    {listing.statedGrade ? (
+                      <div className={styles.meta}>Grade {listing.statedGrade}</div>
+                    ) : null}
+                    {listing.vendorSku ? (
+                      <div className={styles.meta}>SKU {listing.vendorSku}</div>
+                    ) : null}
+                  </td>
+                  <td>
+                    <div>{rupees(listing.price)}</div>
+                    {listing.mrp === null ? null : (
+                      <div className={styles.meta}>MRP {rupees(listing.mrp)}</div>
+                    )}
+                  </td>
+                  <td>{stockText(listing, tintedToOrder)}</td>
+                  <td>{LISTING_STATUS_TEXT[listing.status] ?? listing.status}</td>
+                  <td>{formatDateTime(listing.updatedAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }

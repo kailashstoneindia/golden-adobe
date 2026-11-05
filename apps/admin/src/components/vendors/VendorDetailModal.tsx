@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { isEmpty } from 'lodash';
 
+import { VendorFacts } from '@/components/vendors/VendorFacts';
+import { labelFor, VENDOR_STATUS_LABELS } from '@/constants/labels';
 import styles from '@/styles/shared.module.css';
 import type { VendorDetailModalProps, VendorDetailRowProps } from '@/types/vendors.types';
 import { formatDateTime } from '@/utils/date';
@@ -63,17 +65,20 @@ export function VendorDetailModal({
         <p className={styles.pageSubtitle}>Vendor profile and registration scope</p>
 
         <div className={styles.modalBody}>
-          <DetailRow label="Status" value={formatVendorStatus(vendor.status)} />
+          <DetailRow label="Status" value={labelFor(VENDOR_STATUS_LABELS, vendor.status)} />
           {vendor.status === 'REJECTED' && vendor.rejectionReason ? (
             <DetailRow label="Rejection reason" value={vendor.rejectionReason} />
           ) : null}
           {vendor.statusUpdatedAt ? (
             <DetailRow label="Status updated" value={formatDateTime(vendor.statusUpdatedAt)} />
           ) : null}
-          <DetailRow label="Address" value={vendor.address} />
-          <DetailRow label="GSTIN" value={vendor.gstin || '—'} />
-          <DetailRow label="Current city" value={vendor.city?.name ?? 'Not set'} />
+          <DetailRow
+            label="Current city"
+            value={`${vendor.city?.name ?? 'Not set'}${CITY_SOURCE_TEXT[vendor.citySource ?? ''] ?? ''}`}
+          />
           <DetailRow label="Updated" value={formatDateTime(vendor.updatedAt)} />
+
+          <VendorFacts vendor={vendor} />
 
           <section className={styles.detailSections}>
             <h3 className={styles.sectionTitle}>Approval</h3>
@@ -227,15 +232,15 @@ function DetailRow({ label, value }: VendorDetailRowProps) {
   );
 }
 
-function formatVendorStatus(status: string): string {
-  if (status === 'APPROVED') return 'Approved';
-  if (status === 'REJECTED') return 'Rejected';
-  return 'Pending';
-}
-
 function toggleCategoryId(currentIds: string[], categoryId: string): string[] {
   if (currentIds.includes(categoryId)) {
     return currentIds.filter((id) => id !== categoryId);
   }
   return [...currentIds, categoryId];
 }
+
+// Whether clearing the city override changes anything (decision 0058 Task 5).
+const CITY_SOURCE_TEXT: Record<string, string> = {
+  admin: ' (pinned by an admin)',
+  gps: ' (from the shop address GPS)',
+};

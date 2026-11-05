@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ArtisanHireRequestDto } from '@golden-abode/types';
+import { Role, type AdminHireRequestDto } from '@golden-abode/types';
 
 import { server } from '@/test/server';
 
@@ -12,7 +12,7 @@ import { ArtisanHireRequestsTrackingPage } from './ArtisanHireRequestsTrackingPa
 const BASE = '/api/admin/artisans/hire-requests';
 const CANCEL_BASE = '/api/artisans/hire-requests';
 
-function hireRequest(over: Partial<ArtisanHireRequestDto> = {}): ArtisanHireRequestDto {
+function hireRequest(over: Partial<AdminHireRequestDto> = {}): AdminHireRequestDto {
   return {
     id: 'h1111111-1111-4111-8111-111111111111',
     customerId: 'c1111111-1111-4111-8111-111111111111',
@@ -35,13 +35,35 @@ function hireRequest(over: Partial<ArtisanHireRequestDto> = {}): ArtisanHireRequ
     customerPhone: null,
     artisanActiveJobCount: null,
     artisanTeamSize: null,
+    customer: {
+      userId: 'c1111111-1111-4111-8111-111111111111',
+      name: 'Asha Rao',
+      phone: '9876543210',
+      email: 'asha@example.com',
+      role: Role.CUSTOMER,
+      isActive: true,
+      isApproved: true,
+      lastLoginAt: null,
+    },
+    artisan: {
+      userId: 'u2222222-2222-4222-8222-222222222222',
+      name: 'Ramesh Kumar',
+      phone: '9123456780',
+      role: Role.ARTISAN,
+      isActive: true,
+      isApproved: true,
+      lastLoginAt: null,
+    },
+    artisanTradeType: 'PLUMBER',
+    adminReviewerName: null,
+    estimateCount: 0,
     createdAt: '2026-10-28T00:00:00.000Z',
     updatedAt: '2026-10-29T01:00:00.000Z',
     ...over,
   };
 }
 
-let requests: ArtisanHireRequestDto[];
+let requests: AdminHireRequestDto[];
 let cancelCalls: Array<{ id: string; body: unknown }>;
 
 function useHandlers() {
@@ -88,7 +110,40 @@ describe('ArtisanHireRequestsTrackingPage', () => {
 
   it('renders a hire request row with its current status', async () => {
     renderPage();
-    expect(await screen.findByText('IN_PROGRESS')).toBeInTheDocument();
+    expect(await screen.findByText('In progress')).toBeInTheDocument();
+  });
+
+  it('lists customer and ustaad for every request (0058)', async () => {
+    renderPage();
+
+    const row = await screen.findByRole('row', { name: /Asha Rao/ });
+    expect(row).toHaveTextContent('Ramesh Kumar');
+  });
+
+  it('the popup shows both contacts, who reviewed it and how many estimates (0058)', async () => {
+    requests = [
+      hireRequest({
+        adminReviewerName: 'Admin Priya',
+        estimateCount: 3,
+        latestEstimate: {
+          id: 'e1',
+          hireRequestId: 'h1111111-1111-4111-8111-111111111111',
+          estimatedDays: 6,
+          note: null,
+          createdAt: '2026-10-30T00:00:00.000Z',
+        },
+      }),
+    ];
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('row', { name: /Asha Rao/ }));
+
+    expect(screen.getByRole('group', { name: 'Customer' })).toHaveTextContent('Asha Rao');
+    expect(screen.getByRole('group', { name: 'Ustaad' })).toHaveTextContent('Ramesh Kumar');
+    expect(screen.getByRole('group', { name: 'Ustaad' })).toHaveTextContent('TradePlumber');
+    expect(screen.getByText('Admin Priya')).toBeInTheDocument();
+    expect(screen.getByText('3 (latest: 6 days)')).toBeInTheDocument();
   });
 
   it('explains there is nothing to show when the list is empty', async () => {
@@ -101,7 +156,7 @@ describe('ArtisanHireRequestsTrackingPage', () => {
     renderPage();
     const user = userEvent.setup();
 
-    await user.click(await screen.findByText('IN_PROGRESS'));
+    await user.click(await screen.findByText('In progress'));
 
     expect(await screen.findByText('Started')).toBeInTheDocument();
     // startedAt is set for this fixture; completedAt/cancelledAt are null
@@ -114,7 +169,7 @@ describe('ArtisanHireRequestsTrackingPage', () => {
     renderPage();
     const user = userEvent.setup();
 
-    await user.click(await screen.findByText('IN_PROGRESS'));
+    await user.click(await screen.findByText('In progress'));
     await user.type(screen.getByPlaceholderText('Required to cancel'), 'Customer backed out');
     await user.click(await screen.findByRole('button', { name: 'Cancel request' }));
 
@@ -123,12 +178,57 @@ describe('ArtisanHireRequestsTrackingPage', () => {
     ]);
   });
 
+  // Decision 0058 Task 12: admin cancel already existed; a refusal (e.g. the
+  // customer cancelled a moment earlier) used to vanish as an unhandled error.
+  it('shows why a cancel was refused, and keeps the popup and the reason', async () => {
+    server.use(
+      http.patch(`${CANCEL_BASE}/:id/cancel`, () =>
+        HttpResponse.json(
+          {
+            success: false,
+            message: 'this hire request is not in a status that allows this transition',
+          },
+          { status: 409 },
+        ),
+      ),
+    );
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByText('In progress'));
+    await user.type(screen.getByPlaceholderText('Required to cancel'), 'Customer backed out');
+    await user.click(await screen.findByRole('button', { name: 'Cancel request' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('not in a status that allows');
+    expect(screen.getByPlaceholderText('Required to cancel')).toHaveValue('Customer backed out');
+    expect(screen.getByRole('button', { name: 'Cancel request' })).toBeInTheDocument();
+  });
+
+  it('clears an earlier refusal when the admin closes the popup', async () => {
+    server.use(
+      http.patch(`${CANCEL_BASE}/:id/cancel`, () =>
+        HttpResponse.json({ success: false, message: 'Nope' }, { status: 409 }),
+      ),
+    );
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByText('In progress'));
+    await user.type(screen.getByPlaceholderText('Required to cancel'), 'Because');
+    await user.click(await screen.findByRole('button', { name: 'Cancel request' }));
+    await screen.findByRole('alert');
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+    await user.click(await screen.findByText('In progress'));
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
   it('does not allow cancelling an already-terminal request', async () => {
     requests = [hireRequest({ status: 'COMPLETED', completedAt: '2026-10-29T02:00:00.000Z' })];
     renderPage();
     const user = userEvent.setup();
 
-    await user.click(await screen.findByText('COMPLETED'));
+    await user.click(await screen.findByText('Completed'));
 
     expect(screen.queryByRole('button', { name: 'Cancel request' })).not.toBeInTheDocument();
   });
@@ -144,7 +244,7 @@ describe('ArtisanHireRequestsTrackingPage', () => {
     renderPage();
     const user = userEvent.setup();
 
-    await user.click(await screen.findByText('PENDING_ARTISAN_RESPONSE'));
+    await user.click(await screen.findByText('Waiting for ustaad'));
 
     expect(await screen.findByText('Artisan must respond by')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Cancel request' })).toBeInTheDocument();
@@ -162,7 +262,7 @@ describe('ArtisanHireRequestsTrackingPage', () => {
     renderPage();
     const user = userEvent.setup();
 
-    await user.click(await screen.findByText('ARTISAN_DECLINED'));
+    await user.click(await screen.findByText('Declined by ustaad'));
 
     expect(await screen.findByText('Fully booked')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Cancel request' })).not.toBeInTheDocument();

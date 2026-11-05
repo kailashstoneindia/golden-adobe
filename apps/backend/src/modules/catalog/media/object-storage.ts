@@ -41,6 +41,8 @@ export const IMMUTABLE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 
 export interface ObjectStorage {
   presignPost(input: PresignPostInput): Promise<PresignedPost>;
+  // A short-lived link that downloads a private object (decision 0058 Task 6).
+  presignGet(key: string, expiresInSeconds: number): Promise<string>;
   // null when the object does not exist.
   head(key: string): Promise<ObjectHead | null>;
   // Inclusive byte range, like the HTTP Range header.

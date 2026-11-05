@@ -16,6 +16,7 @@ import { Role } from '@golden-abode/types';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { ApprovedGuard } from '../../common/guards/approved.guard';
 import { VendorsService } from '../vendors/vendors.service';
 import { StockService } from './stock.service';
 import { VendorCatalogSearchService } from './vendor-catalog-search.service';
@@ -45,7 +46,9 @@ import { CreateVendorListingDto } from './dto/create-vendor-listing.dto';
 // trusted from the request.
 @ApiTags('Vendor Listings')
 @Controller('vendor/listings')
-@UseGuards(JwtAuthGuard, RolesGuard)
+// Decision 0059: vendors and ustaads need an approved account here unless a
+// route is marked @AllowUnapproved() (onboarding and own profile).
+@UseGuards(JwtAuthGuard, RolesGuard, ApprovedGuard)
 @Roles(Role.VENDOR)
 @ApiBearerAuth()
 export class VendorListingsController {

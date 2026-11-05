@@ -1,9 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import type { CartDto } from '@golden-abode/types';
 import { Cart } from './models/cart.model';
 import { CartItem } from './models/cart-item.model';
 import { VendorListing } from '../catalog/models/vendor-listing.model';
+import { User } from '../users/models/user.model';
+import { Vendor } from '../vendors/models/vendor.model';
 import { CustomersService } from '../customers/customers.service';
 import { AddCartItemDto } from './dto/add-cart-item.dto';
 import { UpdateCartItemDto } from './dto/update-cart-item.dto';
@@ -46,9 +48,23 @@ export class CartService {
 
   async addItem(userId: string, dto: AddCartItemDto): Promise<CartDto> {
     const customer = await this.customersService.resolveCustomerByUserId(userId);
-    const listing = await this.vendorListingModel.findByPk(dto.vendorListingId);
+    const listing = await this.vendorListingModel.findByPk(dto.vendorListingId, {
+      include: [
+        {
+          model: Vendor,
+          attributes: ['id'],
+          include: [{ model: User, attributes: ['id', 'isApproved'] }],
+        },
+      ],
+    });
     if (!listing) {
       throw new NotFoundException('listing not found');
+    }
+    // Decision 0059 G5: an unapproved vendor's listing can't be bought, so
+    // it can't be added either. Search already hides it; this covers a stale
+    // product screen. Items already in a cart stay, and checkout refuses them.
+    if (!listing.vendor?.user?.isApproved) {
+      throw new BadRequestException('This seller is not taking orders right now');
     }
     // Deliberately NOT checking stock or min_order_qty here (decision 0042:
     // "the cart is deliberately not self-healing" — checkout is the gate,

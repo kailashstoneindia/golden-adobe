@@ -24,7 +24,11 @@ export function DashboardPage() {
 
       <div className={styles.statsGrid}>
         <StatCard label="Pending vendors" value={stats.pendingVendors} />
-        <StatCard label="Pending ustaads" value={stats.pendingArtisans} />
+        <StatCard
+          label="Ustaads without a document"
+          value={stats.artisansAwaitingDocument}
+          to={ROUTES.artisanVerification}
+        />
         <StatCard label="Ustaad verifications" value={stats.pendingArtisanVerifications} />
         <StatCard label="Pending hire requests" value={stats.pendingHireRequests} />
         <StatCard label="Approved vendors" value={stats.approvedVendors} />
@@ -34,9 +38,6 @@ export function DashboardPage() {
       <div className={styles.tabs}>
         <Link className={`${styles.tab} ${styles.tabActive}`} to={ROUTES.approvalsVendors}>
           Review vendors
-        </Link>
-        <Link className={styles.tab} to={ROUTES.approvalsArtisans}>
-          Review ustaads
         </Link>
         <Link className={styles.tab} to={ROUTES.artisanVerification}>
           Ustaad verification
@@ -55,13 +56,24 @@ export function DashboardPage() {
 type StatCardProps = {
   label: string;
   value: number;
+  // Makes the whole card a link to the list it counts.
+  to?: string;
 };
 
-function StatCard({ label, value }: StatCardProps) {
-  return (
-    <article className={styles.statCard}>
+function StatCard({ label, value, to }: StatCardProps) {
+  const content = (
+    <>
       <div className={styles.statValue}>{value}</div>
       <div className={styles.statLabel}>{label}</div>
-    </article>
+    </>
+  );
+  // The link is the card itself, not a wrapper around an <article>:
+  // Chromium gives a link no accessible name from a nested <article>.
+  return to ? (
+    <Link to={to} className={`${styles.statCard} ${styles.statCardLink}`}>
+      {content}
+    </Link>
+  ) : (
+    <article className={styles.statCard}>{content}</article>
   );
 }

@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Res,
   UseGuards,
 } from '@nestjs/common';
@@ -22,6 +23,7 @@ import { OrdersService } from './orders.service';
 import { RefundsService } from './refunds.service';
 import { AdminOverrideGroupStatusDto } from './dto/admin-override-group-status.dto';
 import { AdminRefundDto } from './dto/admin-refund.dto';
+import { AdminOrdersQueryDto } from './dto/admin-orders-query.dto';
 import { RefundStatus } from './models/refund.model';
 
 // Declared in OrdersModule, not AdminModule — it needs OrdersService, which
@@ -41,8 +43,8 @@ export class AdminOrdersController {
   ) {}
 
   @Get()
-  list() {
-    return this.ordersService.listForAdmin();
+  list(@Query() query: AdminOrdersQueryDto) {
+    return this.ordersService.listForAdmin(query.customerId);
   }
 
   @Get(':id')

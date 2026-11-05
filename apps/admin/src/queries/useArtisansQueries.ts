@@ -1,5 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ArtisanHireRequestStatus, ArtisanListQuery } from '@golden-abode/types';
+import type {
+  ArtisanAccountDetailsInputDto,
+  ArtisanHireRequestStatus,
+  ArtisanListQuery,
+  UpdateArtisanProfileDto,
+} from '@golden-abode/types';
 
 import { APP_CONSTANTS } from '@/constants/appConstants';
 import { artisansService } from '@/services';
@@ -9,6 +14,9 @@ import type {
   ReviewArtisanHireRequestRequest,
 } from '@/types/artisans.types';
 
+// Under the backend's 300-second signed-link lifetime.
+const DOCUMENT_LINK_REFRESH_MS = 4 * 60 * 1000;
+
 type HireRequestListQuery = ArtisanListQuery & { status?: ArtisanHireRequestStatus };
 
 export const ARTISANS_QUERY_KEYS = {
@@ -17,6 +25,7 @@ export const ARTISANS_QUERY_KEYS = {
   detail: (artisanId: string) => ['artisans', 'detail', artisanId] as const,
   pendingVerification: (query: ArtisanListQuery) =>
     ['artisans', 'pending-verification', query] as const,
+  awaitingDocument: (query: ArtisanListQuery) => ['artisans', 'awaiting-document', query] as const,
   pendingHireRequests: (query: ArtisanListQuery) =>
     ['artisans', 'hire-requests', 'pending', query] as const,
   allHireRequests: (query: HireRequestListQuery) =>
@@ -37,6 +46,18 @@ export function useArtisanByIdQuery(artisanId: string | null) {
     queryFn: () => artisansService.fetchArtisanById(artisanId!),
     enabled: artisanId != null,
     staleTime: APP_CONSTANTS.staleTimeMs,
+    // Document links are signed for 5 minutes; refresh before they expire
+    // so a popup left open still opens the document.
+    refetchInterval: DOCUMENT_LINK_REFRESH_MS,
+  });
+}
+
+// Ustaads with no profile or no document yet (decision 0058 §3a).
+export function useArtisansAwaitingDocumentQuery(query: ArtisanListQuery) {
+  return useQuery({
+    queryKey: ARTISANS_QUERY_KEYS.awaitingDocument(query),
+    queryFn: () => artisansService.fetchAwaitingDocument(query),
+    staleTime: APP_CONSTANTS.staleTimeMs,
   });
 }
 
@@ -55,6 +76,9 @@ export function useVerifyArtisanMutation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ARTISANS_QUERY_KEYS.all });
       queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] });
+      // Verify/Reject also change users.is_approved (decision 0058).
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'user'] });
     },
   });
 }
@@ -67,6 +91,9 @@ export function useRejectArtisanVerificationMutation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ARTISANS_QUERY_KEYS.all });
       queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] });
+      // Verify/Reject also change users.is_approved (decision 0058).
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'user'] });
     },
   });
 }
@@ -107,5 +134,46 @@ export function useCancelHireRequestMutation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ARTISANS_QUERY_KEYS.all });
     },
+  });
+}
+
+// Decision 0058 Task 11. The popups read the ustaad detail and the lists, so
+// invalidating 'artisans' reloads them all.
+export function useUpdateArtisanProfileMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (options: { artisanId: string; body: UpdateArtisanProfileDto }) =>
+      artisansService.updateArtisanProfile(options.artisanId, options.body),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ARTISANS_QUERY_KEYS.all }),
+  });
+}
+
+export function useUpdateArtisanBankMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (options: { artisanId: string; body: ArtisanAccountDetailsInputDto }) =>
+      artisansService.updateArtisanBank(options.artisanId, options.body),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ARTISANS_QUERY_KEYS.all }),
+  });
+}
+
+export function useUpdateTeamMemberMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (options: {
+      artisanId: string;
+      memberId: string;
+      body: { name?: string; roleOnTeam?: string; phone?: string };
+    }) => artisansService.updateTeamMember(options.artisanId, options.memberId, options.body),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ARTISANS_QUERY_KEYS.all }),
+  });
+}
+
+export function useRemoveTeamMemberMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (options: { artisanId: string; memberId: string }) =>
+      artisansService.removeTeamMember(options.artisanId, options.memberId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ARTISANS_QUERY_KEYS.all }),
   });
 }

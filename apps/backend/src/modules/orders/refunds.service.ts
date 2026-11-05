@@ -5,10 +5,11 @@ import { InjectModel } from '@nestjs/sequelize';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Sequelize } from 'sequelize-typescript';
 import { Op, QueryTypes, Transaction } from 'sequelize';
-import type { RefundDto } from '@golden-abode/types';
+import type { AdminRefundRowDto, RefundDto } from '@golden-abode/types';
 import { Order, OrderStatus } from './models/order.model';
 import { Refund, RefundRail, RefundStatus } from './models/refund.model';
 import { toRefundDto } from './order-display.mapper';
+import { toIsoDate } from '../../common/utils/display-number.util';
 import { projectOrderStatus, REFUNDABLE_ORDER_STATUSES } from './refund-status';
 import { NOTIFICATION_SERVICE, NotificationService } from '../notifications/notification.interface';
 import {
@@ -176,7 +177,7 @@ export class RefundsService {
     return toRefundDto(latest ?? refund);
   }
 
-  async listForOrder(orderId: string): Promise<RefundDto[]> {
+  async listForOrder(orderId: string): Promise<AdminRefundRowDto[]> {
     const order = await this.orderModel.findByPk(orderId, { attributes: ['id'] });
     if (!order) {
       throw new NotFoundException('order not found');
@@ -185,7 +186,22 @@ export class RefundsService {
       where: { orderId },
       order: [['createdAt', 'ASC']],
     });
-    return refunds.map(toRefundDto);
+    // Admin only (decision 0058 Task 4d): name the admin behind each refund.
+    const creatorIds = [...new Set(refunds.map((refund) => refund.createdBy))];
+    const creators = creatorIds.length
+      ? await this.sequelize.query<{ id: string; name: string }>(
+          'SELECT id, name FROM users WHERE id IN (:creatorIds)',
+          { replacements: { creatorIds }, type: QueryTypes.SELECT },
+        )
+      : [];
+    const nameById = new Map(creators.map((creator) => [creator.id, creator.name]));
+    return refunds.map((refund) => ({
+      ...toRefundDto(refund),
+      createdByName: nameById.get(refund.createdBy) ?? null,
+      payoutReference: refund.payoutReference ?? null,
+      razorpayPaymentId: refund.razorpayPaymentId ?? null,
+      updatedAt: toIsoDate(refund.updatedAt),
+    }));
   }
 
   // Decision 0054 rule 6. Same worker-mode gate as the stale-reservation sweep.

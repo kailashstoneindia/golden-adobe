@@ -66,6 +66,28 @@ export class OrderPaymentService {
       return this.refundRequired(order, payment.id, payment.amountPaise);
     }
 
+    // Decision 0059 G5: checkout refuses an unapproved vendor, but the vendor
+    // may be rejected between checkout and payment. Such an order is never
+    // confirmed: the money is refunded and the stock hold released, in the
+    // same one-step path as a mismatched payment. If the order is no longer
+    // pending (a replay, or a cancel won the race), the usual path below
+    // works out where it stands.
+    const unapproved = await this.unapprovedVendorIds(order.id);
+    if (unapproved.length > 0) {
+      this.logger.warn(
+        `order ${order.id}: vendor ${unapproved.join(', ')} not approved when payment ${payment.id} was captured — refund required`,
+      );
+      const applied = await this.cancelPending(order.id, {
+        status: OrderStatus.REFUND_REQUIRED,
+        paymentId: payment.id,
+        amountPaise: payment.amountPaise,
+      });
+      if (applied) {
+        await this.notifyRefundRequired(order);
+        return 'refund_required';
+      }
+    }
+
     const confirmedGroups = await this.confirmOrder(order.id, payment.id, payment.amountPaise);
     if (confirmedGroups) {
       await this.notifyConfirmed(order, confirmedGroups);
@@ -266,6 +288,17 @@ export class OrderPaymentService {
       `order ${order.id}: payment ${paymentId} needs a refund but the order (${current?.status ?? 'missing'}, payment ${current?.razorpayPaymentId ?? 'none'}) could not be marked refund_required — reconcile manually`,
     );
     return 'ignored';
+  }
+
+  private async unapprovedVendorIds(orderId: string): Promise<string[]> {
+    const rows = await this.sequelize.query<{ vendor_id: string }>(
+      `SELECT DISTINCT g.vendor_id FROM order_vendor_group g
+         JOIN vendors v ON v.id = g.vendor_id
+         JOIN users u ON u.id = v.user_id
+        WHERE g.order_id = :orderId AND NOT u.is_approved`,
+      { replacements: { orderId }, type: QueryTypes.SELECT },
+    );
+    return rows.map((row) => row.vendor_id);
   }
 
   private async notifyRefundRequired(order: Order): Promise<void> {

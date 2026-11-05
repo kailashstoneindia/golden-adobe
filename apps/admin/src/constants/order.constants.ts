@@ -1,4 +1,9 @@
-import type { OrderStatus, OrderVendorGroupStatus, RefundStatus } from '@golden-abode/types';
+import type {
+  OrderStatus,
+  OrderVendorGroupStatus,
+  RefundRail,
+  RefundStatus,
+} from '@golden-abode/types';
 import { ORDER_STATUSES, ORDER_VENDOR_GROUP_STATUSES } from '@golden-abode/types';
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
@@ -45,3 +50,8 @@ export const ORDER_STATUS_FILTER_OPTIONS: { value: OrderStatusFilter; label: str
   { value: ORDER_STATUS_FILTERS.NEEDS_REFUND, label: 'Needs refund' },
   { value: ORDER_STATUS_FILTERS.REFUND_IN_PROGRESS, label: 'Refund in progress' },
 ];
+
+export const REFUND_RAIL_LABELS: Record<RefundRail, string> = {
+  razorpay: 'Razorpay refund',
+  manual_payout: 'Manual payout',
+};

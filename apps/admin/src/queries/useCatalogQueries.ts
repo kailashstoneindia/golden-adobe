@@ -108,3 +108,13 @@ export function useRejectReviewRowMutation() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: CATALOG_QUERY_KEYS.all }),
   });
 }
+
+// Decision 0058 Task 13: correct a product's name from its popup.
+export function useRenameProductMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (options: { productId: string; name: string }) =>
+      catalogService.renameProduct(options.productId, options.name),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: CATALOG_QUERY_KEYS.all }),
+  });
+}

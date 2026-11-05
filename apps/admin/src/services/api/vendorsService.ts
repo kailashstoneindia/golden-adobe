@@ -1,4 +1,13 @@
-import type { CityDto, VendorCategoryDto, VendorProfileDto } from '@golden-abode/types';
+import type {
+  AdminVendorDto,
+  AdminVendorListingDto,
+  CityDto,
+  PaginatedAdminVendorListingsResponse,
+  UpdateVendorProfileDto,
+  VendorAccountDetailsInputDto,
+  VendorCategoryDto,
+  VendorProfileDto,
+} from '@golden-abode/types';
 
 import { API_ENDPOINTS } from '@/constants/apiEndpoints';
 import { getRequest, patchRequest, putRequest } from '@/services/api/apiClient';
@@ -9,12 +18,19 @@ import type {
 } from '@/types/vendors.types';
 
 export const vendorsService = {
-  fetchVendors(): Promise<VendorProfileDto[]> {
-    return getRequest<VendorProfileDto[]>(API_ENDPOINTS.admin.vendors);
+  fetchVendors(): Promise<AdminVendorDto[]> {
+    return getRequest<AdminVendorDto[]>(API_ENDPOINTS.admin.vendors);
   },
 
-  fetchVendorById(vendorId: string): Promise<VendorProfileDto> {
-    return getRequest<VendorProfileDto>(API_ENDPOINTS.admin.vendorById(vendorId));
+  fetchVendorListings(
+    vendorId: string,
+    query: { status?: string; page: number; limit: number },
+  ): Promise<PaginatedAdminVendorListingsResponse> {
+    const params = new URLSearchParams({ page: String(query.page), limit: String(query.limit) });
+    if (query.status) params.set('status', query.status);
+    return getRequest<PaginatedAdminVendorListingsResponse>(
+      `${API_ENDPOINTS.admin.vendorListings(vendorId)}?${params.toString()}`,
+    );
   },
 
   setVendorCity(vendorId: string, body: SetVendorCityRequest): Promise<VendorProfileDto> {
@@ -40,6 +56,29 @@ export const vendorsService = {
 
   fetchCities(): Promise<CityDto[]> {
     return getRequest<CityDto[]>(API_ENDPOINTS.admin.cities);
+  },
+
+  // Decision 0058 Task 10. These answer with the admin view of the vendor
+  // (or the one listing), not the plain profile the older actions return.
+  updateVendorProfile(vendorId: string, body: UpdateVendorProfileDto): Promise<AdminVendorDto> {
+    return patchRequest<AdminVendorDto, UpdateVendorProfileDto>(
+      API_ENDPOINTS.admin.vendorById(vendorId),
+      body,
+    );
+  },
+
+  updateVendorBank(vendorId: string, body: VendorAccountDetailsInputDto): Promise<AdminVendorDto> {
+    return putRequest<AdminVendorDto, VendorAccountDetailsInputDto>(
+      API_ENDPOINTS.admin.vendorAccountDetails(vendorId),
+      body,
+    );
+  },
+
+  setListingStatus(listingId: string, status: 'active' | 'paused'): Promise<AdminVendorListingDto> {
+    return patchRequest<AdminVendorListingDto, { status: 'active' | 'paused' }>(
+      API_ENDPOINTS.admin.vendorListingStatus(listingId),
+      { status },
+    );
   },
 
   approveVendor(vendorId: string): Promise<VendorProfileDto> {

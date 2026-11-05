@@ -133,6 +133,8 @@ export class SearchDocumentBuilder {
           ) AS in_stock
         FROM vendor_listing vl
         JOIN vendors v ON v.id = vl.vendor_id
+        -- Decision 0059 G1: an unapproved vendor's listings are not for sale.
+        JOIN users u ON u.id = v.user_id AND u.is_approved
         -- mp is NOT the outer CTE's mp — that one is out of scope inside a
         -- LATERAL subquery's own FROM clause. Joined fresh here on
         -- vl.master_product_id, which the WHERE below already pins equal

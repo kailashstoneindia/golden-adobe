@@ -1,4 +1,14 @@
-import { IsBoolean, IsEnum, IsInt, IsOptional, IsString, IsNotEmpty, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsNotEmpty,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
@@ -21,6 +31,8 @@ export class UpdateArtisanProfileDto implements UpdateArtisanProfileContract {
   @IsOptional()
   @IsInt()
   @Min(0)
+  // INTEGER column: an absurd value would otherwise reach Postgres and come back as a 500.
+  @Max(80)
   experienceYears?: number;
 
   @ApiPropertyOptional({ example: 'Reliable plumber, 6 years in Bengaluru.' })
@@ -34,6 +46,8 @@ export class UpdateArtisanProfileDto implements UpdateArtisanProfileContract {
   @IsOptional()
   @IsString()
   @IsNotEmpty()
+  // The column is STRING(10).
+  @MaxLength(10)
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   servicePincode?: string;
 

@@ -2,8 +2,10 @@ import { Module } from '@nestjs/common';
 import { SequelizeModule } from '@nestjs/sequelize';
 import { VendorsController } from './vendors.controller';
 import { AdminVendorsController } from './admin-vendors.controller';
+import { AdminVendorListingsController } from './admin-vendor-listings.controller';
 import { VendorListingsController } from '../catalog/vendor-listings.controller';
 import { VendorsService } from './vendors.service';
+import { AdminVendorsService } from './admin-vendors.service';
 import { Vendor } from './models/vendor.model';
 import { VendorAccountDetails } from './models/vendor-account-details.model';
 import { UsersModule } from '../users/users.module';
@@ -33,8 +35,13 @@ import { OrdersModule } from '../orders/orders.module';
   // it injects VendorsService to resolve the caller's vendor, and
   // CatalogModule cannot import VendorsModule without closing a cycle.
   // StockService reaches it through CatalogModule's exports.
-  controllers: [VendorsController, AdminVendorsController, VendorListingsController],
-  providers: [VendorsService],
+  controllers: [
+    VendorsController,
+    AdminVendorsController,
+    AdminVendorListingsController,
+    VendorListingsController,
+  ],
+  providers: [VendorsService, AdminVendorsService],
   exports: [VendorsService],
 })
 export class VendorsModule {}

@@ -2,13 +2,17 @@ import type {
   ArtisanHireRequestDto,
   ArtisanHireRequestStatus,
   ArtisanListQuery,
-  PaginatedArtisansResponse,
-  PaginatedHireRequestsResponse,
+  PaginatedArtisansAwaitingDocumentResponse,
+  AdminArtisanDto,
+  PaginatedAdminArtisansResponse,
+  PaginatedAdminHireRequestsResponse,
+  ArtisanAccountDetailsInputDto,
   ArtisanProfileDto,
+  UpdateArtisanProfileDto,
 } from '@golden-abode/types';
 
 import { API_ENDPOINTS } from '@/constants/apiEndpoints';
-import { getRequest, patchRequest } from '@/services/api/apiClient';
+import { deleteRequest, getRequest, patchRequest, putRequest } from '@/services/api/apiClient';
 import type {
   CancelArtisanHireRequestRequest,
   RejectArtisanVerificationRequest,
@@ -35,19 +39,61 @@ function buildHireRequestQueryString(query: HireRequestListQuery): string {
 }
 
 export const artisansService = {
-  fetchArtisans(query: ArtisanListQuery): Promise<PaginatedArtisansResponse> {
+  fetchArtisans(query: ArtisanListQuery): Promise<PaginatedAdminArtisansResponse> {
     const suffix = buildArtisanQueryString(query);
-    return getRequest<PaginatedArtisansResponse>(`${API_ENDPOINTS.admin.artisans}${suffix}`);
+    return getRequest<PaginatedAdminArtisansResponse>(`${API_ENDPOINTS.admin.artisans}${suffix}`);
   },
 
-  fetchArtisanById(artisanId: string): Promise<ArtisanProfileDto> {
-    return getRequest<ArtisanProfileDto>(API_ENDPOINTS.admin.artisanById(artisanId));
+  // Decision 0058 Task 11. These answer with the admin view of the ustaad.
+  updateArtisanProfile(artisanId: string, body: UpdateArtisanProfileDto): Promise<AdminArtisanDto> {
+    return patchRequest<AdminArtisanDto, UpdateArtisanProfileDto>(
+      API_ENDPOINTS.admin.artisanById(artisanId),
+      body,
+    );
   },
 
-  fetchPendingVerification(query: ArtisanListQuery): Promise<PaginatedArtisansResponse> {
+  updateArtisanBank(
+    artisanId: string,
+    body: ArtisanAccountDetailsInputDto,
+  ): Promise<AdminArtisanDto> {
+    return putRequest<AdminArtisanDto, ArtisanAccountDetailsInputDto>(
+      API_ENDPOINTS.admin.artisanAccountDetails(artisanId),
+      body,
+    );
+  },
+
+  updateTeamMember(
+    artisanId: string,
+    memberId: string,
+    body: { name?: string; roleOnTeam?: string; phone?: string },
+  ): Promise<AdminArtisanDto> {
+    return patchRequest<AdminArtisanDto, { name?: string; roleOnTeam?: string; phone?: string }>(
+      API_ENDPOINTS.admin.artisanTeamMember(artisanId, memberId),
+      body,
+    );
+  },
+
+  removeTeamMember(artisanId: string, memberId: string): Promise<void> {
+    return deleteRequest(API_ENDPOINTS.admin.artisanTeamMember(artisanId, memberId));
+  },
+
+  fetchArtisanById(artisanId: string): Promise<AdminArtisanDto> {
+    return getRequest<AdminArtisanDto>(API_ENDPOINTS.admin.artisanById(artisanId));
+  },
+
+  fetchPendingVerification(query: ArtisanListQuery): Promise<PaginatedAdminArtisansResponse> {
     const suffix = buildArtisanQueryString(query);
-    return getRequest<PaginatedArtisansResponse>(
+    return getRequest<PaginatedAdminArtisansResponse>(
       `${API_ENDPOINTS.admin.artisansPendingVerification}${suffix}`,
+    );
+  },
+
+  fetchAwaitingDocument(
+    query: ArtisanListQuery,
+  ): Promise<PaginatedArtisansAwaitingDocumentResponse> {
+    const suffix = buildArtisanQueryString(query);
+    return getRequest<PaginatedArtisansAwaitingDocumentResponse>(
+      `${API_ENDPOINTS.admin.artisansAwaitingDocument}${suffix}`,
     );
   },
 
@@ -68,9 +114,9 @@ export const artisansService = {
     );
   },
 
-  fetchPendingHireRequests(query: ArtisanListQuery): Promise<PaginatedHireRequestsResponse> {
+  fetchPendingHireRequests(query: ArtisanListQuery): Promise<PaginatedAdminHireRequestsResponse> {
     const suffix = buildArtisanQueryString(query);
-    return getRequest<PaginatedHireRequestsResponse>(
+    return getRequest<PaginatedAdminHireRequestsResponse>(
       `${API_ENDPOINTS.admin.artisanHireRequestsPending}${suffix}`,
     );
   },
@@ -85,9 +131,9 @@ export const artisansService = {
     );
   },
 
-  fetchAllHireRequests(query: HireRequestListQuery): Promise<PaginatedHireRequestsResponse> {
+  fetchAllHireRequests(query: HireRequestListQuery): Promise<PaginatedAdminHireRequestsResponse> {
     const suffix = buildHireRequestQueryString(query);
-    return getRequest<PaginatedHireRequestsResponse>(
+    return getRequest<PaginatedAdminHireRequestsResponse>(
       `${API_ENDPOINTS.admin.artisanHireRequestsAll}${suffix}`,
     );
   },
