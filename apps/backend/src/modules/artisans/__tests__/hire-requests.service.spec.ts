@@ -1,4 +1,4 @@
-import { ConflictException, ForbiddenException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Logger } from '@nestjs/common';
 import { SequelizeModule, getModelToken } from '@nestjs/sequelize';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Role } from '@golden-abode/types';
@@ -885,6 +885,76 @@ describe('HireRequestsService (integration)', () => {
       await expect(second).rejects.toThrow(ConflictException);
       await expect(second).rejects.not.toThrow(/time to respond/);
       spy.mockRestore();
+    });
+  });
+
+  // Whole-branch review: every admin write logs who did what.
+  describe('admin audit log', () => {
+    const adminLines = (spy: jest.SpyInstance) =>
+      spy.mock.calls.map((call) => String(call[0])).filter((line) => line.startsWith('admin '));
+
+    afterEach(() => jest.restoreAllMocks());
+
+    it('logs an admin cancelling a request, with the fields that changed', async () => {
+      const request = await createHireRequestFixture({ status: 'IN_PROGRESS' });
+      const log = jest.spyOn(Logger.prototype, 'log');
+
+      await service.cancel(adminId, Role.ADMIN, request.id, { reason: 'admin override' });
+
+      expect(adminLines(log)).toEqual([
+        `admin ${adminId} cancel hire-request ${request.id} status,cancelledAt,cancelReason`,
+      ]);
+    });
+
+    it('does not log a customer cancelling their own request as an admin action', async () => {
+      const request = await createHireRequestFixture({ status: 'ACCEPTED_BY_ARTISAN' });
+      const log = jest.spyOn(Logger.prototype, 'log');
+
+      await service.cancel(customerId, Role.CUSTOMER, request.id, { reason: 'changed my mind' });
+
+      expect(adminLines(log)).toEqual([]);
+    });
+
+    it('does not log an ustaad cancelling their own job as an admin action', async () => {
+      const request = await createHireRequestFixture({ status: 'ACCEPTED_BY_ARTISAN' });
+      const log = jest.spyOn(Logger.prototype, 'log');
+
+      await service.cancel(artisanUserId, Role.ARTISAN, request.id, { reason: 'not available' });
+
+      expect(adminLines(log)).toEqual([]);
+    });
+
+    it('logs nothing when an admin cancel is refused', async () => {
+      const request = await createHireRequestFixture({ status: 'COMPLETED' });
+      const log = jest.spyOn(Logger.prototype, 'log');
+
+      await expect(
+        service.cancel(adminId, Role.ADMIN, request.id, { reason: 'too late' }),
+      ).rejects.toThrow(ConflictException);
+
+      expect(adminLines(log)).toEqual([]);
+    });
+
+    it('logs an admin approving a request', async () => {
+      const request = await createHireRequestFixture({ status: 'PENDING_ADMIN_REVIEW' });
+      const log = jest.spyOn(Logger.prototype, 'log');
+
+      await service.reviewRequest(adminId, request.id, { approve: true });
+
+      expect(adminLines(log)).toEqual([
+        `admin ${adminId} approve hire-request ${request.id} status,adminReviewedBy,adminReviewedAt`,
+      ]);
+    });
+
+    it('logs an admin rejecting a request, with the reason field', async () => {
+      const request = await createHireRequestFixture({ status: 'PENDING_ADMIN_REVIEW' });
+      const log = jest.spyOn(Logger.prototype, 'log');
+
+      await service.reviewRequest(adminId, request.id, { approve: false, rejectReason: 'no' });
+
+      expect(adminLines(log)).toEqual([
+        `admin ${adminId} reject hire-request ${request.id} status,adminReviewedBy,adminReviewedAt,adminRejectReason`,
+      ]);
     });
   });
 });

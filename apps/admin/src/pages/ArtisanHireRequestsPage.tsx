@@ -21,25 +21,31 @@ export function ArtisanHireRequestsPage() {
 
   const requests = useMemo(() => pendingQuery.data?.items ?? [], [pendingQuery.data?.items]);
 
-  const handleApprove = async (requestId: string) => {
-    await reviewMutation.mutateAsync({ requestId, body: { approve: true } });
-    setSelectedRequest(null);
-    setRejectReason('');
-  };
-
-  const handleReject = async (requestId: string) => {
-    await reviewMutation.mutateAsync({
-      requestId,
-      body: { approve: false, rejectReason },
-    });
-    setSelectedRequest(null);
-    setRejectReason('');
-  };
-
+  // Why the server refused (e.g. someone else reviewed it first). Shown in the
+  // popup, which stays open.
+  const [actionError, setActionError] = useState<string | null>(null);
   const handleClose = () => {
     setSelectedRequest(null);
     setRejectReason('');
+    setActionError(null);
   };
+  const runAction = async (action: () => Promise<unknown>) => {
+    setActionError(null);
+    try {
+      await action();
+      handleClose();
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Request failed');
+    }
+  };
+
+  const handleApprove = (requestId: string) =>
+    runAction(() => reviewMutation.mutateAsync({ requestId, body: { approve: true } }));
+
+  const handleReject = (requestId: string) =>
+    runAction(() =>
+      reviewMutation.mutateAsync({ requestId, body: { approve: false, rejectReason } }),
+    );
 
   if (pendingQuery.isLoading) {
     return <p className={styles.pageSubtitle}>Loading hire-request queue…</p>;
@@ -126,6 +132,12 @@ export function ArtisanHireRequestsPage() {
                 />
               </div>
             </div>
+
+            {actionError ? (
+              <p className={styles.error} role="alert">
+                {actionError}
+              </p>
+            ) : null}
 
             <div className={styles.actions}>
               <button

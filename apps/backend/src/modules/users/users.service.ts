@@ -75,10 +75,6 @@ export class UsersService {
     await this.userModel.update({ deviceToken }, { where: { id: userId } });
   }
 
-  async approveUser(userId: string): Promise<void> {
-    await this.userModel.update({ isApproved: true }, { where: { id: userId } });
-  }
-
   // Transaction-aware variant for callers (VendorsService.approveVendor/
   // rejectVendor, decision 0048) that write isApproved alongside their own
   // vendor-specific state in one unit of work.

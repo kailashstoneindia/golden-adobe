@@ -293,4 +293,39 @@ describe('ArtisanVerificationPage when the detail fails to load', () => {
     await user.click(screen.getByRole('button', { name: 'Verify and approve' }));
     expect(verifyCalls).toEqual([artisan().id]);
   });
+
+  // Whole-branch review: a refused Verify must not vanish as an unhandled error.
+  it('shows why a verification was refused, and keeps the popup open', async () => {
+    server.use(
+      http.patch(`${BASE}/:id/verify`, () =>
+        HttpResponse.json(
+          { success: false, message: 'This ustaad has no document to review' },
+          { status: 400 },
+        ),
+      ),
+    );
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByText('Plumber'));
+    await user.click(await screen.findByRole('button', { name: 'Verify and approve' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('no document to review');
+    expect(screen.getByRole('button', { name: 'Verify and approve' })).toBeInTheDocument();
+  });
+
+  it('shows why a rejection was refused', async () => {
+    server.use(
+      http.patch(`${BASE}/:id/reject-verification`, () =>
+        HttpResponse.json({ success: false, message: 'Something went wrong' }, { status: 500 }),
+      ),
+    );
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByText('Plumber'));
+    await user.click(await screen.findByRole('button', { name: /^Reject/ }));
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+  });
 });

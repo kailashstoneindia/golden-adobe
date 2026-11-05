@@ -367,11 +367,25 @@ Merge and deploy happen once, after all tasks are done and the backend is in syn
 mobile developer's `feat/artisan-mobile`. Each production step needs the user's go-ahead.
 Ask the merge method before merging.
 
-- [ ] Whole-branch review, then a PR for `feat/admin-visibility`.
-- [ ] Mobile sync: the mobile developer handles `403 ACCOUNT_NOT_APPROVED` (decision 0059), and
-      the hire-request status labels cover 0055's statuses. Their side; we only tell them.
-- [ ] Deploy latest main to production and run every pending migration, including
-      `20261105090000` (approval trigger) and `20261105090100` (queue already-unapproved vendors).
+- [x] Whole-branch review (done 2026-11-05; its findings are fixed). Then a PR for `feat/admin-visibility`.
+- [ ] Mobile sync. The mobile artisan app is already in `main` (PR #36); `apps/mobile` is
+      untouched by this branch. Tell the mobile developer (their side, nothing for us to build):
+      - `403 ACCOUNT_NOT_APPROVED` is not handled (a vendor or ustaad rejected mid-session).
+      - Adding an unapproved vendor's item to the cart returns `400 "This seller is not taking
+        orders right now"`.
+      - OTP verify returns `401 "Account is deactivated"` for a deactivated account.
+      - `PATCH /artisans/me/profile` now rejects `experienceYears` over 80 and `servicePincode`
+        over 10 characters (400); the onboarding screen has the same limits to add (F35).
+      - `PATCH /users/:id/approve` (admin-only, unused) was removed.
+- [ ] Deploy latest main to production. Migrations run by themselves in
+      `apps/backend/docker-entrypoint.sh` before the app starts, including `20261105090000`
+      (approval trigger) and `20261105090100` (queue already-unapproved vendors).
+- [ ] Optional, before deploy: list rows the gate will now act on (prod is test data):
+      `artisans.is_verified <> users.is_approved`, and `vendors.status = 'APPROVED'` against
+      `users.is_approved` (either way round).
+- [ ] If a deploy is rolled back after migrations ran: the older image's outbox drain can process
+      the `20261105090100` backfill rows without the approval filter, leaving unapproved vendors in
+      Meilisearch. After the next good deploy, re-run that migration's `INSERT ... SELECT` by hand.
 - [ ] Production media env vars: `S3_MEDIA_BUCKET`, `AWS_REGION`, `MEDIA_PUBLIC_BASE_URL`
       (CloudFront), `MEDIA_CALLBACK_SECRET` (32+ characters). `S3_ACCESS_KEY_ID` and
       `S3_SECRET_ACCESS_KEY` only if not on AWS. Without these, ustaad document upload
@@ -379,4 +393,5 @@ Ask the merge method before merging.
 - [ ] Deploy `apps/media-lambda` (product images never reach "ready" without it).
 - [ ] Razorpay on the backend: `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`,
       `RAZORPAY_WEBHOOK_SECRET`. Send the key ID to the mobile developer for the app build.
-- [ ] After deploy: confirm search shows only approved vendors (the outbox drain has run).
+- [ ] After deploy: wait for `SELECT count(*) FROM search_outbox WHERE processed_at IS NULL` to
+      reach 0 (only when `SEARCH_ENGINE=meilisearch`), then confirm search shows only approved vendors.

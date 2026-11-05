@@ -177,4 +177,27 @@ describe('ArtisanHireRequestsPage', () => {
       { id: hireRequest().id, body: { approve: false, rejectReason: 'Fully booked' } },
     ]);
   });
+
+  // Whole-branch review: a refused review must not vanish as an unhandled error.
+  it('shows why a review was refused (e.g. someone else got there first)', async () => {
+    server.use(
+      http.patch(`${BASE}/:id/review`, () =>
+        HttpResponse.json(
+          {
+            success: false,
+            message: 'this hire request has already been reviewed and cannot be reviewed again',
+          },
+          { status: 409 },
+        ),
+      ),
+    );
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByText('12 MG Road, Bengaluru'));
+    await user.click(await screen.findByRole('button', { name: 'Approve' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('already been reviewed');
+    expect(screen.getByRole('button', { name: 'Approve' })).toBeInTheDocument();
+  });
 });

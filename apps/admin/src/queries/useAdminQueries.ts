@@ -1,4 +1,10 @@
-import { useMutation, useQuery, useQueryClient, type UseQueryOptions } from '@tanstack/react-query';
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+  type UseQueryOptions,
+} from '@tanstack/react-query';
 import type {
   ListUsersQuery,
   PaginatedUsersResponse,
@@ -108,14 +114,24 @@ export function getPendingQueryForRole(role: Role): ListUsersQuery {
   };
 }
 
-// Decision 0058 Task 9. Each reply is the refreshed detail; invalidating
-// ['admin'] reloads the list and the open popup.
+// Decision 0058 Task 9. A user's name, phone and active badge also show in the
+// vendor, ustaad and order popups (the owner or customer block), so an edit
+// reloads those too, not just the users list and popup.
+function refreshEverywhereTheUserShows(queryClient: QueryClient) {
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: ['admin'] }),
+    queryClient.invalidateQueries({ queryKey: ['vendors'] }),
+    queryClient.invalidateQueries({ queryKey: ['artisans'] }),
+    queryClient.invalidateQueries({ queryKey: ['orders'] }),
+  ]);
+}
+
 export function useUpdateUserMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (options: { userId: string; body: UpdateAdminUserRequest }) =>
       adminService.updateUser(options.userId, options.body),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin'] }),
+    onSuccess: () => refreshEverywhereTheUserShows(queryClient),
   });
 }
 
@@ -124,7 +140,7 @@ export function useSetUserActiveMutation() {
   return useMutation({
     mutationFn: (options: { userId: string; isActive: boolean }) =>
       adminService.setUserActive(options.userId, options.isActive),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin'] }),
+    onSuccess: () => refreshEverywhereTheUserShows(queryClient),
   });
 }
 
@@ -132,6 +148,6 @@ export function useRevokeUserSessionsMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (userId: string) => adminService.revokeUserSessions(userId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin'] }),
+    onSuccess: () => refreshEverywhereTheUserShows(queryClient),
   });
 }

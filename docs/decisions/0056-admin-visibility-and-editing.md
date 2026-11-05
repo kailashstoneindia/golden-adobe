@@ -59,7 +59,7 @@ The user then set two broader requirements:
    `users.is_approved = true` in one transaction. *Reject verification* sets both to false. A
    rejected ustaad is no longer discoverable or hireable (`is_verified`), and the mobile app
    holds them on its "pending approval" screen (`is_approved`). The block is enforced in the
-   app only: `ApprovedGuard` exists but no backend route applies it today.
+   app only: `ApprovedGuard` exists but no backend route applies it today. **(Superseded by decision 0059: the server now enforces it.)**
 3. **One approval page (D3).** The separate "Ustaad approvals" tab is removed.
    `/approvals/artisans` redirects to `/artisans/verification`.
 3a. **Ustaads without a document (follow-up ruling, 2026-11-04).** The verification page gets
@@ -134,7 +134,7 @@ none blocks it. Update the status here when one is picked up.
 | # | Item | Found in | Why not now |
 |---|---|---|---|
 | F1 | **Resolved by [0059](0059-server-side-approval-gate.md).** `ApprovedGuard` exists but no backend route applies it. A rejected or unapproved ustaad or vendor is held back only by the mobile app's "pending approval" screen; the API still serves them. | Task 2 review | Applying the guard changes what every vendor and ustaad endpoint accepts. Needs its own decision and mobile testing. |
-| F2 | *All users* → Approve/Reject for a **vendor** sets only `users.is_approved` and leaves `vendors.status` (decision 0048) unchanged. This is the same kind of drift §3b fixed for ustaads. | Task 2 review | Existed before this work; the vendor approvals page uses the right endpoints. Fix the same way as §3b when touching vendors (Task 5/10). |
+| F2 | **Done (Task 5).** *All users* → Approve/Reject for a **vendor** sets only `users.is_approved` and leaves `vendors.status` (decision 0048) unchanged. This is the same kind of drift §3b fixed for ustaads. | Task 2 review | Existed before this work; the vendor approvals page uses the right endpoints. Fix the same way as §3b when touching vendors (Task 5/10). |
 | F3 | A rejected ustaad who has a document goes straight back into the verification queue. No rejection reason or state is stored. | Task 2 review | Product question: should a rejection persist until they upload a new document? |
 | F4 | `pendingArtisans` is still computed in the dashboard stats but no longer shown. | Task 2 review | Harmless. Remove when the stats type is next changed. |
 | F5 | Browsers without Web Locks (Safari before 15.4, Firefox before 96, plain-HTTP origins) fall back to per-tab refresh. Two tabs there could trigger reuse detection and log the admin out everywhere. | Task 1 review | Accepted in Decision item 1. Prod admin is served over HTTPS on current browsers. |

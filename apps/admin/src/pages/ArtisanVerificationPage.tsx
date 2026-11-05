@@ -30,22 +30,35 @@ export function ArtisanVerificationPage() {
   const artisans = useMemo(() => pendingQuery.data?.items ?? [], [pendingQuery.data?.items]);
   const isSubmitting = verifyMutation.isPending || rejectMutation.isPending;
 
-  const handleVerify = async (artisanId: string) => {
-    await verifyMutation.mutateAsync(artisanId);
+  // Why the server refused (e.g. no document yet, or someone else decided first).
+  // Shown in the popup, which stays open.
+  const [actionError, setActionError] = useState<string | null>(null);
+  const closeModal = () => {
     setSelectedArtisan(null);
+    setRejectReason('');
+    setActionError(null);
+  };
+  const runAction = async (action: () => Promise<unknown>) => {
+    setActionError(null);
+    try {
+      await action();
+      closeModal();
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Request failed');
+    }
   };
 
-  const handleReject = async (artisanId: string) => {
+  const handleVerify = (artisanId: string) =>
+    runAction(() => verifyMutation.mutateAsync(artisanId));
+
+  const handleReject = (artisanId: string) => {
     const reason = rejectReason.trim();
-    await rejectMutation.mutateAsync({ artisanId, body: reason ? { reason } : {} });
-    setSelectedArtisan(null);
-    setRejectReason('');
+    return runAction(() =>
+      rejectMutation.mutateAsync({ artisanId, body: reason ? { reason } : {} }),
+    );
   };
 
-  const handleCloseModal = () => {
-    setSelectedArtisan(null);
-    setRejectReason('');
-  };
+  const handleCloseModal = closeModal;
 
   if (pendingQuery.isLoading) {
     return <p className={styles.pageSubtitle}>Loading ustaad verification queue…</p>;
@@ -96,6 +109,7 @@ export function ArtisanVerificationPage() {
         <ArtisanVerificationModal
           artisan={selectedArtisan}
           isSubmitting={isSubmitting}
+          actionError={actionError}
           rejectReason={rejectReason}
           onRejectReasonChange={setRejectReason}
           onClose={handleCloseModal}
@@ -177,6 +191,7 @@ function AwaitingDocumentSection() {
 
 type ArtisanVerificationModalProps = {
   artisan: AdminArtisanDto;
+  actionError: string | null;
   isSubmitting: boolean;
   rejectReason: string;
   onRejectReasonChange: (value: string) => void;
@@ -188,6 +203,7 @@ type ArtisanVerificationModalProps = {
 function ArtisanVerificationModal({
   artisan,
   isSubmitting,
+  actionError,
   rejectReason,
   onRejectReasonChange,
   onClose,
@@ -222,6 +238,12 @@ function ArtisanVerificationModal({
             />
           </div>
         </div>
+
+        {actionError ? (
+          <p className={styles.error} role="alert">
+            {actionError}
+          </p>
+        ) : null}
 
         <div className={styles.actions}>
           <button

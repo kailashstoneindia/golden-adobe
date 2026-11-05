@@ -274,6 +274,12 @@ export class HireRequestsService {
       );
     }
 
+    this.logger.log(
+      `admin ${adminUserId} ${dto.approve ? 'approve' : 'reject'} hire-request ${requestId} status,adminReviewedBy,adminReviewedAt${
+        dto.approve ? '' : ',adminRejectReason'
+      }`,
+    );
+
     const updated = await this.hireRequestModel.findByPk(requestId, {
       include: [CUSTOMER_CONTACT_INCLUDE],
     });
@@ -513,6 +519,12 @@ export class HireRequestsService {
           ],
       updates: { status: 'CANCELLED', cancelledAt: new Date(), cancelReason: dto.reason },
     });
+    // Only an admin acting on someone else's request is an admin action to audit.
+    if (callerRole === Role.ADMIN) {
+      this.logger.log(
+        `admin ${callerId} cancel hire-request ${requestId} status,cancelledAt,cancelReason`,
+      );
+    }
 
     // Notify whichever party did not initiate the cancellation. Admin-
     // initiated cancels notify both, matching reviewRequest's own
