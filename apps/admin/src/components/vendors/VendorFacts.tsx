@@ -3,7 +3,8 @@ import type { AdminVendorDto } from '@golden-abode/types';
 
 import { ContactBlock, Row } from '@/components/common/ContactBlock';
 import { CopyableId } from '@/components/common/CopyButton';
-import { useVendorListingsQuery } from '@/queries/useVendorsQueries';
+import { VendorEditors } from '@/components/vendors/VendorEditors';
+import { useSetListingStatusMutation, useVendorListingsQuery } from '@/queries/useVendorsQueries';
 import styles from '@/styles/shared.module.css';
 import { formatDateTime } from '@/utils/date';
 
@@ -22,6 +23,8 @@ export function VendorFacts({ vendor }: { vendor: AdminVendorDto }) {
           <CopyableId value={vendor.id} label="vendor id" />
         </Row>
       </ContactBlock>
+
+      <VendorEditors vendor={vendor} />
 
       <Group title="Payout">
         <Row label="Account holder">{account?.accountHolderName ?? '—'}</Row>
@@ -102,6 +105,19 @@ function VendorListings({ vendorId }: { vendorId: string }) {
   });
   const data = query.data;
 
+  // Decision 0058 Task 10: pause a wrong or flagged listing, or bring it back.
+  // The server refuses one still awaiting the vendor's match confirmation.
+  const statusMutation = useSetListingStatusMutation();
+  const [statusError, setStatusError] = useState<string | null>(null);
+  const changeStatus = async (listingId: string, next: 'active' | 'paused') => {
+    setStatusError(null);
+    try {
+      await statusMutation.mutateAsync({ listingId, status: next });
+    } catch (caught) {
+      setStatusError(caught instanceof Error ? caught.message : 'Request failed');
+    }
+  };
+
   // If the list shrank under the page being shown, step back to the last page.
   useEffect(() => {
     if (data && page > data.totalPages) setPage(data.totalPages);
@@ -142,6 +158,7 @@ function VendorListings({ vendorId }: { vendorId: string }) {
                   <th>Stock</th>
                   <th>Status</th>
                   <th>Flags</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -181,11 +198,33 @@ function VendorListings({ vendorId }: { vendorId: string }) {
                             .join('; ')
                         : '—'}
                     </td>
+                    <td>
+                      <button
+                        type="button"
+                        className={`${styles.button} ${styles.buttonGhost}`}
+                        disabled={statusMutation.isPending}
+                        onClick={() =>
+                          changeStatus(
+                            listing.id,
+                            listing.status === 'active' ? 'paused' : 'active',
+                          )
+                        }
+                      >
+                        {listing.status === 'active'
+                          ? `Pause ${listing.productName}`
+                          : `Reactivate ${listing.productName}`}
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+          {statusError ? (
+            <p className={styles.error} role="alert">
+              {statusError}
+            </p>
+          ) : null}
           {data.totalPages > 1 ? (
             <div className={styles.actions}>
               <button type="button" disabled={page <= 1} onClick={() => setPage(page - 1)}>

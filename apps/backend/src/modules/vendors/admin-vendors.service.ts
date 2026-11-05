@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { QueryTypes } from 'sequelize';
 import { Sequelize } from 'sequelize-typescript';
@@ -13,12 +19,19 @@ import {
   ADMIN_CONTACT_ATTRIBUTES,
   toAdminContactDto,
 } from '../../common/mappers/admin-contact.mapper';
-import { toFiniteNumber, toIsoDate } from '../../common/utils/display-number.util';
+import {
+  toFiniteNumber,
+  toIsoDate,
+  toNullableNumber,
+} from '../../common/utils/display-number.util';
 import { City } from '../catalog/models/city.model';
 import { User } from '../users/models/user.model';
 import { Vendor } from './models/vendor.model';
 import { VendorAccountDetails } from './models/vendor-account-details.model';
 import { toVendorProfileDto } from './vendor-profile.mapper';
+import { UpdateAccountDetailsDto } from './dto/update-account-details.dto';
+import { UpdateVendorProfileDto } from './dto/update-vendor-profile.dto';
+import { VendorsService } from './vendors.service';
 
 type ListingStatus = AdminVendorListingDto['status'];
 
@@ -28,8 +41,13 @@ type ListingStatus = AdminVendorListingDto['status'];
 // vendor. Admin-only: VendorsService keeps serving the vendor's own view.
 @Injectable()
 export class AdminVendorsService {
+  private readonly logger = new Logger(AdminVendorsService.name);
+
   constructor(
     @InjectModel(Vendor) private readonly vendorModel: typeof Vendor,
+    @InjectModel(VendorAccountDetails)
+    private readonly accountDetailsModel: typeof VendorAccountDetails,
+    private readonly vendorsService: VendorsService,
     private readonly sequelize: Sequelize,
   ) {}
 
@@ -73,7 +91,103 @@ export class AdminVendorsService {
       `SELECT count(*) AS total FROM vendor_listing vl WHERE ${filter}`,
       replacements,
     );
-    const rows = await this.select<ListingRow>(
+    const rows = await this.listingRows(
+      filter,
+      'ORDER BY vl.created_at DESC, vl.id LIMIT :limit OFFSET :offset',
+      replacements,
+    );
+    const count = Number(total);
+    return {
+      items: rows.map(toListingDto),
+      total: count,
+      page: query.page,
+      limit: query.limit,
+      totalPages: Math.ceil(count / query.limit) || 1,
+    };
+  }
+
+  // Decision 0058 Task 10. The vendor's own validators and update path are
+  // reused (VendorsService), so an admin edit behaves exactly like the vendor's
+  // own: coordinates move together, and an admin-pinned city stays pinned.
+  async updateProfile(
+    vendorId: string,
+    adminUserId: string,
+    dto: UpdateVendorProfileDto,
+  ): Promise<AdminVendorDto> {
+    rejectNulls(dto);
+    const vendor = await this.vendorModel.findByPk(vendorId);
+    if (!vendor) {
+      throw new NotFoundException(`vendor ${vendorId} not found`);
+    }
+    const fields = changedProfileFields(vendor, dto);
+    if (fields.length === 0) {
+      return this.get(vendorId);
+    }
+    await this.vendorsService.updateProfile(vendor.userId, dto);
+    this.logger.log(`admin ${adminUserId} update vendor ${vendorId} ${fields.join(',')}`);
+    return this.get(vendorId);
+  }
+
+  // The bank record is replaced whole (the vendor's own rule: a half-updated
+  // account is a failed payout). Only field names are logged, never numbers.
+  async updateAccountDetails(
+    vendorId: string,
+    adminUserId: string,
+    dto: UpdateAccountDetailsDto,
+  ): Promise<AdminVendorDto> {
+    const vendor = await this.vendorModel.findByPk(vendorId);
+    if (!vendor) {
+      throw new NotFoundException(`vendor ${vendorId} not found`);
+    }
+    const existing = await this.accountDetailsModel.findOne({ where: { vendorId } });
+    const fields = BANK_FIELDS.filter((field) => !existing || existing[field] !== dto[field]);
+    if (fields.length === 0) {
+      return this.get(vendorId);
+    }
+    await this.vendorsService.updateAccountDetails(vendor.userId, dto);
+    this.logger.log(`admin ${adminUserId} update vendor-bank ${vendorId} ${fields.join(',')}`);
+    return this.get(vendorId);
+  }
+
+  // Pause a wrong or flagged listing, or bring one back. Stock is never
+  // touched. A listing paused because the vendor has yet to confirm which
+  // product it matches stays paused: publishing it would sell an unconfirmed
+  // match.
+  async setListingStatus(
+    listingId: string,
+    adminUserId: string,
+    status: 'active' | 'paused',
+  ): Promise<AdminVendorListingDto> {
+    const [current] = await this.select<{ status: string; pending_matches: string }>(
+      `SELECT status::text AS status, jsonb_array_length(match_candidates) AS pending_matches
+         FROM vendor_listing WHERE id = :listingId`,
+      { listingId },
+    );
+    if (!current) {
+      throw new NotFoundException(`listing ${listingId} not found`);
+    }
+    if (current.status !== status) {
+      if (status === 'active' && Number(current.pending_matches) > 0) {
+        throw new ConflictException(
+          'This listing is waiting for the vendor to confirm which product it matches, so it cannot be activated yet',
+        );
+      }
+      await this.sequelize.query(
+        `UPDATE vendor_listing SET status = :status, updated_at = now() WHERE id = :listingId`,
+        { replacements: { status, listingId }, type: QueryTypes.UPDATE },
+      );
+      this.logger.log(
+        `admin ${adminUserId} ${status === 'paused' ? 'pause' : 'reactivate'} vendor-listing ${listingId} status`,
+      );
+    }
+    const [row] = await this.listingRows('vl.id = :listingId', '', { listingId });
+    return toListingDto(row);
+  }
+
+  // One listing query for the list and for the reply to a status change, so
+  // both always show the same fields.
+  private listingRows(where: string, tail: string, replacements: Record<string, unknown>) {
+    return this.select<ListingRow>(
       `SELECT vl.id, vl.master_product_id, mp.name AS product_name, mp.product_code,
               vl.vendor_sku, vl.price, vl.mrp, vl.min_order_qty, vl.stated_grade,
               vl.status::text AS status, inv.quantity_available, inv.quantity_reserved,
@@ -90,19 +204,10 @@ export class AdminVendorsService {
          JOIN master_product mp ON mp.id = vl.master_product_id
          LEFT JOIN unit_of_measure uom ON uom.id = mp.unit_of_measure_id
          LEFT JOIN inventory inv ON inv.vendor_listing_id = vl.id AND inv.warehouse_id IS NULL
-        WHERE ${filter}
-        ORDER BY vl.created_at DESC, vl.id
-        LIMIT :limit OFFSET :offset`,
+        WHERE ${where}
+        ${tail}`,
       replacements,
     );
-    const count = Number(total);
-    return {
-      items: rows.map(toListingDto),
-      total: count,
-      page: query.page,
-      limit: query.limit,
-      totalPages: Math.ceil(count / query.limit) || 1,
-    };
   }
 
   private includes() {
@@ -149,6 +254,8 @@ export class AdminVendorsService {
 
     return vendors.map((vendor) => ({
       ...toVendorProfileDto(vendor),
+      // The shared mapper passes the raw decimal string; the DTO type says number.
+      minOrderValue: toNullableNumber(vendor.minOrderValue),
       owner: toAdminContactDto(vendor.user),
       citySource: vendor.citySource ?? null,
       categoryCount: countOf(categories, vendor.id),
@@ -233,4 +340,50 @@ function toListingDto(row: ListingRow): AdminVendorListingDto {
     updatedAt: toIsoDate(row.updated_at),
     stockUpdatedAt: row.stock_updated_at ? toIsoDate(row.stock_updated_at) : null,
   };
+}
+
+const BANK_FIELDS = [
+  'accountHolderName',
+  'bankName',
+  'ifscCode',
+  'branchName',
+  'accountNumber',
+] as const;
+
+// JSON null would mean "erase", which no field here supports: leave a field
+// out to leave it alone.
+function rejectNulls(dto: object): void {
+  for (const [field, value] of Object.entries(dto)) {
+    if (value === null) {
+      throw new BadRequestException(`${field} cannot be null; leave it out to keep it unchanged`);
+    }
+  }
+}
+
+// Names of the profile fields the request would actually change.
+function changedProfileFields(vendor: Vendor, dto: UpdateVendorProfileDto): string[] {
+  const changed: string[] = [];
+  for (const field of [
+    'shopName',
+    'address',
+    'upiId',
+    'bankDetails',
+    'gstin',
+    'hasLoadingUnloadingTeam',
+  ] as const) {
+    if (dto[field] !== undefined && dto[field] !== vendor[field]) changed.push(field);
+  }
+  if (
+    dto.minOrderValue !== undefined &&
+    Number(dto.minOrderValue) !== Number(vendor.minOrderValue)
+  ) {
+    changed.push('minOrderValue');
+  }
+  if (
+    (dto.latitude !== undefined && Number(dto.latitude) !== Number(vendor.latitude)) ||
+    (dto.longitude !== undefined && Number(dto.longitude) !== Number(vendor.longitude))
+  ) {
+    changed.push('latitude', 'longitude');
+  }
+  return changed;
 }

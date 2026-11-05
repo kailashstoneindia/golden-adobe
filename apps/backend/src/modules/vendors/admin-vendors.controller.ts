@@ -23,6 +23,8 @@ import { VendorCategoriesService } from '../catalog/vendor-categories.service';
 import { SetVendorCategoriesDto } from '../catalog/dto/set-vendor-categories.dto';
 import { SetVendorCityDto } from './dto/set-vendor-city.dto';
 import { RejectVendorDto } from './dto/reject-vendor.dto';
+import { UpdateAccountDetailsDto } from './dto/update-account-details.dto';
+import { UpdateVendorProfileDto } from './dto/update-vendor-profile.dto';
 
 // Admin-facing vendor administration. Vendor data was previously reachable
 // only nested inside GET /admin/users/:id, which meant no way to list
@@ -61,6 +63,37 @@ export class AdminVendorsController {
   @ApiResponse({ status: 404, description: 'No such vendor' })
   async getOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.adminVendorsService.get(id);
+  }
+
+  @Patch(':id')
+  @ApiOperation({
+    summary: 'Fix a vendor’s profile',
+    description:
+      'Shop name, address, coordinates (together), GSTIN, UPI, bank note, minimum order and loading team (decision 0058 Task 10). Same rules as the vendor’s own edit; a null is refused.',
+  })
+  @ApiResponse({ status: 200, description: 'The updated vendor, admin view' })
+  @ApiResponse({ status: 404, description: 'No such vendor' })
+  async updateProfile(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateVendorProfileDto,
+    @CurrentUser('sub') adminUserId: string,
+  ) {
+    return this.adminVendorsService.updateProfile(id, adminUserId, dto);
+  }
+
+  @Put(':id/account-details')
+  @ApiOperation({
+    summary: 'Replace a vendor’s bank account details',
+    description: 'All five fields every time; creates the record if there is none.',
+  })
+  @ApiResponse({ status: 200, description: 'The updated vendor, admin view' })
+  @ApiResponse({ status: 404, description: 'No such vendor' })
+  async updateAccountDetails(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateAccountDetailsDto,
+    @CurrentUser('sub') adminUserId: string,
+  ) {
+    return this.adminVendorsService.updateAccountDetails(id, adminUserId, dto);
   }
 
   @Get(':id/listings')

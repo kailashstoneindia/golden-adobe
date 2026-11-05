@@ -1,7 +1,10 @@
 import type {
   AdminVendorDto,
+  AdminVendorListingDto,
   CityDto,
   PaginatedAdminVendorListingsResponse,
+  UpdateVendorProfileDto,
+  VendorAccountDetailsInputDto,
   VendorCategoryDto,
   VendorProfileDto,
 } from '@golden-abode/types';
@@ -53,6 +56,29 @@ export const vendorsService = {
 
   fetchCities(): Promise<CityDto[]> {
     return getRequest<CityDto[]>(API_ENDPOINTS.admin.cities);
+  },
+
+  // Decision 0058 Task 10. These answer with the admin view of the vendor
+  // (or the one listing), not the plain profile the older actions return.
+  updateVendorProfile(vendorId: string, body: UpdateVendorProfileDto): Promise<AdminVendorDto> {
+    return patchRequest<AdminVendorDto, UpdateVendorProfileDto>(
+      API_ENDPOINTS.admin.vendorById(vendorId),
+      body,
+    );
+  },
+
+  updateVendorBank(vendorId: string, body: VendorAccountDetailsInputDto): Promise<AdminVendorDto> {
+    return putRequest<AdminVendorDto, VendorAccountDetailsInputDto>(
+      API_ENDPOINTS.admin.vendorAccountDetails(vendorId),
+      body,
+    );
+  },
+
+  setListingStatus(listingId: string, status: 'active' | 'paused'): Promise<AdminVendorListingDto> {
+    return patchRequest<AdminVendorListingDto, { status: 'active' | 'paused' }>(
+      API_ENDPOINTS.admin.vendorListingStatus(listingId),
+      { status },
+    );
   },
 
   approveVendor(vendorId: string): Promise<VendorProfileDto> {

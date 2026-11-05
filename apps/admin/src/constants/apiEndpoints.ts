@@ -19,6 +19,8 @@ export const API_ENDPOINTS = {
     vendorCity: (vendorId: string) => `/admin/vendors/${vendorId}/city`,
     vendorCategories: (vendorId: string) => `/admin/vendors/${vendorId}/categories`,
     vendorApprove: (vendorId: string) => `/admin/vendors/${vendorId}/approve`,
+    vendorAccountDetails: (vendorId: string) => `/admin/vendors/${vendorId}/account-details`,
+    vendorListingStatus: (listingId: string) => `/admin/vendor-listings/${listingId}/status`,
     vendorReject: (vendorId: string) => `/admin/vendors/${vendorId}/reject`,
     vendorListings: (vendorId: string) => `/admin/vendors/${vendorId}/listings`,
     cities: '/admin/cities',

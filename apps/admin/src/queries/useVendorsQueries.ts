@@ -1,3 +1,4 @@
+import type { UpdateVendorProfileDto, VendorAccountDetailsInputDto } from '@golden-abode/types';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { APP_CONSTANTS } from '@/constants/appConstants';
@@ -101,5 +102,34 @@ export function useRejectVendorMutation() {
       queryClient.invalidateQueries({ queryKey: VENDORS_QUERY_KEYS.all });
       queryClient.invalidateQueries({ queryKey: ['admin'] });
     },
+  });
+}
+
+// Decision 0058 Task 10. The popup reads the vendors list, so invalidating
+// 'vendors' reloads it, the listing pages and the counts.
+export function useUpdateVendorProfileMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (options: { vendorId: string; body: UpdateVendorProfileDto }) =>
+      vendorsService.updateVendorProfile(options.vendorId, options.body),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: VENDORS_QUERY_KEYS.all }),
+  });
+}
+
+export function useUpdateVendorBankMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (options: { vendorId: string; body: VendorAccountDetailsInputDto }) =>
+      vendorsService.updateVendorBank(options.vendorId, options.body),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: VENDORS_QUERY_KEYS.all }),
+  });
+}
+
+export function useSetListingStatusMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (options: { listingId: string; status: 'active' | 'paused' }) =>
+      vendorsService.setListingStatus(options.listingId, options.status),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: VENDORS_QUERY_KEYS.all }),
   });
 }
