@@ -137,6 +137,64 @@ describe('AdminArtisansController (real HTTP, Postgres)', () => {
     expect(res.status).toBe(403);
   });
 
+  describe('verification queue rule on the live endpoint (decision 0058 Task 6 review)', () => {
+    const created: string[] = [];
+    // Every queue id across all pages, in order.
+    async function queueIds(): Promise<string[]> {
+      const ids: string[] = [];
+      for (let page = 1; ; page += 1) {
+        const data = await adminPage(
+          `/api/admin/artisans/pending-verification?page=${page}&limit=100`,
+        );
+        ids.push(...data.items.map((item: { id: string }) => item.id));
+        if (page >= data.totalPages) return ids;
+      }
+    }
+    async function ustaad(opts: { document: boolean; verified: boolean; createdAt: string }) {
+      const user = await t.newArtisanUser();
+      const artisan = await Artisan.create({
+        userId: user.id,
+        tradeType: 'PLUMBER',
+        documentUrl: opts.document ? `artisans/x/${user.id}.pdf` : null,
+        isVerified: opts.verified,
+      } as never);
+      await Artisan.sequelize!.query('UPDATE artisans SET created_at = :at WHERE id = :id', {
+        replacements: { at: opts.createdAt, id: artisan.id },
+      });
+      created.push(artisan.id);
+      return artisan.id;
+    }
+
+    afterAll(async () => {
+      await Artisan.destroy({ where: { id: created } });
+    });
+
+    it('leaves out ustaads with no document and ustaads already verified', async () => {
+      const noDocument = await ustaad({
+        document: false,
+        verified: false,
+        createdAt: '2026-01-01',
+      });
+      const verified = await ustaad({ document: true, verified: true, createdAt: '2026-01-01' });
+      const waiting = await ustaad({ document: true, verified: false, createdAt: '2026-01-01' });
+
+      const ids = await queueIds();
+
+      expect(ids).toContain(waiting);
+      expect(ids).not.toContain(noDocument);
+      expect(ids).not.toContain(verified);
+    });
+
+    it('is oldest first', async () => {
+      const newer = await ustaad({ document: true, verified: false, createdAt: '2026-03-02' });
+      const older = await ustaad({ document: true, verified: false, createdAt: '2026-03-01' });
+
+      const ids = await queueIds();
+
+      expect(ids.indexOf(older)).toBeLessThan(ids.indexOf(newer));
+    });
+  });
+
   it('pending-verification is a paginated page, not a bare array', async () => {
     await asArtisan(
       request(t.app.getHttpServer())

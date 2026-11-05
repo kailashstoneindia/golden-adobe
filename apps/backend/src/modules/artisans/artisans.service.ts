@@ -20,7 +20,6 @@ import {
   ArtisanTeamMemberInputDto,
   PaginatedArtisanPublicProfilesResponse,
   PaginatedArtisansAwaitingDocumentResponse,
-  PaginatedArtisansResponse,
 } from '@golden-abode/types';
 
 import { UsersService } from '../users/users.service';
@@ -43,7 +42,7 @@ const DEFAULT_INCLUDES = [ArtisanAccountDetails, ArtisanTeamMember];
 // media presigns — this module has no document-specific config of its
 // own, and inventing one is not worth it for a single upload shape.
 const DOCUMENT_MAX_BYTES = 10 * 1024 * 1024;
-const DOCUMENT_PRESIGN_TTL_SECONDS = 300;
+export const DOCUMENT_PRESIGN_TTL_SECONDS = 300;
 const ALLOWED_DOCUMENT_CONTENT_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
 
 // The single definition of "pending verification" (isVerified = false AND
@@ -319,46 +318,6 @@ export class ArtisansService {
       throw new NotFoundException(`artisan ${artisanId} not found`);
     }
     return toArtisanPublicProfileDto(artisan);
-  }
-
-  async listArtisans(page: number, limit: number): Promise<PaginatedArtisansResponse> {
-    const offset = (page - 1) * limit;
-    const { rows, count } = await this.artisanModel.findAndCountAll({
-      include: DEFAULT_INCLUDES,
-      distinct: true,
-      limit,
-      offset,
-      order: [['createdAt', 'DESC']],
-    });
-    return {
-      items: rows.map((artisan) => toArtisanProfileDto(artisan)),
-      total: count,
-      page,
-      limit,
-      totalPages: Math.ceil(count / limit) || 1,
-    };
-  }
-
-  async listPendingVerification(page: number, limit: number): Promise<PaginatedArtisansResponse> {
-    // Review Focus item from the implementation plan, LLD §4.8: an
-    // artisan with no document yet is "incomplete", not "pending" —
-    // excluded by PENDING_VERIFICATION_WHERE itself, in SQL, not here.
-    const offset = (page - 1) * limit;
-    const { rows, count } = await this.artisanModel.findAndCountAll({
-      where: PENDING_VERIFICATION_WHERE,
-      include: DEFAULT_INCLUDES,
-      distinct: true,
-      limit,
-      offset,
-      order: [['createdAt', 'ASC']],
-    });
-    return {
-      items: rows.map((artisan) => toArtisanProfileDto(artisan)),
-      total: count,
-      page,
-      limit,
-      totalPages: Math.ceil(count / limit) || 1,
-    };
   }
 
   // Document-backed check (spec §3 scope decision, §6): cannot verify an

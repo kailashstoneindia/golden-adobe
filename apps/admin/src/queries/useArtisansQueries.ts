@@ -9,6 +9,9 @@ import type {
   ReviewArtisanHireRequestRequest,
 } from '@/types/artisans.types';
 
+// Under the backend's 300-second signed-link lifetime.
+const DOCUMENT_LINK_REFRESH_MS = 4 * 60 * 1000;
+
 type HireRequestListQuery = ArtisanListQuery & { status?: ArtisanHireRequestStatus };
 
 export const ARTISANS_QUERY_KEYS = {
@@ -38,6 +41,9 @@ export function useArtisanByIdQuery(artisanId: string | null) {
     queryFn: () => artisansService.fetchArtisanById(artisanId!),
     enabled: artisanId != null,
     staleTime: APP_CONSTANTS.staleTimeMs,
+    // Document links are signed for 5 minutes; refresh before they expire
+    // so a popup left open still opens the document.
+    refetchInterval: DOCUMENT_LINK_REFRESH_MS,
   });
 }
 

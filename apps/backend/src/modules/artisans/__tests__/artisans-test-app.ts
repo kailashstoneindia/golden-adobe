@@ -11,7 +11,7 @@ import { ResponseInterceptor } from '../../../common/interceptors/response.inter
 import { JwtStrategy } from '../../auth/strategies/jwt.strategy';
 import { User } from '../../users/models/user.model';
 import { UsersService } from '../../users/users.service';
-import { loadStorageConfig } from '../../../config/storage.config';
+import { loadStorageConfig, type StorageConfig } from '../../../config/storage.config';
 import { MEDIA_STORAGE_CONFIG, OBJECT_STORAGE } from '../../catalog/media/object-storage';
 import { ARTISAN_TEST_MODELS } from './test-db';
 import { FakeObjectStorage } from './fake-object-storage';
@@ -39,6 +39,7 @@ export type ArtisansTestApp = {
   customerToken: string;
   customerUserId: string;
   storage: FakeObjectStorage;
+  storageConfig: StorageConfig;
   // Mocked, not a real model — Order's own association graph (Customer,
   // CustomerAddress, OrderVendorGroup) is out of scope for this
   // artisan-focused fixture. Exposed so a spec can set findAll's return
@@ -67,6 +68,7 @@ export async function createArtisansTestApp(): Promise<ArtisansTestApp> {
   const suffix = Math.random().toString(36).slice(2, 10);
   const extraUserIds: string[] = [];
   const storage = new FakeObjectStorage();
+  const storageConfig: StorageConfig = { ...loadStorageConfig(), enabled: true };
   const orderModel = { findAll: jest.fn().mockResolvedValue([]) };
 
   const moduleRef: TestingModule = await Test.createTestingModule({
@@ -111,10 +113,9 @@ export async function createArtisansTestApp(): Promise<ArtisansTestApp> {
       AdminArtisansService,
       { provide: NOTIFICATION_SERVICE, useClass: LogNotificationService },
       { provide: getModelToken(Order), useValue: orderModel },
-      {
-        provide: MEDIA_STORAGE_CONFIG,
-        useFactory: () => loadStorageConfig(),
-      },
+      // One shared object: a test can switch storage "off" (enabled = false) to
+      // act like an environment with no media bucket.
+      { provide: MEDIA_STORAGE_CONFIG, useValue: storageConfig },
       { provide: OBJECT_STORAGE, useValue: storage },
     ],
   }).compile();
@@ -159,6 +160,7 @@ export async function createArtisansTestApp(): Promise<ArtisansTestApp> {
     customerToken: jwt.sign({ sub: customerUser.id, role: Role.CUSTOMER }),
     customerUserId: customerUser.id,
     storage,
+    storageConfig,
     orderModel,
     async newArtisanUser(options: { approved?: boolean } = {}) {
       const user = await User.create({

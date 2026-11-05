@@ -149,7 +149,14 @@ export type PaginatedAdminVendorListingsResponse = PaginatedResponse<AdminVendor
 export type AdminArtisanTeamMemberDto = ArtisanTeamMemberDto & {
   // Short-lived signed link to the member's document; null in lists.
   documentViewUrl: string | null;
+  // A document key is stored but no such file exists in storage.
+  documentMissing: boolean;
 };
+
+// Whether document links could be made (decision 0058 Task 6):
+// storage_not_configured = no media bucket set up (asked of the config);
+// signing_failed = storage is set up but signing threw (e.g. credentials).
+export type DocumentLinksState = 'ok' | 'storage_not_configured' | 'signing_failed';
 
 export type AdminArtisanDto = Omit<ArtisanProfileDto, 'team'> & {
   owner: AdminContactDto | null;
@@ -157,10 +164,18 @@ export type AdminArtisanDto = Omit<ArtisanProfileDto, 'team'> & {
   // Short-lived signed link to the ustaad's document; null in lists and when
   // there is no document. A stored http(s) URL is passed through as-is.
   documentViewUrl: string | null;
-  jobCounts: { active: number; completed: number; declined: number; total: number };
-  // False when links could not be signed (e.g. no media bucket configured):
-  // a document may exist even though there is no link to it.
-  documentStorageAvailable: boolean;
+  documentMissing: boolean;
+  documentLinks: DocumentLinksState;
+  // expired = the ustaad never answered; other = waiting for admin review,
+  // rejected by admin, or cancelled.
+  jobCounts: {
+    active: number;
+    completed: number;
+    declined: number;
+    expired: number;
+    other: number;
+    total: number;
+  };
 };
 
 export type PaginatedAdminArtisansResponse = PaginatedResponse<AdminArtisanDto>;

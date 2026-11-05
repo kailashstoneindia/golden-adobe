@@ -116,6 +116,12 @@ describe('S3ObjectStorage (real MinIO)', () => {
 
       expect(res.status).toBe(200);
       expect(Buffer.from(await res.arrayBuffer()).length).toBe(80);
+
+      // Negative control: the same object without the signature is refused,
+      // so the 200 above is the signature at work, not public access.
+      const unsigned = new URL(url);
+      unsigned.search = '';
+      expect((await fetch(unsigned)).status).toBe(403);
     });
 
     it('signs the link to expire after the given time', async () => {

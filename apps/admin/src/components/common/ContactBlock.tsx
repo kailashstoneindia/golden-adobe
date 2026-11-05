@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import type { AdminContactDto, AdminContactWithoutEmailDto } from '@golden-abode/types';
 
 import styles from '@/styles/shared.module.css';
+import { CopyableId } from '@/components/common/CopyButton';
 import { formatDateTime } from '@/utils/date';
 import { formatPhoneDisplay } from '@/utils/phone';
 import { formatRoleLabel } from '@/utils/role';
@@ -45,6 +46,9 @@ export function ContactBlock({ title, contact, children }: ContactBlockProps) {
           </Row>
           <Row label="Last login">
             {contact.lastLoginAt ? formatDateTime(contact.lastLoginAt) : 'Never'}
+          </Row>
+          <Row label="User id">
+            <CopyableId value={contact.userId} label="user id" />
           </Row>
         </>
       ) : (

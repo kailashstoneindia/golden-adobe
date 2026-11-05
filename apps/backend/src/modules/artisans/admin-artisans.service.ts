@@ -2,27 +2,38 @@ import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { QueryTypes, WhereOptions } from 'sequelize';
 import { Sequelize } from 'sequelize-typescript';
-import { AdminArtisanDto, PaginatedAdminArtisansResponse } from '@golden-abode/types';
+import {
+  AdminArtisanDto,
+  ArtisanHireRequestStatus,
+  DocumentLinksState,
+  PaginatedAdminArtisansResponse,
+} from '@golden-abode/types';
 
 import {
   ADMIN_CONTACT_ATTRIBUTES,
   toAdminContactDto,
 } from '../../common/mappers/admin-contact.mapper';
-import { OBJECT_STORAGE, ObjectStorage } from '../catalog/media/object-storage';
+import type { StorageConfig } from '../../config/storage.config';
+import {
+  MEDIA_STORAGE_CONFIG,
+  OBJECT_STORAGE,
+  ObjectStorage,
+} from '../catalog/media/object-storage';
 import { User } from '../users/models/user.model';
 import { toArtisanProfileDto } from './artisan-profile.mapper';
-import { PENDING_VERIFICATION_WHERE } from './artisans.service';
+import { DOCUMENT_PRESIGN_TTL_SECONDS, PENDING_VERIFICATION_WHERE } from './artisans.service';
 import { Artisan } from './models/artisan.model';
 import { ArtisanAccountDetails } from './models/artisan-account-details.model';
 import { ArtisanTeamMember } from './models/artisan-team-member.model';
 
-// Same lifetime as the upload links (artisans.service.ts): long enough to open
-// the file, short enough that a copied link soon stops working.
-export const DOCUMENT_VIEW_TTL_SECONDS = 300;
+// The ustaad's current load: sent to them and waiting, accepted, or in work.
+const ACTIVE_JOB_STATUSES: ArtisanHireRequestStatus[] = [
+  'PENDING_ARTISAN_RESPONSE',
+  'ACCEPTED_BY_ARTISAN',
+  'IN_PROGRESS',
+];
 
-// Hire requests that are the ustaad's current load: sent to them and waiting,
-// accepted, or being worked.
-const ACTIVE_JOB_STATUSES = ['PENDING_ARTISAN_RESPONSE', 'ACCEPTED_BY_ARTISAN', 'IN_PROGRESS'];
+type DocumentLink = { url: string | null; missing: boolean };
 
 // The admin's view of ustaads (decision 0058 Task 6). Lists carry the owner
 // and job counts; only the single-ustaad detail signs document links, so a
@@ -34,6 +45,7 @@ export class AdminArtisansService {
   constructor(
     @InjectModel(Artisan) private readonly artisanModel: typeof Artisan,
     @Inject(OBJECT_STORAGE) private readonly storage: ObjectStorage,
+    @Inject(MEDIA_STORAGE_CONFIG) private readonly storageConfig: StorageConfig,
     private readonly sequelize: Sequelize,
   ) {}
 
@@ -52,35 +64,48 @@ export class AdminArtisansService {
       throw new NotFoundException(`artisan ${artisanId} not found`);
     }
     const [dto] = await this.withFacts([artisan]);
+
+    // Asked of the config, not inferred from errors: with no bucket there is
+    // nothing to sign, and older plain-URL documents still open.
+    if (!this.storageConfig.enabled) {
+      return this.withPlainUrlsOnly(dto, 'storage_not_configured');
+    }
     try {
+      const own = await this.link(dto.documentUrl);
+      const team = await Promise.all(dto.team.map((member) => this.link(member.documentUrl)));
       return {
         ...dto,
-        documentViewUrl: await this.viewUrl(dto.documentUrl),
-        team: await Promise.all(
-          dto.team.map(async (member) => ({
-            ...member,
-            documentViewUrl: await this.viewUrl(member.documentUrl),
-          })),
-        ),
-      };
-    } catch (error) {
-      // No bucket configured (or S3 unreachable): the rest of the ustaad is
-      // still worth showing. The admin sees that links are unavailable.
-      this.logger.warn(
-        `could not sign document links for artisan ${artisanId}: ${(error as Error).message}`,
-      );
-      // Older documents stored as full URLs need no signing and still open.
-      const plainUrl = (stored: string | null) => (stored && isUrl(stored) ? stored : null);
-      return {
-        ...dto,
-        documentStorageAvailable: false,
-        documentViewUrl: plainUrl(dto.documentUrl),
-        team: dto.team.map((member) => ({
+        documentViewUrl: own.url,
+        documentMissing: own.missing,
+        documentLinks: 'ok',
+        team: dto.team.map((member, index) => ({
           ...member,
-          documentViewUrl: plainUrl(member.documentUrl),
+          documentViewUrl: team[index].url,
+          documentMissing: team[index].missing,
         })),
       };
+    } catch (error) {
+      // Storage is configured, so this is a real fault (e.g. credentials):
+      // show the ustaad anyway, but log it as an error with its stack.
+      this.logger.error(
+        `could not sign document links for artisan ${artisanId}`,
+        (error as Error).stack,
+      );
+      return this.withPlainUrlsOnly(dto, 'signing_failed');
     }
+  }
+
+  private withPlainUrlsOnly(dto: AdminArtisanDto, state: DocumentLinksState): AdminArtisanDto {
+    const plainUrl = (stored: string | null) => (stored && isUrl(stored) ? stored : null);
+    return {
+      ...dto,
+      documentLinks: state,
+      documentViewUrl: plainUrl(dto.documentUrl),
+      team: dto.team.map((member) => ({
+        ...member,
+        documentViewUrl: plainUrl(member.documentUrl),
+      })),
+    };
   }
 
   private async page(
@@ -95,7 +120,10 @@ export class AdminArtisansService {
       distinct: true,
       limit,
       offset: (page - 1) * limit,
-      order: [['createdAt', order]],
+      order: [
+        ['createdAt', order],
+        ['id', 'ASC'],
+      ],
     });
     return {
       items: await this.withFacts(rows),
@@ -128,29 +156,46 @@ export class AdminArtisansService {
         mine
           .filter((row) => statuses.includes(row.status))
           .reduce((n, row) => n + Number(row.n), 0);
+      const total = mine.reduce((n, row) => n + Number(row.n), 0);
+      const active = sum(ACTIVE_JOB_STATUSES);
+      const completed = sum(['COMPLETED']);
+      const declined = sum(['ARTISAN_DECLINED']);
+      const expired = sum(['EXPIRED']);
       const profile = toArtisanProfileDto(artisan);
       return {
         ...profile,
         owner: toAdminContactDto(artisan.user),
         documentViewUrl: null,
-        documentStorageAvailable: true,
-        team: profile.team.map((member) => ({ ...member, documentViewUrl: null })),
+        documentMissing: false,
+        documentLinks: 'ok' as const,
+        team: profile.team.map((member) => ({
+          ...member,
+          documentViewUrl: null,
+          documentMissing: false,
+        })),
         jobCounts: {
-          active: sum(ACTIVE_JOB_STATUSES),
-          completed: sum(['COMPLETED']),
-          declined: sum(['ARTISAN_DECLINED']),
-          total: mine.reduce((n, row) => n + Number(row.n), 0),
+          active,
+          completed,
+          declined,
+          expired,
+          other: total - active - completed - declined - expired,
+          total,
         },
       };
     });
   }
 
   // Stored value is an object key (current uploads) or, for older records,
-  // already a full URL.
-  private async viewUrl(stored: string | null): Promise<string | null> {
-    if (!stored) return null;
-    if (/^https?:\/\//i.test(stored)) return stored;
-    return this.storage.presignGet(stored, DOCUMENT_VIEW_TTL_SECONDS);
+  // already a full URL. A key is checked first, so a failed upload reads as
+  // "file missing" rather than an S3 error page.
+  private async link(stored: string | null): Promise<DocumentLink> {
+    if (!stored) return { url: null, missing: false };
+    if (isUrl(stored)) return { url: stored, missing: false };
+    if (!(await this.storage.head(stored))) return { url: null, missing: true };
+    return {
+      url: await this.storage.presignGet(stored, DOCUMENT_PRESIGN_TTL_SECONDS),
+      missing: false,
+    };
   }
 }
 

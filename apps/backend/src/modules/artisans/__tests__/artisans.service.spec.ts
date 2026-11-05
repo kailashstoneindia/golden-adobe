@@ -6,7 +6,6 @@ import { Role } from '@golden-abode/types';
 
 import { ARTISAN_TEST_MODELS } from './test-db';
 import { FakeObjectStorage } from './fake-object-storage';
-import { findOnAnyPage } from './find-on-any-page';
 import { User } from '../../users/models/user.model';
 import { Artisan } from '../models/artisan.model';
 import { ArtisanAccountDetails } from '../models/artisan-account-details.model';
@@ -378,46 +377,5 @@ describe('ArtisansService (integration)', () => {
         `admin admin-7 reject-verification artisan ${profile.id} isVerified,isApproved: blurry`,
       );
     });
-  });
-
-  it('listPendingVerification excludes artisans with no uploaded document', async () => {
-    await service.onboardProfile(userId, { tradeType: 'PLUMBER', servicePincode: '560001' });
-    const found = await findOnAnyPage(
-      (p) => service.listPendingVerification(p, 100),
-      (artisan) => artisan.userId === userId,
-    );
-    expect(found).toBeUndefined();
-  });
-
-  it('listPendingVerification includes a document-backed, unverified artisan and paginates', async () => {
-    const profile = await service.onboardProfile(userId, {
-      tradeType: 'PLUMBER',
-      servicePincode: '560001',
-    });
-    const key = `artisans/${profile.id}/doc-key.pdf`;
-    fakeStorage.seed(key);
-    await service.confirmDocumentUpload(userId, key);
-
-    const page = await service.listPendingVerification(1, 20);
-    const found = await findOnAnyPage(
-      (p) => service.listPendingVerification(p, 100),
-      (artisan) => artisan.id === profile.id,
-    );
-    expect(found).toBeDefined();
-    expect(page.page).toBe(1);
-    expect(page.limit).toBe(20);
-    expect(page.total).toBeGreaterThanOrEqual(1);
-  });
-
-  it('listArtisans returns a paginated page, newest first', async () => {
-    await service.onboardProfile(userId, { tradeType: 'ELECTRICIAN', servicePincode: '560001' });
-    const page = await service.listArtisans(1, 20);
-    const found = await findOnAnyPage(
-      (p) => service.listArtisans(p, 100),
-      (artisan) => artisan.userId === userId,
-    );
-    expect(found).toBeDefined();
-    expect(page.page).toBe(1);
-    expect(page.limit).toBe(20);
   });
 });

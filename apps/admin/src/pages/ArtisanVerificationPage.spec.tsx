@@ -35,8 +35,9 @@ function artisan(over: Partial<AdminArtisanDto> = {}): AdminArtisanDto {
       lastLoginAt: null,
     },
     documentViewUrl: null,
-    documentStorageAvailable: true,
-    jobCounts: { active: 1, completed: 5, declined: 0, total: 6 },
+    documentMissing: false,
+    documentLinks: 'ok',
+    jobCounts: { active: 1, completed: 5, declined: 0, expired: 2, other: 1, total: 9 },
     createdAt: '2026-10-29T00:00:00.000Z',
     updatedAt: '2026-10-29T00:00:00.000Z',
     ...over,
@@ -264,5 +265,32 @@ describe('ArtisanVerificationPage review popup (decision 0058 Task 6)', () => {
       'href',
       'https://signed.example.test/doc?sig=1',
     );
+  });
+});
+
+describe('ArtisanVerificationPage when the detail fails to load', () => {
+  beforeEach(() => {
+    pending = [artisan()];
+    verifyCalls = [];
+    rejectCalls = [];
+    awaiting = [];
+    useHandlers();
+    server.use(
+      // Only this ustaad's detail fails; the queue routes still answer.
+      http.get(`${BASE}/${artisan().id}`, () =>
+        HttpResponse.json({ success: false, message: 'boom' }, { status: 500 }),
+      ),
+    );
+  });
+
+  it('says so, and Verify still works', async () => {
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByText('Plumber'));
+
+    expect(await screen.findByText("Could not load this ustaad's details.")).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Verify and approve' }));
+    expect(verifyCalls).toEqual([artisan().id]);
   });
 });

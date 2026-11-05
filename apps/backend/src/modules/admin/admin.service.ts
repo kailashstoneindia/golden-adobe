@@ -76,7 +76,7 @@ export class AdminService {
       // Artisan-specific, document-backed verification queue — distinct
       // from pendingArtisans (the generic users.is_approved gate). See
       // docs/artisan-module.md §5's two-gate design. Shares its where
-      // clause with ArtisansService.listPendingVerification so the count
+      // clause with AdminArtisansService.listPendingVerification so the count
       // and the list it's counting can never drift apart.
       this.artisanModel.count({ where: PENDING_VERIFICATION_WHERE }),
       this.artisanHireRequestModel.count({ where: { status: 'PENDING_ADMIN_REVIEW' } }),

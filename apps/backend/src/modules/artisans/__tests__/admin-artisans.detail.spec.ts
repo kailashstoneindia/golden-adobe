@@ -52,7 +52,8 @@ describe('Admin ustaad detail (real HTTP, Postgres)', () => {
 
     const dto = await detail();
     expect(dto.documentViewUrl).toBe(`https://signed.example.test/${key}?expires=300`);
-    expect(dto.documentStorageAvailable).toBe(true);
+    expect(dto.documentLinks).toBe('ok');
+    expect(dto.documentMissing).toBe(false);
   });
 
   it('signs a link for each team member’s document', async () => {
@@ -82,14 +83,40 @@ describe('Admin ustaad detail (real HTTP, Postgres)', () => {
 
   it('carries the owner’s contact, approval and job counts', async () => {
     await User.update({ email: 'ustaad@test.local' }, { where: { id: t.artisanUserId } });
-    for (const status of ['IN_PROGRESS', 'COMPLETED', 'COMPLETED', 'ARTISAN_DECLINED']) {
+    // One customer per request: only one open request per customer–ustaad pair.
+    const customers: string[] = [];
+    const hire = async (forArtisan: string, status: string) => {
+      const customer = await User.create({
+        name: 'Job count customer',
+        phone: `4${Math.floor(Math.random() * 1e9)}`.padEnd(10, '0').slice(0, 10),
+        role: 'CUSTOMER',
+        isActive: true,
+      } as never);
+      customers.push(customer.id);
       await ArtisanHireRequest.create({
-        customerId: t.customerUserId,
-        artisanId,
+        customerId: customer.id,
+        artisanId: forArtisan,
         addressText: '1 Park Lane',
         status,
       } as never);
+    };
+    for (const status of [
+      'PENDING_ARTISAN_RESPONSE',
+      'ACCEPTED_BY_ARTISAN',
+      'IN_PROGRESS',
+      'COMPLETED',
+      'COMPLETED',
+      'ARTISAN_DECLINED',
+      'EXPIRED',
+      'CANCELLED',
+      'PENDING_ADMIN_REVIEW',
+    ]) {
+      await hire(artisanId, status);
     }
+    // Another ustaad's job must not leak into this ustaad's counts.
+    const other = await t.newArtisanUser();
+    const otherArtisan = await Artisan.create({ userId: other.id, tradeType: 'PLUMBER' } as never);
+    await hire(otherArtisan.id, 'IN_PROGRESS');
 
     const dto = await detail();
 
@@ -99,7 +126,18 @@ describe('Admin ustaad detail (real HTTP, Postgres)', () => {
       role: 'ARTISAN',
     });
     expect(dto.owner).not.toHaveProperty('deviceToken');
-    expect(dto.jobCounts).toEqual({ active: 1, completed: 2, declined: 1, total: 4 });
+    expect(dto.jobCounts).toEqual({
+      active: 3,
+      completed: 2,
+      declined: 1,
+      expired: 1,
+      other: 2,
+      total: 9,
+    });
+    await ArtisanHireRequest.destroy({ where: { artisanId: otherArtisan.id } });
+    await otherArtisan.destroy();
+    await ArtisanHireRequest.destroy({ where: { artisanId } });
+    await User.destroy({ where: { id: customers } });
   });
 
   it('never signs links in lists, but carries the owner there too', async () => {
@@ -118,49 +156,78 @@ describe('Admin ustaad detail (real HTTP, Postgres)', () => {
   });
 });
 
-describe('Admin ustaad detail when document storage is not set up', () => {
+describe('Admin ustaad detail document states', () => {
   let t: ArtisansTestApp;
   let artisanId: string;
+  const detail = async () =>
+    request(t.app.getHttpServer())
+      .get(`/api/admin/artisans/${artisanId}`)
+      .set('Authorization', `Bearer ${t.adminToken}`);
 
   beforeAll(async () => {
     t = await createArtisansTestApp();
+  });
+
+  afterAll(async () => {
+    await t.close();
+  });
+
+  beforeEach(async () => {
     const res = await request(t.app.getHttpServer())
       .post('/api/artisans/me/profile')
       .set('Authorization', `Bearer ${t.artisanToken}`)
       .send({ tradeType: 'MASON', servicePincode: '560001' });
     artisanId = res.body.data.id;
-    await Artisan.update(
-      { documentUrl: `artisans/${artisanId}/id.pdf` },
-      { where: { id: artisanId } },
-    );
+    const key = `artisans/${artisanId}/id.pdf`;
+    t.storage.seed(key);
+    await Artisan.update({ documentUrl: key }, { where: { id: artisanId } });
     await ArtisanTeamMember.create({
       artisanId,
       name: 'Old Helper',
       documentUrl: 'https://legacy.example.test/old.pdf',
     } as never);
-    t.storage.failSigning = true;
   });
 
-  afterAll(async () => {
+  afterEach(async () => {
+    t.storageConfig.enabled = true;
     t.storage.failSigning = false;
     await ArtisanTeamMember.destroy({ where: { artisanId } });
     await Artisan.destroy({ where: { id: artisanId } });
-    await t.close();
   });
 
-  it('still shows the ustaad, says links are unavailable, and does not fail', async () => {
-    const res = await request(t.app.getHttpServer())
-      .get(`/api/admin/artisans/${artisanId}`)
-      .set('Authorization', `Bearer ${t.adminToken}`);
+  it('with no bucket configured, says so without trying to sign', async () => {
+    t.storageConfig.enabled = false;
+    const before = t.storage.presignGetCalls;
+
+    const res = await detail();
 
     expect(res.status).toBe(200);
     expect(res.body.data).toMatchObject({
-      id: artisanId,
       documentUrl: `artisans/${artisanId}/id.pdf`,
       documentViewUrl: null,
-      documentStorageAvailable: false,
+      documentLinks: 'storage_not_configured',
     });
+    expect(t.storage.presignGetCalls).toBe(before);
     // An older document stored as a full URL needs no signing, so it still opens.
     expect(res.body.data.team[0].documentViewUrl).toBe('https://legacy.example.test/old.pdf');
+  });
+
+  it('when signing fails although storage is configured, says the link could not be made', async () => {
+    t.storage.failSigning = true;
+
+    const res = await detail();
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toMatchObject({ documentViewUrl: null, documentLinks: 'signing_failed' });
+    expect(res.body.data.team[0].documentViewUrl).toBe('https://legacy.example.test/old.pdf');
+  });
+
+  it('marks a stored document whose file is missing', async () => {
+    const missing = `artisans/${artisanId}/never-uploaded.pdf`;
+    await Artisan.update({ documentUrl: missing }, { where: { id: artisanId } });
+
+    const res = await detail();
+
+    expect(res.body.data).toMatchObject({ documentViewUrl: null, documentMissing: true });
   });
 });

@@ -191,9 +191,11 @@ import { UsersModule } from '../users/users.module';
     VendorListingsService,
     // Lets ArtisansModule reuse the existing presigned-POST S3 plumbing
     // (decision 0033) for KYC document uploads instead of building a
-    // second object-storage integration. MEDIA_STORAGE_CONFIG stays
-    // un-exported — nothing outside this module needs it directly.
+    // second object-storage integration. MEDIA_STORAGE_CONFIG is
+    // exported too, so the admin ustaad view can ask whether a bucket is
+    // configured instead of inferring it from signing errors (decision 0058).
     OBJECT_STORAGE,
+    MEDIA_STORAGE_CONFIG,
   ],
 })
 export class CatalogModule {}

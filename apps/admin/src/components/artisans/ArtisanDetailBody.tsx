@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { AdminArtisanDto } from '@golden-abode/types';
+import type { AdminArtisanDto, DocumentLinksState } from '@golden-abode/types';
 
 import { ContactBlock, Row } from '@/components/common/ContactBlock';
 import { CopyableId } from '@/components/common/CopyButton';
@@ -39,7 +39,8 @@ export function ArtisanDetailBody({ artisan }: { artisan: AdminArtisanDto }) {
           <DocumentLink
             url={artisan.documentViewUrl}
             stored={artisan.documentUrl}
-            storageAvailable={artisan.documentStorageAvailable}
+            missing={artisan.documentMissing}
+            links={artisan.documentLinks}
             label="View ustaad document"
           />
         </Row>
@@ -48,7 +49,8 @@ export function ArtisanDetailBody({ artisan }: { artisan: AdminArtisanDto }) {
       <Group title="Jobs">
         <p className={styles.meta}>
           {artisan.jobCounts.active} active · {artisan.jobCounts.completed} completed ·{' '}
-          {artisan.jobCounts.declined} declined · {artisan.jobCounts.total} in total
+          {artisan.jobCounts.declined} declined · {artisan.jobCounts.expired} expired ·{' '}
+          {artisan.jobCounts.other} other · {artisan.jobCounts.total} in total
         </p>
       </Group>
 
@@ -64,6 +66,7 @@ export function ArtisanDetailBody({ artisan }: { artisan: AdminArtisanDto }) {
                   <th>Role</th>
                   <th>Phone</th>
                   <th>Document</th>
+                  <th>Added</th>
                 </tr>
               </thead>
               <tbody>
@@ -82,10 +85,12 @@ export function ArtisanDetailBody({ artisan }: { artisan: AdminArtisanDto }) {
                       <DocumentLink
                         url={member.documentViewUrl}
                         stored={member.documentUrl}
-                        storageAvailable={artisan.documentStorageAvailable}
+                        missing={member.documentMissing}
+                        links={artisan.documentLinks}
                         label={`View document for ${member.name || 'team member'}`}
                       />
                     </td>
+                    <td>{formatDateTime(member.createdAt)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -106,6 +111,7 @@ export function ArtisanDetailBody({ artisan }: { artisan: AdminArtisanDto }) {
             <Row label="Account number">
               <CopyableId value={account.accountNumber} label="account number" />
             </Row>
+            <Row label="Last changed">{formatDateTime(account.updatedAt)}</Row>
           </>
         ) : (
           <p className={styles.sectionEmpty}>No account details on file.</p>
@@ -118,24 +124,27 @@ export function ArtisanDetailBody({ artisan }: { artisan: AdminArtisanDto }) {
 function DocumentLink({
   url,
   stored,
-  storageAvailable,
+  missing,
+  links,
   label,
 }: {
   url: string | null;
   stored: string | null;
-  storageAvailable: boolean;
+  missing: boolean;
+  links: DocumentLinksState;
   label: string;
 }) {
-  if (!url && stored && !storageAvailable) {
-    // The file exists; the server just could not sign a link (no bucket set up).
-    return <>Uploaded, but document storage is not set up</>;
+  if (url) {
+    return (
+      <a href={url} target="_blank" rel="noreferrer" aria-label={label}>
+        View document
+      </a>
+    );
   }
-  if (!url) return <>No document</>;
-  return (
-    <a href={url} target="_blank" rel="noreferrer" aria-label={label}>
-      View document
-    </a>
-  );
+  if (!stored) return <>No document</>;
+  if (missing) return <>File missing</>;
+  if (links === 'storage_not_configured') return <>Uploaded, but document storage is not set up</>;
+  return <>Uploaded, but a link could not be made right now</>;
 }
 
 function Group({ title, children }: { title: string; children: ReactNode }) {

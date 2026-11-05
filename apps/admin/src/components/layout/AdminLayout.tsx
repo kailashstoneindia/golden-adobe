@@ -33,6 +33,8 @@ export function AdminLayout() {
       if (refreshToken) {
         authService.logout({ refreshToken }).catch(() => undefined);
       }
+    } catch {
+      // Storage blocked or the lock failed: nothing to revoke from here.
     } finally {
       // Whatever happened above (storage blocked, lock failure), the admin
       // must still end up logged out locally.
