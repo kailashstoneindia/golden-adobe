@@ -13,10 +13,15 @@ import { formatDateTime } from '@/utils/date';
 
 export function ArtisansPage() {
   // A user popup's "Open in Ustaads" link opens this page on that ustaad.
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [selectedArtisanId, setSelectedArtisanId] = useState<string | null>(
     searchParams.get('artisanId'),
   );
+  const closeDetail = () => {
+    setSelectedArtisanId(null);
+    // So a reload does not reopen it.
+    setSearchParams({}, { replace: true });
+  };
   const artisansQuery = useArtisansQuery({ page: 1, limit: APP_CONSTANTS.defaultPageSize });
   const detailQuery = useArtisanByIdQuery(selectedArtisanId);
 
@@ -76,11 +81,7 @@ export function ArtisansPage() {
       )}
 
       {selectedArtisanId ? (
-        <div
-          className={styles.overlay}
-          onClick={() => setSelectedArtisanId(null)}
-          role="presentation"
-        >
+        <div className={styles.overlay} onClick={closeDetail} role="presentation">
           <div className={styles.modal} onClick={(event) => event.stopPropagation()} role="dialog">
             <h2 className={styles.modalTitle}>
               {detailQuery.data
@@ -101,7 +102,7 @@ export function ArtisansPage() {
               <button
                 type="button"
                 className={`${styles.button} ${styles.buttonGhost}`}
-                onClick={() => setSelectedArtisanId(null)}
+                onClick={closeDetail}
               >
                 Close
               </button>

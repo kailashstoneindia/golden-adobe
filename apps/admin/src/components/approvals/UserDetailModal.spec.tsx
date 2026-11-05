@@ -44,7 +44,7 @@ const row = (label: string) => screen.getByText(label).closest('div') as HTMLEle
 
 // Decision 0058 Task 7.
 describe('UserDetailModal', () => {
-  it('shows email, push and signed-in devices, never a device token', () => {
+  it('shows email, push, signed-in devices and the user id', () => {
     renderModal(detail());
 
     expect(within(row('Email')).getByText('asha@example.com')).toBeInTheDocument();

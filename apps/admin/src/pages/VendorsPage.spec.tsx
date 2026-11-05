@@ -5,7 +5,7 @@ import { http, HttpResponse } from 'msw';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Role, type AdminVendorDto, type AdminVendorListingDto } from '@golden-abode/types';
 
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { server } from '@/test/server';
 
 import { VendorsPage } from './VendorsPage';
@@ -117,6 +117,11 @@ function useHandlers() {
   );
 }
 
+function LocationProbe() {
+  const location = useLocation();
+  return <output aria-label="location">{location.pathname + location.search}</output>;
+}
+
 function renderPage(path = '/') {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -125,6 +130,7 @@ function renderPage(path = '/') {
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[path]}>
         <VendorsPage />
+        <LocationProbe />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -224,5 +230,15 @@ describe('VendorsPage opened for one vendor', () => {
     expect(await screen.findByRole('group', { name: 'Owner' })).toHaveTextContent(
       'vikram@example.com',
     );
+  });
+
+  it('forgets the vendor in the address once the popup is closed', async () => {
+    renderPage(`/vendors?vendorId=${VENDOR_ID}`);
+    const user = userEvent.setup();
+
+    await screen.findByRole('group', { name: 'Owner' });
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+
+    expect(screen.getByLabelText('location')).toHaveTextContent(/^\/vendors$/);
   });
 });

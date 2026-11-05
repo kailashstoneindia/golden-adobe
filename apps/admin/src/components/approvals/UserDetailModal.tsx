@@ -32,6 +32,9 @@ type UserDetailModalProps = {
   requireRejectReason?: boolean;
   // Shown above the actions when Approve/Reject was refused by the server.
   actionError?: string | null;
+  // Why the sessions and customer sections are missing, while the detail
+  // is loading or after it failed (Task 7 review).
+  detailNotice?: string | null;
   onClose: () => void;
   onApprove?: (userId: string) => void;
   onReject?: (userId: string, reason?: string) => void;
@@ -43,6 +46,7 @@ export function UserDetailModal({
   showApprovalActions = true,
   requireRejectReason = false,
   actionError = null,
+  detailNotice = null,
   onClose,
   onApprove,
   onReject,
@@ -71,6 +75,8 @@ export function UserDetailModal({
       <div className={styles.modal} onClick={(event) => event.stopPropagation()} role="dialog">
         <h2 className={styles.modalTitle}>Review request</h2>
         <p className={styles.pageSubtitle}>{user.name}</p>
+
+        {detailNotice ? <p className={styles.pageSubtitle}>{detailNotice}</p> : null}
 
         <div className={styles.modalBody}>
           <DetailRow label="Role" value={formatRoleLabel(user.role)} />

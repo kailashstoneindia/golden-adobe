@@ -24,7 +24,7 @@ export function VendorsPage() {
   // The id only: the popup always shows the latest list entry, so action
   // replies (the plain vendor profile) never replace the admin view.
   // A user popup's "Open in Vendors" link opens this page on that vendor.
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [selectedVendorId, setSelectedVendorId] = useState<string | null>(
     searchParams.get('vendorId'),
   );
@@ -164,7 +164,11 @@ export function VendorsPage() {
           isCategoriesLoading={categoriesQuery.isLoading || treeQuery.isLoading}
           isSubmitting={isSubmitting}
           actionError={actionError}
-          onClose={() => setSelectedVendorId(null)}
+          onClose={() => {
+            setSelectedVendorId(null);
+            // So a reload does not reopen it.
+            setSearchParams({}, { replace: true });
+          }}
           onSaveCity={handleSaveCity}
           onSaveCategories={handleSaveCategories}
           onApprove={handleApprove}

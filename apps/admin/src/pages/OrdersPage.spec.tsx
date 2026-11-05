@@ -819,3 +819,26 @@ describe('OrdersPage for one customer', () => {
     expect(screen.queryByText(/Showing one customer’s orders/)).not.toBeInTheDocument();
   });
 });
+
+describe('OrdersPage with an empty customer filter', () => {
+  beforeEach(() => {
+    orders = [order({ id: 'o1', status: 'confirmed', grandTotal: 500 })];
+    refunds = {};
+  });
+
+  it('treats ?customerId= as all orders', async () => {
+    const urls: string[] = [];
+    server.use(
+      http.get(BASE, ({ request }) => {
+        urls.push(request.url);
+        return HttpResponse.json({ success: true, data: orders });
+      }),
+    );
+
+    renderPage('/orders?customerId=');
+
+    await screen.findByRole('row', { name: /Asha Rao/ });
+    expect(new URL(urls[0]).searchParams.has('customerId')).toBe(false);
+    expect(screen.queryByText(/Showing one customer’s orders/)).not.toBeInTheDocument();
+  });
+});

@@ -183,3 +183,47 @@ describe('UsersPage list and popup', () => {
     expect(pages).toContain('2');
   });
 });
+
+// Task 7 review: a failed or slow detail must not read as "not a customer".
+describe('UsersPage popup while the detail is not there', () => {
+  function serve(detail: () => Response | Promise<Response>) {
+    server.use(
+      http.get('/api/admin/users', () =>
+        HttpResponse.json({
+          success: true,
+          data: { items: [ustaad], total: 1, page: 1, limit: 20, totalPages: 1 },
+        }),
+      ),
+      http.get('/api/admin/users/:id', detail),
+    );
+    render(
+      <QueryClientProvider
+        client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+      >
+        <MemoryRouter>
+          <UsersPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+  }
+
+  it('says the details are loading', async () => {
+    serve(() => new Promise<Response>(() => undefined));
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByText('Suresh Ustaad'));
+
+    expect(screen.getByText('Loading sessions and customer details…')).toBeInTheDocument();
+  });
+
+  it('says the details could not be loaded', async () => {
+    serve(() => HttpResponse.json({ success: false, message: 'boom' }, { status: 500 }));
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByText('Suresh Ustaad'));
+
+    expect(
+      await screen.findByText('Could not load sessions and customer details.'),
+    ).toBeInTheDocument();
+  });
+});

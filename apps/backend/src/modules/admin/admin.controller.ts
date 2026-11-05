@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  ParseUUIDPipe,
   Patch,
   Query,
   UseGuards,
@@ -43,7 +44,7 @@ export class AdminController {
   @Get('users/:id')
   @ApiOperation({ summary: 'User detail for admin review' })
   @ApiResponse({ status: 404, description: 'User not found' })
-  getUser(@Param('id') userId: string) {
+  getUser(@Param('id', ParseUUIDPipe) userId: string) {
     return this.adminService.getUserById(userId);
   }
 
@@ -54,7 +55,7 @@ export class AdminController {
     description:
       'For an ustaad this runs Verify (decision 0058): 400 if they have no profile or no document.',
   })
-  approveUser(@Param('id') userId: string, @CurrentUser('sub') adminUserId: string) {
+  approveUser(@Param('id', ParseUUIDPipe) userId: string, @CurrentUser('sub') adminUserId: string) {
     return this.adminService.approveUser(userId, adminUserId);
   }
 
@@ -62,7 +63,7 @@ export class AdminController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Reject or revoke approval for vendor or artisan' })
   rejectUser(
-    @Param('id') userId: string,
+    @Param('id', ParseUUIDPipe) userId: string,
     @Body() rejectUserDto: RejectUserDto,
     @CurrentUser('sub') adminUserId: string,
   ) {

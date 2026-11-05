@@ -143,6 +143,13 @@ export function UsersPage() {
           // A vendor rejection is stored with its reason (decisions 0048, 0058 F2).
           requireRejectReason={selectedUser.role === Role.VENDOR}
           actionError={actionError}
+          detailNotice={
+            detailQuery.isLoading
+              ? 'Loading sessions and customer details…'
+              : detailQuery.isError
+                ? 'Could not load sessions and customer details.'
+                : null
+          }
           onClose={closeModal}
           onApprove={handleApprove}
           onReject={handleReject}

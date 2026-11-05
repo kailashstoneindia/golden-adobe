@@ -5,7 +5,7 @@ import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Role, type AdminArtisanDto } from '@golden-abode/types';
 
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { server } from '@/test/server';
 
 import { ArtisansPage } from './ArtisansPage';
@@ -62,6 +62,11 @@ function useHandlers() {
   );
 }
 
+function LocationProbe() {
+  const location = useLocation();
+  return <output aria-label="location">{location.pathname + location.search}</output>;
+}
+
 function renderPage(path = '/') {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -70,6 +75,7 @@ function renderPage(path = '/') {
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[path]}>
         <ArtisansPage />
+        <LocationProbe />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -264,5 +270,15 @@ describe('ArtisansPage opened for one ustaad', () => {
     renderPage(`/artisans?artisanId=${artisans[0].id}`);
 
     expect(await screen.findByRole('dialog')).toHaveTextContent('mohan@example.com');
+  });
+
+  it('forgets the ustaad in the address once the popup is closed', async () => {
+    renderPage(`/artisans?artisanId=${artisans[0].id}`);
+    const user = userEvent.setup();
+
+    await screen.findByRole('dialog');
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+
+    expect(screen.getByLabelText('location')).toHaveTextContent(/^\/artisans$/);
   });
 });
