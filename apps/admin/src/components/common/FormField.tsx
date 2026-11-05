@@ -9,6 +9,8 @@ export function FormField({
   onChange,
   disabled,
   type = 'text',
+  maxLength,
+  autoFocus = false,
 }: {
   id: string;
   label: string;
@@ -16,6 +18,8 @@ export function FormField({
   onChange: (value: string) => void;
   disabled: boolean;
   type?: 'text' | 'number';
+  maxLength?: number;
+  autoFocus?: boolean;
 }) {
   return (
     <div>
@@ -29,6 +33,8 @@ export function FormField({
         step={type === 'number' ? 'any' : undefined}
         value={value}
         disabled={disabled}
+        maxLength={maxLength}
+        autoFocus={autoFocus}
         onChange={(event) => onChange(event.target.value)}
       />
     </div>

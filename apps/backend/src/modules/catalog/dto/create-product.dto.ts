@@ -7,6 +7,7 @@ import {
   IsString,
   IsUUID,
   Min,
+  MaxLength,
   MinLength,
   ValidateNested,
 } from 'class-validator';
@@ -27,6 +28,8 @@ export class CreateProductDto {
   @ApiProperty()
   @IsString()
   @MinLength(1)
+  // master_product.name is STRING(255).
+  @MaxLength(255)
   name!: string;
 
   @ApiPropertyOptional({

@@ -182,10 +182,10 @@ describe('ProductDetailModal', () => {
         http.patch(`/api/admin/catalog/products/${PRODUCT_ID}`, async ({ request }) => {
           const body = (await request.json()) as { name: string };
           patches.push(body);
-          if (body.name === 'Taken') {
+          if (body.name === 'Rejected') {
             return HttpResponse.json(
-              { success: false, message: 'A product with this identity already exists' },
-              { status: 409 },
+              { success: false, message: 'name must be shorter than or equal to 255 characters' },
+              { status: 400 },
             );
           }
           current = product({ name: body.name });
@@ -228,11 +228,24 @@ describe('ProductDetailModal', () => {
 
       await user.click(await screen.findByRole('button', { name: 'Edit name' }));
       await user.clear(screen.getByLabelText('Product name'));
-      await user.type(screen.getByLabelText('Product name'), 'Taken');
+      await user.type(screen.getByLabelText('Product name'), 'Rejected');
       await user.click(screen.getByRole('button', { name: 'Save name' }));
 
-      expect(await screen.findByRole('alert')).toHaveTextContent('already exists');
+      expect(await screen.findByRole('alert')).toHaveTextContent('name must be shorter');
       expect(screen.getByRole('button', { name: 'Save name' })).toBeInTheDocument();
+    });
+
+    it('saves with Enter, the way a form should, and limits the name to the column length', async () => {
+      renderModal();
+      const user = userEvent.setup();
+
+      await user.click(await screen.findByRole('button', { name: 'Edit name' }));
+      expect(screen.getByLabelText('Product name')).toHaveAttribute('maxlength', '255');
+      expect(screen.getByLabelText('Product name')).toHaveFocus();
+      await user.clear(screen.getByLabelText('Product name'));
+      await user.type(screen.getByLabelText('Product name'), 'Quick Rename{Enter}');
+
+      await waitFor(() => expect(patches).toEqual([{ name: 'Quick Rename' }]));
     });
 
     it('cancels without sending anything', async () => {

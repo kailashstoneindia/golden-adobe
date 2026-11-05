@@ -63,6 +63,7 @@ describe('AdminCatalogController product edit', () => {
   it.each([
     ['a null name (it would erase it)', { name: null }],
     ['a blank name', { name: '   ' }],
+    ['a name longer than the column (255)', { name: 'x'.repeat(256) }],
     ['a null attribute set', { attributeValues: null }],
     ['an unknown field (categoryId)', { categoryId: ID }],
     ['an unknown field (status)', { status: 'live' }],

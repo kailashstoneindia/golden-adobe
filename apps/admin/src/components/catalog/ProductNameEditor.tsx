@@ -6,8 +6,9 @@ import styles from '@/styles/shared.module.css';
 
 // The product popup's title with a way to correct the name (decision 0058
 // Task 13). Only the name: the category and attribute values stay as they are.
-// The server's refusal (for example a name that makes a duplicate) is shown in
-// place and the form stays open.
+// The slug is deliberately left alone, so links to the product keep working.
+// The server's refusal (for example a name over the column length) is shown in
+// place and the form stays open. It is a real form: Enter saves, Escape cancels.
 export function ProductNameEditor({ productId, name }: { productId: string; name: string }) {
   const mutation = useRenameProductMutation();
   const [editing, setEditing] = useState(false);
@@ -15,6 +16,7 @@ export function ProductNameEditor({ productId, name }: { productId: string; name
   const [error, setError] = useState<string | null>(null);
   const trimmed = draft.trim();
   const busy = mutation.isPending;
+  const canSave = !busy && trimmed !== '' && trimmed !== name;
 
   const start = () => {
     setDraft(name);
@@ -42,12 +44,22 @@ export function ProductNameEditor({ productId, name }: { productId: string; name
     );
   }
   return (
-    <div>
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (canSave) void save();
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape' && !busy) setEditing(false);
+      }}
+    >
       <FormField
         id={`product-name-${productId}`}
         label="Product name"
         value={draft}
         disabled={busy}
+        maxLength={255}
+        autoFocus
         onChange={setDraft}
       />
       {error ? (
@@ -65,14 +77,13 @@ export function ProductNameEditor({ productId, name }: { productId: string; name
           Cancel
         </button>
         <button
-          type="button"
+          type="submit"
           className={`${styles.button} ${styles.buttonPrimary}`}
-          disabled={busy || trimmed === '' || trimmed === name}
-          onClick={save}
+          disabled={!canSave}
         >
           Save name
         </button>
       </div>
-    </div>
+    </form>
   );
 }

@@ -1,6 +1,13 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
-import { IsArray, IsString, MinLength, ValidateIf, ValidateNested } from 'class-validator';
+import {
+  IsArray,
+  IsString,
+  MaxLength,
+  MinLength,
+  ValidateIf,
+  ValidateNested,
+} from 'class-validator';
 import { AttributeValueInputDto } from './attribute-value-input.dto';
 
 // Correction, not re-classification (decision 0023): category is
@@ -20,6 +27,8 @@ export class UpdateProductDto {
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
   @MinLength(1)
+  // master_product.name is STRING(255): a longer one would be a database error (500).
+  @MaxLength(255)
   name?: string;
 
   @ApiPropertyOptional({
