@@ -280,7 +280,7 @@ describe('VendorsPage edits', () => {
     listingState = listing({ status: 'out_of_stock' });
     const user = await openPopup();
 
-    await user.click(await screen.findByRole('button', { name: 'Reactivate Kota Stone 2x2' }));
+    await user.click(await screen.findByRole('button', { name: 'Mark active Kota Stone 2x2' }));
 
     await waitFor(() => expect(sent).toHaveLength(1));
     expect(sent[0].body).toEqual({ status: 'active' });
@@ -293,5 +293,39 @@ describe('VendorsPage edits', () => {
     await user.click(await screen.findByRole('button', { name: 'Reactivate Kota Stone 2x2' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('waiting for the vendor to confirm');
+  });
+
+  it('treats a blank latitude or longitude as invalid, not as zero', async () => {
+    const user = await openPopup();
+
+    await user.click(await screen.findByRole('button', { name: 'Edit profile' }));
+    await user.clear(screen.getByLabelText('Latitude'));
+
+    expect(screen.getByRole('button', { name: 'Save profile' })).toBeDisabled();
+    await user.type(screen.getByLabelText('Latitude'), '27.5');
+    await user.clear(screen.getByLabelText('Longitude'));
+    expect(screen.getByRole('button', { name: 'Save profile' })).toBeDisabled();
+  });
+
+  it('does not send a cleared GSTIN or UPI id, which cannot be removed from here', async () => {
+    const user = await openPopup();
+
+    await user.click(await screen.findByRole('button', { name: 'Edit profile' }));
+    await user.clear(screen.getByLabelText('GSTIN'));
+    await user.clear(screen.getByLabelText('UPI ID'));
+
+    expect(screen.getByRole('button', { name: 'Save profile' })).toBeDisabled();
+    expect(screen.getByText(/cannot be cleared here/)).toBeInTheDocument();
+  });
+
+  it('forgets a listing error once the admin looks at a different set of listings', async () => {
+    listingState = listing({ id: 'blocked', status: 'paused' });
+    const user = await openPopup();
+
+    await user.click(await screen.findByRole('button', { name: 'Reactivate Kota Stone 2x2' }));
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText('Listing status'), 'paused');
+
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
   });
 });

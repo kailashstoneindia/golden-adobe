@@ -152,22 +152,35 @@ export class AdminVendorsService {
   // Pause a wrong or flagged listing, or bring one back. Stock is never
   // touched. A listing paused because the vendor has yet to confirm which
   // product it matches stays paused: publishing it would sell an unconfirmed
-  // match.
+  // match. "Awaiting confirmation" is either of two signs, because an import
+  // match with a single candidate carries no runners-up:
+  //   - it still holds runner-up candidates, or
+  //   - it is paused with a vendor SKU and the vendor's confirmed match for that
+  //     SKU and product (vendor_product_map) is not on record.
+  // A vendor-paused listing created by hand with a SKU is caught by the second
+  // sign too; the vendor can reactivate it themselves (decision 0058 F28).
   async setListingStatus(
     listingId: string,
     adminUserId: string,
     status: 'active' | 'paused',
   ): Promise<AdminVendorListingDto> {
-    const [current] = await this.select<{ status: string; pending_matches: string }>(
-      `SELECT status::text AS status, jsonb_array_length(match_candidates) AS pending_matches
-         FROM vendor_listing WHERE id = :listingId`,
+    const [current] = await this.select<{ status: string; awaiting_confirmation: boolean }>(
+      `SELECT vl.status::text AS status,
+              (jsonb_array_length(vl.match_candidates) > 0
+               OR (vl.status::text = 'paused' AND vl.vendor_sku IS NOT NULL AND NOT EXISTS (
+                     SELECT 1 FROM vendor_product_map m
+                      WHERE m.vendor_id = vl.vendor_id
+                        AND m.vendor_sku = vl.vendor_sku
+                        AND m.master_product_id = vl.master_product_id))
+              ) AS awaiting_confirmation
+         FROM vendor_listing vl WHERE vl.id = :listingId`,
       { listingId },
     );
     if (!current) {
       throw new NotFoundException(`listing ${listingId} not found`);
     }
     if (current.status !== status) {
-      if (status === 'active' && Number(current.pending_matches) > 0) {
+      if (status === 'active' && current.awaiting_confirmation) {
         throw new ConflictException(
           'This listing is waiting for the vendor to confirm which product it matches, so it cannot be activated yet',
         );

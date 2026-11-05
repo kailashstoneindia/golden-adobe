@@ -102,16 +102,23 @@ function ProfileForm({ vendor, onDone }: { vendor: AdminVendorDto; onDone: () =>
   if (draft.address.trim() !== vendor.address) changes.address = draft.address.trim();
   const latitude = Number(draft.latitude);
   const longitude = Number(draft.longitude);
-  const pinIsValid = Number.isFinite(latitude) && Number.isFinite(longitude);
+  const pinIsValid =
+    draft.latitude.trim() !== '' &&
+    draft.longitude.trim() !== '' &&
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude);
   // The pin moves as a pair: if either changed, both go.
   if (pinIsValid && (latitude !== vendor.latitude || longitude !== vendor.longitude)) {
     changes.latitude = latitude;
     changes.longitude = longitude;
   }
-  if (draft.gstin.trim().toUpperCase() !== (vendor.gstin ?? '')) {
-    changes.gstin = draft.gstin.trim().toUpperCase();
-  }
-  if (draft.upiId.trim() !== (vendor.upiId ?? '')) changes.upiId = draft.upiId.trim();
+  // A GSTIN or UPI id cannot be removed from here (the server stores an empty
+  // string, not "none"), so a blank box means "leave it" and says so.
+  const gstin = draft.gstin.trim().toUpperCase();
+  const upiId = draft.upiId.trim();
+  const clearedSomething = (gstin === '' && !!vendor.gstin) || (upiId === '' && !!vendor.upiId);
+  if (gstin !== '' && gstin !== (vendor.gstin ?? '')) changes.gstin = gstin;
+  if (upiId !== '' && upiId !== (vendor.upiId ?? '')) changes.upiId = upiId;
   // A minimum cannot be unset from here (enter 0 for none), so blank means unchanged.
   if (draft.minOrderValue !== '' && Number(draft.minOrderValue) !== vendor.minOrderValue) {
     changes.minOrderValue = Number(draft.minOrderValue);
@@ -192,6 +199,11 @@ function ProfileForm({ vendor, onDone }: { vendor: AdminVendorDto; onDone: () =>
         onChange={set('minOrderValue')}
       />
       <p className={styles.meta}>Enter 0 for no minimum order.</p>
+      {clearedSomething ? (
+        <p className={styles.meta}>
+          GSTIN and UPI ID cannot be cleared here; a blank box leaves the saved value as it is.
+        </p>
+      ) : null}
       <label className={styles.label}>
         <input
           type="checkbox"

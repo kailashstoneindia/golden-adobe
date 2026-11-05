@@ -34,7 +34,9 @@ describe('Admin vendor edits (real HTTP, Postgres)', () => {
   const server = () => t.app.getHttpServer();
   const logLines = (spy: jest.SpyInstance) => spy.mock.calls.map((call) => String(call[0]));
 
-  async function listing(opts: { status?: string; candidates?: string; stock?: number } = {}) {
+  async function listing(
+    opts: { status?: string; candidates?: string; stock?: number; sku?: string } = {},
+  ) {
     const n = created.products.length;
     const [{ id: productId }] = await sql<{ id: string }>(
       `INSERT INTO master_product (id, category_id, name, slug, product_code, status, created_at, updated_at)
@@ -48,13 +50,14 @@ describe('Admin vendor edits (real HTTP, Postgres)', () => {
     );
     created.products.push(productId);
     const [{ id }] = await sql<{ id: string }>(
-      `INSERT INTO vendor_listing (id, vendor_id, master_product_id, price, status, match_candidates, created_at, updated_at)
-       VALUES (gen_random_uuid(), :vendorId, :p, 100, :status, CAST(:candidates AS jsonb), now(), now()) RETURNING id`,
+      `INSERT INTO vendor_listing (id, vendor_id, master_product_id, price, status, match_candidates, vendor_sku, created_at, updated_at)
+       VALUES (gen_random_uuid(), :vendorId, :p, 100, :status, CAST(:candidates AS jsonb), :sku, now(), now()) RETURNING id`,
       {
         vendorId,
         p: productId,
         status: opts.status ?? 'active',
         candidates: opts.candidates ?? '[]',
+        sku: opts.sku ?? null,
       },
     );
     created.listings.push(id);
@@ -99,6 +102,7 @@ describe('Admin vendor edits (real HTTP, Postgres)', () => {
     }
     await sql(`DELETE FROM category WHERE id = :id`, { id: created.category });
     await sql(`DELETE FROM vendor_account_details WHERE vendor_id = :vendorId`, { vendorId });
+    await sql(`DELETE FROM vendor_product_map WHERE vendor_id = :vendorId`, { vendorId });
     await t.close();
   });
 
@@ -144,6 +148,9 @@ describe('Admin vendor edits (real HTTP, Postgres)', () => {
       ['an unknown field (userId)', { userId: '11111111-1111-4111-8111-111111111111' }],
       ['a null shop name', { shopName: null }],
       ['a null GSTIN', { gstin: null }],
+      ['a null minimum order', { minOrderValue: null }],
+      ['a null loading team', { hasLoadingUnloadingTeam: null }],
+      ['a null UPI id', { upiId: null }],
     ])('refuses %s with 400 and changes nothing', async (_name, body) => {
       const before = (await Vendor.findByPk(vendorId))!.get({ plain: true });
 
@@ -201,6 +208,18 @@ describe('Admin vendor edits (real HTTP, Postgres)', () => {
 
       expect(res.status).toBe(200);
       expect(logLines(log).filter((line) => line.startsWith('admin '))).toEqual([]);
+    });
+
+    it('writes nothing at all when nothing changed', async () => {
+      const current = (await Vendor.findByPk(vendorId))!;
+      const before = current.updatedAt.getTime();
+
+      await asAdmin(request(server()).patch(`/api/admin/vendors/${vendorId}`)).send({
+        shopName: current.shopName,
+        gstin: current.gstin,
+      });
+
+      expect((await Vendor.findByPk(vendorId))!.updatedAt.getTime()).toBe(before);
     });
   });
 
@@ -342,6 +361,31 @@ describe('Admin vendor edits (real HTTP, Postgres)', () => {
 
       expect(res.status).toBe(409);
       expect(await statusOf(id)).toBe('paused');
+    });
+
+    // A single-match import is created paused with NO runners-up: the empty
+    // list does not mean the vendor has confirmed it.
+    it('will not publish a paused import listing whose product match was never confirmed', async () => {
+      const id = await listing({ status: 'paused', sku: `SKU-${tag}-A` });
+
+      const res = await patchStatus(id, { status: 'active' });
+
+      expect(res.status).toBe(409);
+      expect(await statusOf(id)).toBe('paused');
+    });
+
+    it('publishes it once the vendor’s confirmed match is on record', async () => {
+      const sku = `SKU-${tag}-B`;
+      const id = await listing({ status: 'paused', sku });
+      await sql(
+        `INSERT INTO vendor_product_map (vendor_id, vendor_sku, master_product_id, confirmed_by, confirmed_at)
+         SELECT vendor_id, vendor_sku, master_product_id, 'vendor', now()
+           FROM vendor_listing WHERE id = :id`,
+        { id },
+      );
+
+      expect((await patchStatus(id, { status: 'active' })).status).toBe(200);
+      expect(await statusOf(id)).toBe('active');
     });
 
     it('404s for an unknown listing, 400s for a malformed id, and is closed to a vendor', async () => {

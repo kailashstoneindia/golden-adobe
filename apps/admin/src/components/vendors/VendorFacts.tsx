@@ -118,6 +118,11 @@ function VendorListings({ vendorId }: { vendorId: string }) {
     }
   };
 
+  // An error belongs to the listings on screen when it happened.
+  useEffect(() => {
+    setStatusError(null);
+  }, [status, page]);
+
   // If the list shrank under the page being shown, step back to the last page.
   useEffect(() => {
     if (data && page > data.totalPages) setPage(data.totalPages);
@@ -212,7 +217,9 @@ function VendorListings({ vendorId }: { vendorId: string }) {
                       >
                         {listing.status === 'active'
                           ? `Pause ${listing.productName}`
-                          : `Reactivate ${listing.productName}`}
+                          : listing.status === 'out_of_stock'
+                            ? `Mark active ${listing.productName}`
+                            : `Reactivate ${listing.productName}`}
                       </button>
                     </td>
                   </tr>
