@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { AdminVendorDto } from '@golden-abode/types';
 
 import { ContactBlock, Row } from '@/components/common/ContactBlock';
@@ -31,6 +31,7 @@ export function VendorFacts({ vendor }: { vendor: AdminVendorDto }) {
         <Row label="Account number">
           <CopyableId value={account?.accountNumber ?? null} label="account number" />
         </Row>
+        <Row label="Last changed">{account ? formatDateTime(account.updatedAt) : '—'}</Row>
         <Row label="UPI">{vendor.upiId ?? '—'}</Row>
         <Row label="Older bank note">{vendor.bankDetails ?? '—'}</Row>
       </Group>
@@ -50,7 +51,7 @@ export function VendorFacts({ vendor }: { vendor: AdminVendorDto }) {
       </Group>
 
       <Group title="Business">
-        <Row label="GSTIN">{vendor.gstin ?? '—'}</Row>
+        <Row label="GSTIN">{vendor.gstin || '—'}</Row>
         <Row label="Minimum order">
           {vendor.minOrderValue != null ? `₹${vendor.minOrderValue}` : 'None'}
         </Row>
@@ -101,6 +102,11 @@ function VendorListings({ vendorId }: { vendorId: string }) {
   });
   const data = query.data;
 
+  // If the list shrank under the page being shown, step back to the last page.
+  useEffect(() => {
+    if (data && page > data.totalPages) setPage(data.totalPages);
+  }, [data, page]);
+
   return (
     <Group title="Listings">
       <label className={styles.meta}>
@@ -147,6 +153,8 @@ function VendorListings({ vendorId }: { vendorId: string }) {
                         {listing.productCode ?? '—'}
                         {listing.vendorSku ? ` · SKU ${listing.vendorSku}` : ''}
                         {listing.statedGrade ? ` · grade ${listing.statedGrade}` : ''}
+                        {listing.supportsTinting ? ' · tinting' : ''}
+                        {` · listed ${formatDateTime(listing.createdAt)}`}
                       </div>
                     </td>
                     <td>
@@ -155,11 +163,24 @@ function VendorListings({ vendorId }: { vendorId: string }) {
                       {listing.minOrderQty != null ? ` · min ${listing.minOrderQty}` : ''}
                     </td>
                     <td>
-                      {listing.quantityAvailable ?? '—'}
+                      {listing.quantityAvailable != null
+                        ? `${listing.quantityAvailable}${listing.unit ? ` ${listing.unit}` : ''}`
+                        : '—'}
                       {listing.quantityReserved ? ` (${listing.quantityReserved} held)` : ''}
+                      {listing.stockUpdatedAt ? (
+                        <div className={styles.meta}>
+                          set {formatDateTime(listing.stockUpdatedAt)}
+                        </div>
+                      ) : null}
                     </td>
                     <td>{LISTING_STATUS_TEXT[listing.status] ?? listing.status}</td>
-                    <td>{listing.openFlags.length ? listing.openFlags.join('; ') : '—'}</td>
+                    <td>
+                      {listing.openFlags.length
+                        ? listing.openFlags
+                            .map((flag) => `${flag.reason} (${formatDateTime(flag.flaggedAt)})`)
+                            .join('; ')
+                        : '—'}
+                    </td>
                   </tr>
                 ))}
               </tbody>

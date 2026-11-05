@@ -72,7 +72,10 @@ export function VendorDetailModal({
           {vendor.statusUpdatedAt ? (
             <DetailRow label="Status updated" value={formatDateTime(vendor.statusUpdatedAt)} />
           ) : null}
-          <DetailRow label="Current city" value={vendor.city?.name ?? 'Not set'} />
+          <DetailRow
+            label="Current city"
+            value={`${vendor.city?.name ?? 'Not set'}${CITY_SOURCE_TEXT[vendor.citySource ?? ''] ?? ''}`}
+          />
           <DetailRow label="Updated" value={formatDateTime(vendor.updatedAt)} />
 
           <VendorFacts vendor={vendor} />
@@ -235,3 +238,9 @@ function toggleCategoryId(currentIds: string[], categoryId: string): string[] {
   }
   return [...currentIds, categoryId];
 }
+
+// Whether clearing the city override changes anything (decision 0058 Task 5).
+const CITY_SOURCE_TEXT: Record<string, string> = {
+  admin: ' (pinned by an admin)',
+  gps: ' (from the shop address GPS)',
+};

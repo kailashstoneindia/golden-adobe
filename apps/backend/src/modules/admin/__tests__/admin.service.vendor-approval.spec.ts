@@ -141,6 +141,17 @@ describe('AdminService vendor approval from the users page (integration)', () =>
     expect(await state()).toEqual({ isApproved: true, status: null, rejectionReason: null });
   });
 
+  it('logs which admin rejected the vendor, with the reason', async () => {
+    const vendor = await shop();
+    const log = jest.spyOn(Logger.prototype, 'log');
+
+    await admin.rejectUser(userId, 'admin-9', 'Fake GSTIN');
+
+    expect(log.mock.calls.map((call) => String(call[0]))).toContain(
+      `admin admin-9 reject vendor ${vendor.id} status,isApproved,rejectionReason: Fake GSTIN`,
+    );
+  });
+
   it('logs which admin approved the vendor', async () => {
     const vendor = await shop();
     const log = jest.spyOn(Logger.prototype, 'log');

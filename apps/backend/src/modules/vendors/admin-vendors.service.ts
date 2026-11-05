@@ -36,7 +36,10 @@ export class AdminVendorsService {
   async list(): Promise<AdminVendorDto[]> {
     const vendors = await this.vendorModel.findAll({
       include: this.includes(),
-      order: [['createdAt', 'DESC']],
+      order: [
+        ['createdAt', 'DESC'],
+        ['id', 'ASC'],
+      ],
     });
     return this.withFacts(vendors);
   }
@@ -74,15 +77,18 @@ export class AdminVendorsService {
       `SELECT vl.id, vl.master_product_id, mp.name AS product_name, mp.product_code,
               vl.vendor_sku, vl.price, vl.mrp, vl.min_order_qty, vl.stated_grade,
               vl.status::text AS status, inv.quantity_available, inv.quantity_reserved,
-              vl.updated_at,
+              vl.supports_tinting, mp.sale_unit_type::text AS sale_unit_type, uom.name AS unit,
+              vl.created_at, vl.updated_at, inv.updated_at AS stock_updated_at,
               COALESCE(
-                (SELECT array_agg(f.reason ORDER BY f.flagged_at)
+                (SELECT json_agg(json_build_object('reason', f.reason, 'flaggedAt', f.flagged_at)
+                                 ORDER BY f.flagged_at)
                    FROM vendor_listing_flag f
                   WHERE f.vendor_listing_id = vl.id AND f.resolved_at IS NULL),
-                '{}'
+                '[]'::json
               ) AS open_flags
          FROM vendor_listing vl
          JOIN master_product mp ON mp.id = vl.master_product_id
+         LEFT JOIN unit_of_measure uom ON uom.id = mp.unit_of_measure_id
          LEFT JOIN inventory inv ON inv.vendor_listing_id = vl.id AND inv.warehouse_id IS NULL
         WHERE ${filter}
         ORDER BY vl.created_at DESC, vl.id
@@ -144,6 +150,7 @@ export class AdminVendorsService {
     return vendors.map((vendor) => ({
       ...toVendorProfileDto(vendor),
       owner: toAdminContactDto(vendor.user),
+      citySource: vendor.citySource ?? null,
       categoryCount: countOf(categories, vendor.id),
       listingCounts: {
         active: listingsOf(vendor.id, 'active'),
@@ -191,8 +198,13 @@ type ListingRow = {
   status: ListingStatus;
   quantity_available: string | null;
   quantity_reserved: string | null;
+  supports_tinting: boolean | null;
+  sale_unit_type: string | null;
+  unit: string | null;
+  created_at: Date;
   updated_at: Date;
-  open_flags: string[];
+  stock_updated_at: Date | null;
+  open_flags: { reason: string; flaggedAt: string }[];
 };
 
 function toListingDto(row: ListingRow): AdminVendorListingDto {
@@ -210,7 +222,15 @@ function toListingDto(row: ListingRow): AdminVendorListingDto {
     status: row.status,
     quantityAvailable: nullableNumber(row.quantity_available),
     quantityReserved: nullableNumber(row.quantity_reserved),
-    openFlags: row.open_flags,
+    supportsTinting: Boolean(row.supports_tinting),
+    saleUnitType: row.sale_unit_type,
+    unit: row.unit,
+    openFlags: row.open_flags.map((flag) => ({
+      reason: flag.reason,
+      flaggedAt: toIsoDate(flag.flaggedAt),
+    })),
+    createdAt: toIsoDate(row.created_at),
     updatedAt: toIsoDate(row.updated_at),
+    stockUpdatedAt: row.stock_updated_at ? toIsoDate(row.stock_updated_at) : null,
   };
 }

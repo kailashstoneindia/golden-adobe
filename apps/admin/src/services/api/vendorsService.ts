@@ -19,10 +19,6 @@ export const vendorsService = {
     return getRequest<AdminVendorDto[]>(API_ENDPOINTS.admin.vendors);
   },
 
-  fetchVendorById(vendorId: string): Promise<AdminVendorDto> {
-    return getRequest<AdminVendorDto>(API_ENDPOINTS.admin.vendorById(vendorId));
-  },
-
   fetchVendorListings(
     vendorId: string,
     query: { status?: string; page: number; limit: number },

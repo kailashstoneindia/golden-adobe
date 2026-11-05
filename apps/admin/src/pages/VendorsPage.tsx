@@ -137,7 +137,7 @@ export function VendorsPage() {
                   <ContactCell contact={vendor.owner} />
                   <td>{labelFor(VENDOR_STATUS_LABELS, vendor.status)}</td>
                   <td>{vendor.city?.name ?? '—'}</td>
-                  <td>{vendor.gstin ?? '—'}</td>
+                  <td>{vendor.gstin || '—'}</td>
                   <td>{vendor.listingCounts.active}</td>
                   {/* Decision 0058 D4: lists show only the last 4 digits. */}
                   <td>{maskAccount(vendor.accountDetails?.accountNumber)}</td>

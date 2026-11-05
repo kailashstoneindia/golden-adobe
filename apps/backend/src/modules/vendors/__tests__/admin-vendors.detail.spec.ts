@@ -111,6 +111,7 @@ describe('Admin vendor detail (real HTTP, Postgres)', () => {
     expect(row.listingCounts).toEqual({ active: 1, paused: 1, outOfStock: 1 });
     expect(row.openFlagCount).toBe(1);
     expect(row.categoryCount).toBe(1);
+    expect(row.citySource).toBeNull();
     expect(row.orderGroupCount).toBe(0);
     expect(row.warehouses).toEqual([
       expect.objectContaining({ name: 'Main yard', address: 'Plot 9, Ring Road', isActive: true }),
@@ -139,8 +140,14 @@ describe('Admin vendor detail (real HTTP, Postgres)', () => {
       status: 'active',
       quantityAvailable: 40,
       quantityReserved: 3,
-      openFlags: ['price looks wrong'],
+      openFlags: [expect.objectContaining({ reason: 'price looks wrong' })],
+      supportsTinting: false,
+      saleUnitType: expect.any(String),
+      unit: null,
     });
+    expect(typeof active.createdAt).toBe('string');
+    expect(typeof active.stockUpdatedAt).toBe('string');
+    expect(typeof active.openFlags[0].flaggedAt).toBe('string');
   });
 
   it('filters listings by status', async () => {

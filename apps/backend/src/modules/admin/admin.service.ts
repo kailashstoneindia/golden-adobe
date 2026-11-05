@@ -160,7 +160,8 @@ export class AdminService {
       }
       await this.vendorsService.rejectVendor(user.vendorProfile.id, adminUserId, reason.trim());
     } else {
-      // A vendor, or an ustaad with no profile (no is_verified to keep in step).
+      // A vendor with no shop yet, an ustaad with no profile, or any other role:
+      // only the account flag exists to change.
       await user.update({ isApproved: false });
       this.logger.log(
         `admin ${adminUserId} reject user ${userId} isApproved (${user.role})${

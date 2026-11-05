@@ -48,6 +48,8 @@ export function useApproveUserMutation() {
       queryClient.invalidateQueries({ queryKey: ['admin'] });
       // For an ustaad this ran Verify/Reject (decision 0058 §3b).
       queryClient.invalidateQueries({ queryKey: ['artisans'] });
+      // For a vendor this also changed the vendor record (F2).
+      queryClient.invalidateQueries({ queryKey: ['vendors'] });
     },
   });
 }
@@ -61,6 +63,8 @@ export function useRejectUserMutation() {
       queryClient.invalidateQueries({ queryKey: ['admin'] });
       // For an ustaad this ran Verify/Reject (decision 0058 §3b).
       queryClient.invalidateQueries({ queryKey: ['artisans'] });
+      // For a vendor this also changed the vendor record (F2).
+      queryClient.invalidateQueries({ queryKey: ['vendors'] });
     },
   });
 }

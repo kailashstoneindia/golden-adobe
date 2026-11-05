@@ -42,6 +42,7 @@ function vendor(over: Partial<AdminVendorDto> = {}): AdminVendorDto {
     statusUpdatedAt: null,
     createdAt: '2026-10-01T00:00:00.000Z',
     updatedAt: '2026-10-02T00:00:00.000Z',
+    citySource: 'admin',
     owner: {
       userId: 'u-vend',
       name: 'Vikram Singh',
@@ -74,8 +75,13 @@ const listing = (over: Partial<AdminVendorListingDto> = {}): AdminVendorListingD
   status: 'active',
   quantityAvailable: 40,
   quantityReserved: 3,
-  openFlags: ['price looks wrong'],
+  supportsTinting: false,
+  saleUnitType: 'discrete',
+  unit: 'Square Foot',
+  openFlags: [{ reason: 'price looks wrong', flaggedAt: '2026-10-30T09:00:00.000Z' }],
+  createdAt: '2026-10-01T00:00:00.000Z',
   updatedAt: '2026-11-01T00:00:00.000Z',
+  stockUpdatedAt: '2026-11-02T08:00:00.000Z',
   ...over,
 });
 
@@ -166,6 +172,8 @@ describe('VendorsPage', () => {
     expect(business).toHaveTextContent('7 order groups');
     expect(business).toHaveTextContent('4 categories');
     expect(screen.getByRole('group', { name: 'Warehouses' })).toHaveTextContent('Main yard');
+    expect(payout).toHaveTextContent('Last changed');
+    expect(screen.getByRole('dialog')).toHaveTextContent('pinned by an admin');
   });
 
   it('shows the vendor’s listings with stock and flags, filterable by status', async () => {
@@ -178,11 +186,13 @@ describe('VendorsPage', () => {
     expect(row).toHaveTextContent('KS-22');
     expect(row).toHaveTextContent('₹450');
     expect(row).toHaveTextContent('40');
-    expect(row).toHaveTextContent('price looks wrong');
+    expect(row).toHaveTextContent('price looks wrong (30 Oct 2026');
+    expect(row).toHaveTextContent('40 Square Foot');
 
     await user.selectOptions(within(listings).getByLabelText('Listing status'), 'paused');
 
     await waitFor(() => expect(listingRequests.at(-1)).toContain('status=paused'));
+    expect(await within(listings).findByRole('row', { name: /Paused/ })).toBeInTheDocument();
   });
 
   it('keeps the owner and counts on screen after approving', async () => {

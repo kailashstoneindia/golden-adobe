@@ -107,6 +107,8 @@ export type AdminWarehouseDto = {
 
 export type AdminVendorDto = VendorProfileDto & {
   owner: AdminContactDto | null;
+  // How the city was set: 'gps' (from the address) or 'admin' (pinned); null if unset.
+  citySource: string | null;
   categoryCount: number;
   listingCounts: { active: number; paused: number; outOfStock: number };
   // Listing flags not yet resolved (vendor_listing_flag.resolved_at IS NULL).
@@ -128,8 +130,16 @@ export type AdminVendorListingDto = {
   status: 'active' | 'paused' | 'out_of_stock';
   quantityAvailable: number | null;
   quantityReserved: number | null;
-  openFlags: string[];
+  supportsTinting: boolean;
+  saleUnitType: string | null;
+  // The product's unit of measure (unit_of_measure.name), e.g. "Square Foot",
+  // so stock reads as "40 Square Foot", not just 40. Null when not set.
+  unit: string | null;
+  openFlags: { reason: string; flaggedAt: string }[];
+  createdAt: string;
   updatedAt: string;
+  // When the stock row last changed; null when there is no stock row.
+  stockUpdatedAt: string | null;
 };
 
 export type PaginatedAdminVendorListingsResponse = PaginatedResponse<AdminVendorListingDto>;

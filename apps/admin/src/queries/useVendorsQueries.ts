@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { APP_CONSTANTS } from '@/constants/appConstants';
 import { vendorsService } from '@/services/api/vendorsService';
@@ -11,7 +11,6 @@ import type {
 export const VENDORS_QUERY_KEYS = {
   all: ['vendors'] as const,
   list: ['vendors', 'list'] as const,
-  detail: (vendorId: string) => ['vendors', 'detail', vendorId] as const,
   categories: (vendorId: string) => ['vendors', 'categories', vendorId] as const,
   cities: ['vendors', 'cities'] as const,
   listings: (vendorId: string, query: { status?: string; page: number }) =>
@@ -35,6 +34,8 @@ export function useVendorListingsQuery(
     queryKey: VENDORS_QUERY_KEYS.listings(vendorId, { status: query.status, page: query.page }),
     queryFn: () => vendorsService.fetchVendorListings(vendorId, query),
     staleTime: APP_CONSTANTS.staleTimeMs,
+    // Keep the current page on screen while the next one loads.
+    placeholderData: keepPreviousData,
   });
 }
 

@@ -44,3 +44,20 @@ describe('user approval mutations', () => {
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['artisans'] });
   });
 });
+
+// Follow-up F2: for a vendor, users-page approve/reject also changes the
+// vendor record, so the Vendors page must refetch.
+describe('user approval mutations and the vendors list', () => {
+  it('approve and reject refresh the vendors list', async () => {
+    const { invalidate, wrapper } = setup();
+    const approve = renderHook(() => useApproveUserMutation(), { wrapper });
+    const reject = renderHook(() => useRejectUserMutation(), { wrapper });
+
+    await act(() => approve.result.current.mutateAsync('u1'));
+    await act(() => reject.result.current.mutateAsync({ userId: 'u1', reason: 'x' }));
+
+    expect(
+      invalidate.mock.calls.filter(([arg]) => JSON.stringify(arg) === '{"queryKey":["vendors"]}'),
+    ).toHaveLength(2);
+  });
+});
