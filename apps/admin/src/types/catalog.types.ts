@@ -126,6 +126,34 @@ export type ProductDetail = {
   updatedAt: string;
   attributeValues: ProductAttributeValue[];
   media: ProductMedia[];
+  // Decision 0058 Task 8: the whole product and who sells it.
+  description: string | null;
+  productFamily: string | null;
+  stoneVariety: string | null;
+  unitOfMeasure: string | null;
+  saleUnitType: 'discrete' | 'cut_to_length' | 'tinted_to_order';
+  packContentQty: number | null;
+  hasNaturalVariation: boolean;
+  importerDetails: string | null;
+  cachedBestPrice: number | null;
+  cachedBestVendorName: string | null;
+  /** Every vendor listing, active first, then cheapest. */
+  listings: ProductListing[];
+};
+
+export type ProductListing = {
+  id: string;
+  vendorId: string;
+  shopName: string;
+  vendorApproved: boolean;
+  /** Rupees, as vendor_listing.price stores them. */
+  price: number;
+  mrp: number | null;
+  status: 'active' | 'paused' | 'out_of_stock';
+  /** Null when the listing has no main stock row yet. */
+  quantityAvailable: number | null;
+  quantityReserved: number | null;
+  updatedAt: string;
 };
 
 export type ListProductsQuery = {

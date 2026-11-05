@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { isEmpty } from 'lodash';
 
 import { ProductMediaPanel } from '@/components/catalog/media/ProductMediaPanel';
@@ -6,6 +7,8 @@ import { labelFor, PRODUCT_STATUS_LABELS } from '@/constants/labels';
 import styles from '@/styles/shared.module.css';
 import catalogStyles from '@/styles/catalog.module.css';
 import { formatDateTime } from '@/utils/date';
+import { formatPaise, rupeesToPaise } from '@/utils/money';
+import type { ProductDetail, ProductListing } from '@/types/catalog.types';
 
 type ProductDetailModalProps = {
   productId: string;
@@ -38,6 +41,10 @@ export function ProductDetailModal({
             <p className={catalogStyles.detailPath}>
               <code>{product.productCode}</code> · {product.categoryPath}
             </p>
+
+            {product.description ? (
+              <p className={styles.pageSubtitle}>{product.description}</p>
+            ) : null}
 
             <div className={styles.modalBody}>
               <div className={styles.detailSections}>
@@ -73,6 +80,19 @@ export function ProductDetailModal({
                   <span className={styles.detailLabel}>Country of origin</span>
                   <span className={styles.detailValue}>{product.countryOfOrigin}</span>
                 </div>
+                <Row label="Family">{product.productFamily ?? '—'}</Row>
+                <Row label="Stone variety">{product.stoneVariety ?? '—'}</Row>
+                <Row label="Unit">{product.unitOfMeasure ?? '—'}</Row>
+                <Row label="Sold as">{soldAs(product)}</Row>
+                <Row label="Natural variation">{product.hasNaturalVariation ? 'Yes' : 'No'}</Row>
+                <Row label="Importer">{product.importerDetails ?? '—'}</Row>
+                <Row label="Best price">
+                  {product.cachedBestPrice === null
+                    ? '—'
+                    : `${rupees(product.cachedBestPrice)}${
+                        product.cachedBestVendorName ? ` at ${product.cachedBestVendorName}` : ''
+                      }`}
+                </Row>
                 <div className={styles.detailRow}>
                   <span className={styles.detailLabel}>Active vendor listings</span>
                   <span className={styles.detailValue}>{product.listingCount}</span>
@@ -108,6 +128,8 @@ export function ProductDetailModal({
                 </ul>
               )}
 
+              <VendorListings listings={product.listings} />
+
               <ProductMediaPanel productId={product.id} />
             </div>
 
@@ -139,5 +161,87 @@ export function ProductDetailModal({
         )}
       </div>
     </div>
+  );
+}
+
+function Row({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className={styles.detailRow}>
+      <span className={styles.detailLabel}>{label}</span>
+      <span className={styles.detailValue}>{children}</span>
+    </div>
+  );
+}
+
+const SALE_UNIT_TEXT: Record<ProductDetail['saleUnitType'], string> = {
+  discrete: 'Single items',
+  cut_to_length: 'Cut to length',
+  tinted_to_order: 'Tinted to order',
+};
+
+const LISTING_STATUS_TEXT: Record<ProductListing['status'], string> = {
+  active: 'Active',
+  paused: 'Paused',
+  out_of_stock: 'Out of stock',
+};
+
+function soldAs(product: ProductDetail): string {
+  const unit = SALE_UNIT_TEXT[product.saleUnitType] ?? product.saleUnitType;
+  return product.packContentQty ? `${unit} · ${product.packContentQty} per pack` : unit;
+}
+
+// vendor_listing.price is stored in rupees.
+function rupees(amount: number): string {
+  return formatPaise(rupeesToPaise(amount));
+}
+
+// Decision 0058 Task 8: everyone selling this product, live ones first.
+function VendorListings({ listings }: { listings: ProductListing[] }) {
+  return (
+    <section role="group" aria-label="Vendor listings">
+      <h4 className={catalogStyles.detailTitle}>Vendor listings</h4>
+      {isEmpty(listings) ? (
+        <div className={styles.sectionEmpty}>No vendor sells this product yet.</div>
+      ) : (
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Shop</th>
+                <th>Price</th>
+                <th>Stock</th>
+                <th>Status</th>
+                <th>Updated</th>
+              </tr>
+            </thead>
+            <tbody>
+              {listings.map((listing) => (
+                <tr key={listing.id}>
+                  <td>
+                    <div>{listing.shopName}</div>
+                    {listing.vendorApproved ? null : (
+                      <div className={styles.meta}>Vendor not approved</div>
+                    )}
+                  </td>
+                  <td>
+                    <div>{rupees(listing.price)}</div>
+                    {listing.mrp === null ? null : (
+                      <div className={styles.meta}>MRP {rupees(listing.mrp)}</div>
+                    )}
+                  </td>
+                  <td>
+                    {listing.quantityAvailable === null
+                      ? 'No stock row'
+                      : `${listing.quantityAvailable} available · ${listing.quantityReserved ?? 0} held`}
+                  </td>
+                  <td>{LISTING_STATUS_TEXT[listing.status] ?? listing.status}</td>
+                  <td>{formatDateTime(listing.updatedAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }

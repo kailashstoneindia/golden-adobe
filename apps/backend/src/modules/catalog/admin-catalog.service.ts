@@ -274,6 +274,16 @@ export class AdminCatalogService {
       listing_count: string;
       created_at: Date;
       updated_at: Date;
+      description: string | null;
+      product_family: string | null;
+      stone_variety: string | null;
+      unit_of_measure: string | null;
+      sale_unit_type: string;
+      pack_content_qty: string | null;
+      has_natural_variation: boolean;
+      importer_details: string | null;
+      cached_best_price: string | null;
+      cached_best_vendor_name: string | null;
     }>(
       `SELECT
          mp.id, mp.product_code, mp.name, mp.slug, mp.status::text AS status,
@@ -281,11 +291,20 @@ export class AdminCatalogService {
          mp.mfr_part_number, mp.gtin, mp.hsn_code, mp.gst_rate,
          mp.country_of_origin, mp.is_generic, mp.attributes_flat,
          mp.created_at, mp.updated_at,
+         mp.description, pf.name AS product_family, sv.name AS stone_variety,
+         uom.name AS unit_of_measure, mp.sale_unit_type::text AS sale_unit_type,
+         mp.pack_content_qty, mp.has_natural_variation, mp.importer_details,
+         mp.cached_best_price, bv.shop_name AS cached_best_vendor_name,
          (SELECT COUNT(*) FROM vendor_listing vl
            WHERE vl.master_product_id = mp.id AND vl.status = 'active') AS listing_count
        FROM master_product mp
        JOIN category cat ON cat.id = mp.category_id
        LEFT JOIN brand b ON b.id = mp.brand_id
+       LEFT JOIN product_family pf ON pf.id = mp.product_family_id
+       LEFT JOIN stone_variety sv ON sv.id = mp.stone_variety_id
+       LEFT JOIN unit_of_measure uom ON uom.id = mp.unit_of_measure_id
+       LEFT JOIN vendor_listing bvl ON bvl.id = mp.cached_best_vendor_listing_id
+       LEFT JOIN vendors bv ON bv.id = bvl.vendor_id
        WHERE mp.id = :productId`,
       { type: QueryTypes.SELECT, replacements: { productId } },
     );
@@ -303,6 +322,31 @@ export class AdminCatalogService {
        JOIN attribute a ON a.id = v.attribute_id
        WHERE v.master_product_id = :productId
        ORDER BY a.is_variant_defining DESC, a.display_order, a.name`,
+      { type: QueryTypes.SELECT, replacements: { productId } },
+    );
+    // Decision 0058 Task 8: every vendor selling it, live ones first, with the
+    // main stock row (warehouse_id IS NULL) and whether the vendor is approved.
+    const listings = await this.sequelize.query<{
+      id: string;
+      vendor_id: string;
+      shop_name: string;
+      vendor_approved: boolean;
+      price: string;
+      mrp: string | null;
+      status: string;
+      quantity_available: string | null;
+      quantity_reserved: string | null;
+      updated_at: Date;
+    }>(
+      `SELECT vl.id, vl.vendor_id, v.shop_name, u.is_approved AS vendor_approved,
+              vl.price, vl.mrp, vl.status::text AS status,
+              inv.quantity_available, inv.quantity_reserved, vl.updated_at
+       FROM vendor_listing vl
+       JOIN vendors v ON v.id = vl.vendor_id
+       JOIN users u ON u.id = v.user_id
+       LEFT JOIN inventory inv ON inv.vendor_listing_id = vl.id AND inv.warehouse_id IS NULL
+       WHERE vl.master_product_id = :productId
+       ORDER BY (vl.status = 'active') DESC, vl.price ASC, vl.id ASC`,
       { type: QueryTypes.SELECT, replacements: { productId } },
     );
     const media = await this.media.listForProduct(productId);
@@ -326,6 +370,28 @@ export class AdminCatalogService {
       listingCount: Number(product.listing_count),
       createdAt: product.created_at.toISOString(),
       updatedAt: product.updated_at.toISOString(),
+      description: product.description,
+      productFamily: product.product_family,
+      stoneVariety: product.stone_variety,
+      unitOfMeasure: product.unit_of_measure,
+      saleUnitType: product.sale_unit_type,
+      packContentQty: nullableNumber(product.pack_content_qty),
+      hasNaturalVariation: product.has_natural_variation,
+      importerDetails: product.importer_details,
+      cachedBestPrice: nullableNumber(product.cached_best_price),
+      cachedBestVendorName: product.cached_best_vendor_name,
+      listings: listings.map((l) => ({
+        id: l.id,
+        vendorId: l.vendor_id,
+        shopName: l.shop_name,
+        vendorApproved: l.vendor_approved,
+        price: Number(l.price),
+        mrp: nullableNumber(l.mrp),
+        status: l.status,
+        quantityAvailable: nullableNumber(l.quantity_available),
+        quantityReserved: nullableNumber(l.quantity_reserved),
+        updatedAt: l.updated_at.toISOString(),
+      })),
       attributeValues: values.map((v) => ({
         code: v.code,
         name: v.name,
@@ -667,4 +733,8 @@ export class AdminCatalogService {
     }
     return err instanceof Error ? err : new Error(message);
   }
+}
+
+function nullableNumber(value: string | number | null): number | null {
+  return value === null ? null : Number(value);
 }
