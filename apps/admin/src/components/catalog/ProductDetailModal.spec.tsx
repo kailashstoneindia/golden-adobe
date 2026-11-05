@@ -40,8 +40,8 @@ function product(over: Partial<ProductDetail> = {}): ProductDetail {
     packContentQty: 4,
     hasNaturalVariation: true,
     importerDetails: 'Imported by Stone Co, Jaipur',
-    cachedBestPrice: 900,
-    cachedBestVendorName: 'Stone Mart',
+    bestPrice: 900,
+    bestVendorName: 'Stone Mart',
     listings: [
       {
         id: 'l1',
@@ -50,6 +50,8 @@ function product(over: Partial<ProductDetail> = {}): ProductDetail {
         vendorApproved: true,
         price: 900,
         mrp: 1000,
+        statedGrade: 'A',
+        vendorSku: 'SM-GRN-A',
         status: 'active',
         quantityAvailable: 12,
         quantityReserved: 2,
@@ -60,8 +62,10 @@ function product(over: Partial<ProductDetail> = {}): ProductDetail {
         vendorId: 'v2',
         shopName: 'Rock House',
         vendorApproved: false,
-        price: 1200,
+        price: 500,
         mrp: null,
+        statedGrade: null,
+        vendorSku: null,
         status: 'paused',
         quantityAvailable: null,
         quantityReserved: null,
@@ -127,11 +131,25 @@ describe('ProductDetailModal', () => {
     expect(rows[1]).toHaveTextContent('Stone Mart');
     expect(rows[1]).toHaveTextContent('₹900.00');
     expect(rows[1]).toHaveTextContent('MRP ₹1000.00');
-    expect(rows[1]).toHaveTextContent('12 available · 2 held');
+    expect(rows[1]).toHaveTextContent('Grade A');
+    expect(rows[1]).toHaveTextContent('SM-GRN-A');
+    expect(rows[1]).toHaveTextContent('Vendor approved');
+    expect(rows[1]).toHaveTextContent('12 in stock · 2 held · 10 free');
     expect(rows[2]).toHaveTextContent('Rock House');
     expect(rows[2]).toHaveTextContent('Vendor not approved');
     expect(rows[2]).toHaveTextContent('No stock row');
     expect(rows[2]).toHaveTextContent('Paused');
+  });
+
+  it('does not call a paint listing’s missing stock row a fault', async () => {
+    current = product({ saleUnitType: 'tinted_to_order' });
+    renderModal();
+
+    const listings = await screen.findByRole('group', { name: 'Vendor listings' });
+    expect(within(listings).getAllByRole('row')[2]).toHaveTextContent(
+      'Not tracked (made to order)',
+    );
+    expect(within(listings).getAllByRole('row')[2]).not.toHaveTextContent('No stock row');
   });
 
   it('says when nobody sells it and nothing optional is filled in', async () => {
@@ -142,8 +160,8 @@ describe('ProductDetailModal', () => {
       unitOfMeasure: null,
       packContentQty: null,
       importerDetails: null,
-      cachedBestPrice: null,
-      cachedBestVendorName: null,
+      bestPrice: null,
+      bestVendorName: null,
       listings: [],
     });
     renderModal();

@@ -28,6 +28,7 @@ describe('AdminCatalogService.getProduct (integration)', () => {
   };
 
   let productId: string;
+  let pausedListingId: string;
   let cheapVendorId: string;
   let pricierVendorId: string;
 
@@ -148,16 +149,18 @@ describe('AdminCatalogService.getProduct (integration)', () => {
         quantityReserved: 2,
       } as never),
     );
-    track(
+    const pausedListing = track(
       VendorListing,
       await VendorListing.create({
         vendorId: pricier.id,
         masterProductId: product.id,
-        price: 1200,
+        price: 500,
         status: VendorListingStatus.PAUSED,
       } as never),
     );
-    await product.update({ cachedBestPrice: 900, cachedBestVendorListingId: cheapListing.id });
+    // A stale cache pointing at the paused, unapproved vendor's listing: the popup must ignore it.
+    pausedListingId = pausedListing.id;
+    await product.update({ cachedBestPrice: 500, cachedBestVendorListingId: pausedListingId });
   });
 
   afterAll(async () => {
@@ -167,7 +170,7 @@ describe('AdminCatalogService.getProduct (integration)', () => {
     await moduleRef.close();
   });
 
-  it('includes the description, family, variety, unit and sale facts', async () => {
+  it('includes the description, family, variety, unit, sale facts and the live best price', async () => {
     const product = await service.getProduct(productId);
 
     expect(product).toMatchObject({
@@ -179,8 +182,8 @@ describe('AdminCatalogService.getProduct (integration)', () => {
       packContentQty: 4,
       hasNaturalVariation: true,
       importerDetails: 'Imported by Stone Co, Jaipur',
-      cachedBestPrice: 900,
-      cachedBestVendorName: `PD Cheap Shop ${suffix}`,
+      bestPrice: 900,
+      bestVendorName: `PD Cheap Shop ${suffix}`,
     });
   });
 
@@ -197,11 +200,13 @@ describe('AdminCatalogService.getProduct (integration)', () => {
         status: 'active',
         quantityAvailable: 12,
         quantityReserved: 2,
+        statedGrade: null,
+        vendorSku: null,
       }),
       expect.objectContaining({
         vendorId: pricierVendorId,
         vendorApproved: false,
-        price: 1200,
+        price: 500,
         mrp: null,
         status: 'paused',
         quantityAvailable: null,
@@ -226,9 +231,120 @@ describe('AdminCatalogService.getProduct (integration)', () => {
       stoneVariety: null,
       unitOfMeasure: null,
       packContentQty: null,
-      cachedBestPrice: null,
-      cachedBestVendorName: null,
+      bestPrice: null,
+      bestVendorName: null,
       listings: [],
     });
+  });
+});
+
+describe('AdminCatalogService.getProduct listings by grade (integration)', () => {
+  let moduleRef: TestingModule;
+  let service: AdminCatalogService;
+  const suffix = `pg${Date.now()}`;
+  const rows: { model: { destroy: (o: object) => Promise<unknown> }; id: string }[] = [];
+  const keep = <T extends { id: string }>(model: unknown, row: T): T => {
+    rows.unshift({ model: model as never, id: row.id });
+    return row;
+  };
+  let productId: string;
+
+  beforeAll(async () => {
+    moduleRef = await Test.createTestingModule({
+      imports: [
+        SequelizeModule.forRoot({
+          dialect: 'postgres',
+          host: process.env.TEST_DB_HOST ?? '127.0.0.1',
+          port: Number(process.env.TEST_DB_PORT ?? 5432),
+          username: process.env.TEST_DB_USER ?? 'postgres',
+          password: process.env.TEST_DB_PASS ?? 'postgres',
+          database: process.env.TEST_DB_NAME ?? 'golden_abode_test',
+          logging: false,
+          models: CATALOG_TEST_MODELS,
+        }),
+        SequelizeModule.forFeature(CATALOG_TEST_MODELS),
+      ],
+      providers: [
+        AdminCatalogService,
+        { provide: CatalogAttributeResolverService, useValue: {} },
+        { provide: MediaService, useValue: { listForProduct: async () => [] } },
+      ],
+    }).compile();
+    service = moduleRef.get(AdminCatalogService);
+
+    const user = keep(
+      User,
+      await User.create({
+        name: `PG Vendor ${suffix}`,
+        phone: `2${Math.floor(Math.random() * 1e9)}`.padEnd(10, '0').slice(0, 10),
+        role: 'VENDOR',
+        isApproved: true,
+      } as never),
+    );
+    const vendor = keep(
+      Vendor,
+      await Vendor.create({
+        userId: user.id,
+        shopName: `PG Shop ${suffix}`,
+        address: 'Test Address',
+        latitude: 28.6,
+        longitude: 77.2,
+      } as never),
+    );
+    const category = keep(
+      Category,
+      await Category.create({
+        name: `PG Cat ${suffix}`,
+        slug: `pg-cat-${suffix}`,
+        level: 1,
+        path: `pg-cat-${suffix}`,
+        isLeaf: true,
+      } as never),
+    );
+    const product = keep(
+      MasterProduct,
+      await MasterProduct.create({
+        categoryId: category.id,
+        name: `PG Product ${suffix}`,
+        slug: `pg-product-${suffix}`,
+        status: MasterProductStatus.LIVE,
+        saleUnitType: SaleUnitType.DISCRETE,
+      } as never),
+    );
+    productId = product.id;
+    // One vendor, two grades: the same shop twice, told apart by grade.
+    for (const [grade, price, sku] of [
+      ['A', 900, 'SKU-A'],
+      ['B', 700, 'SKU-B'],
+    ] as const) {
+      keep(
+        VendorListing,
+        await VendorListing.create({
+          vendorId: vendor.id,
+          masterProductId: product.id,
+          price,
+          statedGrade: grade,
+          vendorSku: sku,
+          status: VendorListingStatus.ACTIVE,
+        } as never),
+      );
+    }
+  });
+
+  afterAll(async () => {
+    for (const { model, id } of rows) {
+      await model.destroy({ where: { id } });
+    }
+    await moduleRef.close();
+  });
+
+  it('tells two grades of the same vendor apart, and takes the cheapest active as best', async () => {
+    const { listings, bestPrice, bestVendorName } = await service.getProduct(productId);
+
+    expect(listings.map((l) => [l.statedGrade, l.vendorSku, l.price])).toEqual([
+      ['B', 'SKU-B', 700],
+      ['A', 'SKU-A', 900],
+    ]);
+    expect([bestPrice, bestVendorName]).toEqual([700, `PG Shop ${suffix}`]);
   });
 });

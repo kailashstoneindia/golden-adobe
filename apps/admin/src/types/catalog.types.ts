@@ -135,8 +135,9 @@ export type ProductDetail = {
   packContentQty: number | null;
   hasNaturalVariation: boolean;
   importerDetails: string | null;
-  cachedBestPrice: number | null;
-  cachedBestVendorName: string | null;
+  /** Cheapest active listing of an approved vendor, worked out live. */
+  bestPrice: number | null;
+  bestVendorName: string | null;
   /** Every vendor listing, active first, then cheapest. */
   listings: ProductListing[];
 };
@@ -149,6 +150,9 @@ export type ProductListing = {
   /** Rupees, as vendor_listing.price stores them. */
   price: number;
   mrp: number | null;
+  /** One vendor can list the same product once per grade. */
+  statedGrade: string | null;
+  vendorSku: string | null;
   status: 'active' | 'paused' | 'out_of_stock';
   /** Null when the listing has no main stock row yet. */
   quantityAvailable: number | null;

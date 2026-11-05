@@ -282,8 +282,6 @@ export class AdminCatalogService {
       pack_content_qty: string | null;
       has_natural_variation: boolean;
       importer_details: string | null;
-      cached_best_price: string | null;
-      cached_best_vendor_name: string | null;
     }>(
       `SELECT
          mp.id, mp.product_code, mp.name, mp.slug, mp.status::text AS status,
@@ -294,7 +292,6 @@ export class AdminCatalogService {
          mp.description, pf.name AS product_family, sv.name AS stone_variety,
          uom.name AS unit_of_measure, mp.sale_unit_type::text AS sale_unit_type,
          mp.pack_content_qty, mp.has_natural_variation, mp.importer_details,
-         mp.cached_best_price, bv.shop_name AS cached_best_vendor_name,
          (SELECT COUNT(*) FROM vendor_listing vl
            WHERE vl.master_product_id = mp.id AND vl.status = 'active') AS listing_count
        FROM master_product mp
@@ -303,8 +300,6 @@ export class AdminCatalogService {
        LEFT JOIN product_family pf ON pf.id = mp.product_family_id
        LEFT JOIN stone_variety sv ON sv.id = mp.stone_variety_id
        LEFT JOIN unit_of_measure uom ON uom.id = mp.unit_of_measure_id
-       LEFT JOIN vendor_listing bvl ON bvl.id = mp.cached_best_vendor_listing_id
-       LEFT JOIN vendors bv ON bv.id = bvl.vendor_id
        WHERE mp.id = :productId`,
       { type: QueryTypes.SELECT, replacements: { productId } },
     );
@@ -333,13 +328,15 @@ export class AdminCatalogService {
       vendor_approved: boolean;
       price: string;
       mrp: string | null;
+      stated_grade: string | null;
+      vendor_sku: string | null;
       status: string;
       quantity_available: string | null;
       quantity_reserved: string | null;
       updated_at: Date;
     }>(
       `SELECT vl.id, vl.vendor_id, v.shop_name, u.is_approved AS vendor_approved,
-              vl.price, vl.mrp, vl.status::text AS status,
+              vl.price, vl.mrp, vl.stated_grade, vl.vendor_sku, vl.status::text AS status,
               inv.quantity_available, inv.quantity_reserved, vl.updated_at
        FROM vendor_listing vl
        JOIN vendors v ON v.id = vl.vendor_id
@@ -349,6 +346,10 @@ export class AdminCatalogService {
        ORDER BY (vl.status = 'active') DESC, vl.price ASC, vl.id ASC`,
       { type: QueryTypes.SELECT, replacements: { productId } },
     );
+    // The cheapest listing a customer can actually buy from. Computed here, not
+    // read from master_product.cached_best_*, which nothing keeps up to date
+    // (decision 0058 Task 8 review).
+    const best = listings.find((l) => l.status === 'active' && l.vendor_approved);
     const media = await this.media.listForProduct(productId);
 
     return {
@@ -378,8 +379,8 @@ export class AdminCatalogService {
       packContentQty: nullableNumber(product.pack_content_qty),
       hasNaturalVariation: product.has_natural_variation,
       importerDetails: product.importer_details,
-      cachedBestPrice: nullableNumber(product.cached_best_price),
-      cachedBestVendorName: product.cached_best_vendor_name,
+      bestPrice: best ? Number(best.price) : null,
+      bestVendorName: best ? best.shop_name : null,
       listings: listings.map((l) => ({
         id: l.id,
         vendorId: l.vendor_id,
@@ -387,6 +388,8 @@ export class AdminCatalogService {
         vendorApproved: l.vendor_approved,
         price: Number(l.price),
         mrp: nullableNumber(l.mrp),
+        statedGrade: l.stated_grade,
+        vendorSku: l.vendor_sku,
         status: l.status,
         quantityAvailable: nullableNumber(l.quantity_available),
         quantityReserved: nullableNumber(l.quantity_reserved),
