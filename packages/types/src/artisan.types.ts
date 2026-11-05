@@ -235,4 +235,5 @@ export interface ArtisanAwaitingDocumentDto {
   createdAt: string;
 }
 
-export type PaginatedArtisansAwaitingDocumentResponse = PaginatedResponse<ArtisanAwaitingDocumentDto>;
+export type PaginatedArtisansAwaitingDocumentResponse =
+  PaginatedResponse<ArtisanAwaitingDocumentDto>;

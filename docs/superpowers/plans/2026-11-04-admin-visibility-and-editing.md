@@ -4,7 +4,7 @@
 
 **Goal:** Stop the 15-minute admin logout, make ustaad approval one action, and make every admin page show everything the platform knows about the record it displays, then add the edits the user picks from Part C.
 
-**Architecture:** Backend adds admin-only DTOs that *extend* the existing shared DTOs (never change what customers, vendors or ustaads receive). One shared `AdminContactDto` carries "who is this person" everywhere. Admin UI renders the new fields in the existing pages and modals; no new pages except where noted.
+**Architecture:** Backend adds admin-only DTOs that _extend_ the existing shared DTOs (never change what customers, vendors or ustaads receive). One shared `AdminContactDto` carries "who is this person" everywhere. Admin UI renders the new fields in the existing pages and modals; no new pages except where noted.
 
 **Tech Stack:** NestJS + Sequelize (backend, Jest), React + React Query + axios (admin, Vitest + MSW), shared types in `packages/types`.
 
@@ -14,13 +14,13 @@
 
 **Answered 2026-11-04: every recommendation accepted** (recorded in decision 0058).
 
-| # | Question | Recommendation |
-|---|---|---|
-| D1 | Ustaad **Verify** also sets `users.is_approved = true`? | Yes. One button, both flags, one transaction. |
-| D2 | Ustaad **Reject verification** also sets `users.is_approved = false`? This blocks the ustaad from every `ApprovedGuard` route, not just from being hired. | Yes. A rejected ustaad should not operate. |
-| D3 | The separate "Ustaad approvals" tab (`/approvals/artisans`) after D1? | Remove the tab; redirect the route to `/artisans/verification`. |
-| D4 | Bank account numbers in admin: full or masked? | Full in detail popups (needed for manual payouts), last 4 digits in lists. |
-| D5 | Which rows of the Part C table to build. | The rows marked **Yes**. |
+| #   | Question                                                                                                                                                  | Recommendation                                                             |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| D1  | Ustaad **Verify** also sets `users.is_approved = true`?                                                                                                   | Yes. One button, both flags, one transaction.                              |
+| D2  | Ustaad **Reject verification** also sets `users.is_approved = false`? This blocks the ustaad from every `ApprovedGuard` route, not just from being hired. | Yes. A rejected ustaad should not operate.                                 |
+| D3  | The separate "Ustaad approvals" tab (`/approvals/artisans`) after D1?                                                                                     | Remove the tab; redirect the route to `/artisans/verification`.            |
+| D4  | Bank account numbers in admin: full or masked?                                                                                                            | Full in detail popups (needed for manual payouts), last 4 digits in lists. |
+| D5  | Which rows of the Part C table to build.                                                                                                                  | The rows marked **Yes**.                                                   |
 
 ## Global Constraints
 
@@ -44,16 +44,16 @@
 
 ## File structure
 
-| File | Responsibility |
-|---|---|
-| `apps/admin/src/services/api/tokenRefresh.ts` (new) | Single-flight, cross-tab token refresh. Nothing else. |
-| `apps/admin/src/services/api/apiClient.ts` | 401 → refresh → retry, using `tokenRefresh.ts`. |
-| `packages/types/src/admin.types.ts` | `AdminContactDto` and every new `Admin*Dto`. |
-| `apps/backend/src/common/mappers/admin-contact.mapper.ts` (new) | `toAdminContactDto(user)`. Pure function, used by every module. |
-| `apps/backend/src/modules/catalog/media/object-storage.ts` + `s3-object-storage.service.ts` | Add `presignGet`. |
-| `apps/backend/src/modules/<module>/admin-*.mapper.ts` (new, one per module) | Builds that module's `Admin*Dto` from the model. Keeps admin shaping out of the shared mappers. |
-| `apps/admin/src/components/common/ContactBlock.tsx` (new) | Renders an `AdminContactDto`: name, tap-to-call phone, mailto email, active badge, last login. Reused by every page. |
-| `apps/admin/src/components/common/FieldList.tsx` (new) | Label/value grid used by every detail popup, renders `—` for null. |
+| File                                                                                        | Responsibility                                                                                                       |
+| ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `apps/admin/src/services/api/tokenRefresh.ts` (new)                                         | Single-flight, cross-tab token refresh. Nothing else.                                                                |
+| `apps/admin/src/services/api/apiClient.ts`                                                  | 401 → refresh → retry, using `tokenRefresh.ts`.                                                                      |
+| `packages/types/src/admin.types.ts`                                                         | `AdminContactDto` and every new `Admin*Dto`.                                                                         |
+| `apps/backend/src/common/mappers/admin-contact.mapper.ts` (new)                             | `toAdminContactDto(user)`. Pure function, used by every module.                                                      |
+| `apps/backend/src/modules/catalog/media/object-storage.ts` + `s3-object-storage.service.ts` | Add `presignGet`.                                                                                                    |
+| `apps/backend/src/modules/<module>/admin-*.mapper.ts` (new, one per module)                 | Builds that module's `Admin*Dto` from the model. Keeps admin shaping out of the shared mappers.                      |
+| `apps/admin/src/components/common/ContactBlock.tsx` (new)                                   | Renders an `AdminContactDto`: name, tap-to-call phone, mailto email, active badge, last login. Reused by every page. |
+| `apps/admin/src/components/common/FieldList.tsx` (new)                                      | Label/value grid used by every detail popup, renders `—` for null.                                                   |
 
 ---
 
@@ -62,6 +62,7 @@
 ### Task 0: Branch and decision record
 
 **Files:**
+
 - Create: `docs/decisions/0058-admin-visibility-and-editing.md` (from `docs/decisions/TEMPLATE.md`)
 - Modify: `docs/decisions/README.md` (index line)
 
@@ -72,11 +73,13 @@
 ### Task 1: Admin silent token refresh
 
 **Files:**
+
 - Create: `apps/admin/src/services/api/tokenRefresh.ts`
 - Modify: `apps/admin/src/services/api/apiClient.ts:31-45` (response interceptor)
 - Test: `apps/admin/src/services/api/apiClient.spec.ts` (new; MSW pattern from `mediaService.spec.ts`, server from `@/test/server`)
 
 **Interfaces:**
+
 - Produces: `getFreshAccessToken(staleAccessToken: string | null): Promise<string>` in `tokenRefresh.ts`.
   - One in-tab promise shared by all callers until it settles.
   - Inside, runs under `navigator.locks.request('admin-token-refresh', …)` when `navigator.locks` exists, otherwise directly.
@@ -102,6 +105,7 @@
 ### Task 2: Ustaad Verify sets both flags (D1–D3)
 
 **Files:**
+
 - Modify: `apps/backend/src/modules/artisans/artisans.service.ts:372-389` (`verify`, `rejectVerification`)
 - Modify: `apps/backend/src/modules/artisans/artisans.module.ts` (inject `User` model and `Sequelize` if not already present)
 - Modify: `apps/admin/src/routes/AppRouter.tsx:50` (`<Navigate>` from `ROUTES.approvalsArtisans` to `ROUTES.artisanVerification`), `apps/admin/src/pages/ApprovalsPage.tsx:109` (drop the artisan branch), `apps/admin/src/pages/DashboardPage.tsx:38` (link to verification page) (D3)
@@ -121,6 +125,7 @@
 ### Task 3: Shared contact type + hire requests show both parties
 
 **Files:**
+
 - Modify: `packages/types/src/admin.types.ts`
 - Create: `apps/backend/src/common/mappers/admin-contact.mapper.ts` + `__tests__/admin-contact.mapper.spec.ts`
 - Create: `apps/backend/src/modules/artisans/admin-hire-request.mapper.ts`
@@ -130,10 +135,17 @@
 - Tests: `hire-requests.service.spec.ts`, `admin-artisans.controller.spec.ts`, both page specs
 
 **Interfaces (Produces):**
+
 ```ts
 export type AdminContactDto = {
-  userId: string; name: string; phone: string | null; email: string | null;
-  role: Role; isActive: boolean; isApproved: boolean; lastLoginAt: string | null;
+  userId: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  role: Role;
+  isActive: boolean;
+  isApproved: boolean;
+  lastLoginAt: string | null;
 };
 // User ruling 2026-11-04: no ustaad email in hire requests.
 export type AdminContactWithoutEmailDto = Omit<AdminContactDto, 'email'>;
@@ -145,6 +157,7 @@ export type AdminHireRequestDto = ArtisanHireRequestDto & {
   estimateCount: number;
 };
 ```
+
 - `toAdminContactDto(user: User | null | undefined): AdminContactDto | null` in `admin-contact.mapper.ts`.
 - `toAdminHireRequestDto(request: ArtisanHireRequest, capacity?): AdminHireRequestDto` — calls existing `toHireRequestDto`, then sets `customerName/customerPhone` from the customer regardless of status (admin always sees).
 - `ContactBlock({ contact, title }: { contact: AdminContactDto | null; title: string })`; `FieldList({ rows }: { rows: [label: string, value: ReactNode][] })`.
@@ -165,6 +178,7 @@ Task 4 runs as four steps: 4a, 4b, 4c, 4d. 4a is reviewed alone, 4b and 4c toget
 #### Task 4a: Server-side approval gate (decision 0059, follow-up F1)
 
 **Files:**
+
 - Create: `apps/backend/src/common/decorators/allow-unapproved.decorator.ts`
 - Modify: `apps/backend/src/common/guards/approved.guard.ts`, `common/filters/global-exception.filter.ts` (pass `code` through)
 - Modify: the five controllers in 0059 §1, adding the guard at class level and `@AllowUnapproved()` on the 0059 §3 routes
@@ -192,6 +206,7 @@ The older `listPendingAdminReview(1, 20)` and `listAll(1, 20)` lookups in `hire-
 #### Task 4d: Orders show who, and every payment fact
 
 **Files:**
+
 - Modify: `packages/types/src/admin.types.ts`
 - Create: `apps/backend/src/modules/orders/admin-order.mapper.ts`
 - Modify: `apps/backend/src/modules/orders/orders.service.ts:399-415` (`listForAdmin`, `getForAdmin` return `AdminOrderDto`), the `ADMIN_ORDER_DISPLAY_INCLUDE` constant (add `customer → user`, `vendorGroups → vendor → user`), `refunds.service.ts` `listForOrder` (admin variant adds `createdByName`)
@@ -199,17 +214,22 @@ The older `listPendingAdminReview(1, 20)` and `listAll(1, 20)` lookups in `hire-
 - Tests: `orders.service.spec.ts`, `refunds.service.spec.ts`, `OrdersPage.spec.tsx`
 
 **Interfaces (Produces):**
+
 ```ts
 export type AdminOrderVendorGroupDto = OrderVendorGroupDto & { vendor: AdminContactDto | null };
 export type AdminOrderDto = Omit<OrderDto, 'vendorGroups'> & {
   customer: AdminContactDto | null;
-  customerFullName: string | null;      // customers.full_name
+  customerFullName: string | null; // customers.full_name
   vendorGroups: AdminOrderVendorGroupDto[];
   itemCount: number;
-  hireRequestId: string | null;         // = bookingId, linked in UI
+  hireRequestId: string | null; // = bookingId, linked in UI
 };
-export type AdminRefundDto = RefundDto & { createdByName: string | null; payoutReference: string | null };
+export type AdminRefundDto = RefundDto & {
+  createdByName: string | null;
+  payoutReference: string | null;
+};
 ```
+
 UI: list gets columns Customer (name, phone), Paid (capturedPaise as ₹), Payment id. Detail gets Customer block, vendor block per group, Razorpay order + payment ids (copy buttons), booking → hire request link, delivery address with lat/lng → `https://maps.google.com/?q=lat,lng`, payment events with a collapsible raw JSON, refunds with rail, receipt, Razorpay refund id, payout reference, created by.
 
 - [ ] **Step 1: Failing tests:** `admin order carries customer and vendor contact`, `customer view (getForCustomer) is unchanged` (deep-equal against a snapshot of the current DTO keys), `admin refund shows who created it`, page `renders customer phone and paid amount`.
@@ -220,20 +240,21 @@ UI: list gets columns Customer (name, phone), Paid (capturedPaise as ₹), Payme
 
 Gap table (what is stored but not shown today):
 
-| Entity / page | Missing today |
-|---|---|
-| **Users** list + popup | email, active flag, onboarding stage in list; sessions, push on/off; customer name and addresses; counts of orders and hire requests |
-| **Vendors** list + popup | owner name/phone/email, lat/lng, UPI, bank account details, legacy bank text, min order value, loading team, warehouses, listings and stock, open listing flags, order count |
-| **Ustaads** directory + verification | owner name/phone/email, approved flag, bank account number, document links (own + team), team in verification popup, job counts |
-| **Hire requests** | Task 3 |
-| **Orders** | Task 4 |
-| **Catalog product** popup | description, family, stone variety, unit, sale unit type, pack qty, natural variation, importer details, best price + which vendor, vendor listings for this product |
+| Entity / page                        | Missing today                                                                                                                                                                |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Users** list + popup               | email, active flag, onboarding stage in list; sessions, push on/off; customer name and addresses; counts of orders and hire requests                                         |
+| **Vendors** list + popup             | owner name/phone/email, lat/lng, UPI, bank account details, legacy bank text, min order value, loading team, warehouses, listings and stock, open listing flags, order count |
+| **Ustaads** directory + verification | owner name/phone/email, approved flag, bank account number, document links (own + team), team in verification popup, job counts                                              |
+| **Hire requests**                    | Task 3                                                                                                                                                                       |
+| **Orders**                           | Task 4                                                                                                                                                                       |
+| **Catalog product** popup            | description, family, stone variety, unit, sale unit type, pack qty, natural variation, importer details, best price + which vendor, vendor listings for this product         |
 
 ### Task 5: Vendors
 
 **Files:** `packages/types/src/admin.types.ts`; create `apps/backend/src/modules/vendors/admin-vendor.mapper.ts`; modify `vendors.service.ts` (`listVendors`, `getVendorById` → admin variants `listForAdmin`, `getForAdmin`), `admin-vendors.controller.ts` (+ `GET :id/listings`); modify `apps/admin/src/pages/VendorsPage.tsx`, `components/vendors/VendorDetailModal.tsx`, `queries/useVendorsQueries.ts`, `services/api/vendorsService.ts`, `constants/apiEndpoints.ts`. Tests: `vendors/__tests__/admin-vendors.controller.spec.ts`, new `VendorDetailModal.spec.tsx`.
 
 **Interfaces (Produces):**
+
 ```ts
 export type AdminVendorDto = VendorProfileDto & {
   owner: AdminContactDto | null;
@@ -244,13 +265,23 @@ export type AdminVendorDto = VendorProfileDto & {
   warehouses: { id: string; name: string; address: string | null; isActive: boolean }[];
 };
 export type AdminVendorListingDto = {
-  id: string; masterProductId: string; productName: string; productCode: string;
-  vendorSku: string | null; price: number; mrp: number | null; minOrderQty: number | null;
-  statedGrade: string | null; status: 'active' | 'paused' | 'out_of_stock';
-  quantityAvailable: number | null; openFlags: string[]; updatedAt: string;
+  id: string;
+  masterProductId: string;
+  productName: string;
+  productCode: string;
+  vendorSku: string | null;
+  price: number;
+  mrp: number | null;
+  minOrderQty: number | null;
+  statedGrade: string | null;
+  status: 'active' | 'paused' | 'out_of_stock';
+  quantityAvailable: number | null;
+  openFlags: string[];
+  updatedAt: string;
 };
 // GET /admin/vendors/:id/listings?status&page&limit → PaginatedResponse<AdminVendorListingDto>
 ```
+
 Counts are computed with grouped `COUNT` queries, not by loading rows. Popup sections in this order: Owner · Shop · Location · Payout · Commercial · Status · Categories · Warehouses · Listings (paged table, status filter).
 
 - [ ] Tests: `admin vendor list includes owner contact and listing counts`, `listings endpoint pages and filters by status`, `listings endpoint 404s for unknown vendor`, `vendor's own GET /vendors/me is unchanged`, modal `renders payout section with full account number` (D4), list `shows last 4 digits only`.
@@ -261,6 +292,7 @@ Counts are computed with grouped `COUNT` queries, not by loading rows. Popup sec
 **Files:** `object-storage.ts` (+ `presignGet`), `s3-object-storage.service.ts`, `artisans/__tests__/fake-object-storage.ts`, `apps/backend/package.json` (add `@aws-sdk/s3-request-presigner` at the same `^3.1146.0` line as `client-s3`); create `artisans/admin-artisan.mapper.ts`; modify `artisans.service.ts` (admin list + `getForAdmin`), `admin-artisans.controller.ts`; admin `ArtisansPage.tsx`, `ArtisanVerificationPage.tsx`, `services/api/artisansService.ts`. Tests: `artisans.service.spec.ts`, `admin-artisans.controller.spec.ts`, both page specs.
 
 **Interfaces (Produces):**
+
 ```ts
 // ObjectStorage
 presignGet(key: string, expiresInSeconds: number): Promise<string>;
@@ -273,6 +305,7 @@ export type AdminArtisanDto = Omit<ArtisanProfileDto, 'team'> & {
   jobCounts: { active: number; completed: number; declined: number; total: number };
 };
 ```
+
 `documentViewUrl` rule: stored value null → null; starts with `http` → returned as-is (legacy); otherwise `presignGet(key, DOCUMENT_PRESIGN_TTL_SECONDS)`. Both pages open the same detail popup (fetches `GET /admin/artisans/:id` on open). Documents open in a new tab.
 
 - [ ] Tests: `detail returns a signed link for the ustaad document`, `detail returns a signed link per team member document`, `passes through a stored http URL`, `returns null link when no document`, `list responses never sign`, `job counts by status`, page `verification popup shows owner phone, team and View document links`.
@@ -283,19 +316,21 @@ export type AdminArtisanDto = Omit<ArtisanProfileDto, 'team'> & {
 **Files:** `packages/types/src/admin.types.ts`; `admin/admin.service.ts` (`listUsers`, `getUserById`), new `admin/admin-user.mapper.ts`; `admin.module.ts` (inject `Customer`, `CustomerAddress`, `Order`, `ArtisanHireRequest`, `RefreshToken` models); admin `UsersPage.tsx`, `components/approvals/UserDetailModal.tsx`. Tests: new `admin/__tests__/admin.service.users.spec.ts`, `UserDetailModal.spec.tsx`.
 
 **Interfaces (Produces):**
+
 ```ts
 export type AdminUserDetailDto = Omit<UserDto, 'deviceToken'> & {
   pushEnabled: boolean;
-  activeSessionCount: number;            // refresh tokens not revoked and not expired
+  activeSessionCount: number; // refresh tokens not revoked and not expired
   customerProfile: null | {
     fullName: string | null;
     addresses: CustomerAddressDto[];
     orderCount: number;
-    paidTotalPaise: number;              // sum of captured_paise
+    paidTotalPaise: number; // sum of captured_paise
     hireRequestCount: number;
   };
 };
 ```
+
 `listUsers` items drop `deviceToken` and add `pushEnabled`. List columns gain email, active, onboarding stage. Popup links: customer orders → Orders page filtered by customer id (add `?customerId=` to `GET /admin/orders`), vendor → vendor popup, ustaad → ustaad popup.
 
 - [ ] Tests: `user detail never contains deviceToken`, `counts only live sessions`, `customer profile with addresses and totals`, `non-customer has null customerProfile`, `orders filter by customerId`.
@@ -314,29 +349,29 @@ export type AdminUserDetailDto = Omit<UserDto, 'deviceToken'> & {
 
 Rule of thumb used: admins edit **profile and operational** data people get wrong or ask support to fix. Admins never edit **money that already moved, history, or identity keys**.
 
-| Entity | Field / action | Build? | Why |
-|---|---|---|---|
-| User | name, email, phone | **Yes** | Support fixes typos. Phone must stay unique (it is the login). |
-| User | Deactivate / reactivate (`is_active`) | **Yes** | Stop a bad actor without deleting data. |
-| User | Sign out everywhere (revoke refresh tokens) | **Yes** | Pairs with deactivate; lost phone. |
-| User | Role | No | Changing role orphans the profile rows. |
-| Vendor | shop name, address, lat/lng, GSTIN, UPI | **Yes** | Onboarding typos, wrong pin. |
-| Vendor | bank account details | **Yes** | Needed before manual payouts. |
-| Vendor | min order value, loading team | **Yes** | Commercial setting admins negotiate. |
-| Vendor | city, categories, approve/reject | exists | Already built. |
-| Vendor listing | pause / reactivate | **Yes** | Pull a wrong or flagged listing fast. |
-| Vendor listing | price, stock | No | Vendor owns price and stock. |
-| Ustaad | trade, experience, bio, service pincode, available | **Yes** | Same reason as vendor profile. |
-| Ustaad | bank account details | **Yes** | Payouts. |
-| Ustaad | team members: edit, remove | **Yes** | Wrong member on file. |
-| Ustaad | upload a document on their behalf | Later | Needs admin upload flow; low demand. |
-| Customer | full name, addresses | Later | Customer can do it in the app. |
-| Hire request | admin cancel with reason | **Yes** | Today only customer/ustaad can cancel. |
-| Hire request | reassign to another ustaad | No | New request is cleaner; keeps history true. |
-| Order | delivery address | No | Snapshot integrity; vendor already dispatched against it. |
-| Order | cancel, refund, group status override | exists | Already built. |
-| Catalog | categories (name, active, order), brands, cities active | Check | Depends on what the catalog pages already edit; checked in Task 13. |
-| Never | ids, amounts, captured paise, payment events, refunds, timestamps, password | No | History and money. |
+| Entity         | Field / action                                                              | Build?  | Why                                                                 |
+| -------------- | --------------------------------------------------------------------------- | ------- | ------------------------------------------------------------------- |
+| User           | name, email, phone                                                          | **Yes** | Support fixes typos. Phone must stay unique (it is the login).      |
+| User           | Deactivate / reactivate (`is_active`)                                       | **Yes** | Stop a bad actor without deleting data.                             |
+| User           | Sign out everywhere (revoke refresh tokens)                                 | **Yes** | Pairs with deactivate; lost phone.                                  |
+| User           | Role                                                                        | No      | Changing role orphans the profile rows.                             |
+| Vendor         | shop name, address, lat/lng, GSTIN, UPI                                     | **Yes** | Onboarding typos, wrong pin.                                        |
+| Vendor         | bank account details                                                        | **Yes** | Needed before manual payouts.                                       |
+| Vendor         | min order value, loading team                                               | **Yes** | Commercial setting admins negotiate.                                |
+| Vendor         | city, categories, approve/reject                                            | exists  | Already built.                                                      |
+| Vendor listing | pause / reactivate                                                          | **Yes** | Pull a wrong or flagged listing fast.                               |
+| Vendor listing | price, stock                                                                | No      | Vendor owns price and stock.                                        |
+| Ustaad         | trade, experience, bio, service pincode, available                          | **Yes** | Same reason as vendor profile.                                      |
+| Ustaad         | bank account details                                                        | **Yes** | Payouts.                                                            |
+| Ustaad         | team members: edit, remove                                                  | **Yes** | Wrong member on file.                                               |
+| Ustaad         | upload a document on their behalf                                           | Later   | Needs admin upload flow; low demand.                                |
+| Customer       | full name, addresses                                                        | Later   | Customer can do it in the app.                                      |
+| Hire request   | admin cancel with reason                                                    | **Yes** | Today only customer/ustaad can cancel.                              |
+| Hire request   | reassign to another ustaad                                                  | No      | New request is cleaner; keeps history true.                         |
+| Order          | delivery address                                                            | No      | Snapshot integrity; vendor already dispatched against it.           |
+| Order          | cancel, refund, group status override                                       | exists  | Already built.                                                      |
+| Catalog        | categories (name, active, order), brands, cities active                     | Check   | Depends on what the catalog pages already edit; checked in Task 13. |
+| Never          | ids, amounts, captured paise, payment events, refunds, timestamps, password | No      | History and money.                                                  |
 
 ### Tasks 9–13 (shape fixed now, fields per D5)
 
@@ -346,19 +381,20 @@ Every edit task follows the same pattern, so each is specified by its endpoint a
 - Admin: "Edit" button in the existing popup switches the section to a form; save → mutation → invalidate the list and detail queries.
 - Tests per task: `updates only whitelisted fields`, `rejects unknown field`, `404 unknown id`, `403 for non-admin`, `logs the admin action`, plus one UI spec `edit and save updates the popup`.
 
-| Task | Endpoint(s) | Notes |
-|---|---|---|
-| 9 Users | `PATCH /admin/users/:id`, `PATCH /admin/users/:id/active`, `POST /admin/users/:id/revoke-sessions` | Phone unique → 409 on clash. Deactivate also revokes sessions. |
-| 10 Vendors | `PATCH /admin/vendors/:id`, `PUT /admin/vendors/:id/account-details`, `PATCH /admin/vendor-listings/:id/status` | Reuse onboarding DTO validators for GSTIN, IFSC. |
-| 11 Ustaads | `PATCH /admin/artisans/:id`, `PUT /admin/artisans/:id/account-details`, `PATCH /admin/artisans/:id/team/:memberId`, `DELETE /admin/artisans/:id/team/:memberId` | Reuse the ustaad's own DTO validators. |
-| 12 Hire requests | `PATCH /admin/artisans/hire-requests/:id/cancel` | Uses the existing conditional-update cancel path in `hire-requests.service.ts`; reason required. |
-| 13 Catalog | decided after reading the catalog pages | Only the gaps. |
+| Task             | Endpoint(s)                                                                                                                                                     | Notes                                                                                            |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| 9 Users          | `PATCH /admin/users/:id`, `PATCH /admin/users/:id/active`, `POST /admin/users/:id/revoke-sessions`                                                              | Phone unique → 409 on clash. Deactivate also revokes sessions.                                   |
+| 10 Vendors       | `PATCH /admin/vendors/:id`, `PUT /admin/vendors/:id/account-details`, `PATCH /admin/vendor-listings/:id/status`                                                 | Reuse onboarding DTO validators for GSTIN, IFSC.                                                 |
+| 11 Ustaads       | `PATCH /admin/artisans/:id`, `PUT /admin/artisans/:id/account-details`, `PATCH /admin/artisans/:id/team/:memberId`, `DELETE /admin/artisans/:id/team/:memberId` | Reuse the ustaad's own DTO validators.                                                           |
+| 12 Hire requests | `PATCH /admin/artisans/hire-requests/:id/cancel`                                                                                                                | Uses the existing conditional-update cancel path in `hire-requests.service.ts`; reason required. |
+| 13 Catalog       | decided after reading the catalog pages                                                                                                                         | Only the gaps.                                                                                   |
 
 ## Execution order and review gates
 
 ```
 0 → 1 → 2 → 3 → 4a → 4b → 4c → 4d → 5 → 6 → 7 → 8 → (D5) → 9 → 10 → 11 → 12 → 13 → whole-branch review → PR
 ```
+
 After each task: tests + lint + typecheck green, a fresh reviewer checks the task's diff against this plan, then the user OKs before the next task starts.
 
 ## Release (only after every task above, user ruling 2026-11-05)
@@ -369,14 +405,9 @@ Ask the merge method before merging.
 
 - [x] Whole-branch review (done 2026-11-05; its findings are fixed). Then a PR for `feat/admin-visibility`.
 - [ ] Mobile sync. The mobile artisan app is already in `main` (PR #36); `apps/mobile` is
-      untouched by this branch. Tell the mobile developer (their side, nothing for us to build):
-      - `403 ACCOUNT_NOT_APPROVED` is not handled (a vendor or ustaad rejected mid-session).
-      - Adding an unapproved vendor's item to the cart returns `400 "This seller is not taking
-        orders right now"`.
-      - OTP verify returns `401 "Account is deactivated"` for a deactivated account.
-      - `PATCH /artisans/me/profile` now rejects `experienceYears` over 80 and `servicePincode`
-        over 10 characters (400); the onboarding screen has the same limits to add (F35).
-      - `PATCH /users/:id/approve` (admin-only, unused) was removed.
+      untouched by this branch. Tell the mobile developer (their side, nothing for us to build): - `403 ACCOUNT_NOT_APPROVED` is not handled (a vendor or ustaad rejected mid-session). - Adding an unapproved vendor's item to the cart returns `400 "This seller is not taking
+      orders right now"`. - OTP verify returns `401 "Account is deactivated"` for a deactivated account. - `PATCH /artisans/me/profile` now rejects `experienceYears` over 80 and `servicePincode`
+      over 10 characters (400); the onboarding screen has the same limits to add (F35). - `PATCH /users/:id/approve` (admin-only, unused) was removed.
 - [ ] Deploy latest main to production. Migrations run by themselves in
       `apps/backend/docker-entrypoint.sh` before the app starts, including `20261105090000`
       (approval trigger) and `20261105090100` (queue already-unapproved vendors).

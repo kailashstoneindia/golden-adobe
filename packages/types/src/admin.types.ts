@@ -7,12 +7,7 @@ import type {
   ArtisanTeamMemberDto,
   TradeType,
 } from './artisan.types';
-import type {
-  CustomerAddressDto,
-  OrderDto,
-  OrderVendorGroupDto,
-  RefundDto,
-} from './order.types';
+import type { CustomerAddressDto, OrderDto, OrderVendorGroupDto, RefundDto } from './order.types';
 import type { VendorProfileDto } from './vendor.types';
 
 export type AdminDashboardStats = {
