@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { beforeEach, describe, expect, it } from 'vitest';
 
@@ -169,5 +170,80 @@ describe('ProductDetailModal', () => {
     expect(await screen.findByText('No vendor sells this product yet.')).toBeInTheDocument();
     expect(within(row('Family')).getByText('—')).toBeInTheDocument();
     expect(within(row('Best price')).getByText('—')).toBeInTheDocument();
+  });
+
+  // Decision 0058 Task 13: correct a product's name from the popup.
+  describe('renaming', () => {
+    const patches: unknown[] = [];
+
+    beforeEach(() => {
+      patches.length = 0;
+      server.use(
+        http.patch(`/api/admin/catalog/products/${PRODUCT_ID}`, async ({ request }) => {
+          const body = (await request.json()) as { name: string };
+          patches.push(body);
+          if (body.name === 'Taken') {
+            return HttpResponse.json(
+              { success: false, message: 'A product with this identity already exists' },
+              { status: 409 },
+            );
+          }
+          current = product({ name: body.name });
+          return HttpResponse.json({ success: true, data: current });
+        }),
+      );
+    });
+
+    it('renames the product and shows the new name', async () => {
+      renderModal();
+      const user = userEvent.setup();
+
+      await user.click(await screen.findByRole('button', { name: 'Edit name' }));
+      expect(screen.getByLabelText('Product name')).toHaveValue('Black Galaxy Slab');
+      await user.clear(screen.getByLabelText('Product name'));
+      await user.type(screen.getByLabelText('Product name'), '  Black Galaxy Slab 18mm ');
+      await user.click(screen.getByRole('button', { name: 'Save name' }));
+
+      await waitFor(() => expect(patches).toEqual([{ name: 'Black Galaxy Slab 18mm' }]));
+      expect(
+        await screen.findByRole('heading', { name: 'Black Galaxy Slab 18mm' }),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Save name' })).not.toBeInTheDocument();
+    });
+
+    it('cannot save a blank or unchanged name', async () => {
+      renderModal();
+      const user = userEvent.setup();
+
+      await user.click(await screen.findByRole('button', { name: 'Edit name' }));
+      expect(screen.getByRole('button', { name: 'Save name' })).toBeDisabled();
+      await user.clear(screen.getByLabelText('Product name'));
+
+      expect(screen.getByRole('button', { name: 'Save name' })).toBeDisabled();
+    });
+
+    it('shows the server’s reason and keeps the form open', async () => {
+      renderModal();
+      const user = userEvent.setup();
+
+      await user.click(await screen.findByRole('button', { name: 'Edit name' }));
+      await user.clear(screen.getByLabelText('Product name'));
+      await user.type(screen.getByLabelText('Product name'), 'Taken');
+      await user.click(screen.getByRole('button', { name: 'Save name' }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('already exists');
+      expect(screen.getByRole('button', { name: 'Save name' })).toBeInTheDocument();
+    });
+
+    it('cancels without sending anything', async () => {
+      renderModal();
+      const user = userEvent.setup();
+
+      await user.click(await screen.findByRole('button', { name: 'Edit name' }));
+      await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+      expect(patches).toEqual([]);
+      expect(screen.getByRole('button', { name: 'Edit name' })).toBeInTheDocument();
+    });
   });
 });

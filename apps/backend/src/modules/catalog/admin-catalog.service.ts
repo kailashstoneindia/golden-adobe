@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { QueryTypes } from 'sequelize';
 
@@ -37,6 +37,8 @@ export type CategoryNode = {
 
 @Injectable()
 export class AdminCatalogService {
+  private readonly logger = new Logger(AdminCatalogService.name);
+
   constructor(
     @InjectModel(MasterProduct)
     private readonly masterProductModel: typeof MasterProduct,
@@ -576,9 +578,19 @@ export class AdminCatalogService {
   // attributeValues is present it fully replaces the existing set, matching
   // the PUT-style "whole set" convention SetVendorCategoriesDto already
   // established for this codebase.
-  async updateProduct(productId: string, dto: UpdateProductDto) {
+  async updateProduct(productId: string, adminUserId: string, dto: UpdateProductDto) {
     const product = await this.masterProductModel.findByPk(productId);
     if (!product) throw new NotFoundException('Product not found');
+
+    // Decision 0058 Task 13: only what actually changes is written and logged.
+    // typeof, not !== undefined: a null must never reach the column.
+    const newName = typeof dto.name === 'string' ? dto.name.trim() : undefined;
+    const nameChanged = newName !== undefined && newName !== product.name;
+    const changedFields = [
+      ...(nameChanged ? ['name'] : []),
+      ...(dto.attributeValues !== undefined ? ['attributeValues'] : []),
+    ];
+    if (changedFields.length === 0) return this.getProduct(productId);
 
     let attributeErrors: string[] = [];
     let attributesByCode: Map<string, Attribute> | null = null;
@@ -592,8 +604,8 @@ export class AdminCatalogService {
 
     try {
       await this.sequelize.transaction(async (transaction) => {
-        if (dto.name !== undefined) {
-          await product.update({ name: dto.name }, { transaction });
+        if (nameChanged) {
+          await product.update({ name: newName }, { transaction });
         }
 
         if (dto.attributeValues !== undefined) {
@@ -613,6 +625,8 @@ export class AdminCatalogService {
     } catch (err) {
       throw this.translateWriteError(err);
     }
+
+    this.logger.log(`admin ${adminUserId} update product ${productId} ${changedFields.join(',')}`);
 
     return this.getProduct(productId);
   }

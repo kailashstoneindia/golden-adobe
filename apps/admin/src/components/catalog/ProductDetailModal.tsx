@@ -3,6 +3,7 @@ import { isEmpty } from 'lodash';
 
 import { ProductMediaPanel } from '@/components/catalog/media/ProductMediaPanel';
 import { useProductQuery } from '@/queries/useCatalogQueries';
+import { ProductNameEditor } from '@/components/catalog/ProductNameEditor';
 import { labelFor, PRODUCT_STATUS_LABELS } from '@/constants/labels';
 import styles from '@/styles/shared.module.css';
 import catalogStyles from '@/styles/catalog.module.css';
@@ -37,7 +38,7 @@ export function ProductDetailModal({
           <p className={styles.error}>Could not load this product.</p>
         ) : (
           <>
-            <h3 className={styles.modalTitle}>{product.name}</h3>
+            <ProductNameEditor productId={product.id} name={product.name} />
             <p className={catalogStyles.detailPath}>
               <code>{product.productCode}</code> · {product.categoryPath}
             </p>

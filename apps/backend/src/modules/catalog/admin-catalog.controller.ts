@@ -1,8 +1,19 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Role } from '@golden-abode/types';
 
 import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { AdminCatalogService } from './admin-catalog.service';
@@ -103,8 +114,12 @@ export class AdminCatalogController {
       'attribute set and is a re-classification, not a correction (decision 0023). ' +
       'attributeValues, when present, fully replaces the existing set.',
   })
-  async updateProduct(@Param('productId') productId: string, @Body() dto: UpdateProductDto) {
-    return this.adminCatalog.updateProduct(productId, dto);
+  async updateProduct(
+    @Param('productId', ParseUUIDPipe) productId: string,
+    @Body() dto: UpdateProductDto,
+    @CurrentUser('sub') adminUserId: string,
+  ) {
+    return this.adminCatalog.updateProduct(productId, adminUserId, dto);
   }
 
   @Patch('products/:productId/publish')
