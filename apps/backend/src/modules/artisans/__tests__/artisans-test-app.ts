@@ -34,6 +34,7 @@ export const JWT_SECRET = 'artisans-controller-test-jwt-secret-1234567890';
 export type ArtisansTestApp = {
   app: INestApplication;
   adminToken: string;
+  adminUserId: string;
   artisanToken: string;
   artisanUserId: string;
   customerToken: string;
@@ -155,6 +156,7 @@ export async function createArtisansTestApp(): Promise<ArtisansTestApp> {
   return {
     app,
     adminToken: jwt.sign({ sub: admin.id, role: Role.ADMIN }),
+    adminUserId: admin.id,
     artisanToken: jwt.sign({ sub: artisanUser.id, role: Role.ARTISAN }),
     artisanUserId: artisanUser.id,
     customerToken: jwt.sign({ sub: customerUser.id, role: Role.CUSTOMER }),

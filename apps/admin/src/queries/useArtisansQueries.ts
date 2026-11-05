@@ -1,5 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ArtisanHireRequestStatus, ArtisanListQuery } from '@golden-abode/types';
+import type {
+  ArtisanAccountDetailsInputDto,
+  ArtisanHireRequestStatus,
+  ArtisanListQuery,
+  UpdateArtisanProfileDto,
+} from '@golden-abode/types';
 
 import { APP_CONSTANTS } from '@/constants/appConstants';
 import { artisansService } from '@/services';
@@ -129,5 +134,46 @@ export function useCancelHireRequestMutation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ARTISANS_QUERY_KEYS.all });
     },
+  });
+}
+
+// Decision 0058 Task 11. The popups read the ustaad detail and the lists, so
+// invalidating 'artisans' reloads them all.
+export function useUpdateArtisanProfileMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (options: { artisanId: string; body: UpdateArtisanProfileDto }) =>
+      artisansService.updateArtisanProfile(options.artisanId, options.body),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ARTISANS_QUERY_KEYS.all }),
+  });
+}
+
+export function useUpdateArtisanBankMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (options: { artisanId: string; body: ArtisanAccountDetailsInputDto }) =>
+      artisansService.updateArtisanBank(options.artisanId, options.body),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ARTISANS_QUERY_KEYS.all }),
+  });
+}
+
+export function useUpdateTeamMemberMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (options: {
+      artisanId: string;
+      memberId: string;
+      body: { name?: string; roleOnTeam?: string; phone?: string };
+    }) => artisansService.updateTeamMember(options.artisanId, options.memberId, options.body),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ARTISANS_QUERY_KEYS.all }),
+  });
+}
+
+export function useRemoveTeamMemberMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (options: { artisanId: string; memberId: string }) =>
+      artisansService.removeTeamMember(options.artisanId, options.memberId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ARTISANS_QUERY_KEYS.all }),
   });
 }

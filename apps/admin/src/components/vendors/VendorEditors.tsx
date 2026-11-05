@@ -1,10 +1,8 @@
 import { useState } from 'react';
-import type {
-  AdminVendorDto,
-  UpdateVendorProfileDto,
-  VendorAccountDetailsInputDto,
-} from '@golden-abode/types';
+import type { AdminVendorDto, UpdateVendorProfileDto } from '@golden-abode/types';
 
+import { BankDetailsForm } from '@/components/common/BankDetailsForm';
+import { FormField } from '@/components/common/FormField';
 import {
   useUpdateVendorBankMutation,
   useUpdateVendorProfileMutation,
@@ -44,39 +42,6 @@ export function VendorEditors({ vendor }: { vendor: AdminVendorDto }) {
         </div>
       )}
     </section>
-  );
-}
-
-function Field({
-  id,
-  label,
-  value,
-  onChange,
-  disabled,
-  type = 'text',
-}: {
-  id: string;
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  disabled: boolean;
-  type?: 'text' | 'number';
-}) {
-  return (
-    <div>
-      <label className={styles.label} htmlFor={id}>
-        {label}
-      </label>
-      <input
-        id={id}
-        className={styles.input}
-        type={type}
-        step={type === 'number' ? 'any' : undefined}
-        value={value}
-        disabled={disabled}
-        onChange={(event) => onChange(event.target.value)}
-      />
-    </div>
   );
 }
 
@@ -146,21 +111,21 @@ function ProfileForm({ vendor, onDone }: { vendor: AdminVendorDto; onDone: () =>
   const busy = mutation.isPending;
   return (
     <div>
-      <Field
+      <FormField
         id="vendor-shop-name"
         label="Shop name"
         value={draft.shopName}
         disabled={busy}
         onChange={set('shopName')}
       />
-      <Field
+      <FormField
         id="vendor-address"
         label="Address"
         value={draft.address}
         disabled={busy}
         onChange={set('address')}
       />
-      <Field
+      <FormField
         id="vendor-latitude"
         label="Latitude"
         type="number"
@@ -168,7 +133,7 @@ function ProfileForm({ vendor, onDone }: { vendor: AdminVendorDto; onDone: () =>
         disabled={busy}
         onChange={set('latitude')}
       />
-      <Field
+      <FormField
         id="vendor-longitude"
         label="Longitude"
         type="number"
@@ -176,21 +141,21 @@ function ProfileForm({ vendor, onDone }: { vendor: AdminVendorDto; onDone: () =>
         disabled={busy}
         onChange={set('longitude')}
       />
-      <Field
+      <FormField
         id="vendor-gstin"
         label="GSTIN"
         value={draft.gstin}
         disabled={busy}
         onChange={set('gstin')}
       />
-      <Field
+      <FormField
         id="vendor-upi"
         label="UPI ID"
         value={draft.upiId}
         disabled={busy}
         onChange={set('upiId')}
       />
-      <Field
+      <FormField
         id="vendor-min-order"
         label="Minimum order (₹)"
         type="number"
@@ -246,84 +211,16 @@ function ProfileForm({ vendor, onDone }: { vendor: AdminVendorDto; onDone: () =>
   );
 }
 
-const BANK_FIELDS: { key: keyof VendorAccountDetailsInputDto; label: string }[] = [
-  { key: 'accountHolderName', label: 'Account holder' },
-  { key: 'bankName', label: 'Bank name' },
-  { key: 'ifscCode', label: 'IFSC' },
-  { key: 'branchName', label: 'Branch' },
-  { key: 'accountNumber', label: 'Account number' },
-];
-
 function BankForm({ vendor, onDone }: { vendor: AdminVendorDto; onDone: () => void }) {
   const mutation = useUpdateVendorBankMutation();
-  const existing = vendor.accountDetails;
-  const [error, setError] = useState<string | null>(null);
-  const [draft, setDraft] = useState<VendorAccountDetailsInputDto>({
-    accountHolderName: existing?.accountHolderName ?? '',
-    bankName: existing?.bankName ?? '',
-    ifscCode: existing?.ifscCode ?? '',
-    branchName: existing?.branchName ?? '',
-    accountNumber: existing?.accountNumber ?? '',
-  });
-
-  const body: VendorAccountDetailsInputDto = {
-    accountHolderName: draft.accountHolderName.trim(),
-    bankName: draft.bankName.trim(),
-    ifscCode: draft.ifscCode.trim().toUpperCase(),
-    branchName: draft.branchName.trim(),
-    accountNumber: draft.accountNumber.trim(),
-  };
-  const complete = BANK_FIELDS.every(({ key }) => body[key] !== '');
-  const changed = !existing || BANK_FIELDS.some(({ key }) => body[key] !== existing[key]);
-  const canSave = complete && changed && !mutation.isPending;
-
-  const save = async () => {
-    setError(null);
-    try {
-      await mutation.mutateAsync({ vendorId: vendor.id, body });
-      onDone();
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Request failed');
-    }
-  };
-
-  const busy = mutation.isPending;
   return (
-    <div>
-      {BANK_FIELDS.map(({ key, label }) => (
-        <Field
-          key={key}
-          id={`vendor-bank-${key}`}
-          label={label}
-          value={draft[key]}
-          disabled={busy}
-          onChange={(value) => setDraft({ ...draft, [key]: value })}
-        />
-      ))}
-      <p className={styles.meta}>All five fields are needed. Payouts go to this account.</p>
-      {error ? (
-        <p className={styles.error} role="alert">
-          {error}
-        </p>
-      ) : null}
-      <div className={styles.actions}>
-        <button
-          type="button"
-          className={`${styles.button} ${styles.buttonGhost}`}
-          disabled={busy}
-          onClick={onDone}
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          className={`${styles.button} ${styles.buttonPrimary}`}
-          disabled={!canSave}
-          onClick={save}
-        >
-          Save bank details
-        </button>
-      </div>
-    </div>
+    <BankDetailsForm
+      existing={vendor.accountDetails}
+      onCancel={onDone}
+      onSave={async (body) => {
+        await mutation.mutateAsync({ vendorId: vendor.id, body });
+        onDone();
+      }}
+    />
   );
 }

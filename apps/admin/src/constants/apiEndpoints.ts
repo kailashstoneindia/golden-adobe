@@ -37,6 +37,9 @@ export const API_ENDPOINTS = {
     artisansPendingVerification: '/admin/artisans/pending-verification',
     artisansAwaitingDocument: '/admin/artisans/awaiting-document',
     verifyArtisan: (artisanId: string) => `/admin/artisans/${artisanId}/verify`,
+    artisanAccountDetails: (artisanId: string) => `/admin/artisans/${artisanId}/account-details`,
+    artisanTeamMember: (artisanId: string, memberId: string) =>
+      `/admin/artisans/${artisanId}/team/${memberId}`,
     rejectArtisanVerification: (artisanId: string) =>
       `/admin/artisans/${artisanId}/reject-verification`,
     artisanHireRequestsPending: '/admin/artisans/hire-requests/pending',

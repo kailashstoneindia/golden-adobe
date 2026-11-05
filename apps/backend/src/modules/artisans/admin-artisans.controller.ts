@@ -1,10 +1,12 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
   Patch,
+  Put,
   Query,
   Req,
   UseGuards,
@@ -21,6 +23,9 @@ import { HireRequestsService } from './hire-requests.service';
 import { AdminArtisansService } from './admin-artisans.service';
 import { ReviewHireRequestDto } from './dto/review-hire-request.dto';
 import { RejectArtisanVerificationDto } from './dto/reject-artisan-verification.dto';
+import { AdminUpdateTeamMemberDto } from './dto/admin-update-team-member.dto';
+import { UpdateAccountDetailsDto } from './dto/update-account-details.dto';
+import { UpdateArtisanProfileDto } from './dto/update-artisan-profile.dto';
 import { PaginationQueryDto } from './dto/pagination-query.dto';
 
 // Admin-facing artisan administration. Mirrors AdminVendorsController's
@@ -100,6 +105,65 @@ export class AdminArtisansController {
     @Body() dto: ReviewHireRequestDto,
   ) {
     return this.hireRequestsService.reviewRequest(req.user.sub, id, dto);
+  }
+
+  @Patch(':id')
+  @ApiOperation({
+    summary: 'Fix an ustaad’s profile',
+    description:
+      'Trade, experience, bio, service pincode and availability (decision 0058 Task 11). Same rules as the ustaad’s own edit; never changes verification. A null is refused.',
+  })
+  @ApiResponse({ status: 200, description: 'The updated ustaad, admin view' })
+  @ApiResponse({ status: 404, description: 'No such ustaad' })
+  async updateProfile(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateArtisanProfileDto,
+    @CurrentUser('sub') adminUserId: string,
+  ) {
+    return this.adminArtisansService.updateProfile(id, adminUserId, dto);
+  }
+
+  @Put(':id/account-details')
+  @ApiOperation({
+    summary: 'Replace an ustaad’s bank account details',
+    description: 'All five fields every time; creates the record if there is none.',
+  })
+  @ApiResponse({ status: 200, description: 'The updated ustaad, admin view' })
+  @ApiResponse({ status: 404, description: 'No such ustaad' })
+  async updateAccountDetails(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateAccountDetailsDto,
+    @CurrentUser('sub') adminUserId: string,
+  ) {
+    return this.adminArtisansService.updateAccountDetails(id, adminUserId, dto);
+  }
+
+  @Patch(':id/team/:memberId')
+  @ApiOperation({
+    summary: 'Correct a team member’s name, role or phone',
+    description: 'The member’s document cannot be changed here.',
+  })
+  @ApiResponse({ status: 200, description: 'The ustaad, admin view' })
+  @ApiResponse({ status: 404, description: 'No such member under this ustaad' })
+  async updateTeamMember(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('memberId', ParseUUIDPipe) memberId: string,
+    @Body() dto: AdminUpdateTeamMemberDto,
+    @CurrentUser('sub') adminUserId: string,
+  ) {
+    return this.adminArtisansService.updateTeamMember(id, memberId, adminUserId, dto);
+  }
+
+  @Delete(':id/team/:memberId')
+  @ApiOperation({ summary: 'Remove a team member from an ustaad' })
+  @ApiResponse({ status: 200, description: 'The ustaad, admin view' })
+  @ApiResponse({ status: 404, description: 'No such member under this ustaad' })
+  async removeTeamMember(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('memberId', ParseUUIDPipe) memberId: string,
+    @CurrentUser('sub') adminUserId: string,
+  ) {
+    return this.adminArtisansService.removeTeamMember(id, memberId, adminUserId);
   }
 
   @Get(':id')

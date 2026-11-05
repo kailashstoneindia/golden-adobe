@@ -3,6 +3,7 @@ import type { AdminArtisanDto, DocumentLinksState } from '@golden-abode/types';
 
 import { ContactBlock, Row } from '@/components/common/ContactBlock';
 import { CopyableId } from '@/components/common/CopyButton';
+import { ArtisanEditors, TeamMemberActions } from '@/components/artisans/ArtisanEditors';
 import { labelFor, TRADE_TYPE_LABELS } from '@/constants/labels';
 import styles from '@/styles/shared.module.css';
 import { formatDateTime } from '@/utils/date';
@@ -20,6 +21,8 @@ export function ArtisanDetailBody({ artisan }: { artisan: AdminArtisanDto }) {
           <CopyableId value={artisan.id} label="ustaad id" />
         </Row>
       </ContactBlock>
+
+      <ArtisanEditors artisan={artisan} />
 
       <Group title="Profile">
         <Row label="Trade">{labelFor(TRADE_TYPE_LABELS, artisan.tradeType)}</Row>
@@ -67,6 +70,7 @@ export function ArtisanDetailBody({ artisan }: { artisan: AdminArtisanDto }) {
                   <th>Phone</th>
                   <th>Document</th>
                   <th>Added</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -91,6 +95,9 @@ export function ArtisanDetailBody({ artisan }: { artisan: AdminArtisanDto }) {
                       />
                     </td>
                     <td>{formatDateTime(member.createdAt)}</td>
+                    <td>
+                      <TeamMemberActions artisanId={artisan.id} member={member} />
+                    </td>
                   </tr>
                 ))}
               </tbody>

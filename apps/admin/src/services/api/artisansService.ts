@@ -6,11 +6,13 @@ import type {
   AdminArtisanDto,
   PaginatedAdminArtisansResponse,
   PaginatedAdminHireRequestsResponse,
+  ArtisanAccountDetailsInputDto,
   ArtisanProfileDto,
+  UpdateArtisanProfileDto,
 } from '@golden-abode/types';
 
 import { API_ENDPOINTS } from '@/constants/apiEndpoints';
-import { getRequest, patchRequest } from '@/services/api/apiClient';
+import { deleteRequest, getRequest, patchRequest, putRequest } from '@/services/api/apiClient';
 import type {
   CancelArtisanHireRequestRequest,
   RejectArtisanVerificationRequest,
@@ -40,6 +42,39 @@ export const artisansService = {
   fetchArtisans(query: ArtisanListQuery): Promise<PaginatedAdminArtisansResponse> {
     const suffix = buildArtisanQueryString(query);
     return getRequest<PaginatedAdminArtisansResponse>(`${API_ENDPOINTS.admin.artisans}${suffix}`);
+  },
+
+  // Decision 0058 Task 11. These answer with the admin view of the ustaad.
+  updateArtisanProfile(artisanId: string, body: UpdateArtisanProfileDto): Promise<AdminArtisanDto> {
+    return patchRequest<AdminArtisanDto, UpdateArtisanProfileDto>(
+      API_ENDPOINTS.admin.artisanById(artisanId),
+      body,
+    );
+  },
+
+  updateArtisanBank(
+    artisanId: string,
+    body: ArtisanAccountDetailsInputDto,
+  ): Promise<AdminArtisanDto> {
+    return putRequest<AdminArtisanDto, ArtisanAccountDetailsInputDto>(
+      API_ENDPOINTS.admin.artisanAccountDetails(artisanId),
+      body,
+    );
+  },
+
+  updateTeamMember(
+    artisanId: string,
+    memberId: string,
+    body: { name?: string; roleOnTeam?: string; phone?: string },
+  ): Promise<AdminArtisanDto> {
+    return patchRequest<AdminArtisanDto, { name?: string; roleOnTeam?: string; phone?: string }>(
+      API_ENDPOINTS.admin.artisanTeamMember(artisanId, memberId),
+      body,
+    );
+  },
+
+  removeTeamMember(artisanId: string, memberId: string): Promise<void> {
+    return deleteRequest(API_ENDPOINTS.admin.artisanTeamMember(artisanId, memberId));
   },
 
   fetchArtisanById(artisanId: string): Promise<AdminArtisanDto> {
