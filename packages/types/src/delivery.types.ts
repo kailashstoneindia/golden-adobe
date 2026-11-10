@@ -66,3 +66,33 @@ export interface AdminDriverDto {
   licenceDocViewUrl: string | null;
   aadhaarDocViewUrl: string | null;
 }
+
+export interface QueueItemDto {
+  groupId: string;
+  orderId: string;
+  vendorName: string;
+  vendorCity: string | null;
+  dropCity: string;
+  dropPincode: string;
+  itemCount: number;
+  /** When the vendor marked the goods ready (ISO). */
+  readyAt: string;
+}
+
+export interface AdminAssignmentDto {
+  id: string;
+  status: DeliveryAssignmentStatus;
+  attemptNo: number;
+  groupId: string;
+  orderId: string;
+  vendorName: string;
+  driver: { id: string; name: string; phone: string };
+  assignedAt: string;
+  vendorHandedOverAt: string | null;
+  pickedUpAt: string | null;
+  deliveredAt: string | null;
+  failedAt: string | null;
+  failureReason: DeliveryFailureReason | null;
+  deliveryPhotoViewUrl: string | null;
+  failurePhotoViewUrl: string | null;
+}

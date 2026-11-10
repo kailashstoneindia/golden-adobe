@@ -7,8 +7,10 @@ import { Driver } from './models/driver.model';
 import { DeliveryAssignment } from './models/delivery-assignment.model';
 import { VehiclesService } from './vehicles.service';
 import { DriversService } from './drivers.service';
+import { DeliveryAssignmentsService } from './delivery-assignments.service';
 import { AdminVehiclesController } from './admin-vehicles.controller';
 import { AdminDriversController } from './admin-drivers.controller';
+import { AdminDeliveryController } from './admin-delivery.controller';
 
 // Decision 0060. Later sessions add services and controllers here.
 @Module({
@@ -17,8 +19,8 @@ import { AdminDriversController } from './admin-drivers.controller';
     CatalogModule,
     SequelizeModule.forFeature([Vehicle, Driver, DeliveryAssignment, User]),
   ],
-  controllers: [AdminVehiclesController, AdminDriversController],
-  providers: [VehiclesService, DriversService],
-  exports: [SequelizeModule, VehiclesService, DriversService],
+  controllers: [AdminVehiclesController, AdminDriversController, AdminDeliveryController],
+  providers: [VehiclesService, DriversService, DeliveryAssignmentsService],
+  exports: [SequelizeModule, VehiclesService, DriversService, DeliveryAssignmentsService],
 })
 export class DeliveryModule {}
