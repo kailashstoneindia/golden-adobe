@@ -11,7 +11,11 @@ import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/sequelize';
 import { QueryTypes, Transaction } from 'sequelize';
 import { Sequelize } from 'sequelize-typescript';
-import { DELIVERY_ASSIGNMENT_STATUSES, DELIVERY_OTP_MAX_ATTEMPTS } from '@golden-abode/types';
+import {
+  DELIVERY_ASSIGNMENT_STATUSES,
+  DELIVERY_FAILURE_REASONS,
+  DELIVERY_OTP_MAX_ATTEMPTS,
+} from '@golden-abode/types';
 import type {
   DeliveryAddressSnapshot,
   DeliveryAssignmentStatus,
@@ -38,6 +42,7 @@ const SCOPE_STATUSES: Record<DriverJobScope, DeliveryAssignmentStatus[]> = {
   history: [DELIVERY_ASSIGNMENT_STATUSES.DELIVERED, DELIVERY_ASSIGNMENT_STATUSES.FAILED],
 };
 
+const FAILURE_NOTE_MAX_LENGTH = 500;
 const BLOCKED_REASON = 'This order was refunded or cancelled. Do not deliver it.';
 
 type JobRow = {
@@ -230,6 +235,64 @@ export class DriverDeliveriesService {
       ),
     );
     return this.getOwned(driver.id, assignmentId);
+  }
+
+  // Rule 6: a failed attempt needs a reason and a photo; ops decides what next.
+  async fail(
+    userId: string,
+    assignmentId: string,
+    reason: DeliveryFailureReason,
+    note: string | undefined,
+    photoKey: string,
+  ): Promise<DeliveryJobDto> {
+    if (!(DELIVERY_FAILURE_REASONS as readonly string[]).includes(reason)) {
+      throw new BadRequestException(`reason must be one of ${DELIVERY_FAILURE_REASONS.join(', ')}`);
+    }
+    if (note !== undefined && note.length > FAILURE_NOTE_MAX_LENGTH) {
+      throw new BadRequestException(`note must be at most ${FAILURE_NOTE_MAX_LENGTH} characters`);
+    }
+    const driver = await this.resolveDriver(userId);
+    const existing = await this.assignmentModel.findOne({
+      where: { id: assignmentId, driverId: driver.id },
+    });
+    if (!existing) throw new NotFoundException(`Delivery ${assignmentId} not found`);
+    await this.photos.assertUploadedKey(existing.orderVendorGroupId, 'failed', photoKey);
+
+    await this.sequelize.transaction(async (transaction) => {
+      const assignment = await this.lockOwned(driver.id, assignmentId, transaction);
+      const group = await lockGroup(this.sequelize, assignment.orderVendorGroupId, transaction);
+      assertParentNotLocked(group.orderStatus);
+      if (assignment.status !== DELIVERY_ASSIGNMENT_STATUSES.PICKED_UP) {
+        throw new BadRequestException('only a job that has been picked up can be marked failed');
+      }
+      await assignment.update(
+        {
+          status: DELIVERY_ASSIGNMENT_STATUSES.FAILED,
+          failedAt: new Date(),
+          failureReason: reason,
+          failureNote: note ?? null,
+          failurePhotoKey: photoKey,
+        },
+        { transaction },
+      );
+      await this.setGroupStatus(group.id, OrderVendorGroupStatus.DELIVERY_FAILED, transaction);
+    });
+    return this.getOwned(driver.id, assignmentId);
+  }
+
+  // The driver app asks for an upload link for the assignment's own group.
+  async createPhotoUrl(
+    userId: string,
+    assignmentId: string,
+    kind: 'delivered' | 'failed',
+    contentType: string,
+  ) {
+    const driver = await this.resolveDriver(userId);
+    const assignment = await this.assignmentModel.findOne({
+      where: { id: assignmentId, driverId: driver.id },
+    });
+    if (!assignment) throw new NotFoundException(`Delivery ${assignmentId} not found`);
+    return this.photos.createUploadUrl(assignment.orderVendorGroupId, kind, contentType);
   }
 
   // ── helpers ────────────────────────────────────────────────────────────
