@@ -30,3 +30,17 @@ export const DEMO_DELIVERY_OTP = '123456';
 export const DELIVERY_PHOTO_KINDS = ['handover', 'delivered', 'failed'] as const;
 
 export type DeliveryPhotoKind = (typeof DELIVERY_PHOTO_KINDS)[number];
+
+// Frozen copy of the delivery address, written onto the order at checkout so
+// a later edit to the saved address cannot redirect a paid-for delivery.
+export interface DeliveryAddressSnapshot {
+  label: string | null;
+  addressLine1: string;
+  addressLine2: string | null;
+  city: string;
+  pincode: string;
+  lat: number | null;
+  lng: number | null;
+  recipientName: string | null;
+  recipientPhone: string | null;
+}

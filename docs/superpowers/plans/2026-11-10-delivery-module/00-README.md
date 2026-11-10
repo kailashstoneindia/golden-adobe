@@ -58,7 +58,7 @@ S2 and S3 can run in either order; S7 can run any time after S3, S8 after S4.
 
 ## Progress (tick and commit at the end of each session)
 
-- [ ] S1 foundation
+- [x] S1 foundation
 - [ ] S2 order state machine
 - [ ] S3 admin drivers and vehicles API
 - [ ] S4 admin assignments API

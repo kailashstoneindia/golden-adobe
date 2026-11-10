@@ -1,8 +1,12 @@
 import { randomUUID } from 'crypto';
-import {
-  createPaymentsTestApp,
-  PaymentsTestApp,
-} from '../../orders/__tests__/payments-test-app';
+import { Role } from '@golden-abode/types';
+import { User } from '../../users/models/user.model';
+import { Order } from '../../orders/models/order.model';
+import { OrderVendorGroup } from '../../orders/models/order-vendor-group.model';
+import { Vehicle } from '../models/vehicle.model';
+import { Driver } from '../models/driver.model';
+import { DeliveryAssignment } from '../models/delivery-assignment.model';
+import { createPaymentsTestApp, PaymentsTestApp } from '../../orders/__tests__/payments-test-app';
 
 // Decision 0060 — the one-open-assignment rule is a Postgres partial unique
 // index, so it is tested against the real schema.
@@ -79,5 +83,76 @@ describe('delivery schema (decision 0060)', () => {
       { id: o.orderId },
     );
     expect(after.delivery_address_snapshot.city).toBe('Delhi');
+  });
+});
+
+describe('delivery models (decision 0060)', () => {
+  let t: PaymentsTestApp;
+
+  beforeAll(async () => {
+    t = await createPaymentsTestApp();
+  });
+
+  afterAll(async () => {
+    await t.close();
+  });
+
+  it('loads a driver with its vehicle and user, and keeps assignment defaults', async () => {
+    const suffix = randomUUID().replace(/-/g, '').slice(0, 9);
+    const vehicle = await Vehicle.create({
+      registrationNumber: `DL1C${suffix}`.slice(0, 20),
+      type: 'Tempo',
+    } as never);
+    const user = await User.create({
+      name: 'Model Driver',
+      phone: `5${suffix}`,
+      role: Role.DRIVER,
+      isActive: true,
+      isApproved: true,
+    } as never);
+    const driver = await Driver.create({
+      userId: user.id,
+      licenceNumber: 'DL-MODEL-1',
+      vehicleId: vehicle.id,
+    } as never);
+
+    const loaded = await Driver.findByPk(driver.id, { include: [Vehicle, User] });
+    expect(loaded?.vehicle.id).toBe(vehicle.id);
+    expect(loaded?.user.id).toBe(user.id);
+    expect(vehicle.isActive).toBe(true);
+
+    const o = await t.seedPendingOrder();
+    const created = await DeliveryAssignment.create({
+      orderVendorGroupId: o.groupId,
+      driverId: driver.id,
+      assignedBy: t.adminUserId,
+      assignedAt: new Date(),
+    } as never);
+    const reloaded = await DeliveryAssignment.findByPk(created.id, {
+      include: [Driver, OrderVendorGroup],
+    });
+    expect(reloaded?.status).toBe('assigned');
+    expect(reloaded?.attemptNo).toBe(1);
+    expect(reloaded?.otpAttempts).toBe(0);
+    expect(reloaded?.driver.id).toBe(driver.id);
+    expect(reloaded?.orderVendorGroup.id).toBe(o.groupId);
+  });
+
+  it('round-trips an order delivery address snapshot', async () => {
+    const o = await t.seedPendingOrder();
+    const snapshot = {
+      label: 'Home',
+      addressLine1: '1 Test Street',
+      addressLine2: null,
+      city: 'Delhi',
+      pincode: '110001',
+      lat: null,
+      lng: null,
+      recipientName: 'Test',
+      recipientPhone: '9999999999',
+    };
+    await Order.update({ deliveryAddressSnapshot: snapshot }, { where: { id: o.orderId } });
+    const order = await Order.findByPk(o.orderId);
+    expect(order?.deliveryAddressSnapshot).toEqual(snapshot);
   });
 });

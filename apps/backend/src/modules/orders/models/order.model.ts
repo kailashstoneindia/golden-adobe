@@ -9,6 +9,7 @@ import {
 } from 'sequelize-typescript';
 import { Customer } from '../../customers/models/customer.model';
 import { CustomerAddress } from '../../customers/models/customer-address.model';
+import { DeliveryAddressSnapshot } from '@golden-abode/types';
 import { OrderVendorGroup } from './order-vendor-group.model';
 
 export enum OrderStatus {
@@ -68,6 +69,10 @@ export class Order extends Model<Order> {
   // request is the booking — there is no separate service_bookings table.
   @Column({ type: DataType.UUID, allowNull: true, field: 'booking_id' })
   declare bookingId: string | null;
+
+  // Decision 0060: frozen at checkout; readers fall back to the live address row.
+  @Column({ type: DataType.JSONB, allowNull: true, field: 'delivery_address_snapshot' })
+  declare deliveryAddressSnapshot: DeliveryAddressSnapshot | null;
 
   @BelongsTo(() => Customer)
   declare customer: Customer;
