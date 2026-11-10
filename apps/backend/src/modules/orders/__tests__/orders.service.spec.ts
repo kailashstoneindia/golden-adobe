@@ -411,10 +411,59 @@ describe('OrdersService', () => {
       const result = await service.updateVendorGroupStatus(
         'vendor-1',
         'group-1',
-        OrderVendorGroupStatus.SHIPPED,
+        OrderVendorGroupStatus.READY_FOR_PICKUP,
       );
 
-      expect(result.status).toBe(OrderVendorGroupStatus.SHIPPED);
+      expect(result.status).toBe(OrderVendorGroupStatus.READY_FOR_PICKUP);
+      expect(group.save).toHaveBeenCalled();
+      expect(notificationsMock.sendOrderStatusChanged).toHaveBeenCalledWith(
+        'cust-1',
+        'order-1',
+        'ready_for_pickup',
+      );
+    });
+
+    it.each([
+      [OrderVendorGroupStatus.CONFIRMED, OrderVendorGroupStatus.SHIPPED],
+      [OrderVendorGroupStatus.SHIPPED, OrderVendorGroupStatus.DELIVERED],
+      [OrderVendorGroupStatus.READY_FOR_PICKUP, OrderVendorGroupStatus.CANCELLED],
+      [OrderVendorGroupStatus.READY_FOR_PICKUP, OrderVendorGroupStatus.SHIPPED],
+      [OrderVendorGroupStatus.DELIVERY_FAILED, OrderVendorGroupStatus.SHIPPED],
+    ])('refuses a vendor moving a group from %s to %s (decision 0060)', async (from, to) => {
+      const group = {
+        id: 'group-1',
+        vendorId: 'vendor-1',
+        status: from,
+        orderId: 'order-1',
+        order: { status: OrderStatus.CONFIRMED },
+        save: jest.fn(),
+      };
+      groupModelMock.findOne.mockResolvedValue(group);
+
+      await expect(service.updateVendorGroupStatus('vendor-1', 'group-1', to)).rejects.toThrow(
+        `cannot transition order group from ${from} to ${to}`,
+      );
+      expect(group.save).not.toHaveBeenCalled();
+    });
+
+    it('still lets a vendor cancel a confirmed group', async () => {
+      const group = {
+        id: 'group-1',
+        vendorId: 'vendor-1',
+        status: OrderVendorGroupStatus.CONFIRMED,
+        orderId: 'order-1',
+        order: { status: OrderStatus.CONFIRMED },
+        save: jest.fn(),
+      };
+      groupModelMock.findOne.mockResolvedValue(group);
+      orderModelMock.findByPk.mockResolvedValue({ id: 'order-1', customerId: 'cust-1' });
+
+      const result = await service.updateVendorGroupStatus(
+        'vendor-1',
+        'group-1',
+        OrderVendorGroupStatus.CANCELLED,
+      );
+      expect(result.status).toBe(OrderVendorGroupStatus.CANCELLED);
     });
 
     it('refuses to advance a group whose parent order has been refunded (closes finding 4)', async () => {

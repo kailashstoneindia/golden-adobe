@@ -375,12 +375,17 @@ export class OrdersService {
         OrderVendorGroupStatus.CONFIRMED,
         OrderVendorGroupStatus.CANCELLED,
       ],
+      // Decision 0060: vendors only mark goods ready or cancel. Shipping and
+      // delivery belong to the driver flow, ops re-attempts and the admin
+      // override, so every later status is empty for a vendor.
       [OrderVendorGroupStatus.CONFIRMED]: [
-        OrderVendorGroupStatus.SHIPPED,
+        OrderVendorGroupStatus.READY_FOR_PICKUP,
         OrderVendorGroupStatus.CANCELLED,
       ],
-      [OrderVendorGroupStatus.SHIPPED]: [OrderVendorGroupStatus.DELIVERED],
+      [OrderVendorGroupStatus.READY_FOR_PICKUP]: [],
+      [OrderVendorGroupStatus.SHIPPED]: [],
       [OrderVendorGroupStatus.DELIVERED]: [],
+      [OrderVendorGroupStatus.DELIVERY_FAILED]: [],
       [OrderVendorGroupStatus.CANCELLED]: [],
     };
     if (!validNextStatuses[group.status].includes(status)) {
