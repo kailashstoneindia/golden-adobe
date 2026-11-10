@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { SequelizeModule } from '@nestjs/sequelize';
+import { CatalogModule } from '../catalog/catalog.module';
 import { User } from '../users/models/user.model';
 import { Vehicle } from './models/vehicle.model';
 import { Driver } from './models/driver.model';
@@ -11,7 +12,11 @@ import { AdminDriversController } from './admin-drivers.controller';
 
 // Decision 0060. Later sessions add services and controllers here.
 @Module({
-  imports: [SequelizeModule.forFeature([Vehicle, Driver, DeliveryAssignment, User])],
+  imports: [
+    // OBJECT_STORAGE for driver documents and, later, delivery photos.
+    CatalogModule,
+    SequelizeModule.forFeature([Vehicle, Driver, DeliveryAssignment, User]),
+  ],
   controllers: [AdminVehiclesController, AdminDriversController],
   providers: [VehiclesService, DriversService],
   exports: [SequelizeModule, VehiclesService, DriversService],

@@ -4,6 +4,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Inject } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { InjectModel } from '@nestjs/sequelize';
 import { Op, Transaction, UniqueConstraintError, WhereOptions } from 'sequelize';
 import { Sequelize } from 'sequelize-typescript';
@@ -14,6 +16,16 @@ import { Driver } from './models/driver.model';
 import { Vehicle } from './models/vehicle.model';
 import { CreateDriverDto, ListDriversQueryDto, UpdateDriverDto } from './dto/driver.dto';
 import { toVehicleDto } from './vehicles.service';
+import { OBJECT_STORAGE, ObjectStorage, PresignedPost } from '../catalog/media/object-storage';
+import type { DriverDocumentKind } from './dto/driver.dto';
+
+const DOCUMENT_MAX_BYTES = 10 * 1024 * 1024;
+const DOCUMENT_PRESIGN_TTL_SECONDS = 300;
+const DOCUMENT_EXTENSIONS: Record<string, string> = {
+  'application/pdf': 'pdf',
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+};
 
 @Injectable()
 export class DriversService {
@@ -22,6 +34,7 @@ export class DriversService {
     @InjectModel(Vehicle) private readonly vehicleModel: typeof Vehicle,
     @InjectModel(User) private readonly userModel: typeof User,
     private readonly sequelize: Sequelize,
+    @Inject(OBJECT_STORAGE) private readonly storage: ObjectStorage,
   ) {}
 
   // Decision 0060 rule 12: ops creates the account; the driver then logs in
@@ -197,6 +210,63 @@ export class DriversService {
   }
 
   private async toDto(driver: Driver): Promise<AdminDriverDto> {
-    return this.toListDto(driver);
+    return {
+      ...this.toListDto(driver),
+      licenceDocViewUrl: await this.viewUrl(driver.licenceDocKey),
+      aadhaarDocViewUrl: await this.viewUrl(driver.aadhaarDocKey),
+    };
+  }
+
+  // A short-lived signed link, or null when nothing was uploaded (or the
+  // object has since gone missing), so the admin never gets a dead link.
+  private async viewUrl(key: string | null): Promise<string | null> {
+    if (!key || !(await this.storage.head(key))) return null;
+    return this.storage.presignGet(key, DOCUMENT_PRESIGN_TTL_SECONDS);
+  }
+
+  // Decision 0060 rule 11. Same flow as ArtisansService.createUploadUrl: admin
+  // uploads straight to storage, then confirms the key.
+  async createDocumentUploadUrl(
+    id: string,
+    kind: DriverDocumentKind,
+    contentType: string,
+  ): Promise<PresignedPost & { key: string }> {
+    await this.requireDriver(id);
+    const extension = DOCUMENT_EXTENSIONS[contentType];
+    if (!extension) {
+      throw new BadRequestException('contentType must be application/pdf, image/jpeg or image/png');
+    }
+    const key = `drivers/${id}/${kind}-${randomUUID()}.${extension}`;
+    const post = await this.storage.presignPost({
+      key,
+      contentType,
+      maxBytes: DOCUMENT_MAX_BYTES,
+      expiresInSeconds: DOCUMENT_PRESIGN_TTL_SECONDS,
+    });
+    return { ...post, key };
+  }
+
+  async confirmDocument(
+    id: string,
+    kind: DriverDocumentKind,
+    key: string,
+  ): Promise<AdminDriverDto> {
+    const driver = await this.requireDriver(id);
+    if (!key.startsWith(`drivers/${id}/${kind}-`)) {
+      throw new BadRequestException(`key is not an upload for this driver's ${kind}`);
+    }
+    if (!(await this.storage.head(key))) {
+      throw new BadRequestException('no uploaded object found for this key');
+    }
+    await driver.update(kind === 'licence' ? { licenceDocKey: key } : { aadhaarDocKey: key });
+    return this.get(id);
+  }
+
+  private async requireDriver(id: string): Promise<Driver> {
+    const driver = await this.driverModel.findByPk(id);
+    if (!driver) {
+      throw new NotFoundException(`Driver ${id} not found`);
+    }
+    return driver;
   }
 }

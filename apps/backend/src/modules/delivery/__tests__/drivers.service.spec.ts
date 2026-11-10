@@ -9,6 +9,7 @@ import { CreateDriverDto } from '../dto/driver.dto';
 import { User } from '../../users/models/user.model';
 import { Driver } from '../models/driver.model';
 import { createDeliveryTestModule } from './delivery-test-app';
+import { FakeObjectStorage } from '../../artisans/__tests__/fake-object-storage';
 
 let phoneSeq = Math.floor(Math.random() * 900000);
 const nextPhone = () => `+9198${String(1000000 + phoneSeq++).padStart(8, '0')}`;
@@ -226,5 +227,96 @@ describe('DriversService update (decision 0060)', () => {
     await expect(
       drivers.update('00000000-0000-4000-8000-000000000000', { licenceNumber: 'TEST-X' }),
     ).rejects.toThrow(NotFoundException);
+  });
+});
+
+describe('DriversService documents (decision 0060)', () => {
+  let drivers: DriversService;
+  let storage: FakeObjectStorage;
+  let cleanup: () => Promise<void>;
+
+  beforeAll(async () => {
+    const t = await createDeliveryTestModule([DriversService, VehiclesService]);
+    drivers = t.moduleRef.get(DriversService);
+    storage = t.storage;
+    cleanup = t.cleanup;
+  });
+
+  afterAll(async () => {
+    await cleanup();
+  });
+
+  const make = () =>
+    drivers.create({
+      name: 'Test Driver Docs',
+      phone: nextPhone(),
+      licenceNumber: `TEST-${tag()}`,
+    } as never);
+
+  it.each(['licence', 'aadhaar'] as const)(
+    'presigns an upload for the %s under drivers/<id>/',
+    async (kind) => {
+      const d = await make();
+      const spy = jest.spyOn(storage, 'presignPost');
+      const post = await drivers.createDocumentUploadUrl(d.id, kind, 'image/jpeg');
+
+      const input = (spy.mock.calls[0] as unknown[])[0] as { key: string; contentType: string };
+      expect(input.key).toMatch(new RegExp(`^drivers/${d.id}/${kind}-[0-9a-f-]{36}\.jpg$`));
+      expect(input.contentType).toBe('image/jpeg');
+      expect(post.key).toBe(input.key);
+      spy.mockRestore();
+    },
+  );
+
+  it('rejects a content type other than pdf, jpeg or png', async () => {
+    const d = await make();
+    await expect(drivers.createDocumentUploadUrl(d.id, 'licence', 'image/gif')).rejects.toThrow(
+      BadRequestException,
+    );
+  });
+
+  it('rejects confirming a key outside drivers/<id>/<kind>-', async () => {
+    const d = await make();
+    const other = await make();
+    for (const key of [
+      `drivers/${other.id}/licence-abc.jpg`,
+      `drivers/${d.id}/aadhaar-abc.jpg`,
+      `artisans/${d.id}/licence-abc.jpg`,
+    ]) {
+      storage.seed(key);
+      await expect(drivers.confirmDocument(d.id, 'licence', key)).rejects.toThrow(
+        BadRequestException,
+      );
+    }
+  });
+
+  it('rejects confirming a key that was never uploaded', async () => {
+    const d = await make();
+    await expect(
+      drivers.confirmDocument(d.id, 'licence', `drivers/${d.id}/licence-missing.jpg`),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('stores the key, and get returns signed view links', async () => {
+    const d = await make();
+    const licenceKey = `drivers/${d.id}/licence-${tag()}.jpg`;
+    const aadhaarKey = `drivers/${d.id}/aadhaar-${tag()}.png`;
+    storage.seed(licenceKey);
+    storage.seed(aadhaarKey);
+
+    await drivers.confirmDocument(d.id, 'licence', licenceKey);
+    const confirmed = await drivers.confirmDocument(d.id, 'aadhaar', aadhaarKey);
+    expect(confirmed.licenceDocViewUrl).toContain(licenceKey);
+    expect(confirmed.aadhaarDocViewUrl).toContain(aadhaarKey);
+
+    const got = await drivers.get(d.id);
+    expect(got.licenceDocViewUrl).toContain(licenceKey);
+  });
+
+  it('get shows no link when the driver has no document yet', async () => {
+    const d = await make();
+    const got = await drivers.get(d.id);
+    expect(got.licenceDocViewUrl).toBeNull();
+    expect(got.aadhaarDocViewUrl).toBeNull();
   });
 });

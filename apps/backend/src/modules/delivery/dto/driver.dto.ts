@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
+  IsIn,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -116,4 +117,29 @@ export class UpdateDriverDto {
   @IsOptional()
   @IsUUID()
   vehicleId?: string | null;
+}
+
+export const DRIVER_DOCUMENT_KINDS = ['licence', 'aadhaar'] as const;
+export type DriverDocumentKind = (typeof DRIVER_DOCUMENT_KINDS)[number];
+
+export class DriverDocumentUploadUrlDto {
+  @ApiProperty({ enum: DRIVER_DOCUMENT_KINDS })
+  @IsIn(DRIVER_DOCUMENT_KINDS)
+  kind: DriverDocumentKind;
+
+  @ApiProperty({ example: 'image/jpeg', description: 'application/pdf, image/jpeg or image/png' })
+  @IsString()
+  contentType: string;
+}
+
+export class ConfirmDriverDocumentDto {
+  @ApiProperty({ enum: DRIVER_DOCUMENT_KINDS })
+  @IsIn(DRIVER_DOCUMENT_KINDS)
+  kind: DriverDocumentKind;
+
+  @ApiProperty({ description: 'The key returned by document-upload-url' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(255)
+  key: string;
 }
