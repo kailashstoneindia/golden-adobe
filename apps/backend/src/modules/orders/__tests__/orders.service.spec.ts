@@ -10,6 +10,7 @@ import { Order, OrderStatus } from '../models/order.model';
 import { OrderVendorGroup, OrderVendorGroupStatus } from '../models/order-vendor-group.model';
 import { PaymentEvent } from '../models/payment-event.model';
 import { CustomersService } from '../../customers/customers.service';
+import { DeliveryAssignment } from '../../delivery/models/delivery-assignment.model';
 import { NOTIFICATION_SERVICE } from '../../notifications/notification.interface';
 import { Artisan } from '../../artisans/models/artisan.model';
 import { ArtisanHireRequest } from '../../artisans/models/artisan-hire-request.model';
@@ -23,6 +24,7 @@ describe('OrdersService', () => {
   let notificationsMock: { sendOrderStatusChanged: jest.Mock };
   let customersServiceMock: { resolveCustomerByUserId: jest.Mock };
   let artisanModelMock: { findOne: jest.Mock };
+  let assignmentModelMock: { update: jest.Mock };
   let hireRequestModelMock: { findByPk: jest.Mock };
   let configServiceMock: { get: jest.Mock };
   let orderPaymentMock: {
@@ -40,6 +42,8 @@ describe('OrdersService', () => {
     notificationsMock = { sendOrderStatusChanged: jest.fn() };
     customersServiceMock = { resolveCustomerByUserId: jest.fn() };
     artisanModelMock = { findOne: jest.fn() };
+    assignmentModelMock = { update: jest.fn().mockResolvedValue([0]) };
+    sequelizeMock.transaction.mockImplementation(async (cb: any) => cb(mockTransaction));
     hireRequestModelMock = { findByPk: jest.fn() };
     configServiceMock = { get: jest.fn().mockReturnValue('all') };
     orderPaymentMock = {
@@ -55,6 +59,7 @@ describe('OrdersService', () => {
         { provide: getModelToken(OrderVendorGroup), useValue: groupModelMock },
         { provide: getModelToken(PaymentEvent), useValue: paymentEventModelMock },
         { provide: getModelToken(Artisan), useValue: artisanModelMock },
+        { provide: getModelToken(DeliveryAssignment), useValue: assignmentModelMock },
         { provide: getModelToken(ArtisanHireRequest), useValue: hireRequestModelMock },
         { provide: Sequelize, useValue: sequelizeMock },
         { provide: CustomersService, useValue: customersServiceMock },
@@ -596,6 +601,66 @@ describe('OrdersService', () => {
         'group-1',
         OrderVendorGroupStatus.CANCELLED,
         'cleanup after refund',
+      );
+
+      expect(result.status).toBe(OrderVendorGroupStatus.CANCELLED);
+    });
+  });
+
+  describe('adminOverrideVendorGroupStatus — open delivery assignments (decision 0060)', () => {
+    function arrange(from: OrderVendorGroupStatus) {
+      const group = {
+        id: 'group-1',
+        status: from,
+        orderId: 'order-1',
+        save: jest.fn(),
+      };
+      groupModelMock.findByPk.mockResolvedValue(group);
+      orderModelMock.findByPk.mockResolvedValue({
+        id: 'order-1',
+        customerId: 'cust-1',
+        status: OrderStatus.CONFIRMED,
+      });
+      return group;
+    }
+
+    it('cancels the open assignment, in the same transaction, when overriding to cancelled', async () => {
+      const group = arrange(OrderVendorGroupStatus.SHIPPED);
+
+      await service.adminOverrideVendorGroupStatus(
+        'group-1',
+        OrderVendorGroupStatus.CANCELLED,
+        'customer called to cancel',
+      );
+
+      expect(assignmentModelMock.update).toHaveBeenCalledTimes(1);
+      const [values, options] = assignmentModelMock.update.mock.calls[0];
+      expect(values).toMatchObject({ status: 'cancelled', cancelledAt: expect.any(Date) });
+      expect(options.where).toMatchObject({ orderVendorGroupId: 'group-1' });
+      expect(options.where.status).toEqual(['assigned', 'picked_up']);
+      expect(options.transaction).toBe(mockTransaction);
+      expect(group.save).toHaveBeenCalledWith({ transaction: mockTransaction });
+    });
+
+    it.each([OrderVendorGroupStatus.SHIPPED, OrderVendorGroupStatus.READY_FOR_PICKUP])(
+      'leaves the assignment alone when overriding to %s',
+      async (target) => {
+        arrange(OrderVendorGroupStatus.CONFIRMED);
+
+        await service.adminOverrideVendorGroupStatus('group-1', target, 'ops correction');
+
+        expect(assignmentModelMock.update).not.toHaveBeenCalled();
+      },
+    );
+
+    it('works as before when the group has no open assignment', async () => {
+      arrange(OrderVendorGroupStatus.CONFIRMED);
+      assignmentModelMock.update.mockResolvedValue([0]);
+
+      const result = await service.adminOverrideVendorGroupStatus(
+        'group-1',
+        OrderVendorGroupStatus.CANCELLED,
+        'vendor out of stock',
       );
 
       expect(result.status).toBe(OrderVendorGroupStatus.CANCELLED);

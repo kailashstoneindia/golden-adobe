@@ -9,6 +9,8 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/sequelize';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { DELIVERY_ASSIGNMENT_STATUSES } from '@golden-abode/types';
+import { DeliveryAssignment } from '../delivery/models/delivery-assignment.model';
 import { Sequelize } from 'sequelize-typescript';
 import { Op, QueryTypes } from 'sequelize';
 import type {
@@ -71,6 +73,7 @@ export class OrdersService {
     @InjectModel(PaymentEvent) private readonly paymentEventModel: typeof PaymentEvent,
     @InjectModel(Artisan) private readonly artisanModel: typeof Artisan,
     @InjectModel(ArtisanHireRequest) private readonly hireRequestModel: typeof ArtisanHireRequest,
+    @InjectModel(DeliveryAssignment) private readonly assignmentModel: typeof DeliveryAssignment,
     private readonly sequelize: Sequelize,
     private readonly customersService: CustomersService,
     @Inject(NOTIFICATION_SERVICE) private readonly notifications: NotificationService,
@@ -582,8 +585,31 @@ export class OrdersService {
     this.logger.warn(
       `admin override: order_vendor_group ${groupId} forced from ${group.status} to ${status} — reason: ${reason}`,
     );
-    group.status = status;
-    await group.save();
+    // Decision 0060 rule 8: forcing a group to anything other than
+    // ready_for_pickup/shipped means the driver's job is no longer valid, so
+    // the open assignment is closed in the same transaction as the status.
+    const keepsAssignmentOpen =
+      status === OrderVendorGroupStatus.READY_FOR_PICKUP ||
+      status === OrderVendorGroupStatus.SHIPPED;
+    await this.sequelize.transaction(async (transaction) => {
+      group.status = status;
+      await group.save({ transaction });
+      if (!keepsAssignmentOpen) {
+        await this.assignmentModel.update(
+          { status: DELIVERY_ASSIGNMENT_STATUSES.CANCELLED, cancelledAt: new Date() },
+          {
+            where: {
+              orderVendorGroupId: groupId,
+              status: [
+                DELIVERY_ASSIGNMENT_STATUSES.ASSIGNED,
+                DELIVERY_ASSIGNMENT_STATUSES.PICKED_UP,
+              ],
+            },
+            transaction,
+          },
+        );
+      }
+    });
 
     if (order) {
       await this.notifications.sendOrderStatusChanged(order.customerId, order.id, status);
