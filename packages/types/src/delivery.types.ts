@@ -44,3 +44,25 @@ export interface DeliveryAddressSnapshot {
   recipientName: string | null;
   recipientPhone: string | null;
 }
+
+export interface VehicleDto {
+  id: string;
+  registrationNumber: string;
+  type: string;
+  notes: string | null;
+  isActive: boolean;
+}
+
+export interface AdminDriverDto {
+  id: string;
+  userId: string;
+  name: string;
+  phone: string;
+  isActive: boolean;
+  licenceNumber: string;
+  helperName: string | null;
+  helperPhone: string | null;
+  vehicle: VehicleDto | null;
+  licenceDocViewUrl: string | null;
+  aadhaarDocViewUrl: string | null;
+}
