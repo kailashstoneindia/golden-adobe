@@ -27,7 +27,7 @@ import { PaymentEvent } from './models/payment-event.model';
 import { CustomersService } from '../customers/customers.service';
 import { NOTIFICATION_SERVICE, NotificationService } from '../notifications/notification.interface';
 import { OrderPaymentService } from './order-payment.service';
-import { LOCKED_PARENT_ORDER_STATUSES } from './refund-status';
+import { GROUP_LOCKED_MESSAGE, LOCKED_PARENT_ORDER_STATUSES } from './refund-status';
 import {
   PAYMENT_CAPTURE_WINDOW_MINUTES,
   ProviderPayment,
@@ -57,8 +57,6 @@ import { toAdminOrderDto } from './admin-order.mapper';
 // given up is auto-refunded by Razorpay instead of captured.
 const STALE_RESERVATION_TIMEOUT_MS = PAYMENT_CAPTURE_WINDOW_MINUTES * 60_000;
 
-const GROUP_LOCKED_MESSAGE =
-  'order is refunded, being refunded or cancelled, and its groups can no longer be updated';
 const IN_FLIGHT_PAYMENT_MESSAGE =
   'A payment is in progress for this order. Try again in a few minutes.';
 const PAYMENT_STATUS_UNVERIFIED_MESSAGE = 'Could not verify payment status. Try again shortly.';

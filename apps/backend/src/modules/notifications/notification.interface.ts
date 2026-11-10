@@ -25,4 +25,10 @@ export interface NotificationService {
     hireRequestId: string,
     status: string,
   ): Promise<void>;
+  // Decision 0060: ops assigned a delivery job to this driver. Log-only until
+  // a push provider exists; the driver app pulls its jobs meanwhile.
+  sendDeliveryAssigned(driverUserId: string, assignmentId: string): Promise<void>;
+  // Decision 0060: the customer's delivery code, issued at pickup. The code
+  // itself is also shown in the customer app while the group is shipped.
+  sendDeliveryOtp(customerId: string, orderId: string, otp: string): Promise<void>;
 }
