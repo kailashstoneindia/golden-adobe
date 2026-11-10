@@ -61,7 +61,7 @@ S2 and S3 can run in either order; S7 can run any time after S3, S8 after S4.
 - [x] S1 foundation
 - [x] S2 order state machine
 - [x] S3 admin drivers and vehicles API
-- [ ] S4 admin assignments API (Tasks 1-4 done, **Task 5 board list remaining**, see Handoff)
+- [x] S4 admin assignments API
 - [ ] S5 driver API
 - [ ] S6 vendor, customer, notifications
 - [ ] S7 admin UI: drivers and vehicles

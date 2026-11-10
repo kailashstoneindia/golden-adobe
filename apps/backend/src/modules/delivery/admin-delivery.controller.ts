@@ -15,7 +15,12 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { DeliveryAssignmentsService } from './delivery-assignments.service';
-import { AssignDeliveryDto, DriverIdDto, QueueQueryDto } from './dto/delivery-assignment.dto';
+import {
+  AssignDeliveryDto,
+  AssignmentListQueryDto,
+  DriverIdDto,
+  QueueQueryDto,
+} from './dto/delivery-assignment.dto';
 
 @ApiTags('Admin delivery')
 @Controller('admin/delivery')
@@ -29,6 +34,12 @@ export class AdminDeliveryController {
   @ApiOperation({ summary: 'Ready-for-pickup groups with nobody assigned, oldest first' })
   queue(@Query() query: QueueQueryDto) {
     return this.assignments.listQueue(query);
+  }
+
+  @Get('assignments')
+  @ApiOperation({ summary: 'Ops board: all assignments, filter by status and driver' })
+  list(@Query() query: AssignmentListQueryDto) {
+    return this.assignments.list(query);
   }
 
   @Post('assignments')

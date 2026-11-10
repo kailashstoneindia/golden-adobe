@@ -473,3 +473,95 @@ describe('DeliveryAssignmentsService.reattempt (decision 0060 rule 7)', () => {
     expect(group.status).toBe('delivery_failed');
   });
 });
+
+describe('DeliveryAssignmentsService.list (decision 0060 board)', () => {
+  let f: Awaited<ReturnType<typeof setup>>;
+
+  beforeAll(async () => {
+    f = await setup();
+  });
+  afterAll(async () => {
+    await f.close();
+  });
+
+  async function seedAssignment(
+    driverId: string,
+    status: string,
+    extra: { deliveryPhotoKey?: string; failurePhotoKey?: string } = {},
+  ) {
+    const g = await f.seedReadyGroup({ groupStatus: 'shipped' });
+    const [row] = await f.t.query<{ id: string }>(
+      `INSERT INTO delivery_assignments
+         (order_vendor_group_id, driver_id, status, assigned_by, assigned_at, picked_up_at,
+          delivery_otp, delivered_at, delivery_photo_key, failed_at, failure_reason, failure_photo_key)
+       VALUES (:g, :d, :s, :a, NOW(), NOW(), '123456',
+          CASE WHEN :s = 'delivered' THEN NOW() END, :dp,
+          CASE WHEN :s = 'failed' THEN NOW() END,
+          CASE WHEN :s = 'failed' THEN 'customer_unavailable' END, :fp)
+       RETURNING id`,
+      {
+        g: g.groupId,
+        d: driverId,
+        s: status,
+        a: f.t.adminUserId,
+        dp: extra.deliveryPhotoKey ?? null,
+        fp: extra.failurePhotoKey ?? null,
+      },
+    );
+    return row.id;
+  }
+
+  it('filters by status and by driver', async () => {
+    const d1 = await f.makeDriver('Test Driver Board A');
+    const d2 = await f.makeDriver('Test Driver Board B');
+    const a1 = await seedAssignment(d1.id, 'picked_up');
+    const a2 = await seedAssignment(d2.id, 'picked_up');
+    const a3 = await seedAssignment(d1.id, 'delivered', { deliveryPhotoKey: 'k/d.jpg' });
+
+    const byDriver = await f.service.list({ driverId: d1.id, page: 1, pageSize: 100 });
+    expect(byDriver.items.map((i) => i.id).sort()).toEqual([a1, a3].sort());
+
+    const byStatus = await f.service.list({
+      status: 'picked_up',
+      driverId: d2.id,
+      page: 1,
+      pageSize: 100,
+    });
+    expect(byStatus.items.map((i) => i.id)).toEqual([a2]);
+    expect(byStatus.items[0].driver).toMatchObject({ id: d2.id, name: 'Test Driver Board B' });
+  });
+
+  it('pages the results with the repo paginated shape', async () => {
+    const d = await f.makeDriver('Test Driver Board Page');
+    await seedAssignment(d.id, 'assigned');
+    await seedAssignment(d.id, 'assigned');
+    await seedAssignment(d.id, 'assigned');
+
+    const p1 = await f.service.list({ driverId: d.id, page: 1, pageSize: 2 });
+    const p2 = await f.service.list({ driverId: d.id, page: 2, pageSize: 2 });
+    expect(p1).toMatchObject({ total: 3, page: 1, limit: 2, totalPages: 2 });
+    expect(p1.items).toHaveLength(2);
+    expect(p2.items).toHaveLength(1);
+  });
+
+  it('signs the delivery photo only for delivered rows and the failure photo only for failed rows', async () => {
+    const d = await f.makeDriver('Test Driver Board Photo');
+    const delivered = await seedAssignment(d.id, 'delivered', {
+      deliveryPhotoKey: 'delivery/proof.jpg',
+      failurePhotoKey: 'ignored/stale.jpg',
+    });
+    const failed = await seedAssignment(d.id, 'failed', { failurePhotoKey: 'delivery/fail.jpg' });
+    const open = await seedAssignment(d.id, 'picked_up', {
+      deliveryPhotoKey: 'delivery/early.jpg',
+    });
+
+    const { items } = await f.service.list({ driverId: d.id, page: 1, pageSize: 100 });
+    const byId = (id: string) => items.find((i) => i.id === id)!;
+    expect(byId(delivered).deliveryPhotoViewUrl).toContain('delivery/proof.jpg');
+    expect(byId(delivered).failurePhotoViewUrl).toBeNull();
+    expect(byId(failed).failurePhotoViewUrl).toContain('delivery/fail.jpg');
+    expect(byId(failed).deliveryPhotoViewUrl).toBeNull();
+    expect(byId(open).deliveryPhotoViewUrl).toBeNull();
+    expect(byId(open).failurePhotoViewUrl).toBeNull();
+  });
+});

@@ -27,7 +27,12 @@ import { DeliveryAssignment } from './models/delivery-assignment.model';
 import { assertParentNotLocked } from './delivery-rules';
 import { generateDeliveryOtp } from './delivery-otp';
 import { NOTIFICATION_SERVICE, NotificationService } from '../notifications/notification.interface';
-import { AssignDeliveryDto, QueueQueryDto } from './dto/delivery-assignment.dto';
+import { OBJECT_STORAGE, ObjectStorage } from '../catalog/media/object-storage';
+import {
+  AssignDeliveryDto,
+  AssignmentListQueryDto,
+  QueueQueryDto,
+} from './dto/delivery-assignment.dto';
 
 type QueueRow = {
   group_id: string;
@@ -65,6 +70,9 @@ const OPEN_STATUSES = [
   DELIVERY_ASSIGNMENT_STATUSES.PICKED_UP,
 ];
 
+// Photo links are short-lived; the board is refreshed often enough.
+const PHOTO_PRESIGN_TTL_SECONDS = 300;
+
 const iso = (d: Date | null): string | null => (d ? new Date(d).toISOString() : null);
 
 @Injectable()
@@ -75,6 +83,7 @@ export class DeliveryAssignmentsService {
     private readonly sequelize: Sequelize,
     private readonly configService: ConfigService,
     @Inject(NOTIFICATION_SERVICE) private readonly notifications: NotificationService,
+    @Inject(OBJECT_STORAGE) private readonly storage: ObjectStorage,
   ) {}
 
   private readonly logger = new Logger(DeliveryAssignmentsService.name);
@@ -308,6 +317,33 @@ export class DeliveryAssignmentsService {
     }
   }
 
+  // The ops board: every assignment, newest first, optionally narrowed by
+  // status and driver. Proof photos are signed per row, only on the status
+  // they belong to.
+  async list(query: AssignmentListQueryDto): Promise<PaginatedResponse<AdminAssignmentDto>> {
+    const page = query.page ?? 1;
+    const limit = query.pageSize ?? 20;
+    const where =
+      '(:status::text IS NULL OR a.status = :status::text) AND (:driverId::uuid IS NULL OR a.driver_id = :driverId::uuid)';
+    const filters = { status: query.status ?? null, driverId: query.driverId ?? null };
+    const rows = await this.queryAssignments(
+      where,
+      { ...filters, limit, offset: (page - 1) * limit },
+      true,
+    );
+    const [{ total }] = await this.sequelize.query<{ total: string }>(
+      `SELECT COUNT(*) AS total FROM delivery_assignments a WHERE ${where}`,
+      { replacements: filters, type: QueryTypes.SELECT },
+    );
+    return {
+      items: await Promise.all(rows.map((r) => this.toDto(r))),
+      total: Number(total),
+      page,
+      limit,
+      totalPages: Math.ceil(Number(total) / limit),
+    };
+  }
+
   async getDto(id: string): Promise<AdminAssignmentDto> {
     const rows = await this.queryAssignments('a.id = :id', { id });
     if (rows.length === 0) {
@@ -382,7 +418,7 @@ export class DeliveryAssignmentsService {
     return error;
   }
 
-  private queryAssignments(where: string, replacements: Record<string, unknown>) {
+  private queryAssignments(where: string, replacements: Record<string, unknown>, paged = false) {
     return this.sequelize.query<AssignmentRow>(
       `SELECT a.id, a.status, a.attempt_no, g.id AS group_id, g.order_id, v.shop_name,
               dr.id AS driver_id, u.name AS driver_name, u.phone AS driver_phone,
@@ -394,12 +430,17 @@ export class DeliveryAssignmentsService {
        JOIN drivers dr ON dr.id = a.driver_id
        JOIN users u ON u.id = dr.user_id
        WHERE ${where}
-       ORDER BY a.assigned_at DESC, a.id ASC`,
+       ORDER BY a.assigned_at DESC, a.id ASC
+       ${paged ? 'LIMIT :limit OFFSET :offset' : ''}`,
       { replacements, type: QueryTypes.SELECT },
     );
   }
 
-  private toDto(r: AssignmentRow): AdminAssignmentDto {
+  private signPhoto(key: string | null): Promise<string | null> {
+    return key ? this.storage.presignGet(key, PHOTO_PRESIGN_TTL_SECONDS) : Promise.resolve(null);
+  }
+
+  private async toDto(r: AssignmentRow): Promise<AdminAssignmentDto> {
     return {
       id: r.id,
       status: r.status,
@@ -414,8 +455,12 @@ export class DeliveryAssignmentsService {
       deliveredAt: iso(r.delivered_at),
       failedAt: iso(r.failed_at),
       failureReason: r.failure_reason,
-      deliveryPhotoViewUrl: null,
-      failurePhotoViewUrl: null,
+      deliveryPhotoViewUrl: await this.signPhoto(
+        r.status === DELIVERY_ASSIGNMENT_STATUSES.DELIVERED ? r.delivery_photo_key : null,
+      ),
+      failurePhotoViewUrl: await this.signPhoto(
+        r.status === DELIVERY_ASSIGNMENT_STATUSES.FAILED ? r.failure_photo_key : null,
+      ),
     };
   }
 }
