@@ -68,6 +68,8 @@ valid when circumstances change.
 | [0057](0057-otp-send-limit-demo-mode.md)                     | OTP send limit applies only when real SMS is on                                                  | 2026-11-04 | Implemented (pending merge)                                   |
 | [0058](0058-admin-visibility-and-editing.md)                 | Admin visibility, session refresh and editing                                                    | 2026-11-04 | Accepted                                                      |
 | [0059](0059-server-side-approval-gate.md)                    | Server-side approval gate for vendors and ustaads                                                | 2026-11-04 | Accepted                                                      |
+| [0061](0061-catalog-onboarding-review.md)                    | Admin brand and product onboarding: review findings                                              | 2026-11-10 | Findings. Superseded by 0062                                  |
+| [0062](0062-catalog-onboarding-design.md)                    | Admin brand and product onboarding: design                                                       | 2026-11-10 | Draft (nothing built)                                         |
 
 **Numbering note (corrected 2026-10-19):** 0034 was written 2026-10-15 but existed only as an
 uncommitted file until recovered and committed here alongside 0035–0037 — it was never missing
