@@ -96,3 +96,46 @@ export interface AdminAssignmentDto {
   deliveryPhotoViewUrl: string | null;
   failurePhotoViewUrl: string | null;
 }
+
+// Driver app (docs/delivery-mobile-api-contract.md section 1).
+export interface DeliveryJobDto {
+  id: string;
+  status: DeliveryAssignmentStatus;
+  attemptNo: number;
+  /** True when the order was refunded or cancelled: show STOP, actions return 400. */
+  blocked: boolean;
+  blockedReason: string | null;
+  orderId: string;
+  groupId: string;
+  pickup: {
+    vendorName: string;
+    address: string;
+    lat: number | null;
+    lng: number | null;
+    phone: string;
+  };
+  drop: {
+    recipientName: string;
+    phone: string;
+    addressLine1: string;
+    addressLine2: string | null;
+    city: string;
+    pincode: string;
+    lat: number | null;
+    lng: number | null;
+  };
+  items: { orderItemId: string; name: string; quantity: number; unit: string }[];
+  vendorHandedOverAt: string | null;
+  pickedUpAt: string | null;
+  deliveredAt: string | null;
+  failedAt: string | null;
+  failureReason: DeliveryFailureReason | null;
+}
+
+export interface DriverProfileDto {
+  id: string;
+  name: string;
+  phone: string;
+  helper: { name: string; phone: string } | null;
+  vehicle: { registrationNumber: string; type: string } | null;
+}
