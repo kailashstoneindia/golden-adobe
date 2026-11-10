@@ -132,7 +132,9 @@ describe('DriverDeliveriesService profile, list and detail (decision 0060)', () 
     const me = await f.makeDriver('Test Driver Pickup Info');
     const g = await f.seedGroup({ quantity: 3 });
     const id = await f.seedAssignment(g.groupId, me.id, 'assigned');
-    await f.t.query(`INSERT INTO unit_of_measure (id, code, name) VALUES (gen_random_uuid(), 'TESTU1', 'Test Bag')`);
+    await f.t.query(
+      `INSERT INTO unit_of_measure (id, code, name) VALUES (gen_random_uuid(), 'TESTU1', 'Test Bag')`,
+    );
     await f.t.query(
       `UPDATE master_product SET unit_of_measure_id = (SELECT id FROM unit_of_measure WHERE code = 'TESTU1')
        WHERE id = (SELECT master_product_id FROM order_items WHERE id = :i)`,

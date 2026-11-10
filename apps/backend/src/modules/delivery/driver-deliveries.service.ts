@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/sequelize';
 import { QueryTypes, Transaction } from 'sequelize';
@@ -17,7 +17,11 @@ import { Driver } from './models/driver.model';
 import { DeliveryAssignment } from './models/delivery-assignment.model';
 import { Vehicle } from './models/vehicle.model';
 import { User } from '../users/models/user.model';
+import { OrderVendorGroupStatus } from '../orders/models/order-vendor-group.model';
 import { DeliveryPhotoService } from './delivery-photo.service';
+import { lockGroup } from './delivery-group-lock';
+import { generateDeliveryOtp } from './delivery-otp';
+import { assertParentNotLocked } from './delivery-rules';
 
 export type DriverJobScope = 'active' | 'history';
 
@@ -111,7 +115,112 @@ export class DriverDeliveriesService {
     return this.getOwned(driver.id, assignmentId);
   }
 
+  // Decision 0060 rule 3: the driver confirms every item is on the truck, which
+  // starts the delivery and hands the customer their code.
+  async pickup(
+    userId: string,
+    assignmentId: string,
+    items: { orderItemId: string; loaded: boolean }[],
+  ): Promise<DeliveryJobDto> {
+    const driver = await this.resolveDriver(userId);
+    const useRealSms = this.configService.get<boolean>('msg91.useSms', false);
+    const { orderId, customerId, otp } = await this.sequelize.transaction(async (transaction) => {
+      const assignment = await this.lockOwned(driver.id, assignmentId, transaction);
+      const group = await lockGroup(this.sequelize, assignment.orderVendorGroupId, transaction);
+      assertParentNotLocked(group.orderStatus);
+      if (assignment.status !== DELIVERY_ASSIGNMENT_STATUSES.ASSIGNED) {
+        throw new BadRequestException('only an assigned job can be picked up');
+      }
+      if (group.status !== OrderVendorGroupStatus.READY_FOR_PICKUP) {
+        throw new BadRequestException('the vendor has not marked this order ready for pickup');
+      }
+      await this.assertChecklistComplete(group.id, items, transaction);
+
+      const deliveryOtp = generateDeliveryOtp(useRealSms);
+      await assignment.update(
+        {
+          status: DELIVERY_ASSIGNMENT_STATUSES.PICKED_UP,
+          pickedUpAt: new Date(),
+          pickupChecklist: items.map((i) => ({ orderItemId: i.orderItemId, loaded: i.loaded })),
+          deliveryOtp,
+          otpAttempts: 0,
+        },
+        { transaction },
+      );
+      await this.setGroupStatus(group.id, OrderVendorGroupStatus.SHIPPED, transaction);
+      return { orderId: group.orderId, customerId: group.customerId, otp: deliveryOtp };
+    });
+    // After commit and best effort: a failed notification must not undo the pickup.
+    await this.notifyQuietly(() =>
+      this.notifications.sendOrderStatusChanged(
+        customerId,
+        orderId,
+        OrderVendorGroupStatus.SHIPPED,
+      ),
+    );
+    await this.notifyQuietly(() => this.notifications.sendDeliveryOtp(customerId, orderId, otp));
+    return this.getOwned(driver.id, assignmentId);
+  }
+
   // ── helpers ────────────────────────────────────────────────────────────
+
+  // The assignment row, locked, and only if it belongs to this driver.
+  private async lockOwned(
+    driverId: string,
+    assignmentId: string,
+    transaction: Transaction,
+  ): Promise<DeliveryAssignment> {
+    const assignment = await this.assignmentModel.findOne({
+      where: { id: assignmentId, driverId },
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+    if (!assignment) throw new NotFoundException(`Delivery ${assignmentId} not found`);
+    return assignment;
+  }
+
+  // Every item of the group exactly once, all loaded.
+  private async assertChecklistComplete(
+    groupId: string,
+    items: { orderItemId: string; loaded: boolean }[],
+    transaction: Transaction,
+  ): Promise<void> {
+    const rows = await this.sequelize.query<{ id: string }>(
+      `SELECT id FROM order_items WHERE order_vendor_group_id = :groupId`,
+      { replacements: { groupId }, type: QueryTypes.SELECT, transaction },
+    );
+    const expected = new Set(rows.map((r) => r.id));
+    const given = new Set(items.map((i) => i.orderItemId));
+    const complete =
+      items.length === expected.size &&
+      given.size === expected.size &&
+      [...given].every((id) => expected.has(id)) &&
+      items.every((i) => i.loaded === true);
+    if (!complete) {
+      throw new BadRequestException('confirm every item of the order as loaded before leaving');
+    }
+  }
+
+  private async setGroupStatus(
+    groupId: string,
+    status: OrderVendorGroupStatus,
+    transaction: Transaction,
+  ): Promise<void> {
+    await this.sequelize.query(
+      `UPDATE order_vendor_group SET status = :status, updated_at = NOW() WHERE id = :id`,
+      { replacements: { status, id: groupId }, type: QueryTypes.UPDATE, transaction },
+    );
+  }
+
+  private async notifyQuietly(send: () => Promise<void>): Promise<void> {
+    try {
+      await send();
+    } catch (error) {
+      this.logger.warn(`notification failed: ${error instanceof Error ? error.message : error}`);
+    }
+  }
+
+  private readonly logger = new Logger(DriverDeliveriesService.name);
 
   private async resolveDriver(userId: string): Promise<Driver> {
     const driver = await this.driverModel.findOne({

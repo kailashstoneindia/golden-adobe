@@ -19,12 +19,12 @@ import type {
   QueueItemDto,
 } from '@golden-abode/types';
 import { LOCKED_PARENT_ORDER_STATUSES } from '../orders/refund-status';
-import { OrderStatus } from '../orders/models/order.model';
 import { OrderVendorGroupStatus } from '../orders/models/order-vendor-group.model';
 import { Driver } from './models/driver.model';
 import { User } from '../users/models/user.model';
 import { DeliveryAssignment } from './models/delivery-assignment.model';
 import { assertParentNotLocked } from './delivery-rules';
+import { lockGroup } from './delivery-group-lock';
 import { generateDeliveryOtp } from './delivery-otp';
 import { NOTIFICATION_SERVICE, NotificationService } from '../notifications/notification.interface';
 import { OBJECT_STORAGE, ObjectStorage } from '../catalog/media/object-storage';
@@ -354,40 +354,8 @@ export class DeliveryAssignmentsService {
 
   // ── helpers ────────────────────────────────────────────────────────────
 
-  // SELECT ... FOR UPDATE on the group row; carries the parent order status.
-  private async lockGroup(
-    groupId: string,
-    transaction: Transaction,
-  ): Promise<{
-    id: string;
-    status: string;
-    orderId: string;
-    orderStatus: OrderStatus;
-    customerId: string;
-  }> {
-    const rows = await this.sequelize.query<{
-      id: string;
-      status: string;
-      order_id: string;
-      order_status: OrderStatus;
-      customer_id: string;
-    }>(
-      `SELECT g.id, g.status, g.order_id, o.status AS order_status, o.customer_id
-       FROM order_vendor_group g JOIN orders o ON o.id = g.order_id
-       WHERE g.id = :groupId
-       FOR UPDATE OF g`,
-      { replacements: { groupId }, type: QueryTypes.SELECT, transaction },
-    );
-    if (rows.length === 0) {
-      throw new NotFoundException(`Order group ${groupId} not found`);
-    }
-    return {
-      id: rows[0].id,
-      status: rows[0].status,
-      orderId: rows[0].order_id,
-      orderStatus: rows[0].order_status,
-      customerId: rows[0].customer_id,
-    };
+  private lockGroup(groupId: string, transaction: Transaction) {
+    return lockGroup(this.sequelize, groupId, transaction);
   }
 
   private async assertDriverActive(driverId: string, transaction: Transaction): Promise<void> {

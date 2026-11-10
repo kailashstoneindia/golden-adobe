@@ -40,16 +40,38 @@ export async function createDeliveryTestModule(providers: unknown[]): Promise<{
   }).compile();
 
   const sequelize = moduleRef.get(Sequelize);
+
+  // Specs run in parallel against one database, so cleanup removes only the
+  // rows this module instance created (found through create hooks), never
+  // everything that merely looks like test data.
+  const created = {
+    drivers: new Set<string>(),
+    users: new Set<string>(),
+    vehicles: new Set<string>(),
+  };
+  const hookName = `delivery-test-${Math.random().toString(36).slice(2)}`;
+  const track = (set: Set<string>) => (instance: unknown) => {
+    set.add((instance as { id: string }).id);
+  };
+  Driver.addHook('afterCreate', hookName, track(created.drivers));
+  User.addHook('afterCreate', hookName, track(created.users));
+  Vehicle.addHook('afterCreate', hookName, track(created.vehicles));
+
   return {
     moduleRef,
     storage,
-    // Deletes everything this spec created, found by the marker it put in
-    // names/registrations, children first.
+    // Deletes what this module instance created, children first.
     async cleanup() {
-      const run = (sql: string) => sequelize.query(sql, { type: QueryTypes.DELETE });
-      await run(`DELETE FROM drivers WHERE licence_number LIKE 'TEST-%'`);
-      await run(`DELETE FROM users WHERE name LIKE 'Test Driver%' AND role = 'DRIVER'`);
-      await run(`DELETE FROM vehicles WHERE registration_number LIKE 'TEST%'`);
+      Driver.removeHook('afterCreate', hookName);
+      User.removeHook('afterCreate', hookName);
+      Vehicle.removeHook('afterCreate', hookName);
+      const run = (sql: string, ids: Set<string>) =>
+        ids.size === 0
+          ? Promise.resolve()
+          : sequelize.query(sql, { replacements: { ids: [...ids] }, type: QueryTypes.DELETE });
+      await run('DELETE FROM drivers WHERE id IN (:ids)', created.drivers);
+      await run("DELETE FROM users WHERE id IN (:ids) AND role = 'DRIVER'", created.users);
+      await run('DELETE FROM vehicles WHERE id IN (:ids)', created.vehicles);
       await moduleRef.close();
     },
   };
