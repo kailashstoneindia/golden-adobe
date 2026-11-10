@@ -90,6 +90,8 @@ default until the client answers decision 3.
 Live GPS tracking, route batching and optimisation, automatic assignment, push notifications,
 driver payouts, delivery fee to the customer, customer-facing tracking beyond the status label.
 
+- **Driver API details (S5).** A job is `blocked` (STOP) only while it is open (`assigned` or `picked_up`); a finished job in a later-refunded order shows as normal history. A wrong OTP is counted in its own committed write, so the 400 cannot roll the count back; the 5th wrong try returns 403 and the job stays locked even for the right code. The photo key is checked before the OTP, so a bad upload never burns an attempt. Marking a delivery failed does not notify the customer yet (S6 decides the wording). A job's item unit is the product's unit-of-measure code, or `unit` when none is set.
+
 ## Open follow-ups
 
 | Item | Blocked on | Notes |

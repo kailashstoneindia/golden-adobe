@@ -12,6 +12,9 @@ import { DeliveryAssignmentsService } from './delivery-assignments.service';
 import { AdminVehiclesController } from './admin-vehicles.controller';
 import { AdminDriversController } from './admin-drivers.controller';
 import { AdminDeliveryController } from './admin-delivery.controller';
+import { DeliveryPhotoService } from './delivery-photo.service';
+import { DriverDeliveriesService } from './driver-deliveries.service';
+import { DriverController } from './driver.controller';
 
 // Decision 0060. Later sessions add services and controllers here.
 @Module({
@@ -21,8 +24,26 @@ import { AdminDeliveryController } from './admin-delivery.controller';
     NotificationsModule,
     SequelizeModule.forFeature([Vehicle, Driver, DeliveryAssignment, User]),
   ],
-  controllers: [AdminVehiclesController, AdminDriversController, AdminDeliveryController],
-  providers: [VehiclesService, DriversService, DeliveryAssignmentsService],
-  exports: [SequelizeModule, VehiclesService, DriversService, DeliveryAssignmentsService],
+  controllers: [
+    AdminVehiclesController,
+    AdminDriversController,
+    AdminDeliveryController,
+    DriverController,
+  ],
+  providers: [
+    VehiclesService,
+    DriversService,
+    DeliveryAssignmentsService,
+    DeliveryPhotoService,
+    DriverDeliveriesService,
+  ],
+  exports: [
+    SequelizeModule,
+    VehiclesService,
+    DriversService,
+    DeliveryAssignmentsService,
+    DeliveryPhotoService,
+    DriverDeliveriesService,
+  ],
 })
 export class DeliveryModule {}

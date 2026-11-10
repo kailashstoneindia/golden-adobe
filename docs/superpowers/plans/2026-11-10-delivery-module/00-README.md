@@ -62,7 +62,7 @@ S2 and S3 can run in either order; S7 can run any time after S3, S8 after S4.
 - [x] S2 order state machine
 - [x] S3 admin drivers and vehicles API
 - [x] S4 admin assignments API
-- [ ] S5 driver API
+- [x] S5 driver API
 - [ ] S6 vendor, customer, notifications
 - [ ] S7 admin UI: drivers and vehicles
 - [ ] S8 admin UI: queue, board, order modal
@@ -76,12 +76,11 @@ S2 and S3 can run in either order; S7 can run any time after S3, S8 after S4.
 
 ## Handoff (read this first in a new session; updated 2026-11-10)
 
-**Branch:** `feat/delivery-module`. Done and pushed: S1-S4 (board list added: `list()` plus `GET /admin/delivery/assignments`, photo links signed only for delivered/failed rows). `.claude/settings.json` is modified and deliberately NOT committed; never stage it.
+**Branch:** `feat/delivery-module`. Done: S1-S5 (S5 pushed with this update). `.claude/settings.json` is modified and deliberately NOT committed; never stage it.
 
-**Next step: S5 (driver API)** in `05-driver-api.md`. Full backend suite: 82 suites / 873 tests green when run with `--runInBand`. Run in parallel, `primary-image.spec` and `drivers.service.spec` flaked once (shared test DB); both pass alone.
+**Next step: S6 (vendor, customer, notifications)** in `06-vendor-customer-notifications.md`. Full backend suite: 88 suites / 941 tests green in the normal parallel run; `tsc --noEmit` clean. S6 must wire `sendDeliveryAssigned` into `assign`/`reassign` (S4 does not) and decide whether a failed delivery notifies the customer (S5 does not).
 
-**After S5:** S6 (vendor/customer/notifications) are backend and sequential. S7 and S8 are admin UI and
-can start now (S3 / S4 are done). S6 must wire `sendDeliveryAssigned` into `assign`/`reassign` (S4 deliberately does not).
+**Also available now:** S7 and S8 (admin UI), since S3 and S4 have their APIs.
 
 ### Rulings and facts later sessions rely on
 - Vendors may only do `confirmed -> ready_for_pickup` and cancel (S2). Shipped/delivered belong to drivers and ops.
@@ -95,6 +94,10 @@ can start now (S3 / S4 are done). S6 must wire `sendDeliveryAssigned` into `assi
 - Group locking helper `lockGroup` (SELECT ... FOR UPDATE OF g, returns parent order status and customerId) is private to
   `DeliveryAssignmentsService`; S5 can copy or extract it.
 - Checkout stores `orders.delivery_address_snapshot`; display mappers and the queue prefer it over the live address.
+
+- S5: `lockGroup` now lives in `delivery/delivery-group-lock.ts` (shared by both services). Driver service is `driver-deliveries.service.ts`; `DeliveryPhotoService` mints/validates `delivery/<groupId>/<kind>-<uuid>.(jpg|png)` keys (kinds `handover`/`delivered`/`failed`; S6 reuses `handover`).
+- Delivery spec cleanup now deletes only rows the module instance created (create hooks), so delivery specs run safely in parallel. Use `setupDriverFixture()` from `__tests__/driver-fixture.ts` for driver specs.
+- `it.each` rows must have as many values as the test has parameters, or Jest treats the extra one as a `done` callback and the test hangs.
 
 ### Practical notes (save yourself the debugging)
 - **Shell:** big heredocs containing apostrophes can make the Bash tool fail to parse the whole command and run
