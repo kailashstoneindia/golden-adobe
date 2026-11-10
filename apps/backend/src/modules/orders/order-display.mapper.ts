@@ -1,6 +1,7 @@
 import type {
   ArtisanOrderAddressDto,
   ArtisanOrderDto,
+  CustomerAddressDto,
   OrderDto,
   OrderItemDto,
   OrderStatus,
@@ -16,6 +17,7 @@ import { PaymentEvent } from './models/payment-event.model';
 import { Refund } from './models/refund.model';
 import { CustomerAddress } from '../customers/models/customer-address.model';
 import { toCustomerAddressDto } from '../customers/customer-address.mapper';
+import { snapshotToAddressDto } from './delivery-address-snapshot';
 import { toFiniteNumber, toIsoDate } from '../../common/utils/display-number.util';
 
 export function toOrderDto(order: Order, includeDeliveryAddress: boolean): OrderDto {
@@ -43,11 +45,17 @@ export function toOrderFields(
     bookingId: order.bookingId,
     createdAt: toIsoDate(order.createdAt),
     updatedAt: toIsoDate(order.updatedAt),
-    deliveryAddress:
-      includeDeliveryAddress && order.deliveryAddress
-        ? toCustomerAddressDto(order.deliveryAddress)
-        : null,
+    deliveryAddress: includeDeliveryAddress ? toOrderAddressDto(order) : null,
   };
+}
+
+// Decision 0060: prefer the address frozen at checkout; orders placed before
+// the snapshot existed fall back to the live saved-address row.
+function toOrderAddressDto(order: Order): CustomerAddressDto | null {
+  if (order.deliveryAddressSnapshot) {
+    return snapshotToAddressDto(order.deliveryAddressSnapshot, order, toIsoDate(order.createdAt));
+  }
+  return order.deliveryAddress ? toCustomerAddressDto(order.deliveryAddress) : null;
 }
 
 // Artisan-facing order view (decision 0051/0052, tightened after code
@@ -65,12 +73,15 @@ export function toArtisanOrderDto(order: Order): ArtisanOrderDto {
     bookingId: order.bookingId,
     createdAt: toIsoDate(order.createdAt),
     updatedAt: toIsoDate(order.updatedAt),
-    deliveryAddress: order.deliveryAddress ? toArtisanOrderAddressDto(order.deliveryAddress) : null,
+    deliveryAddress: toArtisanOrderAddressDto(toOrderAddressDto(order)),
     vendorGroups: (order.vendorGroups ?? []).map(toOrderVendorGroupDto),
   };
 }
 
-function toArtisanOrderAddressDto(address: CustomerAddress): ArtisanOrderAddressDto {
+function toArtisanOrderAddressDto(
+  address: CustomerAddressDto | null,
+): ArtisanOrderAddressDto | null {
+  if (!address) return null;
   return {
     label: address.label,
     addressLine1: address.addressLine1,

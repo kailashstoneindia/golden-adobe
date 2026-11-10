@@ -64,3 +64,63 @@ describe('non-admin order shape is pinned', () => {
     expect(dto.eventId).toBe('evt_123');
   });
 });
+
+describe('delivery address on the order view (decision 0060)', () => {
+  const snapshot = {
+    label: 'Site',
+    addressLine1: '9 Paid-for Road',
+    addressLine2: null,
+    city: 'Jaipur',
+    pincode: '302001',
+    lat: 26.9,
+    lng: 75.8,
+    recipientName: 'Rina',
+    recipientPhone: '9000000001',
+  };
+  // The customer edited the saved address after paying.
+  const editedLiveRow = {
+    id: 'a1',
+    customerId: 'c1',
+    label: 'Home',
+    addressLine1: '1 Edited Street',
+    addressLine2: null,
+    city: 'Delhi',
+    pincode: '110001',
+    lat: null,
+    lng: null,
+    isDefault: true,
+    createdAt: new Date('2026-10-01T00:00:00Z'),
+    updatedAt: new Date('2026-11-05T00:00:00Z'),
+  };
+
+  it('shows the snapshot, not the edited live row', () => {
+    const order = {
+      ...orderRow(null),
+      deliveryAddressSnapshot: snapshot,
+      deliveryAddress: editedLiveRow,
+    } as unknown as Order;
+    const dto = toOrderDto(order, true);
+    expect(dto.deliveryAddress?.addressLine1).toBe('9 Paid-for Road');
+    expect(dto.deliveryAddress?.city).toBe('Jaipur');
+    expect(dto.deliveryAddress?.id).toBe('a1');
+    expect(toArtisanOrderDto(order).deliveryAddress?.addressLine1).toBe('9 Paid-for Road');
+  });
+
+  it('falls back to the live row when there is no snapshot (old orders)', () => {
+    const order = {
+      ...orderRow(null),
+      deliveryAddressSnapshot: null,
+      deliveryAddress: editedLiveRow,
+    } as unknown as Order;
+    expect(toOrderDto(order, true).deliveryAddress?.addressLine1).toBe('1 Edited Street');
+  });
+
+  it('hides the address when the caller is not entitled to it', () => {
+    const order = {
+      ...orderRow(null),
+      deliveryAddressSnapshot: snapshot,
+      deliveryAddress: editedLiveRow,
+    } as unknown as Order;
+    expect(toOrderDto(order, false).deliveryAddress).toBeNull();
+  });
+});

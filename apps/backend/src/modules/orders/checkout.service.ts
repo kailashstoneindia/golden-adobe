@@ -22,6 +22,7 @@ import { SaleUnitType } from '../catalog/models/master-product.model';
 import { ArtisanHireRequest } from '../artisans/models/artisan-hire-request.model';
 import type { OrderDto } from '@golden-abode/types';
 import { toOrderDto } from './order-display.mapper';
+import { buildAddressSnapshot } from './delivery-address-snapshot';
 
 // Decision 0045: the set of hire-request statuses a checkout may legally
 // attribute to. Deliberately one state wider than
@@ -157,6 +158,16 @@ export class CheckoutService {
     if (!address) {
       throw new NotFoundException('delivery address not found');
     }
+
+    // Decision 0060: the recipient the driver will phone, frozen with the address.
+    const [recipientUser] = await this.sequelize.query<{ phone: string | null }>(
+      `SELECT phone FROM users WHERE id = :userId`,
+      { replacements: { userId }, type: QueryTypes.SELECT },
+    );
+    const addressSnapshot = buildAddressSnapshot(address, {
+      name: customer.fullName ?? null,
+      phone: recipientUser?.phone ?? null,
+    });
 
     const cart = await this.cartService.getOrCreateCart(customer.id);
 
@@ -439,6 +450,7 @@ export class CheckoutService {
         {
           customerId: customer.id,
           deliveryAddressId: address.id,
+          deliveryAddressSnapshot: addressSnapshot,
           grandTotal,
           status: OrderStatus.PENDING_PAYMENT,
           bookingId: booking?.id ?? null,
