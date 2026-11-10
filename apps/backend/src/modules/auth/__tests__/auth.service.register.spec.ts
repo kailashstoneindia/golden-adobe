@@ -118,3 +118,24 @@ describe('AuthService.register — customer profile is created atomically', () =
     );
   });
 });
+
+describe('AuthService.register — role guard (decision 0060)', () => {
+  it.each([Role.ADMIN, Role.DRIVER])('refuses self-registration as %s', async (role) => {
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        AuthService,
+        { provide: JwtService, useValue: { verify: jest.fn(), sign: jest.fn() } },
+        { provide: ConfigService, useValue: { get: jest.fn() } },
+        { provide: UsersService, useValue: { findByPhone: jest.fn(), create: jest.fn() } },
+        { provide: CustomersService, useValue: {} },
+        { provide: RedisService, useValue: {} },
+        { provide: Sequelize, useValue: {} },
+        { provide: getModelToken(RefreshToken), useValue: {} },
+      ],
+    }).compile();
+
+    await expect(
+      moduleRef.get(AuthService).register({ onboardingToken: 'tok', name: 'Evil', role } as never),
+    ).rejects.toThrow(`${role} role cannot be self-selected`);
+  });
+});
