@@ -18,8 +18,10 @@ export const PAYMENT_HOLD_MINUTES = 20;
 export const ORDER_VENDOR_GROUP_STATUSES = {
   PENDING: 'pending',
   CONFIRMED: 'confirmed',
+  READY_FOR_PICKUP: 'ready_for_pickup',
   SHIPPED: 'shipped',
   DELIVERED: 'delivered',
+  DELIVERY_FAILED: 'delivery_failed',
   CANCELLED: 'cancelled',
 } as const;
 
@@ -31,8 +33,10 @@ export const ORDER_VENDOR_GROUP_NEXT_STATUSES: Record<
   OrderVendorGroupStatus[]
 > = {
   pending: ['confirmed', 'cancelled'],
-  confirmed: ['shipped', 'cancelled'],
-  shipped: ['delivered'],
+  confirmed: ['ready_for_pickup', 'cancelled'],
+  ready_for_pickup: ['shipped', 'cancelled'],
+  shipped: ['delivered', 'delivery_failed'],
+  delivery_failed: ['shipped', 'cancelled'],
   delivered: [],
   cancelled: [],
 };

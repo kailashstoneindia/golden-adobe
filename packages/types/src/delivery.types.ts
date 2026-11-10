@@ -1,0 +1,32 @@
+// Delivery module shared types (decision 0060).
+
+export const DELIVERY_ASSIGNMENT_STATUSES = {
+  ASSIGNED: 'assigned',
+  PICKED_UP: 'picked_up',
+  DELIVERED: 'delivered',
+  FAILED: 'failed',
+  CANCELLED: 'cancelled',
+} as const;
+
+export type DeliveryAssignmentStatus =
+  (typeof DELIVERY_ASSIGNMENT_STATUSES)[keyof typeof DELIVERY_ASSIGNMENT_STATUSES];
+
+export const DELIVERY_FAILURE_REASONS = [
+  'customer_unavailable',
+  'site_inaccessible',
+  'customer_refused',
+  'goods_damaged',
+  'other',
+] as const;
+
+export type DeliveryFailureReason = (typeof DELIVERY_FAILURE_REASONS)[number];
+
+// Wrong delivery OTPs allowed before the assignment locks and ops must step in.
+export const DELIVERY_OTP_MAX_ATTEMPTS = 5;
+
+// Used when real SMS is off (USE_MSG91_SMS !== 'true'), same switch as login.
+export const DEMO_DELIVERY_OTP = '123456';
+
+export const DELIVERY_PHOTO_KINDS = ['handover', 'delivered', 'failed'] as const;
+
+export type DeliveryPhotoKind = (typeof DELIVERY_PHOTO_KINDS)[number];
