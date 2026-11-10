@@ -1,9 +1,17 @@
-import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { timingSafeEqual } from 'crypto';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/sequelize';
 import { QueryTypes, Transaction } from 'sequelize';
 import { Sequelize } from 'sequelize-typescript';
-import { DELIVERY_ASSIGNMENT_STATUSES } from '@golden-abode/types';
+import { DELIVERY_ASSIGNMENT_STATUSES, DELIVERY_OTP_MAX_ATTEMPTS } from '@golden-abode/types';
 import type {
   DeliveryAddressSnapshot,
   DeliveryAssignmentStatus,
@@ -162,7 +170,76 @@ export class DriverDeliveriesService {
     return this.getOwned(driver.id, assignmentId);
   }
 
+  // Rules 4 and 5: the customer's code plus a photo close the delivery. A
+  // wrong code is counted in its own committed write, so the 400 cannot roll
+  // the count back; the 5th wrong try locks the job for ops.
+  async complete(
+    userId: string,
+    assignmentId: string,
+    otp: string,
+    photoKey: string,
+  ): Promise<DeliveryJobDto> {
+    const driver = await this.resolveDriver(userId);
+    const existing = await this.assignmentModel.findOne({
+      where: { id: assignmentId, driverId: driver.id },
+    });
+    if (!existing) throw new NotFoundException(`Delivery ${assignmentId} not found`);
+    // A bad photo is the driver's upload problem, not a guess at the code.
+    await this.photos.assertUploadedKey(existing.orderVendorGroupId, 'delivered', photoKey);
+
+    const outcome = await this.sequelize.transaction(async (transaction) => {
+      const assignment = await this.lockOwned(driver.id, assignmentId, transaction);
+      const group = await lockGroup(this.sequelize, assignment.orderVendorGroupId, transaction);
+      assertParentNotLocked(group.orderStatus);
+      if (assignment.status !== DELIVERY_ASSIGNMENT_STATUSES.PICKED_UP) {
+        throw new BadRequestException('only a job that has been picked up can be completed');
+      }
+      if (assignment.otpAttempts >= DELIVERY_OTP_MAX_ATTEMPTS) {
+        return { kind: 'locked' as const };
+      }
+      if (!this.otpMatches(assignment.deliveryOtp, otp)) {
+        const attempts = assignment.otpAttempts + 1;
+        await assignment.update({ otpAttempts: attempts }, { transaction });
+        return attempts >= DELIVERY_OTP_MAX_ATTEMPTS
+          ? { kind: 'locked' as const }
+          : { kind: 'wrong' as const };
+      }
+      await assignment.update(
+        {
+          status: DELIVERY_ASSIGNMENT_STATUSES.DELIVERED,
+          deliveredAt: new Date(),
+          deliveryPhotoKey: photoKey,
+        },
+        { transaction },
+      );
+      await this.setGroupStatus(group.id, OrderVendorGroupStatus.DELIVERED, transaction);
+      return { kind: 'delivered' as const, orderId: group.orderId, customerId: group.customerId };
+    });
+
+    if (outcome.kind === 'locked') {
+      throw new ForbiddenException('Too many wrong codes. This delivery is locked, contact ops.');
+    }
+    if (outcome.kind === 'wrong') {
+      throw new BadRequestException('That code is not correct');
+    }
+    await this.notifyQuietly(() =>
+      this.notifications.sendOrderStatusChanged(
+        outcome.customerId,
+        outcome.orderId,
+        OrderVendorGroupStatus.DELIVERED,
+      ),
+    );
+    return this.getOwned(driver.id, assignmentId);
+  }
+
   // ── helpers ────────────────────────────────────────────────────────────
+
+  private otpMatches(expected: string | null, given: string): boolean {
+    if (!expected) return false;
+    const a = Buffer.from(expected);
+    const b = Buffer.from(given);
+    return a.length === b.length && timingSafeEqual(a, b);
+  }
 
   // The assignment row, locked, and only if it belongs to this driver.
   private async lockOwned(
