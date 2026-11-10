@@ -1,9 +1,12 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/sequelize';
 import { Sequelize } from 'sequelize-typescript';
 import { QueryTypes, Transaction, UniqueConstraintError } from 'sequelize';
@@ -22,6 +25,8 @@ import { Driver } from './models/driver.model';
 import { User } from '../users/models/user.model';
 import { DeliveryAssignment } from './models/delivery-assignment.model';
 import { assertParentNotLocked } from './delivery-rules';
+import { generateDeliveryOtp } from './delivery-otp';
+import { NOTIFICATION_SERVICE, NotificationService } from '../notifications/notification.interface';
 import { AssignDeliveryDto, QueueQueryDto } from './dto/delivery-assignment.dto';
 
 type QueueRow = {
@@ -68,7 +73,11 @@ export class DeliveryAssignmentsService {
     @InjectModel(DeliveryAssignment) private readonly assignmentModel: typeof DeliveryAssignment,
     @InjectModel(Driver) private readonly driverModel: typeof Driver,
     private readonly sequelize: Sequelize,
+    private readonly configService: ConfigService,
+    @Inject(NOTIFICATION_SERVICE) private readonly notifications: NotificationService,
   ) {}
+
+  private readonly logger = new Logger(DeliveryAssignmentsService.name);
 
   // Groups the vendor has marked ready that nobody has been assigned to yet,
   // oldest first. A group under a refunded or cancelled order never shows.
@@ -218,6 +227,87 @@ export class DeliveryAssignmentsService {
     }
   }
 
+  // Rule 7. Goods are assumed still on the truck after a failed attempt (open
+  // question 3 with the client), so the new attempt starts already picked up,
+  // with a fresh code. Kept in this one method so the rule can change in one
+  // place if the client decides goods return to the vendor first.
+  async reattempt(
+    adminUserId: string,
+    groupId: string,
+    driverId: string,
+  ): Promise<AdminAssignmentDto> {
+    const useRealSms = this.configService.get<boolean>('msg91.useSms', false);
+    try {
+      const { id, orderId, customerId, otp } = await this.sequelize.transaction(
+        async (transaction) => {
+          const group = await this.lockGroup(groupId, transaction);
+          if (group.status !== OrderVendorGroupStatus.DELIVERY_FAILED) {
+            throw new BadRequestException('only a group whose delivery failed can be re-attempted');
+          }
+          assertParentNotLocked(group.orderStatus);
+          await this.assertDriverActive(driverId, transaction);
+          if (await this.findOpen(group.id, transaction)) {
+            throw new ConflictException('this group already has an open delivery assignment');
+          }
+          const previousAttempts: number = await this.assignmentModel.max('attemptNo', {
+            where: { orderVendorGroupId: group.id },
+            transaction,
+          });
+          const now = new Date();
+          const deliveryOtp = generateDeliveryOtp(useRealSms);
+          const created = await this.assignmentModel.create(
+            {
+              orderVendorGroupId: group.id,
+              driverId,
+              status: DELIVERY_ASSIGNMENT_STATUSES.PICKED_UP,
+              attemptNo: (previousAttempts ?? 0) + 1,
+              assignedBy: adminUserId,
+              assignedAt: now,
+              pickedUpAt: now,
+              deliveryOtp,
+              otpAttempts: 0,
+            } as never,
+            { transaction },
+          );
+          await this.sequelize.query(
+            `UPDATE order_vendor_group SET status = :shipped, updated_at = NOW() WHERE id = :id`,
+            {
+              replacements: { shipped: OrderVendorGroupStatus.SHIPPED, id: group.id },
+              type: QueryTypes.UPDATE,
+              transaction,
+            },
+          );
+          return {
+            id: created.id,
+            orderId: group.orderId,
+            customerId: group.customerId,
+            otp: deliveryOtp,
+          };
+        },
+      );
+      // After commit, and best effort: a failed notification must not undo the attempt.
+      await this.notifyQuietly(() =>
+        this.notifications.sendOrderStatusChanged(
+          customerId,
+          orderId,
+          OrderVendorGroupStatus.SHIPPED,
+        ),
+      );
+      await this.notifyQuietly(() => this.notifications.sendDeliveryOtp(customerId, orderId, otp));
+      return this.getDto(id);
+    } catch (error) {
+      throw this.mapOpenAssignmentRace(error);
+    }
+  }
+
+  private async notifyQuietly(send: () => Promise<void>): Promise<void> {
+    try {
+      await send();
+    } catch (error) {
+      this.logger.warn(`notification failed: ${error instanceof Error ? error.message : error}`);
+    }
+  }
+
   async getDto(id: string): Promise<AdminAssignmentDto> {
     const rows = await this.queryAssignments('a.id = :id', { id });
     if (rows.length === 0) {
@@ -232,14 +322,21 @@ export class DeliveryAssignmentsService {
   private async lockGroup(
     groupId: string,
     transaction: Transaction,
-  ): Promise<{ id: string; status: string; orderId: string; orderStatus: OrderStatus }> {
+  ): Promise<{
+    id: string;
+    status: string;
+    orderId: string;
+    orderStatus: OrderStatus;
+    customerId: string;
+  }> {
     const rows = await this.sequelize.query<{
       id: string;
       status: string;
       order_id: string;
       order_status: OrderStatus;
+      customer_id: string;
     }>(
-      `SELECT g.id, g.status, g.order_id, o.status AS order_status
+      `SELECT g.id, g.status, g.order_id, o.status AS order_status, o.customer_id
        FROM order_vendor_group g JOIN orders o ON o.id = g.order_id
        WHERE g.id = :groupId
        FOR UPDATE OF g`,
@@ -253,6 +350,7 @@ export class DeliveryAssignmentsService {
       status: rows[0].status,
       orderId: rows[0].order_id,
       orderStatus: rows[0].order_status,
+      customerId: rows[0].customer_id,
     };
   }
 

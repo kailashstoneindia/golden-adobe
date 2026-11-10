@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { SequelizeModule } from '@nestjs/sequelize';
 import { CatalogModule } from '../catalog/catalog.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { User } from '../users/models/user.model';
 import { Vehicle } from './models/vehicle.model';
 import { Driver } from './models/driver.model';
@@ -17,6 +18,7 @@ import { AdminDeliveryController } from './admin-delivery.controller';
   imports: [
     // OBJECT_STORAGE for driver documents and, later, delivery photos.
     CatalogModule,
+    NotificationsModule,
     SequelizeModule.forFeature([Vehicle, Driver, DeliveryAssignment, User]),
   ],
   controllers: [AdminVehiclesController, AdminDriversController, AdminDeliveryController],

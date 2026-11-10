@@ -48,4 +48,18 @@ export class AdminDeliveryController {
   ) {
     return this.assignments.reassign(adminUserId, id, dto.driverId);
   }
+
+  @Post('groups/:groupId/reattempt')
+  @ApiOperation({
+    summary: 'Send a failed delivery out again with a chosen driver',
+    description: 'The goods are assumed still on the truck, so the new attempt starts picked up.',
+  })
+  @ApiResponse({ status: 400, description: 'Group is not in delivery_failed, or order locked' })
+  reattempt(
+    @CurrentUser('sub') adminUserId: string,
+    @Param('groupId', ParseUUIDPipe) groupId: string,
+    @Body() dto: DriverIdDto,
+  ) {
+    return this.assignments.reattempt(adminUserId, groupId, dto.driverId);
+  }
 }

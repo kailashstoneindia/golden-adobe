@@ -346,3 +346,130 @@ describe('DeliveryAssignmentsService assign and reassign (decision 0060)', () =>
     expect((await openRows(g.groupId))[0].id).toBe(first.id);
   });
 });
+
+describe('DeliveryAssignmentsService.reattempt (decision 0060 rule 7)', () => {
+  let f: Awaited<ReturnType<typeof setup>>;
+
+  beforeAll(async () => {
+    f = await setup();
+  });
+  afterAll(async () => {
+    await f.close();
+  });
+
+  // A group whose first delivery attempt failed.
+  async function seedFailedGroup(over: { orderStatus?: string; groupStatus?: string } = {}) {
+    const g = await f.seedReadyGroup({
+      groupStatus: over.groupStatus ?? 'delivery_failed',
+      orderStatus: over.orderStatus,
+    });
+    const first = await f.makeDriver();
+    await f.t.query(
+      `INSERT INTO delivery_assignments
+         (order_vendor_group_id, driver_id, status, attempt_no, assigned_by, assigned_at,
+          picked_up_at, delivery_otp, failed_at, failure_reason)
+       VALUES (:g, :d, 'failed', 1, :a, NOW(), NOW(), '123456', NOW(), 'customer_unavailable')`,
+      { g: g.groupId, d: first.id, a: f.t.adminUserId },
+    );
+    return g;
+  }
+
+  it('creates a picked-up attempt with a fresh code and puts the group back on the road', async () => {
+    const g = await seedFailedGroup();
+    const driver = await f.makeDriver('Test Driver Retry');
+
+    const dto = await f.service.reattempt(f.t.adminUserId, g.groupId, driver.id);
+
+    expect(dto).toMatchObject({
+      status: 'picked_up',
+      attemptNo: 2,
+      driver: { id: driver.id },
+      groupId: g.groupId,
+    });
+    expect(dto.pickedUpAt).not.toBeNull();
+
+    const [row] = await f.t.query<{
+      delivery_otp: string;
+      otp_attempts: number;
+      assigned_by: string;
+    }>(`SELECT delivery_otp, otp_attempts, assigned_by FROM delivery_assignments WHERE id = :id`, {
+      id: dto.id,
+    });
+    expect(row).toMatchObject({
+      delivery_otp: '123456',
+      otp_attempts: 0,
+      assigned_by: f.t.adminUserId,
+    });
+
+    const [group] = await f.t.query<{ status: string }>(
+      `SELECT status FROM order_vendor_group WHERE id = :id`,
+      { id: g.groupId },
+    );
+    expect(group.status).toBe('shipped');
+  });
+
+  it('tells the customer the group is shipped and sends the new code', async () => {
+    const g = await seedFailedGroup();
+    const driver = await f.makeDriver();
+    f.notifications.calls.length = 0;
+
+    await f.service.reattempt(f.t.adminUserId, g.groupId, driver.id);
+
+    expect(f.notifications.callsTo('sendOrderStatusChanged')[0].args).toEqual([
+      f.t.customerId,
+      g.orderId,
+      'shipped',
+    ]);
+    expect(f.notifications.callsTo('sendDeliveryOtp')[0].args).toEqual([
+      f.t.customerId,
+      g.orderId,
+      '123456',
+    ]);
+  });
+
+  it('counts attempts on from the highest earlier one', async () => {
+    const g = await seedFailedGroup();
+    const driver = await f.makeDriver();
+    const second = await f.service.reattempt(f.t.adminUserId, g.groupId, driver.id);
+    await f.t.query(`UPDATE delivery_assignments SET status = 'failed' WHERE id = :id`, {
+      id: second.id,
+    });
+    await f.t.query(`UPDATE order_vendor_group SET status = 'delivery_failed' WHERE id = :id`, {
+      id: g.groupId,
+    });
+
+    const third = await f.service.reattempt(f.t.adminUserId, g.groupId, driver.id);
+    expect(third.attemptNo).toBe(3);
+  });
+
+  it.each(['confirmed', 'ready_for_pickup', 'shipped', 'delivered', 'cancelled'])(
+    'refuses a group in status %s',
+    async (groupStatus) => {
+      const g = await seedFailedGroup({ groupStatus });
+      const driver = await f.makeDriver();
+      await expect(f.service.reattempt(f.t.adminUserId, g.groupId, driver.id)).rejects.toThrow(
+        BadRequestException,
+      );
+    },
+  );
+
+  it('refuses a locked parent order and an inactive driver, changing nothing', async () => {
+    const locked = await seedFailedGroup({ orderStatus: 'refund_required' });
+    const ok = await seedFailedGroup();
+    const driver = await f.makeDriver();
+    const gone = await f.makeDriver();
+    await f.t.query(`UPDATE users SET is_active = false WHERE id = :id`, { id: gone.userId });
+
+    await expect(f.service.reattempt(f.t.adminUserId, locked.groupId, driver.id)).rejects.toThrow(
+      BadRequestException,
+    );
+    await expect(f.service.reattempt(f.t.adminUserId, ok.groupId, gone.id)).rejects.toThrow(
+      BadRequestException,
+    );
+    const [group] = await f.t.query<{ status: string }>(
+      `SELECT status FROM order_vendor_group WHERE id = :id`,
+      { id: ok.groupId },
+    );
+    expect(group.status).toBe('delivery_failed');
+  });
+});
