@@ -1,11 +1,21 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Role } from '@golden-abode/types';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { DeliveryAssignmentsService } from './delivery-assignments.service';
-import { QueueQueryDto } from './dto/delivery-assignment.dto';
+import { AssignDeliveryDto, DriverIdDto, QueueQueryDto } from './dto/delivery-assignment.dto';
 
 @ApiTags('Admin delivery')
 @Controller('admin/delivery')
@@ -19,5 +29,23 @@ export class AdminDeliveryController {
   @ApiOperation({ summary: 'Ready-for-pickup groups with nobody assigned, oldest first' })
   queue(@Query() query: QueueQueryDto) {
     return this.assignments.listQueue(query);
+  }
+
+  @Post('assignments')
+  @ApiOperation({ summary: 'Assign a driver to a ready-for-pickup group' })
+  @ApiResponse({ status: 400, description: 'Group not ready, driver inactive, or order locked' })
+  @ApiResponse({ status: 409, description: 'Group already has an open assignment' })
+  assign(@CurrentUser('sub') adminUserId: string, @Body() dto: AssignDeliveryDto) {
+    return this.assignments.assign(adminUserId, dto);
+  }
+
+  @Post('assignments/:id/reassign')
+  @ApiOperation({ summary: 'Give an assigned (not yet picked up) job to another driver' })
+  reassign(
+    @CurrentUser('sub') adminUserId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: DriverIdDto,
+  ) {
+    return this.assignments.reassign(adminUserId, id, dto.driverId);
   }
 }

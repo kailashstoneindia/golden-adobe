@@ -1,10 +1,28 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { InjectModel } from '@nestjs/sequelize';
 import { Sequelize } from 'sequelize-typescript';
-import { QueryTypes } from 'sequelize';
+import { QueryTypes, Transaction, UniqueConstraintError } from 'sequelize';
 import { DELIVERY_ASSIGNMENT_STATUSES } from '@golden-abode/types';
-import type { PaginatedResponse, QueueItemDto } from '@golden-abode/types';
+import type {
+  AdminAssignmentDto,
+  DeliveryAssignmentStatus,
+  DeliveryFailureReason,
+  PaginatedResponse,
+  QueueItemDto,
+} from '@golden-abode/types';
 import { LOCKED_PARENT_ORDER_STATUSES } from '../orders/refund-status';
-import { QueueQueryDto } from './dto/delivery-assignment.dto';
+import { OrderStatus } from '../orders/models/order.model';
+import { OrderVendorGroupStatus } from '../orders/models/order-vendor-group.model';
+import { Driver } from './models/driver.model';
+import { User } from '../users/models/user.model';
+import { DeliveryAssignment } from './models/delivery-assignment.model';
+import { assertParentNotLocked } from './delivery-rules';
+import { AssignDeliveryDto, QueueQueryDto } from './dto/delivery-assignment.dto';
 
 type QueueRow = {
   group_id: string;
@@ -17,14 +35,40 @@ type QueueRow = {
   ready_at: Date;
 };
 
+type AssignmentRow = {
+  id: string;
+  status: DeliveryAssignmentStatus;
+  attempt_no: number;
+  group_id: string;
+  order_id: string;
+  shop_name: string;
+  driver_id: string;
+  driver_name: string;
+  driver_phone: string | null;
+  assigned_at: Date;
+  vendor_handed_over_at: Date | null;
+  picked_up_at: Date | null;
+  delivered_at: Date | null;
+  failed_at: Date | null;
+  failure_reason: DeliveryFailureReason | null;
+  delivery_photo_key: string | null;
+  failure_photo_key: string | null;
+};
+
 const OPEN_STATUSES = [
   DELIVERY_ASSIGNMENT_STATUSES.ASSIGNED,
   DELIVERY_ASSIGNMENT_STATUSES.PICKED_UP,
 ];
 
+const iso = (d: Date | null): string | null => (d ? new Date(d).toISOString() : null);
+
 @Injectable()
 export class DeliveryAssignmentsService {
-  constructor(private readonly sequelize: Sequelize) {}
+  constructor(
+    @InjectModel(DeliveryAssignment) private readonly assignmentModel: typeof DeliveryAssignment,
+    @InjectModel(Driver) private readonly driverModel: typeof Driver,
+    private readonly sequelize: Sequelize,
+  ) {}
 
   // Groups the vendor has marked ready that nobody has been assigned to yet,
   // oldest first. A group under a refunded or cancelled order never shows.
@@ -87,6 +131,193 @@ export class DeliveryAssignmentsService {
       page,
       limit,
       totalPages: Math.ceil(Number(total) / limit),
+    };
+  }
+
+  // Decision 0060 rule 1. The group row is locked first, so two admins
+  // assigning at once are serialised: the second sees the first's open
+  // assignment and gets a 409. The partial unique index is the backstop.
+  async assign(adminUserId: string, dto: AssignDeliveryDto): Promise<AdminAssignmentDto> {
+    try {
+      const id = await this.sequelize.transaction(async (transaction) => {
+        const group = await this.lockGroup(dto.orderVendorGroupId, transaction);
+        if (group.status !== OrderVendorGroupStatus.READY_FOR_PICKUP) {
+          throw new BadRequestException('only a group that is ready for pickup can be assigned');
+        }
+        assertParentNotLocked(group.orderStatus);
+        await this.assertDriverActive(dto.driverId, transaction);
+        if (await this.findOpen(group.id, transaction)) {
+          throw new ConflictException('this group already has an open delivery assignment');
+        }
+        const created = await this.assignmentModel.create(
+          {
+            orderVendorGroupId: group.id,
+            driverId: dto.driverId,
+            status: DELIVERY_ASSIGNMENT_STATUSES.ASSIGNED,
+            attemptNo: 1,
+            assignedBy: adminUserId,
+            assignedAt: new Date(),
+          } as never,
+          { transaction },
+        );
+        return created.id;
+      });
+      return this.getDto(id);
+    } catch (error) {
+      throw this.mapOpenAssignmentRace(error);
+    }
+  }
+
+  // Rule 2: only a job the driver has not picked up yet can change hands.
+  async reassign(
+    adminUserId: string,
+    assignmentId: string,
+    driverId: string,
+  ): Promise<AdminAssignmentDto> {
+    try {
+      const id = await this.sequelize.transaction(async (transaction) => {
+        const current = await this.assignmentModel.findByPk(assignmentId, {
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        });
+        if (!current) {
+          throw new NotFoundException(`Delivery assignment ${assignmentId} not found`);
+        }
+        const group = await this.lockGroup(current.orderVendorGroupId, transaction);
+        if (current.status !== DELIVERY_ASSIGNMENT_STATUSES.ASSIGNED) {
+          throw new BadRequestException(
+            'only an assigned job that is not yet picked up can be reassigned',
+          );
+        }
+        assertParentNotLocked(group.orderStatus);
+        if (current.driverId === driverId) {
+          throw new BadRequestException('the job is already assigned to this driver');
+        }
+        await this.assertDriverActive(driverId, transaction);
+
+        await current.update(
+          { status: DELIVERY_ASSIGNMENT_STATUSES.CANCELLED, cancelledAt: new Date() },
+          { transaction },
+        );
+        const created = await this.assignmentModel.create(
+          {
+            orderVendorGroupId: current.orderVendorGroupId,
+            driverId,
+            status: DELIVERY_ASSIGNMENT_STATUSES.ASSIGNED,
+            attemptNo: current.attemptNo,
+            assignedBy: adminUserId,
+            assignedAt: new Date(),
+          } as never,
+          { transaction },
+        );
+        return created.id;
+      });
+      return this.getDto(id);
+    } catch (error) {
+      throw this.mapOpenAssignmentRace(error);
+    }
+  }
+
+  async getDto(id: string): Promise<AdminAssignmentDto> {
+    const rows = await this.queryAssignments('a.id = :id', { id });
+    if (rows.length === 0) {
+      throw new NotFoundException(`Delivery assignment ${id} not found`);
+    }
+    return this.toDto(rows[0]);
+  }
+
+  // ── helpers ────────────────────────────────────────────────────────────
+
+  // SELECT ... FOR UPDATE on the group row; carries the parent order status.
+  private async lockGroup(
+    groupId: string,
+    transaction: Transaction,
+  ): Promise<{ id: string; status: string; orderId: string; orderStatus: OrderStatus }> {
+    const rows = await this.sequelize.query<{
+      id: string;
+      status: string;
+      order_id: string;
+      order_status: OrderStatus;
+    }>(
+      `SELECT g.id, g.status, g.order_id, o.status AS order_status
+       FROM order_vendor_group g JOIN orders o ON o.id = g.order_id
+       WHERE g.id = :groupId
+       FOR UPDATE OF g`,
+      { replacements: { groupId }, type: QueryTypes.SELECT, transaction },
+    );
+    if (rows.length === 0) {
+      throw new NotFoundException(`Order group ${groupId} not found`);
+    }
+    return {
+      id: rows[0].id,
+      status: rows[0].status,
+      orderId: rows[0].order_id,
+      orderStatus: rows[0].order_status,
+    };
+  }
+
+  private async assertDriverActive(driverId: string, transaction: Transaction): Promise<void> {
+    const driver = await this.driverModel.findByPk(driverId, {
+      include: [User],
+      transaction,
+    });
+    if (!driver) {
+      throw new NotFoundException(`Driver ${driverId} not found`);
+    }
+    if (!driver.user.isActive) {
+      throw new BadRequestException('that driver is deactivated');
+    }
+  }
+
+  private findOpen(groupId: string, transaction: Transaction) {
+    return this.assignmentModel.findOne({
+      where: { orderVendorGroupId: groupId, status: OPEN_STATUSES },
+      transaction,
+    });
+  }
+
+  // The unique index fires only if the row lock above was somehow bypassed.
+  private mapOpenAssignmentRace(error: unknown): unknown {
+    if (error instanceof UniqueConstraintError) {
+      return new ConflictException('this group already has an open delivery assignment');
+    }
+    return error;
+  }
+
+  private queryAssignments(where: string, replacements: Record<string, unknown>) {
+    return this.sequelize.query<AssignmentRow>(
+      `SELECT a.id, a.status, a.attempt_no, g.id AS group_id, g.order_id, v.shop_name,
+              dr.id AS driver_id, u.name AS driver_name, u.phone AS driver_phone,
+              a.assigned_at, a.vendor_handed_over_at, a.picked_up_at, a.delivered_at,
+              a.failed_at, a.failure_reason, a.delivery_photo_key, a.failure_photo_key
+       FROM delivery_assignments a
+       JOIN order_vendor_group g ON g.id = a.order_vendor_group_id
+       JOIN vendors v ON v.id = g.vendor_id
+       JOIN drivers dr ON dr.id = a.driver_id
+       JOIN users u ON u.id = dr.user_id
+       WHERE ${where}
+       ORDER BY a.assigned_at DESC, a.id ASC`,
+      { replacements, type: QueryTypes.SELECT },
+    );
+  }
+
+  private toDto(r: AssignmentRow): AdminAssignmentDto {
+    return {
+      id: r.id,
+      status: r.status,
+      attemptNo: r.attempt_no,
+      groupId: r.group_id,
+      orderId: r.order_id,
+      vendorName: r.shop_name,
+      driver: { id: r.driver_id, name: r.driver_name, phone: r.driver_phone ?? '' },
+      assignedAt: new Date(r.assigned_at).toISOString(),
+      vendorHandedOverAt: iso(r.vendor_handed_over_at),
+      pickedUpAt: iso(r.picked_up_at),
+      deliveredAt: iso(r.delivered_at),
+      failedAt: iso(r.failed_at),
+      failureReason: r.failure_reason,
+      deliveryPhotoViewUrl: null,
+      failurePhotoViewUrl: null,
     };
   }
 }

@@ -1,3 +1,4 @@
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { DeliveryAssignmentsService } from '../delivery-assignments.service';
 import { DriversService } from '../drivers.service';
@@ -175,5 +176,173 @@ describe('DeliveryAssignmentsService.listQueue (decision 0060)', () => {
       (i) => i.groupId === g.groupId,
     );
     expect(item).toMatchObject({ dropCity: 'Jaipur', dropPincode: '302001' });
+  });
+});
+
+describe('DeliveryAssignmentsService assign and reassign (decision 0060)', () => {
+  let f: Awaited<ReturnType<typeof setup>>;
+
+  beforeAll(async () => {
+    f = await setup();
+  });
+  afterAll(async () => {
+    await f.close();
+  });
+
+  const openRows = (groupId: string) =>
+    f.t.query<{ id: string; status: string; driver_id: string }>(
+      `SELECT id, status, driver_id FROM delivery_assignments
+       WHERE order_vendor_group_id = :g AND status IN ('assigned','picked_up')`,
+      { g: groupId },
+    );
+
+  it('creates an assigned job for a ready group, recording who assigned it', async () => {
+    const g = await f.seedReadyGroup();
+    const driver = await f.makeDriver('Test Driver Alpha');
+
+    const dto = await f.service.assign(f.t.adminUserId, {
+      orderVendorGroupId: g.groupId,
+      driverId: driver.id,
+    });
+
+    expect(dto).toMatchObject({
+      status: 'assigned',
+      attemptNo: 1,
+      groupId: g.groupId,
+      orderId: g.orderId,
+      vendorName: 'Payments Test Shop',
+      driver: { id: driver.id, name: 'Test Driver Alpha', phone: driver.phone },
+      pickedUpAt: null,
+    });
+    const [row] = await f.t.query<{ assigned_by: string }>(
+      `SELECT assigned_by FROM delivery_assignments WHERE id = :id`,
+      { id: dto.id },
+    );
+    expect(row.assigned_by).toBe(f.t.adminUserId);
+  });
+
+  it('404s on an unknown group or driver', async () => {
+    const g = await f.seedReadyGroup();
+    const driver = await f.makeDriver();
+    const unknown = '00000000-0000-4000-8000-000000000000';
+    await expect(
+      f.service.assign(f.t.adminUserId, { orderVendorGroupId: unknown, driverId: driver.id }),
+    ).rejects.toThrow(NotFoundException);
+    await expect(
+      f.service.assign(f.t.adminUserId, { orderVendorGroupId: g.groupId, driverId: unknown }),
+    ).rejects.toThrow(NotFoundException);
+  });
+
+  it('400s when the group is not ready for pickup', async () => {
+    const g = await f.seedReadyGroup({ groupStatus: 'confirmed' });
+    const driver = await f.makeDriver();
+    await expect(
+      f.service.assign(f.t.adminUserId, { orderVendorGroupId: g.groupId, driverId: driver.id }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('400s for an inactive driver and for a locked parent order', async () => {
+    const g = await f.seedReadyGroup();
+    const locked = await f.seedReadyGroup({ orderStatus: 'refunded' });
+    const driver = await f.makeDriver();
+    const gone = await f.makeDriver();
+    await f.t.query(`UPDATE users SET is_active = false WHERE id = :id`, { id: gone.userId });
+
+    await expect(
+      f.service.assign(f.t.adminUserId, { orderVendorGroupId: g.groupId, driverId: gone.id }),
+    ).rejects.toThrow(BadRequestException);
+    await expect(
+      f.service.assign(f.t.adminUserId, {
+        orderVendorGroupId: locked.groupId,
+        driverId: driver.id,
+      }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('409s when the group already has an open assignment', async () => {
+    const g = await f.seedReadyGroup();
+    const a = await f.makeDriver();
+    const b = await f.makeDriver();
+    await f.service.assign(f.t.adminUserId, { orderVendorGroupId: g.groupId, driverId: a.id });
+    await expect(
+      f.service.assign(f.t.adminUserId, { orderVendorGroupId: g.groupId, driverId: b.id }),
+    ).rejects.toThrow(ConflictException);
+  });
+
+  it('two admins assigning the same group at once: one wins, one gets 409', async () => {
+    const g = await f.seedReadyGroup();
+    const a = await f.makeDriver();
+    const b = await f.makeDriver();
+
+    const results = await Promise.allSettled([
+      f.service.assign(f.t.adminUserId, { orderVendorGroupId: g.groupId, driverId: a.id }),
+      f.service.assign(f.t.adminUserId, { orderVendorGroupId: g.groupId, driverId: b.id }),
+    ]);
+
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+    const rejected = results.find((r) => r.status === 'rejected') as PromiseRejectedResult;
+    expect(rejected.reason).toBeInstanceOf(ConflictException);
+    expect(await openRows(g.groupId)).toHaveLength(1);
+  });
+
+  it('reassigns an assigned job: old one cancelled, new one open for the new driver', async () => {
+    const g = await f.seedReadyGroup();
+    const a = await f.makeDriver();
+    const b = await f.makeDriver();
+    const first = await f.service.assign(f.t.adminUserId, {
+      orderVendorGroupId: g.groupId,
+      driverId: a.id,
+    });
+
+    const second = await f.service.reassign(f.t.adminUserId, first.id, b.id);
+
+    expect(second).toMatchObject({ status: 'assigned', driver: { id: b.id }, groupId: g.groupId });
+    expect(second.id).not.toBe(first.id);
+    const [old] = await f.t.query<{ status: string; cancelled_at: Date | null }>(
+      `SELECT status, cancelled_at FROM delivery_assignments WHERE id = :id`,
+      { id: first.id },
+    );
+    expect(old.status).toBe('cancelled');
+    expect(old.cancelled_at).not.toBeNull();
+    const open = await openRows(g.groupId);
+    expect(open).toHaveLength(1);
+    expect(open[0].driver_id).toBe(b.id);
+  });
+
+  it('refuses to reassign a job that is already picked up', async () => {
+    const g = await f.seedReadyGroup();
+    const a = await f.makeDriver();
+    const b = await f.makeDriver();
+    const first = await f.service.assign(f.t.adminUserId, {
+      orderVendorGroupId: g.groupId,
+      driverId: a.id,
+    });
+    await f.t.query(`UPDATE delivery_assignments SET status = 'picked_up' WHERE id = :id`, {
+      id: first.id,
+    });
+
+    await expect(f.service.reassign(f.t.adminUserId, first.id, b.id)).rejects.toThrow(
+      BadRequestException,
+    );
+    expect((await openRows(g.groupId))[0].id).toBe(first.id);
+  });
+
+  it('reassign 404s on an unknown job and 400s for an inactive driver', async () => {
+    const g = await f.seedReadyGroup();
+    const a = await f.makeDriver();
+    const gone = await f.makeDriver();
+    await f.t.query(`UPDATE users SET is_active = false WHERE id = :id`, { id: gone.userId });
+    const first = await f.service.assign(f.t.adminUserId, {
+      orderVendorGroupId: g.groupId,
+      driverId: a.id,
+    });
+
+    await expect(
+      f.service.reassign(f.t.adminUserId, '00000000-0000-4000-8000-000000000000', a.id),
+    ).rejects.toThrow(NotFoundException);
+    await expect(f.service.reassign(f.t.adminUserId, first.id, gone.id)).rejects.toThrow(
+      BadRequestException,
+    );
+    expect((await openRows(g.groupId))[0].id).toBe(first.id);
   });
 });
