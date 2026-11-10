@@ -12,7 +12,7 @@ import type { AdminDriverDto, PaginatedResponse } from '@golden-abode/types';
 import { User } from '../users/models/user.model';
 import { Driver } from './models/driver.model';
 import { Vehicle } from './models/vehicle.model';
-import { CreateDriverDto, ListDriversQueryDto } from './dto/driver.dto';
+import { CreateDriverDto, ListDriversQueryDto, UpdateDriverDto } from './dto/driver.dto';
 import { toVehicleDto } from './vehicles.service';
 
 @Injectable()
@@ -77,6 +77,60 @@ export class DriversService {
       throw new NotFoundException(`Driver ${id} not found`);
     }
     return this.toDto(driver);
+  }
+
+  // Both helper fields or neither is checked on the resulting state, so
+  // changing just the name of an existing helper is fine.
+  async update(id: string, dto: UpdateDriverDto): Promise<AdminDriverDto> {
+    const existing = await this.driverModel.findByPk(id, { include: [User] });
+    if (!existing) {
+      throw new NotFoundException(`Driver ${id} not found`);
+    }
+    const helperName = dto.helperName !== undefined ? dto.helperName : existing.helperName;
+    const helperPhone = dto.helperPhone !== undefined ? dto.helperPhone : existing.helperPhone;
+    if (!!helperName !== !!helperPhone) {
+      throw new BadRequestException('helperName and helperPhone must be given together');
+    }
+    try {
+      await this.sequelize.transaction(async (transaction) => {
+        const user = existing.user;
+        const userChanges: { name?: string; phone?: string } = {};
+        if (dto.name !== undefined && dto.name.trim() !== user.name) {
+          userChanges.name = dto.name.trim();
+        }
+        if (dto.phone !== undefined && dto.phone !== user.phone) {
+          const taken = await this.userModel.findOne({
+            where: { phone: dto.phone, id: { [Op.ne]: user.id } },
+            transaction,
+          });
+          if (taken) {
+            throw new ConflictException('This phone number is already used by another account');
+          }
+          userChanges.phone = dto.phone;
+        }
+        if (Object.keys(userChanges).length > 0) {
+          await user.update(userChanges, { transaction });
+        }
+        if (dto.vehicleId) {
+          await this.assertVehicleAssignable(dto.vehicleId, existing.id, transaction);
+        }
+        await existing.update(
+          {
+            ...(dto.licenceNumber !== undefined && { licenceNumber: dto.licenceNumber.trim() }),
+            helperName: helperName?.trim() ?? null,
+            helperPhone: helperPhone ?? null,
+            ...(dto.vehicleId !== undefined && { vehicleId: dto.vehicleId }),
+          },
+          { transaction },
+        );
+      });
+    } catch (error) {
+      if (error instanceof UniqueConstraintError) {
+        throw new ConflictException('That phone number or vehicle is already in use');
+      }
+      throw error;
+    }
+    return this.get(id);
   }
 
   // Document links are signed one by one, so the list leaves them null; open

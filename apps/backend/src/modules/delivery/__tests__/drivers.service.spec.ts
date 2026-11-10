@@ -139,3 +139,92 @@ describe('CreateDriverDto validation (decision 0060)', () => {
     },
   );
 });
+
+describe('DriversService update (decision 0060)', () => {
+  let drivers: DriversService;
+  let vehicles: VehiclesService;
+  let userModel: typeof User;
+  let cleanup: () => Promise<void>;
+
+  beforeAll(async () => {
+    const t = await createDeliveryTestModule([DriversService, VehiclesService]);
+    drivers = t.moduleRef.get(DriversService);
+    vehicles = t.moduleRef.get(VehiclesService);
+    userModel = t.moduleRef.get(getModelToken(User));
+    cleanup = t.cleanup;
+  });
+
+  afterAll(async () => {
+    await cleanup();
+  });
+
+  const make = (over: Record<string, unknown> = {}) =>
+    drivers.create({
+      name: 'Test Driver Update',
+      phone: nextPhone(),
+      licenceNumber: `TEST-${tag()}`,
+      ...over,
+    } as never);
+
+  it('persists helper name and phone', async () => {
+    const d = await make();
+    const updated = await drivers.update(d.id, {
+      helperName: 'New Helper',
+      helperPhone: '+919822222222',
+    });
+    expect(updated).toMatchObject({ helperName: 'New Helper', helperPhone: '+919822222222' });
+  });
+
+  it('400s when only one of helperName and helperPhone ends up set', async () => {
+    const d = await make();
+    await expect(drivers.update(d.id, { helperName: 'Alone' })).rejects.toThrow(
+      BadRequestException,
+    );
+    await expect(drivers.update(d.id, { helperPhone: '+919822222222' })).rejects.toThrow(
+      BadRequestException,
+    );
+  });
+
+  it('clears the helper when both are null', async () => {
+    const d = await make({ helperName: 'H', helperPhone: '+919833333333' });
+    const updated = await drivers.update(d.id, { helperName: null, helperPhone: null });
+    expect(updated).toMatchObject({ helperName: null, helperPhone: null });
+  });
+
+  it('assigns, then unassigns a vehicle with null', async () => {
+    const v = await vehicles.create({ registrationNumber: tag(), type: 'Tempo' });
+    const d = await make();
+    expect((await drivers.update(d.id, { vehicleId: v.id })).vehicle?.id).toBe(v.id);
+    expect((await drivers.update(d.id, { vehicleId: null })).vehicle).toBeNull();
+  });
+
+  it('409s assigning a vehicle another driver holds; keeping your own is fine', async () => {
+    const v = await vehicles.create({ registrationNumber: tag(), type: 'Tempo' });
+    const holder = await make({ vehicleId: v.id });
+    const other = await make();
+    await expect(drivers.update(other.id, { vehicleId: v.id })).rejects.toThrow(ConflictException);
+    await expect(drivers.update(holder.id, { vehicleId: v.id })).resolves.toBeDefined();
+  });
+
+  it('updates the linked user name and phone, and 409s on a taken phone', async () => {
+    const d = await make();
+    const taken = await make();
+    const newPhone = nextPhone();
+
+    const updated = await drivers.update(d.id, { name: 'Test Driver Renamed', phone: newPhone });
+    expect(updated).toMatchObject({ name: 'Test Driver Renamed', phone: newPhone });
+    expect((await userModel.findByPk(d.userId))?.phone).toBe(newPhone);
+
+    await expect(drivers.update(d.id, { phone: taken.phone })).rejects.toThrow(ConflictException);
+  });
+
+  it('updates the licence number; unknown driver 404s', async () => {
+    const d = await make();
+    expect((await drivers.update(d.id, { licenceNumber: 'TEST-NEW' })).licenceNumber).toBe(
+      'TEST-NEW',
+    );
+    await expect(
+      drivers.update('00000000-0000-4000-8000-000000000000', { licenceNumber: 'TEST-X' }),
+    ).rejects.toThrow(NotFoundException);
+  });
+});

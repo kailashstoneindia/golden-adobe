@@ -79,3 +79,41 @@ export class ListDriversQueryDto {
   @Max(100)
   limit?: number = 20;
 }
+
+export class UpdateDriverDto {
+  @ApiPropertyOptional({ maxLength: 128 })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(128)
+  name?: string;
+
+  @ApiPropertyOptional({ example: '+919876543210' })
+  @IsOptional()
+  @Matches(INDIAN_MOBILE, { message: PHONE_MESSAGE })
+  phone?: string;
+
+  @ApiPropertyOptional({ maxLength: 32 })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(32)
+  licenceNumber?: string;
+
+  @ApiPropertyOptional({ nullable: true, description: 'Give with helperPhone, or null both' })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(128)
+  helperName?: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @Matches(INDIAN_MOBILE, { message: PHONE_MESSAGE })
+  helperPhone?: string | null;
+
+  @ApiPropertyOptional({ nullable: true, description: 'null unassigns the vehicle' })
+  @IsOptional()
+  @IsUUID()
+  vehicleId?: string | null;
+}
