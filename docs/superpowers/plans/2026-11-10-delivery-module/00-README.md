@@ -76,20 +76,12 @@ S2 and S3 can run in either order; S7 can run any time after S3, S8 after S4.
 
 ## Handoff (read this first in a new session; updated 2026-11-10)
 
-**Branch:** `feat/delivery-module`. Done and pushed: S1, S2, S3. S4 Tasks 1-4 are committed (last commit
-"Delivery: re-attempt after failure"); push after the next green run. `.claude/settings.json` is modified and
-deliberately NOT committed; never stage it.
+**Branch:** `feat/delivery-module`. Done and pushed: S1-S4 (board list added: `list()` plus `GET /admin/delivery/assignments`, photo links signed only for delivered/failed rows). `.claude/settings.json` is modified and deliberately NOT committed; never stage it.
 
-**Next step: S4 Task 5 (board list)** in `04-admin-assignments.md`. What already exists in
-`modules/delivery/delivery-assignments.service.ts`: `listQueue`, `assign`, `reassign`, `reattempt`, `getDto(id)`,
-private `queryAssignments(where, replacements)` (the join) and `toDto(row)` (photo URLs are `null` today). Left to do:
-inject `OBJECT_STORAGE` and sign `deliveryPhotoViewUrl` (only for `delivered` rows) / `failurePhotoViewUrl` (only for
-`failed` rows) with `presignGet`; add `list({status, driverId, page, pageSize})` returning `PaginatedResponse`; add
-`GET /admin/delivery/assignments` to `admin-delivery.controller.ts`; extend `delivery-assignments.service.spec.ts`
-(tests first). Then run the full backend suite + `tsc --noEmit`, tick S4, commit, push.
+**Next step: S5 (driver API)** in `05-driver-api.md`. Full backend suite: 82 suites / 873 tests green when run with `--runInBand`. Run in parallel, `primary-image.spec` and `drivers.service.spec` flaked once (shared test DB); both pass alone.
 
-**After S4:** S5 (driver API) -> S6 (vendor/customer/notifications) are backend and sequential. S7 and S8 are admin UI and
-can start once S3 / S4 are done. S6 must wire `sendDeliveryAssigned` into `assign`/`reassign` (S4 deliberately does not).
+**After S5:** S6 (vendor/customer/notifications) are backend and sequential. S7 and S8 are admin UI and
+can start now (S3 / S4 are done). S6 must wire `sendDeliveryAssigned` into `assign`/`reassign` (S4 deliberately does not).
 
 ### Rulings and facts later sessions rely on
 - Vendors may only do `confirmed -> ready_for_pickup` and cancel (S2). Shipped/delivered belong to drivers and ops.
