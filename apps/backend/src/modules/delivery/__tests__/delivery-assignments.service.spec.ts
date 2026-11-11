@@ -345,6 +345,64 @@ describe('DeliveryAssignmentsService assign and reassign (decision 0060)', () =>
     );
     expect((await openRows(g.groupId))[0].id).toBe(first.id);
   });
+
+  it('assign tells the driver about the new job', async () => {
+    const g = await f.seedReadyGroup();
+    const driver = await f.makeDriver();
+    f.notifications.calls.length = 0;
+
+    const dto = await f.service.assign(f.t.adminUserId, {
+      orderVendorGroupId: g.groupId,
+      driverId: driver.id,
+    });
+
+    expect(f.notifications.callsTo('sendDeliveryAssigned').map((c) => c.args)).toEqual([
+      [driver.userId, dto.id],
+    ]);
+  });
+
+  it('reassign tells only the new driver, with the new job id', async () => {
+    const g = await f.seedReadyGroup();
+    const a = await f.makeDriver();
+    const b = await f.makeDriver();
+    const first = await f.service.assign(f.t.adminUserId, {
+      orderVendorGroupId: g.groupId,
+      driverId: a.id,
+    });
+    f.notifications.calls.length = 0;
+
+    const second = await f.service.reassign(f.t.adminUserId, first.id, b.id);
+
+    expect(f.notifications.callsTo('sendDeliveryAssigned').map((c) => c.args)).toEqual([
+      [b.userId, second.id],
+    ]);
+  });
+
+  it('a failed notification does not undo the assignment', async () => {
+    const g = await f.seedReadyGroup();
+    const driver = await f.makeDriver();
+    f.notifications.failNext('sendDeliveryAssigned');
+
+    const dto = await f.service.assign(f.t.adminUserId, {
+      orderVendorGroupId: g.groupId,
+      driverId: driver.id,
+    });
+
+    expect(dto.status).toBe('assigned');
+    expect(await openRows(g.groupId)).toHaveLength(1);
+  });
+
+  it('a rejected assignment sends no notification', async () => {
+    const g = await f.seedReadyGroup({ groupStatus: 'confirmed' });
+    const driver = await f.makeDriver();
+    f.notifications.calls.length = 0;
+
+    await expect(
+      f.service.assign(f.t.adminUserId, { orderVendorGroupId: g.groupId, driverId: driver.id }),
+    ).rejects.toThrow(BadRequestException);
+
+    expect(f.notifications.callsTo('sendDeliveryAssigned')).toHaveLength(0);
+  });
 });
 
 describe('DeliveryAssignmentsService.reattempt (decision 0060 rule 7)', () => {

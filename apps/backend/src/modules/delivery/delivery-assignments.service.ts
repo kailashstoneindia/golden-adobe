@@ -180,6 +180,7 @@ export class DeliveryAssignmentsService {
         );
         return created.id;
       });
+      await this.notifyDriver(id);
       return this.getDto(id);
     } catch (error) {
       throw this.mapOpenAssignmentRace(error);
@@ -230,6 +231,7 @@ export class DeliveryAssignmentsService {
         );
         return created.id;
       });
+      await this.notifyDriver(id);
       return this.getDto(id);
     } catch (error) {
       throw this.mapOpenAssignmentRace(error);
@@ -307,6 +309,18 @@ export class DeliveryAssignmentsService {
     } catch (error) {
       throw this.mapOpenAssignmentRace(error);
     }
+  }
+
+  // After commit, best effort: tell the driver a job is waiting for them.
+  private async notifyDriver(assignmentId: string): Promise<void> {
+    await this.notifyQuietly(async () => {
+      const [row] = await this.sequelize.query<{ user_id: string }>(
+        `SELECT dr.user_id FROM delivery_assignments a
+         JOIN drivers dr ON dr.id = a.driver_id WHERE a.id = :id`,
+        { replacements: { id: assignmentId }, type: QueryTypes.SELECT },
+      );
+      if (row) await this.notifications.sendDeliveryAssigned(row.user_id, assignmentId);
+    });
   }
 
   private async notifyQuietly(send: () => Promise<void>): Promise<void> {
