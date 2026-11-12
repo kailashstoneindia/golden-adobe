@@ -38,6 +38,11 @@ export class AssignmentListQueryDto extends PageQueryDto {
   @IsOptional()
   @IsUUID()
   driverId?: string;
+
+  @ApiPropertyOptional({ description: 'Only attempts on this order (the order modal)' })
+  @IsOptional()
+  @IsUUID()
+  orderId?: string;
 }
 
 export class AssignDeliveryDto {

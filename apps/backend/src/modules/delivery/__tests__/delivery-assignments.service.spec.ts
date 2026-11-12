@@ -589,6 +589,32 @@ describe('DeliveryAssignmentsService.list (decision 0060 board)', () => {
     expect(byStatus.items[0].driver).toMatchObject({ id: d2.id, name: 'Test Driver Board B' });
   });
 
+  it('filters by order, so the order modal sees every attempt on that order and nothing else', async () => {
+    const d = await f.makeDriver('Test Driver Board Order');
+    const first = await seedAssignment(d.id, 'failed', { failurePhotoKey: 'delivery/f1.jpg' });
+    const other = await seedAssignment(d.id, 'picked_up');
+    const [{ order_id: orderId }] = await f.t.query<{ order_id: string }>(
+      `SELECT g.order_id FROM delivery_assignments a
+       JOIN order_vendor_group g ON g.id = a.order_vendor_group_id WHERE a.id = :id`,
+      { id: first },
+    );
+    // A second attempt on the same group as `first`.
+    await f.t.query(
+      `INSERT INTO delivery_assignments
+         (order_vendor_group_id, driver_id, status, attempt_no, assigned_by, assigned_at, picked_up_at, delivery_otp)
+       SELECT order_vendor_group_id, driver_id, 'picked_up', 2, assigned_by, NOW(), NOW(), '123456'
+       FROM delivery_assignments WHERE id = :id`,
+      { id: first },
+    );
+
+    const page = await f.service.list({ orderId, page: 1, pageSize: 100 });
+
+    expect(page.total).toBe(2);
+    expect(page.items.map((i) => i.attemptNo).sort()).toEqual([1, 2]);
+    expect(page.items.every((i) => i.orderId === orderId)).toBe(true);
+    expect(page.items.map((i) => i.id)).not.toContain(other);
+  });
+
   it('pages the results with the repo paginated shape', async () => {
     const d = await f.makeDriver('Test Driver Board Page');
     await seedAssignment(d.id, 'assigned');

@@ -338,15 +338,21 @@ export class DeliveryAssignmentsService {
     const page = query.page ?? 1;
     const limit = query.pageSize ?? 20;
     const where =
-      '(:status::text IS NULL OR a.status = :status::text) AND (:driverId::uuid IS NULL OR a.driver_id = :driverId::uuid)';
-    const filters = { status: query.status ?? null, driverId: query.driverId ?? null };
+      '(:status::text IS NULL OR a.status = :status::text) AND (:driverId::uuid IS NULL OR a.driver_id = :driverId::uuid) AND (:orderId::uuid IS NULL OR g.order_id = :orderId::uuid)';
+    const filters = {
+      status: query.status ?? null,
+      driverId: query.driverId ?? null,
+      orderId: query.orderId ?? null,
+    };
     const rows = await this.queryAssignments(
       where,
       { ...filters, limit, offset: (page - 1) * limit },
       true,
     );
     const [{ total }] = await this.sequelize.query<{ total: string }>(
-      `SELECT COUNT(*) AS total FROM delivery_assignments a WHERE ${where}`,
+      `SELECT COUNT(*) AS total FROM delivery_assignments a
+       JOIN order_vendor_group g ON g.id = a.order_vendor_group_id
+       WHERE ${where}`,
       { replacements: filters, type: QueryTypes.SELECT },
     );
     return {
