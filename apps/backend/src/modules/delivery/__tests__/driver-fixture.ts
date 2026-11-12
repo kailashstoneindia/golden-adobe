@@ -112,7 +112,6 @@ export async function setupDriverFixture() {
             WHERE o.customer_id = :c)`,
         { c: t.customerId },
       );
-      await t.query(`DELETE FROM unit_of_measure WHERE code LIKE 'TESTU%'`);
       // The payments harness cleans up through the shared model classes, so it closes first.
       await t.close();
       await d.cleanup();

@@ -10,6 +10,9 @@ describe('DriverDeliveriesService profile, list and detail (decision 0060)', () 
     f = await setupDriverFixture();
   });
   afterAll(async () => {
+    // Only this spec creates the unit, so only this spec removes it (the shared
+    // fixture must not delete by pattern: it would race other specs mid-test).
+    await f.t.query(`DELETE FROM unit_of_measure WHERE code = 'TESTU1'`);
     await f.close();
   });
 
