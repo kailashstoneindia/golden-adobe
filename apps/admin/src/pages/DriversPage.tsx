@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { isEmpty } from 'lodash';
 
+import { DriverDetailModal } from '@/components/delivery/DriverDetailModal';
 import { DriverFormModal } from '@/components/delivery/DriverFormModal';
 import { APP_CONSTANTS } from '@/constants/appConstants';
 import { useCreateDriverMutation, useDriversQuery, useVehiclesQuery } from '@/queries';
@@ -9,6 +10,7 @@ import styles from '@/styles/shared.module.css';
 // Decision 0060: the people who deliver, and the vehicles they drive.
 export function DriversPage() {
   const [adding, setAdding] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const driversQuery = useDriversQuery({ page: 1, limit: APP_CONSTANTS.defaultPageSize });
   const vehiclesQuery = useVehiclesQuery();
   const createDriver = useCreateDriverMutation();
@@ -56,7 +58,11 @@ export function DriversPage() {
             </thead>
             <tbody>
               {drivers.map((driver) => (
-                <tr key={driver.id}>
+                <tr
+                  key={driver.id}
+                  className={styles.clickableRow}
+                  onClick={() => setSelectedId(driver.id)}
+                >
                   <td>{driver.name}</td>
                   <td>{driver.phone}</td>
                   <td>
@@ -72,6 +78,10 @@ export function DriversPage() {
           </table>
         </div>
       )}
+
+      {selectedId ? (
+        <DriverDetailModal driverId={selectedId} onClose={() => setSelectedId(null)} />
+      ) : null}
 
       {adding ? (
         <DriverFormModal
