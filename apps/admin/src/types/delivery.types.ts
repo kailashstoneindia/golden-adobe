@@ -57,6 +57,8 @@ export interface QueueQuery {
 export interface AssignmentListQuery {
   status?: DeliveryAssignmentStatus;
   driverId?: string;
+  /** Every attempt on one order (the order modal). */
+  orderId?: string;
   page?: number;
   pageSize?: number;
 }

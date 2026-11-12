@@ -15,3 +15,11 @@ export const DELIVERY_BOARD_TABS: { status: DeliveryAssignmentStatus; label: str
   { status: 'failed', label: 'Failed' },
   { status: 'delivered', label: 'Delivered' },
 ];
+
+export const DELIVERY_ASSIGNMENT_STATUS_LABELS: Record<DeliveryAssignmentStatus, string> = {
+  assigned: 'Assigned',
+  picked_up: 'Picked up',
+  delivered: 'Delivered',
+  failed: 'Failed',
+  cancelled: 'Cancelled',
+};

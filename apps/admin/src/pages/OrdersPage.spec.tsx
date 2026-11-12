@@ -1,4 +1,9 @@
-import { Role, type AdminOrderDto, type AdminRefundRowDto } from '@golden-abode/types';
+import {
+  Role,
+  type AdminAssignmentDto,
+  type AdminOrderDto,
+  type AdminRefundRowDto,
+} from '@golden-abode/types';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -68,6 +73,9 @@ function refund(over: Partial<AdminRefundRowDto> = {}): AdminRefundRowDto {
 
 let orders: AdminOrderDto[];
 let refunds: Record<string, AdminRefundRowDto[]>;
+// Delivery attempts the order modal asks for (decision 0060); empty unless a test sets them.
+let assignments: AdminAssignmentDto[] = [];
+let assignmentUrls: string[] = [];
 let refundBodies: unknown[];
 let refundListFetches: number;
 // Holds GET /refunds open until released, or answers it with an error.
@@ -86,7 +94,18 @@ let refundReply: {
 };
 
 function useHandlers() {
+  assignments = [];
+  assignmentUrls = [];
   server.use(
+    http.get('/api/admin/delivery/assignments', ({ request }) => {
+      assignmentUrls.push(request.url);
+      const orderId = new URL(request.url).searchParams.get('orderId');
+      const items = assignments.filter((a) => a.orderId === orderId);
+      return HttpResponse.json({
+        success: true,
+        data: { items, total: items.length, page: 1, limit: 20, totalPages: 1 },
+      });
+    }),
     http.get(BASE, () => {
       ordersListFetches += 1;
       return HttpResponse.json({ success: true, data: orders });
@@ -840,5 +859,128 @@ describe('OrdersPage with an empty customer filter', () => {
     await screen.findByRole('row', { name: /Asha Rao/ });
     expect(new URL(urls[0]).searchParams.has('customerId')).toBe(false);
     expect(screen.queryByText(/Showing one customer’s orders/)).not.toBeInTheDocument();
+  });
+});
+
+// Decision 0060: the order modal shows where each vendor group is in delivery.
+describe('OrdersPage delivery', () => {
+  function group(status: string, over: Record<string, unknown> = {}) {
+    return {
+      id: 'g1',
+      orderId: 'o1',
+      vendorId: 'v1',
+      shopName: 'Stone Mart',
+      subtotal: 500,
+      loadingUnloadingFee: 0,
+      status,
+      items: [],
+      vendor: null,
+      createdAt: '2026-11-01T10:00:00.000Z',
+      updatedAt: '2026-11-03T15:30:00.000Z',
+      ...over,
+    } as AdminOrderDto['vendorGroups'][number];
+  }
+
+  function attempt(over: Partial<AdminAssignmentDto> = {}): AdminAssignmentDto {
+    return {
+      id: 'a1',
+      status: 'assigned',
+      attemptNo: 1,
+      groupId: 'g1',
+      orderId: 'o1',
+      vendorName: 'Stone Mart',
+      driver: { id: 'd1', name: 'Ramesh Kumar', phone: '9876543210' },
+      assignedAt: '2026-11-04T09:00:00.000Z',
+      vendorHandedOverAt: null,
+      pickedUpAt: null,
+      deliveredAt: null,
+      failedAt: null,
+      failureReason: null,
+      deliveryPhotoViewUrl: null,
+      failurePhotoViewUrl: null,
+      ...over,
+    };
+  }
+
+  async function openOrder(status: string) {
+    orders = [order({ id: 'o1', vendorGroups: [group(status)] })];
+    refunds = {};
+    refundBodies = [];
+    refundListFetches = 0;
+    refundsGate = null;
+    refundsListFails = false;
+    refundPostGate = null;
+    ordersListFetches = 0;
+    useHandlers();
+  }
+
+  it('says a ready_for_pickup group is packed and waiting for a driver', async () => {
+    await openOrder('ready_for_pickup');
+    renderPage();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('row', { name: /Asha Rao/ }));
+    expect(await screen.findByText(/Stone Mart · Packed, waiting for driver/)).toBeInTheDocument();
+  });
+
+  it('flags a delivery_failed group in red', async () => {
+    await openOrder('delivery_failed');
+    renderPage();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('row', { name: /Asha Rao/ }));
+    const label = await screen.findByText('Delivery failed', { selector: '[data-tone]' });
+    expect(label).toHaveAttribute('data-tone', 'danger');
+  });
+
+  it('shows nothing delivery-related when the order has no assignment', async () => {
+    await openOrder('confirmed');
+    renderPage();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('row', { name: /Asha Rao/ }));
+    await screen.findByText(/Stone Mart · Confirmed/);
+    await waitFor(() => expect(assignmentUrls.length).toBeGreaterThan(0));
+    expect(screen.queryByRole('group', { name: 'Delivery' })).toBeNull();
+  });
+
+  it('asks only for this order and shows driver, helper-free contact, times and photos', async () => {
+    await openOrder('shipped');
+    assignments = [
+      attempt({
+        id: 'a2',
+        attemptNo: 2,
+        status: 'delivered',
+        vendorHandedOverAt: '2026-11-04T09:30:00.000Z',
+        pickedUpAt: '2026-11-04T10:00:00.000Z',
+        deliveredAt: '2026-11-04T12:00:00.000Z',
+        deliveryPhotoViewUrl: 'https://signed.test/delivered.jpg',
+      }),
+      attempt({
+        id: 'a1',
+        attemptNo: 1,
+        status: 'failed',
+        failedAt: '2026-11-03T12:00:00.000Z',
+        failureReason: 'customer_unavailable',
+        failurePhotoViewUrl: 'https://signed.test/failed.jpg',
+      }),
+    ];
+    renderPage();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('row', { name: /Asha Rao/ }));
+
+    const section = await screen.findByRole('group', { name: 'Delivery' });
+    expect(new URL(assignmentUrls[0]).searchParams.get('orderId')).toBe('o1');
+    expect(within(section).getAllByText('Ramesh Kumar')).toHaveLength(2);
+    expect(within(section).getAllByText('9876543210').length).toBeGreaterThan(0);
+    expect(within(section).getByText('Attempt 2 · Delivered')).toBeInTheDocument();
+    expect(within(section).getByText('Attempt 1 · Failed')).toBeInTheDocument();
+    expect(within(section).getByText(/Vendor handed over/)).toBeInTheDocument();
+    expect(within(section).getByText('Customer unavailable')).toBeInTheDocument();
+    expect(within(section).getByRole('link', { name: 'Delivery photo' })).toHaveAttribute(
+      'href',
+      'https://signed.test/delivered.jpg',
+    );
+    expect(within(section).getByRole('link', { name: 'Failure photo' })).toHaveAttribute(
+      'href',
+      'https://signed.test/failed.jpg',
+    );
   });
 });

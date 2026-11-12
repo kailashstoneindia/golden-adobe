@@ -14,6 +14,7 @@ import {
 } from '@/constants/order.constants';
 import { ContactBlock, Row } from '@/components/common/ContactBlock';
 import { CopyableId } from '@/components/common/CopyButton';
+import { OrderDeliverySection } from '@/components/orders/OrderDeliverySection';
 import { labelFor } from '@/constants/labels';
 import { ERROR_MESSAGES } from '@/constants/error.constants';
 import { useOrderRefundsQuery, usePaymentEventsQuery } from '@/queries/useOrdersQueries';
@@ -127,6 +128,8 @@ export function OrderDetailModal({
           {order.vendorGroups.map((group) => (
             <VendorGroupBlock key={group.id} group={group} />
           ))}
+
+          <OrderDeliverySection orderId={order.id} />
 
           {canRefund ? (
             <RefundForm
@@ -370,11 +373,26 @@ function RefundHistory({ refunds, groups }: RefundHistoryProps) {
   );
 }
 
+// Decision 0060: ops reads these two at a glance, so they get plainer words than
+// the status names, and a failed delivery is red. Plain text otherwise, so the
+// label stays part of the line it sits in.
+function GroupStatus({ status }: { status: OrderVendorGroupStatus }) {
+  if (status === 'ready_for_pickup') return <>Packed, waiting for driver</>;
+  if (status === 'delivery_failed') {
+    return (
+      <span data-tone="danger" style={{ color: 'var(--color-brick)', fontWeight: 600 }}>
+        {labelFor(VENDOR_GROUP_STATUS_LABELS, status)}
+      </span>
+    );
+  }
+  return <>{labelFor(VENDOR_GROUP_STATUS_LABELS, status)}</>;
+}
+
 function VendorGroupBlock({ group }: VendorGroupBlockProps) {
   return (
     <div className={styles.statCard}>
       <p className={styles.name}>
-        {group.shopName} · {labelFor(VENDOR_GROUP_STATUS_LABELS, group.status)}
+        {group.shopName} · <GroupStatus status={group.status} />
       </p>
       <p className={styles.meta}>
         Subtotal ₹{group.subtotal} · Loading ₹{group.loadingUnloadingFee}
