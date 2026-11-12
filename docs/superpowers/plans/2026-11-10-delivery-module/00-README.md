@@ -66,7 +66,7 @@ S2 and S3 can run in either order; S7 can run any time after S3, S8 after S4.
 - [x] S6 vendor, customer, notifications
 - [x] S7 admin UI: drivers and vehicles
 - [x] S8 admin UI: queue, board, order modal
-- [ ] S9 wrap-up
+- [x] S9 wrap-up
 
 ## Starting a session (paste this)
 
@@ -76,9 +76,9 @@ S2 and S3 can run in either order; S7 can run any time after S3, S8 after S4.
 
 ## Handoff (read this first in a new session; updated 2026-11-10)
 
-**Branch:** `feat/delivery-module`. Done: S1-S8. `.claude/settings.json` is modified and deliberately NOT committed; never stage it.
+**Branch:** `feat/delivery-module`. Done: S1-S9 (plan complete; NOT merged or deployed). `.claude/settings.json` is modified and deliberately NOT committed; never stage it.
 
-**Next step: S9 wrap-up** (`09-wrap-up.md`). Backend and admin UI are feature complete.
+**Next step: none in the plan.** Remaining: sync with the mobile developer, then ask the user which merge method, then the pre-live checklist (two migrations on prod via SSM, which needs the user's permission; create the first driver in the admin panel).
 
 Backend API for all admin screens exists (S3, S4). Run the full backend suite and `tsc --noEmit` before the S9 sign-off.
 
@@ -117,3 +117,5 @@ Backend API for all admin screens exists (S3, S4). Run the full backend suite an
 - S6: `assign` and `reassign` notify the driver after commit (best effort). `reattempt` does not (the new attempt starts already picked up and the driver app pulls its list).
 - S7: admin `DriversPage` (`/drivers`, sidebar "Drivers") with Drivers and Vehicles tabs; components in `apps/admin/src/components/delivery/`; hooks in `queries/useDeliveryQueries.ts` (`deliveryKeys.all = ['delivery']` is what every mutation invalidates; S8 should reuse the prefix). Shared fixtures: `src/test/deliveryFixtures.ts`. Browser-checked with Playwright (vehicle create and 409 message, driver create, edit helper, deactivate). The licence upload step reached the API (201) but the direct browser POST to S3 could not be verified because no S3 is reachable locally; the confirm step is covered by the component spec only.
 - S8: pages `DeliveryQueuePage` (`/delivery/queue`, sidebar "Ready to deliver") and `DeliveryBoardPage` (`/delivery/board`, sidebar "In transit"); shared `DriverPickerModal` (active drivers only) serves assign, reassign and re-attempt. Order modal gets `OrderDeliverySection`, which calls `GET /admin/delivery/assignments?orderId=` (new filter, see decision 0060) instead of adding assignments to `AdminOrderDto`, so photo signing stays in the delivery module. `ready_for_pickup` reads "Packed, waiting for driver" and `delivery_failed` is red, inside the modal only; the override dropdown keeps the plain status names. Browser-checked end to end with Playwright (override to ready, queue, assign, board, modal). Two unrelated shared-DB specs flaked once each in full parallel runs and pass alone: `users.service.awaiting-document` (count read twice) and `vendor-onboarding.controller` (a city from a parallel spec).
+
+- S9: `delivery-flow.e2e.spec.ts` walks the full flow over HTTP (also the first HTTP test of the vendor handover routes). A re-attempt creates the new job already `picked_up` (no second pickup). `docs/order-flow.md` named in S9 does not exist in the repo; the flow lives in decision 0060 and `docs/delivery-mobile-api-contract.md`. The shared fixture no longer deletes `unit_of_measure` by pattern (it raced other specs); the one spec that creates its unit removes it.

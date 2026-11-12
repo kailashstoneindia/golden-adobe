@@ -55,7 +55,7 @@ valid when circumstances change.
 | [0044](0044-aws-first-build-before-domain.md)                | Build AWS ahead of the domain on free names, then park it                                        | 2026-10-21 | Accepted                                                      |
 | [0045](0045-artisan-hire-lifecycle-and-order-attribution.md) | Artisan hire-request lifecycle completion and order attribution                                  | 2026-10-30 | Implemented (backend)                                         |
 | [0046](0046-artisan-product-recommendations.md)              | Artisan product recommendations                                                                  | 2026-10-30 | Proposed — ready to execute                                   |
-| [0047](0047-delivery-module-flagged.md)                      | Delivery module: flagged as new scope, not yet designed                                          | 2026-10-30 | Flagged — scope confirmed, design deferred                    |
+| [0047](0047-delivery-module-flagged.md)                      | Delivery module: flagged as new scope, not yet designed                                          | 2026-10-30 | Superseded by 0060                                            |
 | [0048](0048-vendor-approval-status-field.md)                 | Vendor approval status field: distinguishing pending from rejected                               | 2026-10-31 | Implemented                                                   |
 | [0049](0049-stale-reservation-sweep.md)                      | Stale reservation sweep: releasing abandoned-checkout stock holds                                | 2026-10-31 | Implemented                                                   |
 | [0050](0050-admin-password-reset.md)                         | Admin password reset                                                                             | 2026-10-31 | Implemented                                                   |
@@ -68,7 +68,7 @@ valid when circumstances change.
 | [0057](0057-otp-send-limit-demo-mode.md)                     | OTP send limit applies only when real SMS is on                                                  | 2026-11-04 | Implemented (pending merge)                                   |
 | [0058](0058-admin-visibility-and-editing.md)                 | Admin visibility, session refresh and editing                                                    | 2026-11-04 | Accepted                                                      |
 | [0059](0059-server-side-approval-gate.md)                    | Server-side approval gate for vendors and ustaads                                                | 2026-11-04 | Accepted                                                      |
-| [0060](0060-delivery-module-mvp-flow.md)                    | Delivery module: MVP flow for the in-house team                                                  | 2026-11-10 | Draft (nothing built)                                         |
+| [0060](0060-delivery-module-mvp-flow.md)                    | Delivery module: MVP flow for the in-house team                                                  | 2026-11-10 | Accepted and built (pending merge)                            |
 
 **Numbering note (corrected 2026-10-19):** 0034 was written 2026-10-15 but existed only as an
 uncommitted file until recovered and committed here alongside 0035–0037 — it was never missing

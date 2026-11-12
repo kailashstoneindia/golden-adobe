@@ -1,6 +1,6 @@
 # Delivery module: API contract for the mobile developer
 
-Status: **Draft, nothing is built yet** (design: decision 0060). Paths are relative to the API base used by
+Status: **Built and tested on branch `feat/delivery-module`, not yet merged or deployed** (design: decision 0060). Shapes below match the implementation and the end-to-end test `delivery-flow.e2e.spec.ts`. The mobile developer can start against a local backend now. Paths are relative to the API base used by
 the other endpoints. All endpoints need the normal `Authorization: Bearer <accessToken>`. Errors use the
 existing error shape.
 
@@ -22,6 +22,10 @@ themselves; ops creates them. In demo mode the OTP is `123456`.
 `:id` is the **assignment id**. `reason` is one of `customer_unavailable`, `site_inaccessible`,
 `customer_refused`, `goods_damaged`, `other`. Wrong OTP returns 400; the 5th wrong try returns 403
 ("locked, contact ops").
+
+**Re-attempt.** After `fail` the group is `delivery_failed`. Ops starts a re-attempt in the admin panel (same or another driver). The new job appears in `GET /driver/deliveries` **already `picked_up`** with `attemptNo` 2 and a fresh customer code, because the goods stay on the truck: there is no second pickup step. The driver app has no push yet, so it must refresh the list to see it.
+
+Write calls (`pickup`, `complete`, `fail`) on a `blocked` job (order refunded or cancelled) return 400; show STOP.
 
 ```ts
 DeliveryJob {
@@ -52,7 +56,7 @@ DriverProfile {
 |---|---|---|---|
 | PATCH | `/vendors/order-groups/:id/status` | `{ status: "ready_for_pickup" }` | Existing endpoint. `shipped` and `delivered` are now rejected for vendors. |
 | POST | `/vendors/order-groups/:id/photo-url` | `{ contentType }` | Presigned upload for the optional handover photo. |
-| POST | `/vendors/order-groups/:id/handover` | `{ photoKey? }` | Needs a driver assigned. Idempotent. |
+| POST | `/vendors/order-groups/:id/handover` | `{ photoKey? }` | Needs a driver assigned (400 otherwise). Idempotent: a repeat keeps the first timestamp. Returns `{ groupId, vendorHandedOverAt }`. The group status does not change; the driver confirms pickup. |
 
 ## 3. Customer app additions
 

@@ -1,8 +1,8 @@
 # 0060 — Delivery module: MVP flow (in-house team)
 
 - **Date:** 2026-11-10
-- **Status:** Draft — flow agreed in principle, two items open with the client, nothing built
-- **Supersedes / Superseded by:** Supersedes [0047](0047-delivery-module-flagged.md) once accepted
+- **Status:** Accepted and built (pending merge) — branch `feat/delivery-module`, S1-S9 done; client answers still open (see Open follow-ups)
+- **Supersedes / Superseded by:** Supersedes [0047](0047-delivery-module-flagged.md)
 
 ## Context
 
