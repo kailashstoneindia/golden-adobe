@@ -11,6 +11,7 @@ import { VendorAccountDetails } from './models/vendor-account-details.model';
 import { UsersModule } from '../users/users.module';
 import { CatalogModule } from '../catalog/catalog.module';
 import { OrdersModule } from '../orders/orders.module';
+import { DeliveryModule } from '../delivery/delivery.module';
 
 // CatalogModule is imported here, not the reverse: it already exports
 // CityResolverService and (via SequelizeModule) the Category and
@@ -29,6 +30,9 @@ import { OrdersModule } from '../orders/orders.module';
     UsersModule,
     CatalogModule,
     OrdersModule,
+    // Decision 0060: vendor handover to the driver. DeliveryModule imports
+    // neither VendorsModule nor OrdersModule, so no cycle.
+    DeliveryModule,
   ],
   // VendorListingsController is declared here rather than in CatalogModule
   // even though it lives in the catalog folder beside the models it serves:

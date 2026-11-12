@@ -15,6 +15,7 @@ import { AdminDeliveryController } from './admin-delivery.controller';
 import { DeliveryPhotoService } from './delivery-photo.service';
 import { DriverDeliveriesService } from './driver-deliveries.service';
 import { DriverController } from './driver.controller';
+import { VendorHandoverService } from './vendor-handover.service';
 
 // Decision 0060. Later sessions add services and controllers here.
 @Module({
@@ -36,6 +37,7 @@ import { DriverController } from './driver.controller';
     DeliveryAssignmentsService,
     DeliveryPhotoService,
     DriverDeliveriesService,
+    VendorHandoverService,
   ],
   exports: [
     SequelizeModule,
@@ -44,6 +46,7 @@ import { DriverController } from './driver.controller';
     DeliveryAssignmentsService,
     DeliveryPhotoService,
     DriverDeliveriesService,
+    VendorHandoverService,
   ],
 })
 export class DeliveryModule {}

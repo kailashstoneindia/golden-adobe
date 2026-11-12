@@ -4,6 +4,7 @@ import {
   Patch,
   Get,
   Param,
+  ParseUUIDPipe,
   Body,
   UseGuards,
   Req,
@@ -16,6 +17,8 @@ import { VendorsService } from './vendors.service';
 import { VendorCategoriesService } from '../catalog/vendor-categories.service';
 import { OrdersService } from '../orders/orders.service';
 import { OrderVendorGroupStatus } from '../orders/models/order-vendor-group.model';
+import { VendorHandoverService } from '../delivery/vendor-handover.service';
+import { HandoverDto, HandoverPhotoUrlDto } from '../delivery/dto/vendor-handover.dto';
 import { OnboardVendorDto } from './dto/onboard-vendor.dto';
 import { UpdateVendorProfileDto } from './dto/update-vendor-profile.dto';
 import { UpdateAccountDetailsDto } from './dto/update-account-details.dto';
@@ -48,6 +51,7 @@ export class VendorsController {
     private readonly vendorsService: VendorsService,
     private readonly vendorCategoriesService: VendorCategoriesService,
     private readonly ordersService: OrdersService,
+    private readonly handovers: VendorHandoverService,
   ) {}
 
   @AllowUnapproved()
@@ -163,5 +167,35 @@ export class VendorsController {
   ) {
     const vendor = await this.vendorsService.resolveVendorByUserId(req.user.sub);
     return this.ordersService.updateVendorGroupStatus(vendor.id, id, dto.status);
+  }
+
+  @Post('order-groups/:id/photo-url')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Presigned upload for the optional handover photo (decision 0060)' })
+  @ApiResponse({ status: 404, description: 'Not found, or belongs to another vendor' })
+  async handoverPhotoUrl(
+    @Req() req: any,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: HandoverPhotoUrlDto,
+  ) {
+    const vendor = await this.vendorsService.resolveVendorByUserId(req.user.sub);
+    return this.handovers.createPhotoUrl(vendor.id, id, dto.contentType);
+  }
+
+  @Post('order-groups/:id/handover')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Confirm the goods were handed to the assigned driver',
+    description:
+      'Needs a driver assigned (400 otherwise). Idempotent: a repeat call keeps the first timestamp. The group status does not change; the driver confirms pickup.',
+  })
+  @ApiResponse({ status: 404, description: 'Not found, or belongs to another vendor' })
+  async handover(
+    @Req() req: any,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: HandoverDto,
+  ) {
+    const vendor = await this.vendorsService.resolveVendorByUserId(req.user.sub);
+    return this.handovers.markHandedOver(vendor.id, id, dto.photoKey);
   }
 }

@@ -7,6 +7,7 @@ import { PAYMENTS_TEST_MODELS } from '../../orders/__tests__/test-db';
 import { DeliveryModule } from '../delivery.module';
 import { DriverDeliveriesService } from '../driver-deliveries.service';
 import { DriversService } from '../drivers.service';
+import { VendorHandoverService } from '../vendor-handover.service';
 import { VehiclesService } from '../vehicles.service';
 
 // The real DeliveryModule, with its real imports, must resolve its services
@@ -44,5 +45,6 @@ describe('DeliveryModule wiring (integration)', () => {
     expect(moduleRef.get(DriversService)).toBeDefined();
     expect(moduleRef.get(VehiclesService)).toBeDefined();
     expect(moduleRef.get(DriverDeliveriesService)).toBeDefined();
+    expect(moduleRef.get(VendorHandoverService)).toBeDefined();
   });
 });

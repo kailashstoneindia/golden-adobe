@@ -3,6 +3,7 @@ import { DeliveryAssignmentsService } from '../delivery-assignments.service';
 import { DeliveryPhotoService } from '../delivery-photo.service';
 import { DriverDeliveriesService } from '../driver-deliveries.service';
 import { DriversService } from '../drivers.service';
+import { VendorHandoverService } from '../vendor-handover.service';
 import { createDeliveryTestModule } from './delivery-test-app';
 import { createPaymentsTestApp } from '../../orders/__tests__/payments-test-app';
 import { NOTIFICATION_SERVICE } from '../../notifications/notification.interface';
@@ -20,6 +21,7 @@ export async function setupDriverFixture() {
     DriversService,
     DeliveryPhotoService,
     DriverDeliveriesService,
+    VendorHandoverService,
     { provide: NOTIFICATION_SERVICE, useValue: notificationsLog },
   ]);
   const service = d.moduleRef.get(DriverDeliveriesService);
