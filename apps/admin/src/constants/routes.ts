@@ -12,6 +12,7 @@ export const ROUTES = {
   users: '/users',
   vendors: '/vendors',
   orders: '/orders',
+  drivers: '/drivers',
   catalogCategories: '/catalog/categories',
   catalogProducts: '/catalog/products',
   catalogImport: '/catalog/import',

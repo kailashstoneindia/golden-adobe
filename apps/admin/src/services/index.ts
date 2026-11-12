@@ -1,6 +1,7 @@
 export { adminService } from './api/adminService';
 export { artisansService } from './api/artisansService';
 export { authService } from './api/authService';
+export { deliveryService } from './api/deliveryService';
 export { catalogService } from './api/catalogService';
 export { vendorsService } from './api/vendorsService';
 export { ordersService } from './api/ordersService';

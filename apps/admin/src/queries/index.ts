@@ -45,6 +45,18 @@ export {
 } from './useCatalogQueries';
 
 export {
+  deliveryKeys,
+  useConfirmDriverDocumentMutation,
+  useCreateDriverMutation,
+  useCreateVehicleMutation,
+  useDriverQuery,
+  useDriversQuery,
+  useUpdateDriverMutation,
+  useUpdateVehicleMutation,
+  useVehiclesQuery,
+} from './useDeliveryQueries';
+
+export {
   ORDERS_QUERY_KEYS,
   useCancelAdminOrderMutation,
   useOrdersQuery,
