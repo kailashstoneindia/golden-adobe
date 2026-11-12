@@ -94,6 +94,8 @@ driver payouts, delivery fee to the customer, customer-facing tracking beyond th
 
 - **Vendor, customer and notification details (S6).** Handover is a marker on the open assignment (`vendor_handed_over_at`, optional photo); the group status does not change and a repeat call keeps the first timestamp. Another vendor's group is a 404, not a 403. The customer sees `deliveryOtp` only while the group is `shipped`, taken from the open `picked_up` assignment; vendor, admin and artisan views never carry it. The driver is notified on assign and reassign. A failed delivery still does not notify the customer: the app already shows "Delivery attempt failed (we will contact you)" and ops follow up by phone, so no extra wording was invented.
 
+- **Admin delivery UI details (S8).** The order modal lists delivery attempts through a new `orderId` filter on `GET /admin/delivery/assignments`, not through the admin order DTO, so photo links keep being signed in one place. Assign shows "Already assigned" on a 409 and refreshes the queue. Reassign hides the current driver; re-attempt may pick the same driver again, as the API allows.
+
 ## Open follow-ups
 
 | Item | Blocked on | Notes |
