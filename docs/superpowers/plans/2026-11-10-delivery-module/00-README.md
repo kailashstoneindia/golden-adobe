@@ -63,7 +63,7 @@ S2 and S3 can run in either order; S7 can run any time after S3, S8 after S4.
 - [x] S3 admin drivers and vehicles API
 - [x] S4 admin assignments API
 - [x] S5 driver API
-- [ ] S6 vendor, customer, notifications
+- [x] S6 vendor, customer, notifications
 - [ ] S7 admin UI: drivers and vehicles
 - [ ] S8 admin UI: queue, board, order modal
 - [ ] S9 wrap-up
@@ -76,11 +76,11 @@ S2 and S3 can run in either order; S7 can run any time after S3, S8 after S4.
 
 ## Handoff (read this first in a new session; updated 2026-11-10)
 
-**Branch:** `feat/delivery-module`. Done: S1-S5 (S5 pushed with this update). `.claude/settings.json` is modified and deliberately NOT committed; never stage it.
+**Branch:** `feat/delivery-module`. Done: S1-S6. `.claude/settings.json` is modified and deliberately NOT committed; never stage it.
 
-**Next step: S6 (vendor, customer, notifications)** in `06-vendor-customer-notifications.md`. Full backend suite: 88 suites / 941 tests green in the normal parallel run; `tsc --noEmit` clean. S6 must wire `sendDeliveryAssigned` into `assign`/`reassign` (S4 does not) and decide whether a failed delivery notifies the customer (S5 does not).
+**Next step: S7 (admin UI drivers and vehicles) or S8 (queue, board, order modal)**; S9 wraps up. Backend is feature complete.
 
-**Also available now:** S7 and S8 (admin UI), since S3 and S4 have their APIs.
+Backend API for all admin screens exists (S3, S4). Run the full backend suite and `tsc --noEmit` before the S9 sign-off.
 
 ### Rulings and facts later sessions rely on
 - Vendors may only do `confirmed -> ready_for_pickup` and cancel (S2). Shipped/delivered belong to drivers and ops.
@@ -112,3 +112,6 @@ S2 and S3 can run in either order; S7 can run any time after S3, S8 after S4.
 - Last full backend run: 79 suites / 836 tests green before S4; S4 specs since then pass (24 in the assignments spec).
   Run the full suite again before the S4 commit.
 - Per instruction: push to origin after each session once tests pass.
+- S6: `VendorHandoverService` (`delivery/vendor-handover.service.ts`) backs `POST /vendors/order-groups/:id/photo-url` and `/handover`; `VendorsModule` imports `DeliveryModule`. Specs that hand-build `VendorsController` must provide `VendorHandoverService` (see `vendor-onboarding-test-app.ts`).
+- S6: the customer's `deliveryOtp` comes from `OrdersService.loadDeliveryOtps` (one extra query, shipped groups only, open `picked_up` assignment), passed into `toOrderDto`. No Sequelize association was added, because specs that list models would break. `OrderDto.vendorGroups` is `CustomerOrderVendorGroupDto[]`; vendor, admin and artisan views use `OrderVendorGroupDto` and cannot carry it.
+- S6: `assign` and `reassign` notify the driver after commit (best effort). `reattempt` does not (the new attempt starts already picked up and the driver app pulls its list).

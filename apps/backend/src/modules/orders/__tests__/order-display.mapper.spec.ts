@@ -1,5 +1,11 @@
 import { Order } from '../models/order.model';
-import { toArtisanOrderDto, toOrderDto, toPaymentEventDto } from '../order-display.mapper';
+import {
+  toArtisanOrderDto,
+  toOrderDto,
+  toOrderVendorGroupDto,
+  toPaymentEventDto,
+} from '../order-display.mapper';
+import { toAdminOrderDto } from '../admin-order.mapper';
 
 function orderRow(capturedPaise: number | null): Order {
   return {
@@ -122,5 +128,52 @@ describe('delivery address on the order view (decision 0060)', () => {
       deliveryAddress: editedLiveRow,
     } as unknown as Order;
     expect(toOrderDto(order, false).deliveryAddress).toBeNull();
+  });
+});
+
+describe('delivery code on the order view (decision 0060 rule 5)', () => {
+  const group = (id: string, status: string) => ({
+    id,
+    orderId: 'o1',
+    vendorId: 'v1',
+    vendor: { shopName: 'Shop' },
+    subtotal: '100.00',
+    loadingUnloadingFee: '0.00',
+    status,
+    items: [],
+    createdAt: new Date('2026-11-01T00:00:00Z'),
+    updatedAt: new Date('2026-11-01T00:00:00Z'),
+  });
+  const orderWith = (...groups: ReturnType<typeof group>[]) =>
+    ({ ...orderRow(null), vendorGroups: groups }) as unknown as Order;
+  const otps = new Map([
+    ['g-shipped', '482913'],
+    ['g-delivered', '111111'],
+  ]);
+
+  it('gives the customer the code of a shipped group only', () => {
+    const dto = toOrderDto(
+      orderWith(group('g-shipped', 'shipped'), group('g-delivered', 'delivered')),
+      false,
+      otps,
+    );
+    expect(dto.vendorGroups.map((g) => g.deliveryOtp)).toEqual(['482913', null]);
+  });
+
+  it('is null when the group is shipped but no open assignment was loaded', () => {
+    const dto = toOrderDto(orderWith(group('g-other', 'shipped')), false, otps);
+    expect(dto.vendorGroups[0].deliveryOtp).toBeNull();
+  });
+
+  it('is null when no codes are passed at all (checkout, hire-request listings)', () => {
+    const dto = toOrderDto(orderWith(group('g-shipped', 'shipped')), false);
+    expect(dto.vendorGroups[0].deliveryOtp).toBeNull();
+  });
+
+  it('never appears on the vendor, admin or artisan views', () => {
+    const order = orderWith(group('g-shipped', 'shipped'));
+    expect(toOrderVendorGroupDto(order.vendorGroups[0])).not.toHaveProperty('deliveryOtp');
+    expect(toAdminOrderDto(order).vendorGroups[0]).not.toHaveProperty('deliveryOtp');
+    expect(toArtisanOrderDto(order).vendorGroups[0]).not.toHaveProperty('deliveryOtp');
   });
 });

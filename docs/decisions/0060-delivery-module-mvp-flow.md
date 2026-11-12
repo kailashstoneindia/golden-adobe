@@ -92,6 +92,8 @@ driver payouts, delivery fee to the customer, customer-facing tracking beyond th
 
 - **Driver API details (S5).** A job is `blocked` (STOP) only while it is open (`assigned` or `picked_up`); a finished job in a later-refunded order shows as normal history. A wrong OTP is counted in its own committed write, so the 400 cannot roll the count back; the 5th wrong try returns 403 and the job stays locked even for the right code. The photo key is checked before the OTP, so a bad upload never burns an attempt. Marking a delivery failed does not notify the customer yet (S6 decides the wording). A job's item unit is the product's unit-of-measure code, or `unit` when none is set.
 
+- **Vendor, customer and notification details (S6).** Handover is a marker on the open assignment (`vendor_handed_over_at`, optional photo); the group status does not change and a repeat call keeps the first timestamp. Another vendor's group is a 404, not a 403. The customer sees `deliveryOtp` only while the group is `shipped`, taken from the open `picked_up` assignment; vendor, admin and artisan views never carry it. The driver is notified on assign and reassign. A failed delivery still does not notify the customer: the app already shows "Delivery attempt failed (we will contact you)" and ops follow up by phone, so no extra wording was invented.
+
 ## Open follow-ups
 
 | Item | Blocked on | Notes |
@@ -103,6 +105,8 @@ driver payouts, delivery fee to the customer, customer-facing tracking beyond th
 | Relation to the loading/unloading fee ([0036](0036-vendor-loading-unloading-capability.md)) | Client answer | Who unloads at the site: the driver, the helper, or the customer. Rate is still ₹0. |
 | Delivery fee for customers | Client answer | Checkout charges none today. |
 | Push notifications to drivers | Notification provider work | Log-only today. |
+| Driver notice on re-attempt | My call | `reattempt` does not call `sendDeliveryAssigned`; the driver app pulls its list. Add it if drivers miss re-attempt jobs. |
+| Customer notice on failed delivery | Client answer | Wording and channel not agreed; ops phone the customer today. |
 | Cost and timeline for the client | Estimate | Needs its own estimate, not absorbed into Phase 3 or 4 ([0035](0035-client-feedback-triage-2026-10-18.md)). |
 
 ## Consequences

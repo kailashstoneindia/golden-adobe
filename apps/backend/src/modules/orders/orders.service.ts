@@ -86,7 +86,31 @@ export class OrdersService {
       include: customerOrderInclude(false),
       order: [['createdAt', 'DESC']],
     });
-    return orders.map((order) => toOrderDto(order, false));
+    const otps = await this.loadDeliveryOtps(orders);
+    return orders.map((order) => toOrderDto(order, false, otps));
+  }
+
+  // Decision 0060 rule 5: the code of each shipped group's open assignment, in
+  // one query. Customer paths only; vendor, admin and artisan views never
+  // call this, so the code cannot reach them through a shared include.
+  private async loadDeliveryOtps(orders: Order[]): Promise<Map<string, string>> {
+    const shippedGroupIds = orders
+      .flatMap((order) => order.vendorGroups ?? [])
+      .filter((group) => group.status === OrderVendorGroupStatus.SHIPPED)
+      .map((group) => group.id);
+    if (shippedGroupIds.length === 0) {
+      return new Map();
+    }
+    const open = await this.assignmentModel.findAll({
+      where: {
+        orderVendorGroupId: shippedGroupIds,
+        status: DELIVERY_ASSIGNMENT_STATUSES.PICKED_UP,
+      },
+      attributes: ['orderVendorGroupId', 'deliveryOtp'],
+    });
+    return new Map(
+      open.flatMap((a) => (a.deliveryOtp ? [[a.orderVendorGroupId, a.deliveryOtp] as const] : [])),
+    );
   }
 
   async getForCustomer(userId: string, orderId: string): Promise<OrderDto> {
@@ -98,7 +122,7 @@ export class OrdersService {
     if (!order) {
       throw new NotFoundException('order not found');
     }
-    return toOrderDto(order, true);
+    return toOrderDto(order, true, await this.loadDeliveryOtps([order]));
   }
 
   // Closes the "artisan can't open a linked order" gap: an artisan sees

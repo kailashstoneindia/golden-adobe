@@ -11,7 +11,10 @@ import type {
   RefundDto,
 } from '@golden-abode/types';
 import { Order } from './models/order.model';
-import { OrderVendorGroup } from './models/order-vendor-group.model';
+import {
+  OrderVendorGroup,
+  OrderVendorGroupStatus as OrderVendorGroupStatusEnum,
+} from './models/order-vendor-group.model';
 import { OrderItem } from './models/order-item.model';
 import { PaymentEvent } from './models/payment-event.model';
 import { Refund } from './models/refund.model';
@@ -20,10 +23,23 @@ import { toCustomerAddressDto } from '../customers/customer-address.mapper';
 import { snapshotToAddressDto } from './delivery-address-snapshot';
 import { toFiniteNumber, toIsoDate } from '../../common/utils/display-number.util';
 
-export function toOrderDto(order: Order, includeDeliveryAddress: boolean): OrderDto {
+// `deliveryOtps` maps group id to the code of its open delivery assignment.
+// Only the customer paths pass it; a code is shown only while the group is
+// shipped (decision 0060 rule 5), and every other caller gets null.
+export function toOrderDto(
+  order: Order,
+  includeDeliveryAddress: boolean,
+  deliveryOtps?: ReadonlyMap<string, string>,
+): OrderDto {
   return {
     ...toOrderFields(order, includeDeliveryAddress),
-    vendorGroups: (order.vendorGroups ?? []).map(toOrderVendorGroupDto),
+    vendorGroups: (order.vendorGroups ?? []).map((group) => ({
+      ...toOrderVendorGroupDto(group),
+      deliveryOtp:
+        group.status === OrderVendorGroupStatusEnum.SHIPPED
+          ? (deliveryOtps?.get(group.id) ?? null)
+          : null,
+    })),
   };
 }
 

@@ -130,6 +130,13 @@ export type OrderVendorGroupDto = {
 
 export type VendorOrderGroupDto = OrderVendorGroupDto;
 
+// Decision 0060 rule 5: only the customer sees the delivery code, and only
+// while the group is out for delivery. The vendor, admin and artisan views
+// use OrderVendorGroupDto, which has no such field.
+export type CustomerOrderVendorGroupDto = OrderVendorGroupDto & {
+  deliveryOtp: string | null;
+};
+
 // Artisan-facing delivery address — built by explicit field listing, never
 // by spreading CustomerAddressDto and deleting keys, same discipline
 // ArtisanPublicProfileDto's own comment documents for the same reason: a
@@ -181,7 +188,7 @@ export type OrderDto = {
   createdAt: string;
   updatedAt: string;
   deliveryAddress: CustomerAddressDto | null;
-  vendorGroups: OrderVendorGroupDto[];
+  vendorGroups: CustomerOrderVendorGroupDto[];
 };
 
 export type UpdateVendorOrderGroupStatusRequest = {
