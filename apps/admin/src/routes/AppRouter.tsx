@@ -22,6 +22,7 @@ import { VendorsPage } from '@/pages/VendorsPage';
 import { OrdersPage } from '@/pages/OrdersPage';
 import { DriversPage } from '@/pages/DriversPage';
 import { DeliveryQueuePage } from '@/pages/DeliveryQueuePage';
+import { DeliveryBoardPage } from '@/pages/DeliveryBoardPage';
 import styles from '@/styles/shared.module.css';
 
 function ProtectedRoute() {
@@ -67,6 +68,7 @@ export function AppRouter() {
           <Route path={ROUTES.orders} element={<OrdersPage />} />
           <Route path={ROUTES.drivers} element={<DriversPage />} />
           <Route path={ROUTES.deliveryQueue} element={<DeliveryQueuePage />} />
+          <Route path={ROUTES.deliveryBoard} element={<DeliveryBoardPage />} />
           <Route path={ROUTES.catalogCategories} element={<CatalogCategoriesPage />} />
           <Route path={ROUTES.catalogProducts} element={<CatalogProductsPage />} />
           <Route path={ROUTES.catalogImport} element={<CatalogImportPage />} />
