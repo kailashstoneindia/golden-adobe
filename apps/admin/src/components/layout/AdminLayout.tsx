@@ -139,6 +139,14 @@ export function AdminLayout() {
             Orders
           </NavLink>
           <NavLink
+            to={ROUTES.drivers}
+            className={({ isActive }) =>
+              `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`
+            }
+          >
+            Drivers
+          </NavLink>
+          <NavLink
             to={ROUTES.catalogProducts}
             className={({ isActive }) =>
               `${styles.navLink} ${isActive || inSection(CATALOG_SECTION) ? styles.navLinkActive : ''}`

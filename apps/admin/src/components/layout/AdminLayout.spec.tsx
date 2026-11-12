@@ -223,3 +223,10 @@ describe('AdminLayout log out when storage fails', () => {
     vi.restoreAllMocks();
   });
 });
+
+describe('AdminLayout navigation', () => {
+  it('links to the Drivers page (decision 0060)', () => {
+    renderLayout();
+    expect(screen.getByRole('link', { name: 'Drivers' })).toHaveAttribute('href', '/drivers');
+  });
+});
