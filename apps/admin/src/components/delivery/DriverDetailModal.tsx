@@ -106,7 +106,7 @@ function DocumentRow({
 
   return (
     <div className={styles.detailRow}>
-      <span className={styles.detailLabel}>{label}</span>
+      <span className={styles.detailLabel}>{label.charAt(0).toUpperCase() + label.slice(1)}</span>
       <span className={styles.detailValue}>
         {viewUrl ? (
           <a href={viewUrl} target="_blank" rel="noreferrer">
