@@ -9,7 +9,12 @@ import { server } from '@/test/server';
 import {
   deliveryKeys,
   useCreateDriverMutation,
+  useAssignMutation,
+  useAssignmentsQuery,
   useCreateVehicleMutation,
+  useDeliveryQueueQuery,
+  useReassignMutation,
+  useReattemptMutation,
   useDriversQuery,
   useUpdateDriverMutation,
   useUpdateVehicleMutation,
@@ -106,5 +111,82 @@ describe('delivery queries (decision 0060)', () => {
     await act(() => update.result.current.mutateAsync({ id: ID, body: { isActive: false } }));
     expect(invalidate).toHaveBeenCalledTimes(2);
     expect(invalidate).toHaveBeenCalledWith({ queryKey: deliveryKeys.all });
+  });
+});
+
+describe('assignment queries (decision 0060)', () => {
+  it('useDeliveryQueueQuery calls GET /admin/delivery/queue with paging', async () => {
+    let url = '';
+    server.use(
+      http.get('/api/admin/delivery/queue', ({ request }) => {
+        url = request.url;
+        return HttpResponse.json({
+          success: true,
+          data: { items: [], total: 0, page: 1, limit: 20, totalPages: 0 },
+        });
+      }),
+    );
+    const { wrapper } = setup();
+    const { result } = renderHook(() => useDeliveryQueueQuery({ page: 2, pageSize: 10 }), {
+      wrapper,
+    });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(new URL(url).searchParams.get('page')).toBe('2');
+    expect(new URL(url).searchParams.get('pageSize')).toBe('10');
+  });
+
+  it('useAssignmentsQuery sends the status and driver filters', async () => {
+    let url = '';
+    server.use(
+      http.get('/api/admin/delivery/assignments', ({ request }) => {
+        url = request.url;
+        return HttpResponse.json({
+          success: true,
+          data: { items: [], total: 0, page: 1, limit: 20, totalPages: 0 },
+        });
+      }),
+    );
+    const { wrapper } = setup();
+    const { result } = renderHook(
+      () => useAssignmentsQuery({ status: 'failed', driverId: ID, page: 1, pageSize: 20 }),
+      { wrapper },
+    );
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(new URL(url).searchParams.get('status')).toBe('failed');
+    expect(new URL(url).searchParams.get('driverId')).toBe(ID);
+  });
+
+  it('assign, reassign and reattempt post to the right routes and refresh delivery and orders', async () => {
+    const calls: string[] = [];
+    server.use(
+      http.post('/api/admin/delivery/assignments', async ({ request }) => {
+        calls.push('assign ' + JSON.stringify(await request.json()));
+        return HttpResponse.json({ success: true, data: {} }, { status: 201 });
+      }),
+      http.post(`/api/admin/delivery/assignments/${ID}/reassign`, async ({ request }) => {
+        calls.push('reassign ' + JSON.stringify(await request.json()));
+        return HttpResponse.json({ success: true, data: {} }, { status: 201 });
+      }),
+      http.post(`/api/admin/delivery/groups/${ID}/reattempt`, async ({ request }) => {
+        calls.push('reattempt ' + JSON.stringify(await request.json()));
+        return HttpResponse.json({ success: true, data: {} }, { status: 201 });
+      }),
+    );
+    const { invalidate, wrapper } = setup();
+    const assign = renderHook(() => useAssignMutation(), { wrapper });
+    const reassign = renderHook(() => useReassignMutation(), { wrapper });
+    const reattempt = renderHook(() => useReattemptMutation(), { wrapper });
+
+    await act(() => assign.result.current.mutateAsync({ orderVendorGroupId: ID, driverId: 'd9' }));
+    await act(() => reassign.result.current.mutateAsync({ assignmentId: ID, driverId: 'd8' }));
+    await act(() => reattempt.result.current.mutateAsync({ groupId: ID, driverId: 'd7' }));
+
+    expect(calls).toEqual([
+      `assign {"orderVendorGroupId":"${ID}","driverId":"d9"}`,
+      'reassign {"driverId":"d8"}',
+      'reattempt {"driverId":"d7"}',
+    ]);
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: deliveryKeys.all });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['orders'] });
   });
 });

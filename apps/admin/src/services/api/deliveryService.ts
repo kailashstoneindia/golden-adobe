@@ -1,13 +1,22 @@
-import type { AdminDriverDto, PaginatedResponse, VehicleDto } from '@golden-abode/types';
+import type {
+  AdminAssignmentDto,
+  AdminDriverDto,
+  PaginatedResponse,
+  QueueItemDto,
+  VehicleDto,
+} from '@golden-abode/types';
 
 import { API_ENDPOINTS } from '@/constants/apiEndpoints';
 import { getRequest, patchRequest, postRequest } from '@/services/api/apiClient';
 import type {
+  AssignmentListQuery,
+  AssignRequest,
   CreateDriverRequest,
   CreateVehicleRequest,
   DriverDocumentKind,
   DriverDocumentUploadTicket,
   DriverListQuery,
+  QueueQuery,
   UpdateDriverRequest,
   UpdateVehicleRequest,
 } from '@/types/delivery.types';
@@ -22,9 +31,46 @@ function driverQueryString(query: DriverListQuery): string {
   return queryString ? `?${queryString}` : '';
 }
 
+function pagedQueryString(query: Record<string, string | number | undefined>): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined && value !== '') params.set(key, String(value));
+  }
+  const queryString = params.toString();
+  return queryString ? `?${queryString}` : '';
+}
+
 const endpoints = API_ENDPOINTS.delivery;
 
 export const deliveryService = {
+  assignments: {
+    queue(query: QueueQuery): Promise<PaginatedResponse<QueueItemDto>> {
+      return getRequest<PaginatedResponse<QueueItemDto>>(
+        `${endpoints.queue}${pagedQueryString({ ...query })}`,
+      );
+    },
+    list(query: AssignmentListQuery): Promise<PaginatedResponse<AdminAssignmentDto>> {
+      return getRequest<PaginatedResponse<AdminAssignmentDto>>(
+        `${endpoints.assignments}${pagedQueryString({ ...query })}`,
+      );
+    },
+    assign(body: AssignRequest): Promise<AdminAssignmentDto> {
+      return postRequest<AdminAssignmentDto, AssignRequest>(endpoints.assignments, body);
+    },
+    reassign(assignmentId: string, driverId: string): Promise<AdminAssignmentDto> {
+      return postRequest<AdminAssignmentDto, { driverId: string }>(
+        endpoints.assignmentReassign(assignmentId),
+        { driverId },
+      );
+    },
+    reattempt(groupId: string, driverId: string): Promise<AdminAssignmentDto> {
+      return postRequest<AdminAssignmentDto, { driverId: string }>(
+        endpoints.groupReattempt(groupId),
+        { driverId },
+      );
+    },
+  },
+
   vehicles: {
     list(): Promise<VehicleDto[]> {
       return getRequest<VehicleDto[]>(endpoints.vehicles);

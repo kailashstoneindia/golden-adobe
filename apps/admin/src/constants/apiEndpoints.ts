@@ -58,6 +58,11 @@ export const API_ENDPOINTS = {
     driverDocumentConfirm: (driverId: string) => `/admin/drivers/${driverId}/documents/confirm`,
     vehicles: '/admin/vehicles',
     vehicleById: (vehicleId: string) => `/admin/vehicles/${vehicleId}`,
+    queue: '/admin/delivery/queue',
+    assignments: '/admin/delivery/assignments',
+    assignmentReassign: (assignmentId: string) =>
+      `/admin/delivery/assignments/${assignmentId}/reassign`,
+    groupReattempt: (groupId: string) => `/admin/delivery/groups/${groupId}/reattempt`,
   },
   catalog: {
     categories: '/admin/catalog/categories',

@@ -12,6 +12,8 @@ export const ROUTES = {
   users: '/users',
   vendors: '/vendors',
   orders: '/orders',
+  deliveryQueue: '/delivery/queue',
+  deliveryBoard: '/delivery/board',
   drivers: '/drivers',
   catalogCategories: '/catalog/categories',
   catalogProducts: '/catalog/products',

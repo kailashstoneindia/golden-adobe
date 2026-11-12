@@ -1,3 +1,5 @@
+import type { DeliveryAssignmentStatus } from '@golden-abode/types';
+
 // Request bodies for the delivery admin API (decision 0060). The response
 // shapes (AdminDriverDto, VehicleDto) live in @golden-abode/types.
 export type DriverDocumentKind = 'licence' | 'aadhaar';
@@ -44,4 +46,22 @@ export interface DriverDocumentUploadTicket {
   url: string;
   fields: Record<string, string>;
   key: string;
+}
+
+export interface QueueQuery {
+  page?: number;
+  pageSize?: number;
+  cityId?: string;
+}
+
+export interface AssignmentListQuery {
+  status?: DeliveryAssignmentStatus;
+  driverId?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface AssignRequest {
+  orderVendorGroupId: string;
+  driverId: string;
 }

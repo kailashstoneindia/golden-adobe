@@ -46,7 +46,12 @@ export {
 
 export {
   deliveryKeys,
+  useAssignMutation,
+  useAssignmentsQuery,
   useConfirmDriverDocumentMutation,
+  useDeliveryQueueQuery,
+  useReassignMutation,
+  useReattemptMutation,
   useCreateDriverMutation,
   useCreateVehicleMutation,
   useDriverQuery,

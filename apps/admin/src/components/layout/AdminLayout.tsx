@@ -139,6 +139,14 @@ export function AdminLayout() {
             Orders
           </NavLink>
           <NavLink
+            to={ROUTES.deliveryQueue}
+            className={({ isActive }) =>
+              `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`
+            }
+          >
+            Ready to deliver
+          </NavLink>
+          <NavLink
             to={ROUTES.drivers}
             className={({ isActive }) =>
               `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`
