@@ -3,12 +3,14 @@ import { isEmpty } from 'lodash';
 
 import { DriverDetailModal } from '@/components/delivery/DriverDetailModal';
 import { DriverFormModal } from '@/components/delivery/DriverFormModal';
+import { VehiclesTab } from '@/components/delivery/VehiclesTab';
 import { APP_CONSTANTS } from '@/constants/appConstants';
 import { useCreateDriverMutation, useDriversQuery, useVehiclesQuery } from '@/queries';
 import styles from '@/styles/shared.module.css';
 
-// Decision 0060: the people who deliver, and the vehicles they drive.
-export function DriversPage() {
+type Tab = 'drivers' | 'vehicles';
+
+function DriversTab() {
   const [adding, setAdding] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const driversQuery = useDriversQuery({ page: 1, limit: APP_CONSTANTS.defaultPageSize });
@@ -25,13 +27,7 @@ export function DriversPage() {
   }
 
   return (
-    <section>
-      <h2 className={styles.pageTitle}>Drivers</h2>
-      <p className={styles.pageSubtitle}>
-        Drivers deliver orders that vendors have packed. Each has an optional helper and an assigned
-        vehicle.
-      </p>
-
+    <div>
       <div className={styles.actions}>
         <button
           type="button"
@@ -91,6 +87,36 @@ export function DriversPage() {
           onClose={() => setAdding(false)}
         />
       ) : null}
+    </div>
+  );
+}
+
+// Decision 0060: the people who deliver, and the vehicles they drive.
+export function DriversPage() {
+  const [tab, setTab] = useState<Tab>('drivers');
+
+  return (
+    <section>
+      <h2 className={styles.pageTitle}>Drivers</h2>
+      <p className={styles.pageSubtitle}>
+        Drivers deliver orders that vendors have packed. Each has an optional helper and an assigned
+        vehicle.
+      </p>
+
+      <div className={styles.tabs}>
+        {(['drivers', 'vehicles'] as const).map((name) => (
+          <button
+            key={name}
+            type="button"
+            className={`${styles.tab} ${tab === name ? styles.tabActive : ''}`}
+            onClick={() => setTab(name)}
+          >
+            {name === 'drivers' ? 'Drivers' : 'Vehicles'}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'drivers' ? <DriversTab /> : <VehiclesTab />}
     </section>
   );
 }
