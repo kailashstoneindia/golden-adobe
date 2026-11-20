@@ -61,7 +61,7 @@ S2/S4/S7 can run in any order after S1. S3 can run alongside S4.
 ## Progress (tick and commit at the end of each session)
 
 - [x] S1 schema and resolver
-- [ ] S2 brands API
+- [x] S2 brands API
 - [ ] S3 brands UI
 - [ ] S4 product API
 - [ ] S5 product merge

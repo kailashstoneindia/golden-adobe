@@ -78,6 +78,16 @@ Details in [the spec](../superpowers/specs/2026-11-10-catalog-onboarding-design.
 | S1      | Removing an alias that belongs to a different brand returns 404.                                                                           | The brands API deletes by `/:brandId/aliases/:aliasId`; the pair must match.      |
 | S1      | Import and add-product both say an unknown brand "is not in the catalog. Add it on the Brands page first"; a deactivated brand is refused. | Same wording on both paths, and it points at the screen that will exist after S3. |
 
+### S2 (brands API)
+
+| Choice                                                                                                                                                                        | Why                                                                                                                                                                                          |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A new brand's name, a rename, or a new alias is refused (409) if it equals another brand's alias or another brand's normalized name.                                          | The resolver checks aliases before names, so either would silently send one brand's imports to another.                                                                                      |
+| Brand logos are stored under `variants/brands/<brandId>/logo-<uuid>.<ext>`, not `brands/<brandId>/…`; `logoUrl` is the full public URL. JPEG, PNG or WebP, 2 MB; SVG refused. | The CDN serves only `variants/*` (`infra/aws/s3/media-bucket-policy.json`), and the media sweep and image Lambda only touch product keys. The spec's key would store a URL that returns 403. |
+| A brand's slug never changes on rename.                                                                                                                                       | Same rule as products: links keep working.                                                                                                                                                   |
+| Merge locks both brands in id order and refuses (409, nothing moved) if any part number exists under both brands, listing them.                                               | The `(brand_id, mfr_part_number)` unique index would fail mid-merge otherwise.                                                                                                               |
+| A merged brand can't be edited or reactivated (400); deactivating it again is a harmless no-op.                                                                               | It only exists so its old name keeps resolving.                                                                                                                                              |
+
 ## Open questions
 
 | Item                                                | Notes                                                                                                            |
