@@ -88,6 +88,16 @@ Details in [the spec](../superpowers/specs/2026-11-10-catalog-onboarding-design.
 | Merge locks both brands in id order and refuses (409, nothing moved) if any part number exists under both brands, listing them.                                               | The `(brand_id, mfr_part_number)` unique index would fail mid-merge otherwise.                                                                                                               |
 | A merged brand can't be edited or reactivated (400); deactivating it again is a harmless no-op.                                                                               | It only exists so its old name keeps resolving.                                                                                                                                              |
 
+### S3 (Brands page)
+
+| Choice                                                                                                                                                                                                                                                | Why                                                                 |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `BrandDto.aliases` is `{ id, alias }[]`, not `string[]`.                                                                                                                                                                                              | The screen removes an alias by id (`DELETE /:id/aliases/:aliasId`). |
+| The list shows active brands by default; "Show inactive brands" switches to inactive ones, where a merged brand reads "Merged into &lt;name&gt;".                                                                                                     | Pickers and day-to-day work only need active brands.                |
+| The form checks the same rules as the API (five required fields, email shape, phone pattern) before sending; edit sends only changed fields.                                                                                                          | Fast feedback, and a save never rewrites untouched data.            |
+| Logo upload is checked in the browser too (JPEG, PNG or WebP, 2 MB).                                                                                                                                                                                  | Same limits as the API; no wasted upload.                           |
+| Browser-checked on 2026-11-20 against `golden_abode_test` and local MinIO: create, duplicate refused, alias, logo (loads from the public `variants/` URL), merge, and an import row typed with the merged brand's old name landing on the kept brand. | —                                                                   |
+
 ## Open questions
 
 | Item                                                | Notes                                                                                                            |

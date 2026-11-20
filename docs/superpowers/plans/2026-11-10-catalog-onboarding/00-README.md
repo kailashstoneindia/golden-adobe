@@ -62,7 +62,7 @@ S2/S4/S7 can run in any order after S1. S3 can run alongside S4.
 
 - [x] S1 schema and resolver
 - [x] S2 brands API
-- [ ] S3 brands UI
+- [x] S3 brands UI
 - [ ] S4 product API
 - [ ] S5 product merge
 - [ ] S6 product UI
