@@ -1051,3 +1051,8 @@ textarea.input {
 .pickerOptionActive {
   background: var(--color-line);
 }
+
+.pickerInput {
+  width: 100%;
+  box-sizing: border-box;
+}

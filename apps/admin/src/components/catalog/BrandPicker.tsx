@@ -31,7 +31,7 @@ export function BrandPicker({
   return (
     <div>
       <input
-        className={styles.input}
+        className={`${styles.input} ${styles.pickerInput}`}
         aria-label="Find a brand"
         placeholder="Type a brand name"
         value={search}
