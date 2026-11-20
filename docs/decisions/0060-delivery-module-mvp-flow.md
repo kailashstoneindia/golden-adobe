@@ -26,13 +26,13 @@ Today's code, checked 2026-11-10:
 
 ## Decisions (from the 2026-11-10 discussion)
 
-| # | Question | Answer | Source |
-|---|---|---|---|
-| 1 | Do all orders go through the in-house team? | **Yes. Every order is delivered by the in-house team.** No per-vendor self-delivery flag. | User |
-| 2 | Keep the customer delivery OTP? | **Yes, pending client confirmation.** Build with a **dummy OTP** for testing. | User |
-| 3 | Where do goods go after a failed delivery? | **Open. Will be asked of the client.** | User |
-| 4 | Is the helper (co-driver) a separate login or a name on the assignment? | **No separate login.** The helper is assigned to a driver and the driver's profile shows the helper's **name and phone number**. Nothing more. | User |
-| 5 | Driver onboarding documents | **Licence and Aadhaar.** If a vehicle is assigned to the driver, show its details too. Vehicles belong to the client, so the driver does not submit vehicle documents. | User |
+| #   | Question                                                                | Answer                                                                                                                                                                 | Source |
+| --- | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| 1   | Do all orders go through the in-house team?                             | **Yes. Every order is delivered by the in-house team.** No per-vendor self-delivery flag.                                                                              | User   |
+| 2   | Keep the customer delivery OTP?                                         | **Yes, pending client confirmation.** Build with a **dummy OTP** for testing.                                                                                          | User   |
+| 3   | Where do goods go after a failed delivery?                              | **Open. Will be asked of the client.**                                                                                                                                 | User   |
+| 4   | Is the helper (co-driver) a separate login or a name on the assignment? | **No separate login.** The helper is assigned to a driver and the driver's profile shows the helper's **name and phone number**. Nothing more.                         | User   |
+| 5   | Driver onboarding documents                                             | **Licence and Aadhaar.** If a vehicle is assigned to the driver, show its details too. Vehicles belong to the client, so the driver does not submit vehicle documents. | User   |
 
 ## Agreed flow
 
@@ -114,20 +114,20 @@ A code review found ten issues; each was fixed test-first except one.
 
 Last reviewed 2026-11-20. Items marked "Client answer" do not change the API calls the mobile app builds against; they change details and add states later.
 
-| Item | Blocked on | Notes |
-|---|---|---|
-| Failed-delivery goods handling (decision 3) | Client answer | Options: back to vendor, hold in a warehouse, stay on the truck for the next attempt. Shapes the `DELIVERY_FAILED` follow-up states. |
-| Helper pairing detail (decision 4) | Minor, my call below | Whether the helper is a standing pairing on the driver or picked per delivery. Built as a standing pairing that ops can change. |
-| Helper identity check | Client answer | Helpers have no Aadhaar or licence check in the MVP. Ask the client if they want one. |
-| Delivery OTP confirmed by client (decision 2) | Client answer | Needs a new DLT SMS template if kept. |
-| Relation to the loading/unloading fee ([0036](0036-vendor-loading-unloading-capability.md)) | Client answer | Who unloads at the site: the driver, the helper, or the customer. Rate is still ₹0. |
-| Delivery fee for customers | Client answer | Checkout charges none today. |
-| Push notifications to drivers | Notification provider work | Log-only today. |
-| Driver notice on re-attempt | My call | `reattempt` does not call `sendDeliveryAssigned`; the driver app pulls its list. Add it if drivers miss re-attempt jobs. |
-| Customer notice on failed delivery | Client answer | Wording and channel not agreed; ops phone the customer today. |
-| Attempt limit and who pays for a repeat attempt | Client answer | Not built: ops can re-attempt a failed delivery as often as needed, and a repeat costs the customer nothing. A cap or a fee needs the client's rule. |
-| Unlock confirmation | My call | Ops can unlock a job locked by five wrong codes with one click (a new customer code is issued). Ops are expected to confirm with the customer first; there is no confirm dialog or written rule yet. Owner decides whether to add one. |
-| Cost and timeline for the client | Estimate | Needs its own estimate, not absorbed into Phase 3 or 4 ([0035](0035-client-feedback-triage-2026-10-18.md)). |
+| Item                                                                                        | Blocked on                 | Notes                                                                                                                                                                                                                                  |
+| ------------------------------------------------------------------------------------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Failed-delivery goods handling (decision 3)                                                 | Client answer              | Options: back to vendor, hold in a warehouse, stay on the truck for the next attempt. Shapes the `DELIVERY_FAILED` follow-up states.                                                                                                   |
+| Helper pairing detail (decision 4)                                                          | Minor, my call below       | Whether the helper is a standing pairing on the driver or picked per delivery. Built as a standing pairing that ops can change.                                                                                                        |
+| Helper identity check                                                                       | Client answer              | Helpers have no Aadhaar or licence check in the MVP. Ask the client if they want one.                                                                                                                                                  |
+| Delivery OTP confirmed by client (decision 2)                                               | Client answer              | Needs a new DLT SMS template if kept.                                                                                                                                                                                                  |
+| Relation to the loading/unloading fee ([0036](0036-vendor-loading-unloading-capability.md)) | Client answer              | Who unloads at the site: the driver, the helper, or the customer. Rate is still ₹0.                                                                                                                                                    |
+| Delivery fee for customers                                                                  | Client answer              | Checkout charges none today.                                                                                                                                                                                                           |
+| Push notifications to drivers                                                               | Notification provider work | Log-only today.                                                                                                                                                                                                                        |
+| Driver notice on re-attempt                                                                 | My call                    | `reattempt` does not call `sendDeliveryAssigned`; the driver app pulls its list. Add it if drivers miss re-attempt jobs.                                                                                                               |
+| Customer notice on failed delivery                                                          | Client answer              | Wording and channel not agreed; ops phone the customer today.                                                                                                                                                                          |
+| Attempt limit and who pays for a repeat attempt                                             | Client answer              | Not built: ops can re-attempt a failed delivery as often as needed, and a repeat costs the customer nothing. A cap or a fee needs the client's rule.                                                                                   |
+| Unlock confirmation                                                                         | My call                    | Ops can unlock a job locked by five wrong codes with one click (a new customer code is issued). Ops are expected to confirm with the customer first; there is no confirm dialog or written rule yet. Owner decides whether to add one. |
+| Cost and timeline for the client                                                            | Estimate                   | Needs its own estimate, not absorbed into Phase 3 or 4 ([0035](0035-client-feedback-triage-2026-10-18.md)).                                                                                                                            |
 
 ## Consequences
 

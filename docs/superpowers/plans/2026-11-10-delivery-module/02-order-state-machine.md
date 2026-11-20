@@ -12,9 +12,9 @@ Test `modules/orders/__tests__/orders.service.spec.ts` (extend `describe('update
 `CONFIRMED:[READY_FOR_PICKUP, CANCELLED]`, all other statuses `[]`.
 
 - [ ] **Step 1: Write failing tests** (mock style of the neighbours): `CONFIRMED → READY_FOR_PICKUP` saves and calls
-  `sendOrderStatusChanged(customerId, orderId, 'ready_for_pickup')`; `CONFIRMED → SHIPPED` throws BadRequest
-  `cannot transition order group from confirmed to shipped`; `SHIPPED → DELIVERED` by vendor throws;
-  `READY_FOR_PICKUP → CANCELLED` by vendor throws; a group of another vendor still 404s (existing behaviour).
+      `sendOrderStatusChanged(customerId, orderId, 'ready_for_pickup')`; `CONFIRMED → SHIPPED` throws BadRequest
+      `cannot transition order group from confirmed to shipped`; `SHIPPED → DELIVERED` by vendor throws;
+      `READY_FOR_PICKUP → CANCELLED` by vendor throws; a group of another vendor still 404s (existing behaviour).
 - [ ] **Step 2: Run** `... test -- orders.service`. Expected: new tests FAIL.
 - [ ] **Step 3: Implement** the enum additions and the reduced transition table. Keep the locked-parent guard.
 - [ ] **Step 4: Run.** Expected: PASS; fix older tests that assumed vendors can ship (update them to the new rule).
@@ -31,12 +31,12 @@ recipient: {name: string; phone: string}): DeliveryAddressSnapshot` exported fro
 checkout writes it; display mapper prefers the snapshot.
 
 - [ ] **Step 1: Write failing tests:** (a) checkout creates the order with a snapshot whose `addressLine1`, `city`,
-  `pincode`, `recipientName`, `recipientPhone` equal the address and the customer's user; (b) mapper given an order whose
-  live address row was edited after checkout returns the snapshot values, not the edited ones; (c) mapper with a null
-  snapshot (old orders) falls back to the live row.
+      `pincode`, `recipientName`, `recipientPhone` equal the address and the customer's user; (b) mapper given an order whose
+      live address row was edited after checkout returns the snapshot values, not the edited ones; (c) mapper with a null
+      snapshot (old orders) falls back to the live row.
 - [ ] **Step 2: Run.** Expected: FAIL.
 - [ ] **Step 3: Implement.** Recipient name/phone come from the customer's `users` row (find how `checkout.service.ts`
-  resolves the customer and load its user in the same query).
+      resolves the customer and load its user in the same query).
 - [ ] **Step 4: Run** the orders suite. Expected: PASS.
 - [ ] **Step 5: Commit** `Delivery: snapshot the delivery address at checkout (decision 0060)`.
 
@@ -46,8 +46,8 @@ checkout writes it; display mapper prefers the snapshot.
 (add `DeliveryAssignment` to `SequelizeModule.forFeature`); Test `orders.service.spec.ts`.
 
 - [ ] **Step 1: Write failing tests:** override to `cancelled` with an open assignment → that assignment gets
-  `status 'cancelled'` and `cancelledAt` set, inside the same transaction; override to `shipped` or `ready_for_pickup`
-  leaves it untouched; override with no open assignment works as before.
+      `status 'cancelled'` and `cancelledAt` set, inside the same transaction; override to `shipped` or `ready_for_pickup`
+      leaves it untouched; override with no open assignment works as before.
 - [ ] **Step 2: Run.** Expected: FAIL.
 - [ ] **Step 3: Implement** with `DeliveryAssignment.update({status, cancelledAt}, {where: {orderVendorGroupId, status: [assigned, picked_up]}, transaction})`.
 - [ ] **Step 4: Run** orders suite + typecheck. Expected: PASS.

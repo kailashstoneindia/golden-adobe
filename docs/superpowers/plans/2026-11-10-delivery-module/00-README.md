@@ -42,17 +42,17 @@ vitest; shared types in `packages/types`.
 
 ## Sessions
 
-| # | File | Delivers | Needs |
-|---|---|---|---|
-| S1 | [01-foundation.md](01-foundation.md) | Shared types, DRIVER role, tables, models | — |
-| S2 | [02-order-state-machine.md](02-order-state-machine.md) | New statuses, vendor limits, address snapshot, override cleanup | S1 |
-| S3 | [03-admin-drivers-vehicles.md](03-admin-drivers-vehicles.md) | Admin API for drivers, vehicles, documents | S1 |
-| S4 | [04-admin-assignments.md](04-admin-assignments.md) | Queue, assign, reassign, re-attempt, board API | S1, S2, S3 |
-| S5 | [05-driver-api.md](05-driver-api.md) | Driver deliveries API, photo upload, OTP | S4 |
-| S6 | [06-vendor-customer-notifications.md](06-vendor-customer-notifications.md) | Vendor handover, customer OTP, notifications | S5 |
-| S7 | [07-admin-ui-drivers.md](07-admin-ui-drivers.md) | Admin screens: drivers, vehicles | S3 |
-| S8 | [08-admin-ui-delivery.md](08-admin-ui-delivery.md) | Admin screens: queue, board, order modal | S4 |
-| S9 | [09-wrap-up.md](09-wrap-up.md) | End-to-end check, docs, decision status | all |
+| #   | File                                                                       | Delivers                                                        | Needs      |
+| --- | -------------------------------------------------------------------------- | --------------------------------------------------------------- | ---------- |
+| S1  | [01-foundation.md](01-foundation.md)                                       | Shared types, DRIVER role, tables, models                       | —          |
+| S2  | [02-order-state-machine.md](02-order-state-machine.md)                     | New statuses, vendor limits, address snapshot, override cleanup | S1         |
+| S3  | [03-admin-drivers-vehicles.md](03-admin-drivers-vehicles.md)               | Admin API for drivers, vehicles, documents                      | S1         |
+| S4  | [04-admin-assignments.md](04-admin-assignments.md)                         | Queue, assign, reassign, re-attempt, board API                  | S1, S2, S3 |
+| S5  | [05-driver-api.md](05-driver-api.md)                                       | Driver deliveries API, photo upload, OTP                        | S4         |
+| S6  | [06-vendor-customer-notifications.md](06-vendor-customer-notifications.md) | Vendor handover, customer OTP, notifications                    | S5         |
+| S7  | [07-admin-ui-drivers.md](07-admin-ui-drivers.md)                           | Admin screens: drivers, vehicles                                | S3         |
+| S8  | [08-admin-ui-delivery.md](08-admin-ui-delivery.md)                         | Admin screens: queue, board, order modal                        | S4         |
+| S9  | [09-wrap-up.md](09-wrap-up.md)                                             | End-to-end check, docs, decision status                         | all        |
 
 S2 and S3 can run in either order; S7 can run any time after S3, S8 after S4.
 
@@ -83,6 +83,7 @@ S2 and S3 can run in either order; S7 can run any time after S3, S8 after S4.
 Backend API for all admin screens exists (S3, S4). Run the full backend suite and `tsc --noEmit` before the S9 sign-off.
 
 ### Rulings and facts later sessions rely on
+
 - Vendors may only do `confirmed -> ready_for_pickup` and cancel (S2). Shipped/delivered belong to drivers and ops.
 - `readyAt` in the queue is the group's `updated_at` (no dedicated column).
 - Queue and board paging use `page`/`pageSize`; response is the repo's `PaginatedResponse` (`limit` = page size).
@@ -100,6 +101,7 @@ Backend API for all admin screens exists (S3, S4). Run the full backend suite an
 - `it.each` rows must have as many values as the test has parameters, or Jest treats the extra one as a `done` callback and the test hangs.
 
 ### Practical notes (save yourself the debugging)
+
 - **Shell:** big heredocs containing apostrophes can make the Bash tool fail to parse the whole command and run
   nothing. Create files with the Write tool and make small edits with Edit or a short `node` script.
 - **Types package:** after editing `packages/types/src`, run `pnpm build` inside `packages/types` (consumers read `dist`).

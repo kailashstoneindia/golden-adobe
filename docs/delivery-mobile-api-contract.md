@@ -9,15 +9,15 @@ existing error shape.
 Login is the existing phone OTP flow (`/auth/otp/send`, `/auth/otp/verify`). A driver cannot register
 themselves; ops creates them. In demo mode the OTP is `123456`.
 
-| Method | Path | Body | Returns |
-|---|---|---|---|
-| GET | `/driver/me` | | `DriverProfile` |
-| GET | `/driver/deliveries?scope=active\|history` | | `DeliveryJob[]` (active = `assigned`, `picked_up`) |
-| GET | `/driver/deliveries/:id` | | `DeliveryJob` |
-| POST | `/driver/deliveries/:id/pickup` | `{ items: [{ orderItemId, loaded: true }] }` (every item, all true) | `DeliveryJob` |
-| POST | `/driver/deliveries/:id/photo-url` | `{ kind: "delivered"\|"failed", contentType: "image/jpeg"\|"image/png" }` | `PresignedPost` (upload to S3, keep the `key`) |
-| POST | `/driver/deliveries/:id/complete` | `{ otp: "123456", photoKey }` | `DeliveryJob` |
-| POST | `/driver/deliveries/:id/fail` | `{ reason, note?, photoKey }` | `DeliveryJob` |
+| Method | Path                                       | Body                                                                      | Returns                                            |
+| ------ | ------------------------------------------ | ------------------------------------------------------------------------- | -------------------------------------------------- |
+| GET    | `/driver/me`                               |                                                                           | `DriverProfile`                                    |
+| GET    | `/driver/deliveries?scope=active\|history` |                                                                           | `DeliveryJob[]` (active = `assigned`, `picked_up`) |
+| GET    | `/driver/deliveries/:id`                   |                                                                           | `DeliveryJob`                                      |
+| POST   | `/driver/deliveries/:id/pickup`            | `{ items: [{ orderItemId, loaded: true }] }` (every item, all true)       | `DeliveryJob`                                      |
+| POST   | `/driver/deliveries/:id/photo-url`         | `{ kind: "delivered"\|"failed", contentType: "image/jpeg"\|"image/png" }` | `PresignedPost` (upload to S3, keep the `key`)     |
+| POST   | `/driver/deliveries/:id/complete`          | `{ otp: "123456", photoKey }`                                             | `DeliveryJob`                                      |
+| POST   | `/driver/deliveries/:id/fail`              | `{ reason, note?, photoKey }`                                             | `DeliveryJob`                                      |
 
 `:id` is the **assignment id**. `reason` is one of `customer_unavailable`, `site_inaccessible`,
 `customer_refused`, `goods_damaged`, `other`. Wrong OTP returns 400; the 5th wrong try returns 403
@@ -53,16 +53,17 @@ DriverProfile {
 
 ## 2. Vendor app additions
 
-| Method | Path | Body | Notes |
-|---|---|---|---|
-| GET | `/vendors/order-groups`, `/vendors/order-groups/:id` | | Each group now has `orderNumber` (for example `GA-10001`); show it as the order's name. |
-| PATCH | `/vendors/order-groups/:id/status` | `{ status: "ready_for_pickup" }` | Existing endpoint. `shipped` and `delivered` are now rejected for vendors. |
-| POST | `/vendors/order-groups/:id/photo-url` | `{ contentType }` | Presigned upload for the optional handover photo. |
-| POST | `/vendors/order-groups/:id/handover` | `{ photoKey? }` | Needs a driver assigned (400 otherwise). Idempotent: a repeat keeps the first timestamp. Returns `{ groupId, vendorHandedOverAt }`. The group status does not change; the driver confirms pickup. |
+| Method | Path                                                 | Body                             | Notes                                                                                                                                                                                             |
+| ------ | ---------------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/vendors/order-groups`, `/vendors/order-groups/:id` |                                  | Each group now has `orderNumber` (for example `GA-10001`); show it as the order's name.                                                                                                           |
+| PATCH  | `/vendors/order-groups/:id/status`                   | `{ status: "ready_for_pickup" }` | Existing endpoint. `shipped` and `delivered` are now rejected for vendors.                                                                                                                        |
+| POST   | `/vendors/order-groups/:id/photo-url`                | `{ contentType }`                | Presigned upload for the optional handover photo.                                                                                                                                                 |
+| POST   | `/vendors/order-groups/:id/handover`                 | `{ photoKey? }`                  | Needs a driver assigned (400 otherwise). Idempotent: a repeat keeps the first timestamp. Returns `{ groupId, vendorHandedOverAt }`. The group status does not change; the driver confirms pickup. |
 
 ## 3. Customer app additions
 
 `GET /orders/:id` vendor groups gain:
+
 - `orderNumber: string` on every order (for example `GA-10001`), also in `GET /orders`. Show it as the order's name on every screen and when quoting an order to support;
 - new `status` values `ready_for_pickup` and `delivery_failed`;
 - `deliveryOtp: string | null`, set only while the group is `shipped`. Show it on the tracking screen

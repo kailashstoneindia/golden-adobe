@@ -19,12 +19,12 @@ fee, helper login, helper identity checks, all mobile app code (owned by another
 
 ## Actors and what each may do
 
-| Actor | Allowed |
-|---|---|
-| Vendor | `confirmed → ready_for_pickup`; `confirmed → cancelled`; mark handed over (+optional photo). **No longer** `shipped` or `delivered`. |
-| Ops (ADMIN) | Create/edit drivers and vehicles, upload driver documents, assign / reassign / re-attempt, existing admin override. |
-| Driver (DRIVER) | See own jobs; pick up; complete with OTP + photo; fail with reason + photo. |
-| Customer | Sees status and the delivery OTP while the group is `shipped`. |
+| Actor           | Allowed                                                                                                                              |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Vendor          | `confirmed → ready_for_pickup`; `confirmed → cancelled`; mark handed over (+optional photo). **No longer** `shipped` or `delivered`. |
+| Ops (ADMIN)     | Create/edit drivers and vehicles, upload driver documents, assign / reassign / re-attempt, existing admin override.                  |
+| Driver (DRIVER) | See own jobs; pick up; complete with OTP + photo; fail with reason + photo.                                                          |
+| Customer        | Sees status and the delivery OTP while the group is `shipped`.                                                                       |
 
 ## State machine (per `order_vendor_group`)
 
