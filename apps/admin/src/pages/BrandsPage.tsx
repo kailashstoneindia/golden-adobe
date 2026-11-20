@@ -2,8 +2,11 @@ import { useState } from 'react';
 import { isEmpty } from 'lodash';
 import type { BrandDto } from '@golden-abode/types';
 
+import { BrandDetailModal } from '@/components/catalog/BrandDetailModal';
+import { BrandFormModal } from '@/components/catalog/BrandFormModal';
 import { APP_CONSTANTS } from '@/constants/appConstants';
-import { useBrandQuery, useBrandsQuery } from '@/queries';
+import { useBrandQuery, useBrandsQuery, useCreateBrandMutation } from '@/queries';
+import type { BrandFormValues } from '@/types/brands.types';
 import catalogStyles from '@/styles/catalog.module.css';
 import styles from '@/styles/shared.module.css';
 
@@ -23,6 +26,9 @@ function StatusCell({ brand }: { brand: BrandDto }) {
 export function BrandsPage() {
   const [search, setSearch] = useState('');
   const [showInactive, setShowInactive] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const createBrand = useCreateBrandMutation();
   const brandsQuery = useBrandsQuery({
     search,
     isActive: !showInactive,
@@ -55,6 +61,13 @@ export function BrandsPage() {
           />
           Show inactive brands
         </label>
+        <button
+          type="button"
+          className={`${styles.button} ${styles.buttonPrimary}`}
+          onClick={() => setAdding(true)}
+        >
+          Add brand
+        </button>
       </div>
 
       {brandsQuery.isLoading ? (
@@ -76,7 +89,11 @@ export function BrandsPage() {
             </thead>
             <tbody>
               {brands.map((brand) => (
-                <tr key={brand.id}>
+                <tr
+                  key={brand.id}
+                  className={styles.clickableRow}
+                  onClick={() => setSelectedId(brand.id)}
+                >
                   <td>{brand.name}</td>
                   <td>{brand.manufacturerName}</td>
                   <td>{brand.productCount}</td>
@@ -89,6 +106,18 @@ export function BrandsPage() {
           </table>
         </div>
       )}
+
+      {selectedId ? (
+        <BrandDetailModal brandId={selectedId} onClose={() => setSelectedId(null)} />
+      ) : null}
+
+      {adding ? (
+        <BrandFormModal
+          busy={createBrand.isPending}
+          onSubmit={(body) => createBrand.mutateAsync(body as BrandFormValues)}
+          onClose={() => setAdding(false)}
+        />
+      ) : null}
     </section>
   );
 }

@@ -48,3 +48,19 @@ export function useCreateBrandMutation() {
     onSuccess: refresh,
   });
 }
+
+export function useUpdateBrandMutation(brandId: string) {
+  const refresh = useRefreshBrands();
+  return useMutation({
+    mutationFn: (body: Partial<BrandFormValues>) => brandsService.update(brandId, body),
+    onSuccess: refresh,
+  });
+}
+
+export function useSetBrandActiveMutation(brandId: string) {
+  const refresh = useRefreshBrands();
+  return useMutation({
+    mutationFn: (isActive: boolean) => brandsService.setActive(brandId, isActive),
+    onSuccess: refresh,
+  });
+}

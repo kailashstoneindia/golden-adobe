@@ -1,7 +1,7 @@
 import type { BrandDto, PaginatedResponse } from '@golden-abode/types';
 
 import { API_ENDPOINTS } from '@/constants/apiEndpoints';
-import { getRequest, postRequest } from '@/services/api/apiClient';
+import { getRequest, patchRequest, postRequest } from '@/services/api/apiClient';
 import type { BrandFormValues, BrandListFilters } from '@/types/brands.types';
 
 function queryString(filters: BrandListFilters): string {
@@ -26,5 +26,18 @@ export const brandsService = {
 
   create(body: BrandFormValues): Promise<BrandDto> {
     return postRequest<BrandDto, BrandFormValues>(API_ENDPOINTS.brands.list, body);
+  },
+
+  update(brandId: string, body: Partial<BrandFormValues>): Promise<BrandDto> {
+    return patchRequest<BrandDto, Partial<BrandFormValues>>(
+      API_ENDPOINTS.brands.byId(brandId),
+      body,
+    );
+  },
+
+  setActive(brandId: string, isActive: boolean): Promise<BrandDto> {
+    return patchRequest<BrandDto, { isActive: boolean }>(API_ENDPOINTS.brands.active(brandId), {
+      isActive,
+    });
   },
 };
