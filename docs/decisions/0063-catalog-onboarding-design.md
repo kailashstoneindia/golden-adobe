@@ -69,6 +69,15 @@ Details in [the spec](../superpowers/specs/2026-11-10-catalog-onboarding-design.
 - The synchronous import endpoint is replaced by a background job. The admin import screen changes.
 - `apps/mobile` is untouched. The customer app only sees fewer broken or incomplete products.
 
+## Implementation notes
+
+| Session | Choice                                                                                                                                     | Why                                                                               |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
+| S1      | Import job `status` and merge-log `entity_type` are `varchar` with a `CHECK`, not Postgres enums.                                          | Adding a value later is a constraint swap, not an `ALTER TYPE`.                   |
+| S1      | The brand resolver follows `merged_into_id` at most 5 hops. A cycle or longer chain returns "not found" and logs an error.                 | A corrupt merge chain can't loop forever.                                         |
+| S1      | Removing an alias that belongs to a different brand returns 404.                                                                           | The brands API deletes by `/:brandId/aliases/:aliasId`; the pair must match.      |
+| S1      | Import and add-product both say an unknown brand "is not in the catalog. Add it on the Brands page first"; a deactivated brand is refused. | Same wording on both paths, and it points at the screen that will exist after S3. |
+
 ## Open questions
 
 | Item                                                | Notes                                                                                                            |
