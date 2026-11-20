@@ -112,6 +112,8 @@ A code review found ten issues; each was fixed test-first except one.
 
 ## Open follow-ups
 
+Last reviewed 2026-11-20. Items marked "Client answer" do not change the API calls the mobile app builds against; they change details and add states later.
+
 | Item | Blocked on | Notes |
 |---|---|---|
 | Failed-delivery goods handling (decision 3) | Client answer | Options: back to vendor, hold in a warehouse, stay on the truck for the next attempt. Shapes the `DELIVERY_FAILED` follow-up states. |
@@ -123,6 +125,8 @@ A code review found ten issues; each was fixed test-first except one.
 | Push notifications to drivers | Notification provider work | Log-only today. |
 | Driver notice on re-attempt | My call | `reattempt` does not call `sendDeliveryAssigned`; the driver app pulls its list. Add it if drivers miss re-attempt jobs. |
 | Customer notice on failed delivery | Client answer | Wording and channel not agreed; ops phone the customer today. |
+| Attempt limit and who pays for a repeat attempt | Client answer | Not built: ops can re-attempt a failed delivery as often as needed, and a repeat costs the customer nothing. A cap or a fee needs the client's rule. |
+| Unlock confirmation | My call | Ops can unlock a job locked by five wrong codes with one click (a new customer code is issued). Ops are expected to confirm with the customer first; there is no confirm dialog or written rule yet. Owner decides whether to add one. |
 | Cost and timeline for the client | Estimate | Needs its own estimate, not absorbed into Phase 3 or 4 ([0035](0035-client-feedback-triage-2026-10-18.md)). |
 
 ## Consequences
