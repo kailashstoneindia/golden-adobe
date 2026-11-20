@@ -15,7 +15,9 @@ import { Brand } from '../models/brand.model';
 import { BrandAlias } from '../models/brand-alias.model';
 import { Category } from '../models/category.model';
 import { MasterProduct, MasterProductStatus } from '../models/master-product.model';
+import { CatalogMergeLog } from '../models/catalog-merge-log.model';
 import { MEDIA_STORAGE_CONFIG, OBJECT_STORAGE } from '../media/object-storage';
+import { User } from '../../users/models/user.model';
 
 // Decision 0063 / S2: admin brand management. Real Postgres, because the
 // duplicate rule is the normalize_brand_name() unique index. The test DB has
@@ -26,6 +28,7 @@ describe('AdminBrandsService (integration)', () => {
   let resolver: BrandResolverService;
   const suffix = `ab${Date.now()}`;
   let categoryId: string;
+  let adminId: string;
   const storage = {
     presignPost: jest.fn(async (input: { key: string }) => ({
       url: 'https://upload.example.test',
@@ -75,11 +78,20 @@ describe('AdminBrandsService (integration)', () => {
       isLeaf: true,
     } as never);
     categoryId = category.id;
+
+    const admin = await User.create({
+      name: `AB Admin ${suffix}`,
+      phone: `+91${suffix.slice(-10).padStart(10, '5')}`,
+      role: 'ADMIN',
+    } as never);
+    adminId = admin.id;
   });
 
   afterAll(async () => {
     const mine = await Brand.findAll({ where: { name: { [Op.iLike]: `%${suffix}%` } } });
     const ids = mine.map((b) => b.id);
+    await CatalogMergeLog.destroy({ where: { adminUserId: adminId } });
+    await User.destroy({ where: { id: adminId } });
     await MasterProduct.destroy({ where: { categoryId } });
     await BrandAlias.destroy({ where: { brandId: ids } });
     await Brand.update({ mergedIntoId: null } as never, { where: { id: ids } });
@@ -376,6 +388,117 @@ describe('AdminBrandsService (integration)', () => {
 
       expect(storage.head).toHaveBeenCalledWith(key);
       expect(result.logoUrl).toBe(`https://cdn.example.test/${key}`);
+    });
+  });
+
+  describe('merge', () => {
+    let n = 0;
+    const product = (brandId: string, mpn: string) => {
+      n += 1;
+      return MasterProduct.create({
+        categoryId,
+        brandId,
+        name: `AB Merge Product ${n} ${suffix}`,
+        slug: `ab-merge-product-${n}-${suffix}`,
+        mfrPartNumber: mpn,
+        status: MasterProductStatus.DRAFT,
+      } as never);
+    };
+    const countFor = (brandId: string) => MasterProduct.count({ where: { brandId } });
+
+    it('moves products and aliases to the target, retires the source, and logs it', async () => {
+      const into = await service.create({ name: `Keeper${suffix}`, ...compliance });
+      const from = await service.create({ name: `Duplicate${suffix}`, ...compliance });
+      await service.addAlias(from.id, `dup co ${suffix}`);
+      const p1 = await product(from.id, `MRG-A-${suffix}`);
+      const p2 = await product(from.id, `MRG-B-${suffix}`);
+      await product(into.id, `MRG-C-${suffix}`);
+
+      const result = await service.merge(adminId, from.id, into.id);
+
+      expect(result).toEqual({ movedProducts: 2, aliasesAdded: 2 });
+      expect((await MasterProduct.findByPk(p1.id))?.brandId).toBe(into.id);
+      expect((await MasterProduct.findByPk(p2.id))?.brandId).toBe(into.id);
+      expect(await countFor(into.id)).toBe(3);
+
+      const source = await Brand.findByPk(from.id);
+      expect(source).toMatchObject({ isActive: false, mergedIntoId: into.id });
+      expect((await service.get(into.id)).aliases).toEqual(
+        expect.arrayContaining([`dup co ${suffix}`, `duplicate${suffix}`]),
+      );
+
+      expect((await resolver.resolve(`Duplicate${suffix}`))?.id).toBe(into.id);
+      expect((await resolver.resolve(`dup co ${suffix}`))?.id).toBe(into.id);
+
+      const log = await CatalogMergeLog.findOne({ where: { fromId: from.id } });
+      expect(log).toMatchObject({
+        entityType: 'brand',
+        intoId: into.id,
+        adminUserId: adminId,
+        summary: expect.objectContaining({ movedProducts: 2, aliasesAdded: 2 }),
+      });
+    });
+
+    it('refuses (409) when a part number exists under both brands, listing it, and moves nothing', async () => {
+      const into = await service.create({ name: `ClashKeep${suffix}`, ...compliance });
+      const from = await service.create({ name: `ClashDup${suffix}`, ...compliance });
+      await service.addAlias(from.id, `clash alias ${suffix}`);
+      await product(from.id, `CLASH-1-${suffix}`);
+      await product(from.id, `FREE-1-${suffix}`);
+      await product(into.id, `CLASH-1-${suffix}`);
+
+      await expect(service.merge(adminId, from.id, into.id)).rejects.toThrow(
+        new ConflictException(
+          `both brands have part number CLASH-1-${suffix}. Merge or fix those products first`,
+        ),
+      );
+
+      expect(await countFor(from.id)).toBe(2);
+      expect(await countFor(into.id)).toBe(1);
+      expect(await Brand.findByPk(from.id)).toMatchObject({ isActive: true, mergedIntoId: null });
+      expect((await resolver.resolve(`clash alias ${suffix}`))?.id).toBe(from.id);
+      expect(await CatalogMergeLog.count({ where: { fromId: from.id } })).toBe(0);
+    });
+
+    it('refuses (400) merging a brand into itself', async () => {
+      const brand = await service.create({ name: `Selfie${suffix}`, ...compliance });
+
+      await expect(service.merge(adminId, brand.id, brand.id)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+    });
+
+    it('refuses (400) merging into an inactive brand', async () => {
+      const into = await service.create({ name: `SleepyTarget${suffix}`, ...compliance });
+      const from = await service.create({ name: `AwakeSource${suffix}`, ...compliance });
+      await service.setActive(into.id, false);
+
+      await expect(service.merge(adminId, from.id, into.id)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+    });
+
+    it('refuses (400) merging a brand that was already merged', async () => {
+      const into = await service.create({ name: `Final${suffix}`, ...compliance });
+      const from = await service.create({ name: `Twice${suffix}`, ...compliance });
+      await service.merge(adminId, from.id, into.id);
+      const other = await service.create({ name: `Elsewhere${suffix}`, ...compliance });
+
+      await expect(service.merge(adminId, from.id, other.id)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+    });
+
+    it('refuses (404) an unknown brand on either side', async () => {
+      const brand = await service.create({ name: `Lonely${suffix}`, ...compliance });
+      const missing = '00000000-0000-4000-8000-000000000000';
+
+      await expect(service.merge(adminId, missing, brand.id)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      await expect(service.merge(adminId, brand.id, missing)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
     });
   });
 });

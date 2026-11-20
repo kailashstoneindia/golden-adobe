@@ -17,6 +17,12 @@ export type BrandDto = {
   aliases: string[];
 };
 
+export type MergeBrandResultDto = {
+  movedProducts: number;
+  // Aliases moved from the merged brand plus its own name, now an alias.
+  aliasesAdded: number;
+};
+
 export type ProductReadinessCheckCode = 'image' | 'hsn_code' | 'required_attributes' | 'listing';
 
 export type ProductReadinessCheck = {

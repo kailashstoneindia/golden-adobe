@@ -30,6 +30,7 @@ describe('AdminBrandsController', () => {
     removeAlias: jest.fn(async () => ({})),
     createLogoUploadUrl: jest.fn(async () => ({})),
     confirmLogo: jest.fn(async () => ({})),
+    merge: jest.fn(async () => ({ movedProducts: 0, aliasesAdded: 0 })),
   };
   const ID = '11111111-1111-4111-8111-111111111111';
   const ALIAS_ID = '22222222-2222-4222-8222-222222222222';
@@ -194,6 +195,26 @@ describe('AdminBrandsController', () => {
       expect((await http().post(`/admin/brands/${ID}/logo/confirm`).send({ key: '' })).status).toBe(
         400,
       );
+    });
+  });
+
+  describe('merge', () => {
+    const INTO = '33333333-3333-4333-8333-333333333333';
+
+    it('merges into the given brand as the calling admin', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`/admin/brands/${ID}/merge`)
+        .send({ intoBrandId: INTO });
+
+      expect(res.status).toBe(201);
+      expect(service.merge).toHaveBeenCalledWith('admin-1', ID, INTO);
+    });
+
+    it.each([[{}], [{ intoBrandId: 'nope' }]])('refuses a merge body of %j', async (body) => {
+      const res = await request(app.getHttpServer()).post(`/admin/brands/${ID}/merge`).send(body);
+
+      expect(res.status).toBe(400);
+      expect(service.merge).not.toHaveBeenCalled();
     });
   });
 

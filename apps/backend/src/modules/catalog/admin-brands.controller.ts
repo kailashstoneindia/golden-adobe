@@ -14,6 +14,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Role } from '@golden-abode/types';
 
 import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { AdminBrandsService } from './admin-brands.service';
@@ -23,6 +24,7 @@ import {
   AddBrandAliasDto,
   ConfirmBrandLogoDto,
   CreateBrandLogoUploadDto,
+  MergeBrandDto,
   SetBrandActiveDto,
   UpdateBrandDto,
 } from './dto/update-brand.dto';
@@ -93,6 +95,21 @@ export class AdminBrandsController {
     @Param('aliasId', ParseUUIDPipe) aliasId: string,
   ) {
     return this.brands.removeAlias(id, aliasId);
+  }
+
+  @Post(':id/merge')
+  @ApiOperation({
+    summary: 'Merge this brand into another',
+    description:
+      'Moves every product and alias to the target and deactivates this brand; its name becomes ' +
+      'an alias of the target. Refused with 409, moving nothing, if a part number exists under both.',
+  })
+  async merge(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: MergeBrandDto,
+    @CurrentUser('sub') adminUserId: string,
+  ) {
+    return this.brands.merge(adminUserId, id, dto.intoBrandId);
   }
 
   @Post(':id/logo-upload-url')

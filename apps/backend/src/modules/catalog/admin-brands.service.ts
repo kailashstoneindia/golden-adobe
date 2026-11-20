@@ -9,10 +9,12 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { Op, QueryTypes, UniqueConstraintError, WhereOptions } from 'sequelize';
-import type { BrandDto, PaginatedResponse } from '@golden-abode/types';
+import type { BrandDto, MergeBrandResultDto, PaginatedResponse } from '@golden-abode/types';
 
 import { Brand } from './models/brand.model';
 import { BrandAlias } from './models/brand-alias.model';
+import { CatalogMergeLog } from './models/catalog-merge-log.model';
+import { MasterProduct } from './models/master-product.model';
 import { BrandResolverService } from './brand-resolver.service';
 import { CreateBrandDto } from './dto/create-brand.dto';
 import { ListBrandsQueryDto } from './dto/list-brands-query.dto';
@@ -46,6 +48,10 @@ export class AdminBrandsService {
     private readonly brandModel: typeof Brand,
     @InjectModel(BrandAlias)
     private readonly brandAliasModel: typeof BrandAlias,
+    @InjectModel(MasterProduct)
+    private readonly masterProductModel: typeof MasterProduct,
+    @InjectModel(CatalogMergeLog)
+    private readonly mergeLogModel: typeof CatalogMergeLog,
     private readonly brandResolver: BrandResolverService,
     @Inject(OBJECT_STORAGE) private readonly storage: ObjectStorage,
     @Inject(MEDIA_STORAGE_CONFIG) private readonly storageConfig: StorageConfig,
@@ -195,6 +201,88 @@ export class AdminBrandsService {
     await this.findOrFail(id);
     await this.brandResolver.removeAlias(id, aliasId);
     return this.get(id);
+  }
+
+  // Folds a duplicate brand into the one that stays (decision 0063). One
+  // transaction with both brand rows locked: products and aliases move, the
+  // source's own name becomes an alias of the target, and the source stays
+  // as a deactivated pointer so anything still typing its name resolves to
+  // the target. A part number present under both brands would break the
+  // (brand_id, mfr_part_number) unique index, so that aborts before anything
+  // moves and the admin merges those products first.
+  async merge(adminUserId: string, fromId: string, intoId: string): Promise<MergeBrandResultDto> {
+    if (fromId === intoId) {
+      throw new BadRequestException('a brand cannot be merged into itself');
+    }
+
+    return this.sequelize.transaction(async (transaction) => {
+      // Locked in id order so two opposite merges can't deadlock.
+      const locked = await this.brandModel.findAll({
+        where: { id: [fromId, intoId] },
+        order: [['id', 'ASC']],
+        lock: transaction.LOCK.UPDATE,
+        transaction,
+      });
+      const from = locked.find((b) => b.id === fromId);
+      const into = locked.find((b) => b.id === intoId);
+      if (!from || !into) throw new NotFoundException('Brand not found');
+      if (from.mergedIntoId) {
+        throw new BadRequestException(`brand "${from.name}" was already merged into another brand`);
+      }
+      if (!into.isActive) {
+        throw new BadRequestException(
+          `brand "${into.name}" is deactivated. Activate it before merging into it`,
+        );
+      }
+
+      const clashes = await this.sequelize.query<{ mfr_part_number: string }>(
+        `SELECT s.mfr_part_number
+           FROM master_product s
+           JOIN master_product t ON t.brand_id = :intoId AND t.mfr_part_number = s.mfr_part_number
+          WHERE s.brand_id = :fromId
+          ORDER BY s.mfr_part_number`,
+        { replacements: { fromId, intoId }, type: QueryTypes.SELECT, transaction },
+      );
+      if (clashes.length > 0) {
+        const mpns = clashes.map((c) => c.mfr_part_number);
+        throw new ConflictException(
+          `both brands have part number${mpns.length > 1 ? 's' : ''} ${mpns.join(', ')}. Merge or fix those products first`,
+        );
+      }
+
+      const [movedProducts] = await this.masterProductModel.update(
+        { brandId: intoId },
+        { where: { brandId: fromId }, transaction },
+      );
+      const [movedAliases] = await this.brandAliasModel.update(
+        { brandId: intoId },
+        { where: { brandId: fromId }, transaction },
+      );
+      const nameAlias = await this.sequelize.query<{ id: string }>(
+        `INSERT INTO brand_alias (brand_id, alias) VALUES (:intoId, :alias)
+         ON CONFLICT (alias) DO NOTHING RETURNING id`,
+        {
+          replacements: { intoId, alias: from.name.trim().toLowerCase().replace(/\s+/g, ' ') },
+          type: QueryTypes.SELECT,
+          transaction,
+        },
+      );
+      const aliasesAdded = movedAliases + nameAlias.length;
+
+      await from.update({ isActive: false, mergedIntoId: intoId }, { transaction });
+      await this.mergeLogModel.create(
+        {
+          entityType: 'brand',
+          fromId,
+          intoId,
+          adminUserId,
+          summary: { fromName: from.name, intoName: into.name, movedProducts, aliasesAdded },
+        } as never,
+        { transaction },
+      );
+
+      return { movedProducts, aliasesAdded };
+    });
   }
 
   // Logos go under variants/brands/: the CDN serves only variants/* publicly

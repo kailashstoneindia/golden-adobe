@@ -1,6 +1,6 @@
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsBoolean, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsBoolean, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
 
 import { CreateBrandDto } from './create-brand.dto';
 
@@ -40,4 +40,10 @@ export class ConfirmBrandLogoDto {
   @MinLength(1)
   @MaxLength(512)
   key!: string;
+}
+
+export class MergeBrandDto {
+  @ApiProperty({ description: 'The brand that stays.' })
+  @IsUUID()
+  intoBrandId!: string;
 }
