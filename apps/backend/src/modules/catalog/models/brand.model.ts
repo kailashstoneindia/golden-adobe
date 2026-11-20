@@ -72,4 +72,14 @@ export class Brand extends Model<Brand> {
     field: 'is_active',
   })
   declare isActive: boolean;
+
+  // Set when this brand was merged into another (decision 0063). The
+  // resolver follows it, so the old name keeps resolving to the survivor.
+  // FK to brand(id) is enforced in the database.
+  @Column({
+    type: DataType.UUID,
+    allowNull: true,
+    field: 'merged_into_id',
+  })
+  declare mergedIntoId: string | null;
 }

@@ -31,6 +31,8 @@ import { Inventory } from './models/inventory.model';
 import { VendorProductMap } from './models/vendor-product-map.model';
 import { CatalogImportBatch } from './models/catalog-import-batch.model';
 import { CatalogImportRow } from './models/catalog-import-row.model';
+import { CatalogImportJob } from './models/catalog-import-job.model';
+import { CatalogMergeLog } from './models/catalog-merge-log.model';
 import { City } from './models/city.model';
 import { PincodeCityMap } from './models/pincode-city-map.model';
 import { Vendor } from '../vendors/models/vendor.model';
@@ -123,6 +125,8 @@ import { UsersModule } from '../users/users.module';
       VendorProductMap,
       CatalogImportBatch,
       CatalogImportRow,
+      CatalogImportJob,
+      CatalogMergeLog,
       City,
       PincodeCityMap,
       Vendor,

@@ -264,6 +264,31 @@ export class MasterProduct extends Model<MasterProduct> {
   })
   declare cachedUpdatedAt: Date | null;
 
+  // Decision 0063. Set when this product was merged into another; it is
+  // then deprecated. FKs are enforced in the database (ON DELETE SET NULL).
+  @Column({
+    type: DataType.UUID,
+    allowNull: true,
+    field: 'merged_into_id',
+  })
+  declare mergedIntoId: string | null;
+
+  @Column({
+    type: DataType.DATE,
+    allowNull: true,
+    field: 'merged_at',
+  })
+  declare mergedAt: Date | null;
+
+  // The background import that created this product, if any. Lets an
+  // import be listed and undone as a unit.
+  @Column({
+    type: DataType.UUID,
+    allowNull: true,
+    field: 'import_job_id',
+  })
+  declare importJobId: string | null;
+
   @BelongsTo(() => Category)
   declare category?: Category;
 
