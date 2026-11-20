@@ -209,7 +209,7 @@ export function OrdersPage() {
                     setSelectedOrder(order);
                   }}
                 >
-                  <td>{order.id.slice(0, 8)}</td>
+                  <td>{order.orderNumber}</td>
                   <ContactCell contact={order.customer} />
                   <td>{labelFor(ORDER_STATUS_LABELS, order.status)}</td>
                   <td>₹{order.grandTotal}</td>

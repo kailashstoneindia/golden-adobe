@@ -7,6 +7,7 @@ import {
   BelongsTo,
   HasMany,
 } from 'sequelize-typescript';
+import { literal } from 'sequelize';
 import { Customer } from '../../customers/models/customer.model';
 import { CustomerAddress } from '../../customers/models/customer-address.model';
 import { DeliveryAddressSnapshot } from '@golden-abode/types';
@@ -25,6 +26,16 @@ export enum OrderStatus {
 export class Order extends Model<Order> {
   @Column({ type: DataType.UUID, defaultValue: DataType.UUIDV4, primaryKey: true })
   declare id: string;
+
+  // Decision 0061: GA-10001. Assigned by the database default, never by code.
+  @Column({
+    type: DataType.STRING(20),
+    allowNull: false,
+    field: 'order_number',
+    // The same expression as the column default in the migration.
+    defaultValue: literal("'GA-' || nextval('order_number_seq')"),
+  })
+  declare orderNumber: string;
 
   @ForeignKey(() => Customer)
   @Column({ type: DataType.UUID, allowNull: false, field: 'customer_id' })

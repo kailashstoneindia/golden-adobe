@@ -211,6 +211,40 @@ describe('Delivery flow end to end (decision 0060)', () => {
     expect(await f.groupStatus(g.groupId)).toBe('delivered');
   });
 
+  // Decision 0061: ops and drivers quote GA-10032, not a UUID.
+  it('the order number shows on the queue, the driver job, the board and the vendor list', async () => {
+    const g = await f.seedGroup({ groupStatus: 'ready_for_pickup' });
+    const [{ order_number: orderNumber }] = await f.t.query<{ order_number: string }>(
+      'SELECT order_number FROM orders WHERE id = :id',
+      { id: g.orderId },
+    );
+    expect(orderNumber).toMatch(/^GA-\d{5,}$/);
+
+    const queue = await admin().get('/admin/delivery/queue?pageSize=100');
+    const queued = (queue.body.data.items as { groupId: string; orderNumber: string }[]).find(
+      (q) => q.groupId === g.groupId,
+    );
+    expect(queued?.orderNumber).toBe(orderNumber);
+
+    const assigned = await admin().post('/admin/delivery/assignments', {
+      orderVendorGroupId: g.groupId,
+      driverId,
+    });
+    expect(assigned.body.data.orderNumber).toBe(orderNumber);
+
+    const job = await driver().get(`/driver/deliveries/${assigned.body.data.id}`);
+    expect(job.body.data.orderNumber).toBe(orderNumber);
+
+    const board = await admin().get(`/admin/delivery/assignments?orderId=${g.orderId}`);
+    expect(board.body.data.items[0].orderNumber).toBe(orderNumber);
+
+    const groups = await vendor().get('/vendors/order-groups');
+    const mine = (groups.body.data as { id: string; orderNumber: string }[]).find(
+      (x) => x.id === g.groupId,
+    );
+    expect(mine?.orderNumber).toBe(orderNumber);
+  });
+
   it('failed delivery: fail, admin re-attempt (back on the road), then deliver', async () => {
     const g = await packedAndAssigned();
     expect((await pickup(g.assignmentId, g.itemId)).status).toBe(201);

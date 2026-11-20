@@ -70,7 +70,7 @@ export function DeliveryQueuePage() {
             <tbody>
               {items.map((item) => (
                 <tr key={item.groupId}>
-                  <td className={styles.mono}>{item.orderId.slice(0, 8)}</td>
+                  <td className={styles.mono}>{item.orderNumber}</td>
                   <td>{item.vendorName}</td>
                   <td>{`${item.dropCity} ${item.dropPincode}`.trim()}</td>
                   <td>{item.itemCount}</td>

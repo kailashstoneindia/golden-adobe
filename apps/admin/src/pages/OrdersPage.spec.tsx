@@ -21,6 +21,8 @@ const BASE = '/api/admin/orders';
 function order(over: Partial<AdminOrderDto> = {}): AdminOrderDto {
   return {
     id: 'o1111111-1111-4111-8111-111111111111',
+    // Derived from the id so tests keep finding rows by their short label.
+    orderNumber: over.id ?? 'GA-10001',
     customerId: 'c1111111-1111-4111-8111-111111111111',
     deliveryAddressId: 'd1111111-1111-4111-8111-111111111111',
     grandTotal: 500,
@@ -888,6 +890,7 @@ describe('OrdersPage delivery', () => {
       attemptNo: 1,
       groupId: 'g1',
       orderId: 'o1',
+      orderNumber: 'o1',
       vendorName: 'Stone Mart',
       driver: { id: 'd1', name: 'Ramesh Kumar', phone: '9876543210' },
       assignedAt: '2026-11-04T09:00:00.000Z',
@@ -982,5 +985,32 @@ describe('OrdersPage delivery', () => {
       'href',
       'https://signed.test/failed.jpg',
     );
+  });
+});
+
+// Decision 0061: staff read and quote GA-10042, not the first characters of a UUID.
+describe('OrdersPage order number', () => {
+  beforeEach(() => {
+    orders = [order({ id: 'f47ac10b-58cc-4372-a567-0e02b2c3d479', orderNumber: 'GA-10042' })];
+    refunds = {};
+    refundBodies = [];
+    refundListFetches = 0;
+    refundsGate = null;
+    refundsListFails = false;
+    refundPostGate = null;
+    ordersListFetches = 0;
+    refundReply = { status: 200 };
+    useHandlers();
+  });
+
+  it('shows the order number in the list and as the modal title', async () => {
+    renderPage();
+    const user = userEvent.setup();
+
+    const cell = await screen.findByText('GA-10042');
+    expect(screen.queryByText('f47ac10b')).not.toBeInTheDocument();
+
+    await user.click(cell);
+    expect(screen.getByRole('heading', { name: 'Order GA-10042' })).toBeInTheDocument();
   });
 });

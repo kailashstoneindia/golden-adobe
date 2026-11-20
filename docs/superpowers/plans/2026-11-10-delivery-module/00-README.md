@@ -78,7 +78,7 @@ S2 and S3 can run in either order; S7 can run any time after S3, S8 after S4.
 
 **Branch:** `feat/delivery-module`. Done: S1-S9 (plan complete; NOT merged or deployed). `.claude/settings.json` is modified and deliberately NOT committed; never stage it.
 
-**Next step: none in the plan.** Remaining: sync with the mobile developer, then ask the user which merge method, then the pre-live checklist (two migrations on prod via SSM, which needs the user's permission; create the first driver in the admin panel).
+**Next step: none in the plan.** Remaining: sync with the mobile developer, then ask the user which merge method, then the pre-live checklist (three migrations on prod via SSM (delivery tables, address snapshot, order number), which needs the user's permission; create the first driver in the admin panel).
 
 Backend API for all admin screens exists (S3, S4). Run the full backend suite and `tsc --noEmit` before the S9 sign-off.
 
@@ -119,3 +119,5 @@ Backend API for all admin screens exists (S3, S4). Run the full backend suite an
 - S8: pages `DeliveryQueuePage` (`/delivery/queue`, sidebar "Ready to deliver") and `DeliveryBoardPage` (`/delivery/board`, sidebar "In transit"); shared `DriverPickerModal` (active drivers only) serves assign, reassign and re-attempt. Order modal gets `OrderDeliverySection`, which calls `GET /admin/delivery/assignments?orderId=` (new filter, see decision 0060) instead of adding assignments to `AdminOrderDto`, so photo signing stays in the delivery module. `ready_for_pickup` reads "Packed, waiting for driver" and `delivery_failed` is red, inside the modal only; the override dropdown keeps the plain status names. Browser-checked end to end with Playwright (override to ready, queue, assign, board, modal). Two unrelated shared-DB specs flaked once each in full parallel runs and pass alone: `users.service.awaiting-document` (count read twice) and `vendor-onboarding.controller` (a city from a parallel spec).
 
 - S9: `delivery-flow.e2e.spec.ts` walks the full flow over HTTP (also the first HTTP test of the vendor handover routes). A re-attempt creates the new job already `picked_up` (no second pickup). `docs/order-flow.md` named in S9 does not exist in the repo; the flow lives in decision 0060 and `docs/delivery-mobile-api-contract.md`. The shared fixture no longer deletes `unit_of_measure` by pattern (it raced other specs); the one spec that creates its unit removes it.
+
+- Decision 0061 (order number GA-10001): migration `20261120090000` numbers existing orders oldest first and adds a sequence default. `orderNumber` is on the customer/artisan/admin order, queue, assignment, driver job and vendor group DTOs. New shared type `VendorOrderGroupWithNumberDto`; the old `VendorOrderGroupDto` alias is unchanged because mobile uses it. Migrations for local DBs: `npx sequelize-cli db:migrate` (dev) or `--env test`; `DB_NAME` is ignored outside production.

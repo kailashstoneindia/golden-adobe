@@ -37,6 +37,7 @@ import {
 type QueueRow = {
   group_id: string;
   order_id: string;
+  order_number: string;
   shop_name: string;
   vendor_city: string | null;
   drop_city: string | null;
@@ -51,6 +52,7 @@ type AssignmentRow = {
   attempt_no: number;
   group_id: string;
   order_id: string;
+  order_number: string;
   shop_name: string;
   driver_id: string;
   driver_name: string;
@@ -119,7 +121,7 @@ export class DeliveryAssignmentsService {
         )`;
 
     const rows = await this.sequelize.query<QueueRow>(
-      `SELECT g.id AS group_id, g.order_id, v.shop_name, c.name AS vendor_city,
+      `SELECT g.id AS group_id, g.order_id, o.order_number, v.shop_name, c.name AS vendor_city,
               COALESCE(o.delivery_address_snapshot->>'city', a.city) AS drop_city,
               COALESCE(o.delivery_address_snapshot->>'pincode', a.pincode) AS drop_pincode,
               (SELECT COUNT(*) FROM order_items oi WHERE oi.order_vendor_group_id = g.id) AS item_count,
@@ -138,6 +140,7 @@ export class DeliveryAssignmentsService {
       items: rows.map((r) => ({
         groupId: r.group_id,
         orderId: r.order_id,
+        orderNumber: r.order_number,
         vendorName: r.shop_name,
         vendorCity: r.vendor_city,
         dropCity: r.drop_city ?? '',
@@ -408,12 +411,13 @@ export class DeliveryAssignmentsService {
 
   private queryAssignments(where: string, replacements: Record<string, unknown>, paged = false) {
     return this.sequelize.query<AssignmentRow>(
-      `SELECT a.id, a.status, a.attempt_no, g.id AS group_id, g.order_id, v.shop_name,
+      `SELECT a.id, a.status, a.attempt_no, g.id AS group_id, g.order_id, o.order_number, v.shop_name,
               dr.id AS driver_id, u.name AS driver_name, u.phone AS driver_phone,
               a.assigned_at, a.vendor_handed_over_at, a.picked_up_at, a.delivered_at,
               a.failed_at, a.failure_reason, a.delivery_photo_key, a.failure_photo_key
        FROM delivery_assignments a
        JOIN order_vendor_group g ON g.id = a.order_vendor_group_id
+       JOIN orders o ON o.id = g.order_id
        JOIN vendors v ON v.id = g.vendor_id
        JOIN drivers dr ON dr.id = a.driver_id
        JOIN users u ON u.id = dr.user_id
@@ -435,6 +439,7 @@ export class DeliveryAssignmentsService {
       attemptNo: r.attempt_no,
       groupId: r.group_id,
       orderId: r.order_id,
+      orderNumber: r.order_number,
       vendorName: r.shop_name,
       driver: { id: r.driver_id, name: r.driver_name, phone: r.driver_phone ?? '' },
       assignedAt: new Date(r.assigned_at).toISOString(),

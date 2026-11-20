@@ -68,7 +68,7 @@ export function OrderDetailModal({
   return (
     <div className={styles.overlay} onClick={onClose} role="presentation">
       <div className={styles.modal} onClick={(event) => event.stopPropagation()} role="dialog">
-        <h2 className={styles.modalTitle}>Order {order.id.slice(0, 8)}</h2>
+        <h2 className={styles.modalTitle}>Order {order.orderNumber}</h2>
         <p className={styles.pageSubtitle}>
           {labelFor(ORDER_STATUS_LABELS, order.status)} · ₹{order.grandTotal}
         </p>

@@ -10,6 +10,7 @@ import { toAdminOrderDto } from '../admin-order.mapper';
 function orderRow(capturedPaise: number | null): Order {
   return {
     id: 'o1',
+    orderNumber: 'GA-10001',
     customerId: 'c1',
     deliveryAddressId: 'a1',
     grandTotal: '300.00',
@@ -49,6 +50,7 @@ describe('non-admin order shape is pinned', () => {
         'deliveryAddressId',
         'grandTotal',
         'id',
+        'orderNumber',
         'razorpayOrderId',
         'razorpayPaymentId',
         'status',

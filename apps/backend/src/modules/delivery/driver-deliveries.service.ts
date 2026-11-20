@@ -52,6 +52,7 @@ type JobRow = {
   group_id: string;
   group_status: string;
   order_id: string;
+  order_number: string;
   order_status: string;
   delivery_address_snapshot: DeliveryAddressSnapshot | null;
   shop_name: string;
@@ -392,7 +393,7 @@ export class DriverDeliveriesService {
       `SELECT a.id, a.status, a.attempt_no, a.vendor_handed_over_at, a.picked_up_at,
               a.delivered_at, a.failed_at, a.failure_reason,
               g.id AS group_id, g.status AS group_status, g.order_id,
-              o.status AS order_status, o.delivery_address_snapshot,
+              o.order_number, o.status AS order_status, o.delivery_address_snapshot,
               v.shop_name, v.address AS vendor_address,
               v.latitude AS vendor_lat, v.longitude AS vendor_lng, vu.phone AS vendor_phone,
               cu.name AS customer_name, cu.phone AS customer_phone,
@@ -452,6 +453,7 @@ export class DriverDeliveriesService {
       blocked,
       blockedReason: blocked ? BLOCKED_REASON : null,
       orderId: r.order_id,
+      orderNumber: r.order_number,
       groupId: r.group_id,
       pickup: {
         vendorName: r.shop_name,

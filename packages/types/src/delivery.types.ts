@@ -70,6 +70,8 @@ export interface AdminDriverDto {
 export interface QueueItemDto {
   groupId: string;
   orderId: string;
+  /** Decision 0061: the short number people quote, for example GA-10001. */
+  orderNumber: string;
   vendorName: string;
   vendorCity: string | null;
   dropCity: string;
@@ -85,6 +87,7 @@ export interface AdminAssignmentDto {
   attemptNo: number;
   groupId: string;
   orderId: string;
+  orderNumber: string;
   vendorName: string;
   driver: { id: string; name: string; phone: string };
   assignedAt: string;
@@ -106,6 +109,7 @@ export interface DeliveryJobDto {
   blocked: boolean;
   blockedReason: string | null;
   orderId: string;
+  orderNumber: string;
   groupId: string;
   pickup: {
     vendorName: string;

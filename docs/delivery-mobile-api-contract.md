@@ -35,6 +35,7 @@ DeliveryJob {
   blocked: boolean;                 // true => show STOP (order refunded/cancelled); actions return 400
   blockedReason: string | null;
   orderId: string; groupId: string;
+  orderNumber: string;             // e.g. "GA-10001": show this, not the UUID (decision 0061)
   pickup: { vendorName: string; address: string; lat: number|null; lng: number|null; phone: string };
   drop:   { recipientName: string; phone: string; addressLine1: string; addressLine2: string|null;
             city: string; pincode: string; lat: number|null; lng: number|null };
@@ -54,6 +55,7 @@ DriverProfile {
 
 | Method | Path | Body | Notes |
 |---|---|---|---|
+| GET | `/vendors/order-groups`, `/vendors/order-groups/:id` | | Each group now has `orderNumber` (for example `GA-10001`); show it as the order's name. |
 | PATCH | `/vendors/order-groups/:id/status` | `{ status: "ready_for_pickup" }` | Existing endpoint. `shipped` and `delivered` are now rejected for vendors. |
 | POST | `/vendors/order-groups/:id/photo-url` | `{ contentType }` | Presigned upload for the optional handover photo. |
 | POST | `/vendors/order-groups/:id/handover` | `{ photoKey? }` | Needs a driver assigned (400 otherwise). Idempotent: a repeat keeps the first timestamp. Returns `{ groupId, vendorHandedOverAt }`. The group status does not change; the driver confirms pickup. |
@@ -61,6 +63,7 @@ DriverProfile {
 ## 3. Customer app additions
 
 `GET /orders/:id` vendor groups gain:
+- `orderNumber: string` on every order (for example `GA-10001`), also in `GET /orders`. Show it as the order's name on every screen and when quoting an order to support;
 - new `status` values `ready_for_pickup` and `delivery_failed`;
 - `deliveryOtp: string | null`, set only while the group is `shipped`. Show it on the tracking screen
   ("Tell the driver this code on delivery"). SMS is not live, so the app is the only place the customer sees it.

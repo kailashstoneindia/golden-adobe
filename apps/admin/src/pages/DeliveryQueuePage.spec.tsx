@@ -17,6 +17,7 @@ function item(over: Partial<QueueItemDto> = {}): QueueItemDto {
   return {
     groupId: 'g1111111-1111-4111-8111-111111111111',
     orderId: 'o1111111-1111-4111-8111-111111111111',
+    orderNumber: 'GA-10001',
     vendorName: 'Kailash Stones',
     vendorCity: 'Jaipur',
     dropCity: 'Delhi',
@@ -40,6 +41,7 @@ beforeEach(() => {
     item({
       groupId: 'g2',
       orderId: 'o2222222-2222-4222-8222-222222222222',
+      orderNumber: 'GA-10002',
       vendorName: 'Marble Co',
       itemCount: 1,
       readyAt: '2026-11-12T11:30:00.000Z',
@@ -94,7 +96,7 @@ describe('DeliveryQueuePage (decision 0060)', () => {
   it('lists ready groups with order, vendor, drop, item count and waiting time', async () => {
     renderPage();
     const row = (await screen.findByText('Kailash Stones')).closest('tr')!;
-    expect(within(row).getByText(/o1111111/)).toBeInTheDocument();
+    expect(within(row).getByText('GA-10001')).toBeInTheDocument();
     expect(within(row).getByText('Delhi 110001')).toBeInTheDocument();
     expect(within(row).getByText('3')).toBeInTheDocument();
     expect(within(row).getByText('2h 15m')).toBeInTheDocument();

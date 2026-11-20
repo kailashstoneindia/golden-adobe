@@ -18,6 +18,7 @@ import type {
   ArtisanOrderDto,
   OrderDto,
   OrderVendorGroupDto,
+  VendorOrderGroupWithNumberDto,
   PaymentEventDto,
 } from '@golden-abode/types';
 import { Role } from '@golden-abode/types';
@@ -45,6 +46,7 @@ import {
   toOrderDto,
   toOrderVendorGroupDto,
   toPaymentEventDto,
+  toVendorOrderGroupWithNumberDto,
 } from './order-display.mapper';
 import { toAdminOrderDto } from './admin-order.mapper';
 
@@ -333,16 +335,16 @@ export class OrdersService {
   // an order" answer this surface exists for: that answer is "once it's a
   // real, paid order," not "the moment a customer's cart becomes a
   // reservation."
-  async listForVendor(vendorId: string): Promise<OrderVendorGroupDto[]> {
+  async listForVendor(vendorId: string): Promise<VendorOrderGroupWithNumberDto[]> {
     const groups = await this.groupModel.findAll({
       where: { vendorId },
       include: vendorGroupInclude({ status: { [Op.ne]: OrderStatus.PENDING_PAYMENT } }),
       order: [['createdAt', 'DESC']],
     });
-    return groups.map(toOrderVendorGroupDto);
+    return groups.map(toVendorOrderGroupWithNumberDto);
   }
 
-  async getForVendor(vendorId: string, groupId: string): Promise<OrderVendorGroupDto> {
+  async getForVendor(vendorId: string, groupId: string): Promise<VendorOrderGroupWithNumberDto> {
     const group = await this.groupModel.findOne({
       where: { id: groupId, vendorId },
       include: vendorGroupInclude({ status: { [Op.ne]: OrderStatus.PENDING_PAYMENT } }),
@@ -350,14 +352,14 @@ export class OrdersService {
     if (!group) {
       throw new NotFoundException('order group not found');
     }
-    return toOrderVendorGroupDto(group);
+    return toVendorOrderGroupWithNumberDto(group);
   }
 
   async updateVendorGroupStatus(
     vendorId: string,
     groupId: string,
     status: OrderVendorGroupStatus,
-  ): Promise<OrderVendorGroupDto> {
+  ): Promise<VendorOrderGroupWithNumberDto> {
     const group = await this.groupModel.findOne({
       where: { id: groupId, vendorId },
       include: [

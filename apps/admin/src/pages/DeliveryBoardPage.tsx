@@ -99,7 +99,7 @@ export function DeliveryBoardPage() {
                 const photo = photoLink(row);
                 return (
                   <tr key={row.id}>
-                    <td className={styles.mono}>{row.orderId.slice(0, 8)}</td>
+                    <td className={styles.mono}>{row.orderNumber}</td>
                     <td>{row.vendorName}</td>
                     <td>
                       {row.driver.name}

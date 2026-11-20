@@ -18,6 +18,7 @@ function assignment(over: Partial<AdminAssignmentDto> = {}): AdminAssignmentDto 
     attemptNo: 1,
     groupId: 'g1111111-1111-4111-8111-111111111111',
     orderId: 'o1111111-1111-4111-8111-111111111111',
+    orderNumber: 'GA-10001',
     vendorName: 'Kailash Stones',
     driver: { id: 'd1', name: 'Ramesh Kumar', phone: '+919876543210' },
     assignedAt: '2026-11-12T09:00:00.000Z',
@@ -46,6 +47,7 @@ beforeEach(() => {
         status: 'picked_up',
         vendorName: 'Marble Co',
         orderId: 'o2222222-2222-4222-8222-222222222222',
+        orderNumber: 'GA-10002',
         pickedUpAt: '2026-11-12T10:00:00.000Z',
       }),
     ],
@@ -55,6 +57,7 @@ beforeEach(() => {
         status: 'failed',
         vendorName: 'Tiles Ltd',
         orderId: 'o3333333-3333-4333-8333-333333333333',
+        orderNumber: 'GA-10003',
         groupId: 'g3333333-3333-4333-8333-333333333333',
         failedAt: '2026-11-12T11:00:00.000Z',
         failureReason: 'customer_unavailable',
@@ -67,6 +70,7 @@ beforeEach(() => {
         status: 'delivered',
         vendorName: 'Sand Depot',
         orderId: 'o4444444-4444-4444-8444-444444444444',
+        orderNumber: 'GA-10004',
         deliveredAt: '2026-11-12T11:30:00.000Z',
         deliveryPhotoViewUrl: 'https://signed.test/delivered.jpg',
       }),
@@ -145,7 +149,7 @@ describe('DeliveryBoardPage (decision 0060)', () => {
     renderPage();
     const row = (await screen.findByText('Kailash Stones')).closest('tr')!;
     expect(within(row).getByText('Ramesh Kumar')).toBeInTheDocument();
-    expect(within(row).getByText(/o1111111/)).toBeInTheDocument();
+    expect(within(row).getByText('GA-10001')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Picked up' }));
     expect(await screen.findByText('Nothing here right now.')).toBeInTheDocument();

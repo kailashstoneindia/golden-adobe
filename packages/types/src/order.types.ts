@@ -117,6 +117,9 @@ export type OrderItemDto = {
   unitPriceSnapshot: number;
 };
 
+// What a vendor sees of a group: the number of the order it belongs to (decision 0061).
+export type VendorOrderGroupWithNumberDto = OrderVendorGroupDto & { orderNumber: string };
+
 export type OrderVendorGroupDto = {
   id: string;
   orderId: string;
@@ -161,6 +164,8 @@ export type ArtisanOrderAddressDto = {
 // what was ordered, and where to deliver.
 export type ArtisanOrderDto = {
   id: string;
+  // Decision 0061: the short number people quote, for example GA-10001.
+  orderNumber: string;
   grandTotal: number;
   status: OrderStatus;
   bookingId: string | null;
@@ -172,6 +177,8 @@ export type ArtisanOrderDto = {
 
 export type OrderDto = {
   id: string;
+  // Decision 0061: the short number people quote, for example GA-10001.
+  orderNumber: string;
   customerId: string;
   deliveryAddressId: string;
   grandTotal: number;

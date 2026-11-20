@@ -6,6 +6,7 @@ import type {
   OrderItemDto,
   OrderStatus,
   OrderVendorGroupDto,
+  VendorOrderGroupWithNumberDto,
   OrderVendorGroupStatus,
   PaymentEventDto,
   RefundDto,
@@ -51,6 +52,7 @@ export function toOrderFields(
 ): Omit<OrderDto, 'vendorGroups'> {
   return {
     id: order.id,
+    orderNumber: order.orderNumber,
     customerId: order.customerId,
     deliveryAddressId: order.deliveryAddressId,
     grandTotal: toFiniteNumber(order.grandTotal),
@@ -84,6 +86,7 @@ function toOrderAddressDto(order: Order): CustomerAddressDto | null {
 export function toArtisanOrderDto(order: Order): ArtisanOrderDto {
   return {
     id: order.id,
+    orderNumber: order.orderNumber,
     grandTotal: toFiniteNumber(order.grandTotal),
     status: order.status as OrderStatus,
     bookingId: order.bookingId,
@@ -118,6 +121,13 @@ export function toOrderVendorGroupDto(group: OrderVendorGroup): OrderVendorGroup
     status: group.status as OrderVendorGroupStatus,
     items: (group.items ?? []).map(toOrderItemDto),
   };
+}
+
+// Vendor routes load the parent order, so the number comes from it.
+export function toVendorOrderGroupWithNumberDto(
+  group: OrderVendorGroup,
+): VendorOrderGroupWithNumberDto {
+  return { ...toOrderVendorGroupDto(group), orderNumber: group.order?.orderNumber ?? '' };
 }
 
 export function toPaymentEventDto(event: PaymentEvent): PaymentEventDto {
