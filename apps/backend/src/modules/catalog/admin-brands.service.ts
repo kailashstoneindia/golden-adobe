@@ -9,7 +9,12 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { Op, QueryTypes, UniqueConstraintError, WhereOptions } from 'sequelize';
-import type { BrandDto, MergeBrandResultDto, PaginatedResponse } from '@golden-abode/types';
+import type {
+  BrandAliasDto,
+  BrandDto,
+  MergeBrandResultDto,
+  PaginatedResponse,
+} from '@golden-abode/types';
 
 import { Brand } from './models/brand.model';
 import { BrandAlias } from './models/brand-alias.model';
@@ -415,9 +420,12 @@ export class AdminBrandsService {
       where: { brandId: ids },
       order: [['alias', 'ASC']],
     });
-    const aliasesById = new Map<string, string[]>();
+    const aliasesById = new Map<string, BrandAliasDto[]>();
     for (const a of aliases) {
-      aliasesById.set(a.brandId, [...(aliasesById.get(a.brandId) ?? []), a.alias]);
+      aliasesById.set(a.brandId, [
+        ...(aliasesById.get(a.brandId) ?? []),
+        { id: a.id, alias: a.alias },
+      ]);
     }
 
     return brands.map((b) => ({

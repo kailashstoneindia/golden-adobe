@@ -179,7 +179,10 @@ describe('AdminBrandsService (integration)', () => {
       const brand = await service.create({ name: `Aliased${suffix}`, ...compliance });
       await BrandAlias.create({ brandId: brand.id, alias: `aliased co ${suffix}` } as never);
 
-      expect((await service.get(brand.id)).aliases).toEqual([`aliased co ${suffix}`]);
+      const alias = await BrandAlias.findOne({ where: { brandId: brand.id } });
+      expect((await service.get(brand.id)).aliases).toEqual([
+        { id: alias!.id, alias: `aliased co ${suffix}` },
+      ]);
     });
 
     it('get refuses (404) an unknown brand', async () => {
@@ -269,7 +272,7 @@ describe('AdminBrandsService (integration)', () => {
 
       const result = await service.addAlias(brand.id, `H.I.L ${suffix}`);
 
-      expect(result.aliases).toContain(`h.i.l ${suffix}`);
+      expect(result.aliases.map((a) => a.alias)).toContain(`h.i.l ${suffix}`);
       expect((await resolver.resolve(`h.i.l ${suffix}`))?.id).toBe(brand.id);
     });
 
@@ -423,7 +426,7 @@ describe('AdminBrandsService (integration)', () => {
 
       const source = await Brand.findByPk(from.id);
       expect(source).toMatchObject({ isActive: false, mergedIntoId: into.id });
-      expect((await service.get(into.id)).aliases).toEqual(
+      expect((await service.get(into.id)).aliases.map((a) => a.alias)).toEqual(
         expect.arrayContaining([`dup co ${suffix}`, `duplicate${suffix}`]),
       );
 

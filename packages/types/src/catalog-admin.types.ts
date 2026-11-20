@@ -14,8 +14,11 @@ export type BrandDto = {
   isActive: boolean;
   mergedIntoId: string | null;
   productCount: number;
-  aliases: string[];
+  // With ids, so the admin screen can remove one (DELETE /:id/aliases/:aliasId).
+  aliases: BrandAliasDto[];
 };
+
+export type BrandAliasDto = { id: string; alias: string };
 
 export type MergeBrandResultDto = {
   movedProducts: number;
