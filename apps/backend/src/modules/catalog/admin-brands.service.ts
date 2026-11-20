@@ -1,4 +1,9 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { Op, QueryTypes, UniqueConstraintError, WhereOptions } from 'sequelize';
 import type { BrandDto, PaginatedResponse } from '@golden-abode/types';
@@ -8,6 +13,7 @@ import { BrandAlias } from './models/brand-alias.model';
 import { BrandResolverService } from './brand-resolver.service';
 import { CreateBrandDto } from './dto/create-brand.dto';
 import { ListBrandsQueryDto } from './dto/list-brands-query.dto';
+import { UpdateBrandDto } from './dto/update-brand.dto';
 
 // Decision 0063: brands are created and maintained from the admin panel
 // instead of seed scripts. Duplicate detection is the same
@@ -91,6 +97,101 @@ export class AdminBrandsService {
       }
       throw err;
     }
+  }
+
+  async update(id: string, dto: UpdateBrandDto): Promise<BrandDto> {
+    const brand = await this.findEditable(id);
+    if (dto.name !== undefined && dto.name !== brand.name) {
+      await this.assertNameFree(dto.name, brand.id);
+    }
+
+    const changes: Partial<Brand> = {};
+    for (const key of [
+      'name',
+      'manufacturerName',
+      'manufacturerAddress',
+      'consumerCareEmail',
+      'consumerCarePhone',
+    ] as const) {
+      if (dto[key] !== undefined) changes[key] = dto[key];
+    }
+
+    try {
+      await brand.update(changes);
+    } catch (err) {
+      if (err instanceof UniqueConstraintError) {
+        throw new ConflictException(`brand "${dto.name}" already exists`);
+      }
+      throw err;
+    }
+    return this.get(id);
+  }
+
+  // Deactivating hides a brand from pickers and refuses it on import and
+  // add-product; its existing products are left as they are.
+  async setActive(id: string, isActive: boolean): Promise<BrandDto> {
+    const brand = await this.findOrFail(id);
+    if (isActive && brand.mergedIntoId) {
+      throw new BadRequestException(
+        `brand "${brand.name}" was merged into another brand and can't be reactivated`,
+      );
+    }
+    if (brand.isActive !== isActive) await brand.update({ isActive });
+    return this.get(id);
+  }
+
+  async addAlias(id: string, text: string): Promise<BrandDto> {
+    const brand = await this.findOrFail(id);
+    const normalized = text.trim().toLowerCase().replace(/\s+/g, ' ');
+
+    const existing = await this.brandAliasModel.findOne({
+      where: { alias: normalized },
+      include: [Brand],
+    });
+    if (existing && existing.brandId !== brand.id) {
+      throw new ConflictException(
+        `alias "${normalized}" already belongs to brand "${existing.brand?.name ?? existing.brandId}"`,
+      );
+    }
+
+    // Aliases are checked before names, so an alias equal to another brand's
+    // name would silently redirect that brand's products here.
+    const named = await this.sequelize.query<{ name: string }>(
+      `SELECT name FROM brand
+        WHERE normalize_brand_name(name) = normalize_brand_name(:text) AND id <> :id
+        LIMIT 1`,
+      { replacements: { text, id: brand.id }, type: QueryTypes.SELECT },
+    );
+    if (named.length > 0) {
+      throw new ConflictException(`"${text}" is the name of brand "${named[0].name}"`);
+    }
+
+    if (!existing) await this.brandResolver.addAlias(brand.id, text);
+    return this.get(id);
+  }
+
+  async removeAlias(id: string, aliasId: string): Promise<BrandDto> {
+    await this.findOrFail(id);
+    await this.brandResolver.removeAlias(id, aliasId);
+    return this.get(id);
+  }
+
+  private async findOrFail(id: string): Promise<Brand> {
+    const brand = await this.brandModel.findByPk(id);
+    if (!brand) throw new NotFoundException('Brand not found');
+    return brand;
+  }
+
+  // A merged brand only exists so its old name keeps resolving; it is not
+  // edited any more (decision 0063).
+  private async findEditable(id: string): Promise<Brand> {
+    const brand = await this.findOrFail(id);
+    if (brand.mergedIntoId) {
+      throw new BadRequestException(
+        `brand "${brand.name}" was merged into another brand and can't be edited`,
+      );
+    }
+    return brand;
   }
 
   // Same name (after normalize_brand_name) as another brand, or the exact

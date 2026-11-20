@@ -1,4 +1,4 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { SequelizeModule } from '@nestjs/sequelize';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Op } from 'sequelize';
@@ -17,6 +17,7 @@ import { MasterProduct, MasterProductStatus } from '../models/master-product.mod
 describe('AdminBrandsService (integration)', () => {
   let moduleRef: TestingModule;
   let service: AdminBrandsService;
+  let resolver: BrandResolverService;
   const suffix = `ab${Date.now()}`;
   let categoryId: string;
 
@@ -45,6 +46,7 @@ describe('AdminBrandsService (integration)', () => {
       providers: [AdminBrandsService, BrandResolverService],
     }).compile();
     service = moduleRef.get(AdminBrandsService);
+    resolver = moduleRef.get(BrandResolverService);
 
     const category = await Category.create({
       name: `AB Cat ${suffix}`,
@@ -153,6 +155,125 @@ describe('AdminBrandsService (integration)', () => {
       await expect(service.get('00000000-0000-4000-8000-000000000000')).rejects.toBeInstanceOf(
         NotFoundException,
       );
+    });
+  });
+
+  describe('update and activation', () => {
+    it('renames a brand and edits its compliance fields, keeping the slug', async () => {
+      const brand = await service.create({ name: `Renamee${suffix}`, ...compliance });
+
+      const updated = await service.update(brand.id, {
+        name: `Renamed${suffix}`,
+        consumerCareEmail: 'help@renamed.test',
+      });
+
+      expect(updated).toMatchObject({
+        name: `Renamed${suffix}`,
+        slug: brand.slug,
+        consumerCareEmail: 'help@renamed.test',
+        manufacturerAddress: compliance.manufacturerAddress,
+      });
+    });
+
+    it('allows a rename that only changes case (same normalized name as itself)', async () => {
+      const brand = await service.create({ name: `Casey${suffix}`, ...compliance });
+
+      expect((await service.update(brand.id, { name: `CASEY${suffix}` })).name).toBe(
+        `CASEY${suffix}`,
+      );
+    });
+
+    it('refuses (409) a rename onto another brand by normalized name', async () => {
+      await service.create({ name: `Taken${suffix}`, ...compliance });
+      const brand = await service.create({ name: `Mover${suffix}`, ...compliance });
+
+      await expect(
+        service.update(brand.id, { name: `TAKEN${suffix.toUpperCase()} Ltd` }),
+      ).rejects.toThrow(new ConflictException(`brand "Taken${suffix}" already exists`));
+    });
+
+    it('deactivating hides the brand from the active list and leaves its products alone', async () => {
+      const brand = await service.create({ name: `Pauser${suffix}`, ...compliance });
+      const product = await MasterProduct.create({
+        categoryId,
+        brandId: brand.id,
+        name: `AB Pauser Product ${suffix}`,
+        slug: `ab-pauser-product-${suffix}`,
+        mfrPartNumber: `AB-P-${suffix}`,
+        status: MasterProductStatus.LIVE,
+      } as never);
+
+      const result = await service.setActive(brand.id, false);
+
+      expect(result.isActive).toBe(false);
+      const active = await service.list({ search: `pauser${suffix}`, isActive: true });
+      expect(active.items).toEqual([]);
+      const reloaded = await MasterProduct.findByPk(product.id);
+      expect(reloaded).toMatchObject({ brandId: brand.id, status: MasterProductStatus.LIVE });
+    });
+
+    it('refuses (400) to edit or reactivate a brand that was merged away', async () => {
+      const target = await service.create({ name: `MergeTarget${suffix}`, ...compliance });
+      const merged = await service.create({ name: `MergedAway${suffix}`, ...compliance });
+      await Brand.update({ mergedIntoId: target.id, isActive: false } as never, {
+        where: { id: merged.id },
+      });
+
+      await expect(service.update(merged.id, { name: `Revived${suffix}` })).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      await expect(service.setActive(merged.id, true)).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('update refuses (404) an unknown brand', async () => {
+      await expect(
+        service.update('00000000-0000-4000-8000-000000000000', { name: 'X' }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe('aliases', () => {
+    it('an added alias resolves to the brand', async () => {
+      const brand = await service.create({ name: `Hilco${suffix}`, ...compliance });
+
+      const result = await service.addAlias(brand.id, `H.I.L ${suffix}`);
+
+      expect(result.aliases).toContain(`h.i.l ${suffix}`);
+      expect((await resolver.resolve(`h.i.l ${suffix}`))?.id).toBe(brand.id);
+    });
+
+    it('refuses (409) an alias another brand already uses, and keeps it on that brand', async () => {
+      const first = await service.create({ name: `FirstOwner${suffix}`, ...compliance });
+      const second = await service.create({ name: `SecondOwner${suffix}`, ...compliance });
+      await service.addAlias(first.id, `shared ${suffix}`);
+
+      await expect(service.addAlias(second.id, `SHARED ${suffix}`)).rejects.toThrow(
+        new ConflictException(
+          `alias "shared ${suffix}" already belongs to brand "FirstOwner${suffix}"`,
+        ),
+      );
+      expect((await resolver.resolve(`shared ${suffix}`))?.id).toBe(first.id);
+    });
+
+    it('refuses (409) an alias that is another brand’s own name', async () => {
+      // Aliases are checked first, so this would steal that brand's name.
+      await service.create({ name: `Proper${suffix}`, ...compliance });
+      const thief = await service.create({ name: `Thief${suffix}`, ...compliance });
+
+      await expect(service.addAlias(thief.id, `proper${suffix} ltd`)).rejects.toThrow(
+        new ConflictException(`"proper${suffix} ltd" is the name of brand "Proper${suffix}"`),
+      );
+    });
+
+    it('removes an alias', async () => {
+      const brand = await service.create({ name: `Dropper${suffix}`, ...compliance });
+      await service.addAlias(brand.id, `drop me ${suffix}`);
+      const [alias] = await resolver.listAliases(brand.id);
+
+      const result = await service.removeAlias(brand.id, alias.id);
+
+      expect(result.aliases).toEqual([]);
+      expect(await resolver.resolve(`drop me ${suffix}`)).toBeNull();
     });
   });
 });

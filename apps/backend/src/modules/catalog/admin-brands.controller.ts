@@ -1,9 +1,11 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -17,6 +19,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { AdminBrandsService } from './admin-brands.service';
 import { CreateBrandDto } from './dto/create-brand.dto';
 import { ListBrandsQueryDto } from './dto/list-brands-query.dto';
+import { AddBrandAliasDto, SetBrandActiveDto, UpdateBrandDto } from './dto/update-brand.dto';
 
 // Decision 0063: brand management from the admin panel, so onboarding a new
 // brand no longer needs a developer and a seed script.
@@ -49,5 +52,40 @@ export class AdminBrandsController {
   })
   async create(@Body() dto: CreateBrandDto) {
     return this.brands.create(dto);
+  }
+
+  @Patch(':id')
+  @ApiOperation({
+    summary: 'Edit a brand',
+    description:
+      'Name and compliance fields. The slug never changes. A merged brand cannot be edited.',
+  })
+  async update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateBrandDto) {
+    return this.brands.update(id, dto);
+  }
+
+  @Patch(':id/active')
+  @ApiOperation({
+    summary: 'Activate or deactivate a brand',
+    description:
+      'A deactivated brand is refused on import and add-product; its existing products are untouched.',
+  })
+  async setActive(@Param('id', ParseUUIDPipe) id: string, @Body() dto: SetBrandActiveDto) {
+    return this.brands.setActive(id, dto.isActive);
+  }
+
+  @Post(':id/aliases')
+  @ApiOperation({ summary: 'Teach another spelling of this brand' })
+  async addAlias(@Param('id', ParseUUIDPipe) id: string, @Body() dto: AddBrandAliasDto) {
+    return this.brands.addAlias(id, dto.alias);
+  }
+
+  @Delete(':id/aliases/:aliasId')
+  @ApiOperation({ summary: 'Remove one of this brand’s aliases' })
+  async removeAlias(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('aliasId', ParseUUIDPipe) aliasId: string,
+  ) {
+    return this.brands.removeAlias(id, aliasId);
   }
 }

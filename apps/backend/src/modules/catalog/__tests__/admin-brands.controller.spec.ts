@@ -24,7 +24,13 @@ describe('AdminBrandsController', () => {
     list: jest.fn(async () => ({ items: [], total: 0, page: 1, limit: 25, totalPages: 0 })),
     get: jest.fn(async () => ({})),
     create: jest.fn(async () => ({})),
+    update: jest.fn(async () => ({})),
+    setActive: jest.fn(async () => ({})),
+    addAlias: jest.fn(async () => ({})),
+    removeAlias: jest.fn(async () => ({})),
   };
+  const ID = '11111111-1111-4111-8111-111111111111';
+  const ALIAS_ID = '22222222-2222-4222-8222-222222222222';
 
   const valid = {
     name: 'Zorvex',
@@ -97,6 +103,65 @@ describe('AdminBrandsController', () => {
       .get('/admin/brands/nope')
       .set('x-role', Role.ADMIN);
     expect(res.status).toBe(400);
+  });
+
+  describe('update, activation, aliases', () => {
+    const http = () => request(app.getHttpServer());
+
+    it('passes a partial, trimmed edit to the service', async () => {
+      const res = await http()
+        .patch(`/admin/brands/${ID}`)
+        .send({ consumerCareEmail: ' help@zorvex.test ' });
+
+      expect(res.status).toBe(200);
+      expect(service.update).toHaveBeenCalledWith(ID, { consumerCareEmail: 'help@zorvex.test' });
+    });
+
+    it.each([
+      ['an invalid email', { consumerCareEmail: 'nope' }],
+      ['a blank name', { name: '  ' }],
+      ['isActive (has its own endpoint)', { isActive: false }],
+      ['a slug (never edited)', { slug: 'x' }],
+    ])('refuses an edit with %s', async (_label, body) => {
+      expect((await http().patch(`/admin/brands/${ID}`).send(body)).status).toBe(400);
+      expect(service.update).not.toHaveBeenCalled();
+    });
+
+    it('sets the active flag', async () => {
+      const res = await http().patch(`/admin/brands/${ID}/active`).send({ isActive: false });
+
+      expect(res.status).toBe(200);
+      expect(service.setActive).toHaveBeenCalledWith(ID, false);
+    });
+
+    it.each([[{}], [{ isActive: 'no' }]])('refuses an active flag body of %j', async (body) => {
+      expect((await http().patch(`/admin/brands/${ID}/active`).send(body)).status).toBe(400);
+      expect(service.setActive).not.toHaveBeenCalled();
+    });
+
+    it('adds an alias', async () => {
+      const res = await http().post(`/admin/brands/${ID}/aliases`).send({ alias: ' H.I.L ' });
+
+      expect(res.status).toBe(201);
+      expect(service.addAlias).toHaveBeenCalledWith(ID, 'H.I.L');
+    });
+
+    it('refuses a blank alias', async () => {
+      expect((await http().post(`/admin/brands/${ID}/aliases`).send({ alias: ' ' })).status).toBe(
+        400,
+      );
+    });
+
+    it('removes an alias by id', async () => {
+      const res = await http().delete(`/admin/brands/${ID}/aliases/${ALIAS_ID}`);
+
+      expect(res.status).toBe(200);
+      expect(service.removeAlias).toHaveBeenCalledWith(ID, ALIAS_ID);
+    });
+
+    it('refuses a malformed alias id', async () => {
+      expect((await http().delete(`/admin/brands/${ID}/aliases/nope`)).status).toBe(400);
+    });
   });
 
   it('refuses anyone who is not an admin', async () => {
