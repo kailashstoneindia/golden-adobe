@@ -2,7 +2,7 @@
 
 - **Date:** 2026-10-30
 - **Status:** Flagged — scope confirmed, design deferred, nothing built
-- **Supersedes / Superseded by:** —
+- **Supersedes / Superseded by:** Superseded by [0060](0060-delivery-module-mvp-flow.md)
 
 ## Context
 

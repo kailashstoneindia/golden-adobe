@@ -14,8 +14,10 @@ import { OrderItem } from './order-item.model';
 export enum OrderVendorGroupStatus {
   PENDING = 'pending',
   CONFIRMED = 'confirmed',
+  READY_FOR_PICKUP = 'ready_for_pickup',
   SHIPPED = 'shipped',
   DELIVERED = 'delivered',
+  DELIVERY_FAILED = 'delivery_failed',
   CANCELLED = 'cancelled',
 }
 

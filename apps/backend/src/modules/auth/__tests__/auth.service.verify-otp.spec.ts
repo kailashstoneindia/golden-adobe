@@ -69,3 +69,54 @@ describe('AuthService.verifyOtp — deactivated accounts', () => {
     });
   });
 });
+
+describe('AuthService.verifyOtp — DRIVER accounts (decision 0060)', () => {
+  it('logs an existing driver in with tokens and no onboarding step', async () => {
+    const phone = '+919811100001';
+    const otp = '123456';
+    const hash = crypto.createHash('sha256').update(otp).digest('hex');
+    const plain = {
+      id: 'driver-user-1',
+      name: 'Test Driver',
+      phone,
+      role: 'DRIVER',
+      isActive: true,
+      isApproved: true,
+    };
+    const refreshTokenModel = { create: jest.fn(async () => ({})) };
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        AuthService,
+        { provide: JwtService, useValue: { sign: jest.fn(() => 'signed') } },
+        { provide: ConfigService, useValue: { get: jest.fn((_k: string, d?: unknown) => d) } },
+        {
+          provide: UsersService,
+          useValue: {
+            findByPhone: jest.fn(async () => ({ ...plain, get: () => plain })),
+            recordLogin: jest.fn(),
+          },
+        },
+        { provide: CustomersService, useValue: {} },
+        {
+          provide: RedisService,
+          useValue: {
+            get: jest.fn(async (key: string) => (key === `otp:${phone}` ? hash : null)),
+            set: jest.fn(),
+            del: jest.fn(),
+          },
+        },
+        { provide: Sequelize, useValue: {} },
+        { provide: getModelToken(RefreshToken), useValue: refreshTokenModel },
+      ],
+    }).compile();
+
+    const result = await moduleRef.get(AuthService).verifyOtp({ phone, otp } as never);
+
+    expect(result).toMatchObject({
+      isNewUser: false,
+      accessToken: 'signed',
+      user: { id: 'driver-user-1', role: 'DRIVER' },
+    });
+    expect(result).not.toHaveProperty('onboardingToken');
+  });
+});

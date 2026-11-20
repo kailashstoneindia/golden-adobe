@@ -7,8 +7,10 @@ import {
   BelongsTo,
   HasMany,
 } from 'sequelize-typescript';
+import { literal } from 'sequelize';
 import { Customer } from '../../customers/models/customer.model';
 import { CustomerAddress } from '../../customers/models/customer-address.model';
+import { DeliveryAddressSnapshot } from '@golden-abode/types';
 import { OrderVendorGroup } from './order-vendor-group.model';
 
 export enum OrderStatus {
@@ -24,6 +26,16 @@ export enum OrderStatus {
 export class Order extends Model<Order> {
   @Column({ type: DataType.UUID, defaultValue: DataType.UUIDV4, primaryKey: true })
   declare id: string;
+
+  // Decision 0061: GA-10001. Assigned by the database default, never by code.
+  @Column({
+    type: DataType.STRING(20),
+    allowNull: false,
+    field: 'order_number',
+    // The same expression as the column default in the migration.
+    defaultValue: literal("'GA-' || nextval('order_number_seq')"),
+  })
+  declare orderNumber: string;
 
   @ForeignKey(() => Customer)
   @Column({ type: DataType.UUID, allowNull: false, field: 'customer_id' })
@@ -68,6 +80,10 @@ export class Order extends Model<Order> {
   // request is the booking — there is no separate service_bookings table.
   @Column({ type: DataType.UUID, allowNull: true, field: 'booking_id' })
   declare bookingId: string | null;
+
+  // Decision 0060: frozen at checkout; readers fall back to the live address row.
+  @Column({ type: DataType.JSONB, allowNull: true, field: 'delivery_address_snapshot' })
+  declare deliveryAddressSnapshot: DeliveryAddressSnapshot | null;
 
   @BelongsTo(() => Customer)
   declare customer: Customer;

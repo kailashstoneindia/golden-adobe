@@ -50,6 +50,22 @@ export const API_ENDPOINTS = {
     // ArtisansController, not AdminArtisansController.
     cancelArtisanHireRequest: (requestId: string) => `/artisans/hire-requests/${requestId}/cancel`,
   },
+  // Decision 0060.
+  delivery: {
+    drivers: '/admin/drivers',
+    driverById: (driverId: string) => `/admin/drivers/${driverId}`,
+    driverDocumentUploadUrl: (driverId: string) => `/admin/drivers/${driverId}/document-upload-url`,
+    driverDocumentConfirm: (driverId: string) => `/admin/drivers/${driverId}/documents/confirm`,
+    vehicles: '/admin/vehicles',
+    vehicleById: (vehicleId: string) => `/admin/vehicles/${vehicleId}`,
+    queue: '/admin/delivery/queue',
+    assignments: '/admin/delivery/assignments',
+    assignmentReassign: (assignmentId: string) =>
+      `/admin/delivery/assignments/${assignmentId}/reassign`,
+    assignmentUnlock: (assignmentId: string) =>
+      '/admin/delivery/assignments/' + assignmentId + '/unlock',
+    groupReattempt: (groupId: string) => `/admin/delivery/groups/${groupId}/reattempt`,
+  },
   catalog: {
     categories: '/admin/catalog/categories',
     categoryAttributes: (categoryId: string) =>

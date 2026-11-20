@@ -9,3 +9,4 @@ export * from './catalog-import.types';
 export * from './search.types';
 export * from './city.types';
 export * from './order.types';
+export * from './delivery.types';

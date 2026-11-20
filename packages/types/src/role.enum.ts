@@ -3,4 +3,5 @@ export enum Role {
   VENDOR = 'VENDOR',
   ARTISAN = 'ARTISAN',
   ADMIN = 'ADMIN',
+  DRIVER = 'DRIVER',
 }

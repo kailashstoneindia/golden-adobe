@@ -9,6 +9,10 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/sequelize';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { DELIVERY_ASSIGNMENT_STATUSES } from '@golden-abode/types';
+import { DeliveryAssignment } from '../delivery/models/delivery-assignment.model';
+import { lockGroup } from '../delivery/delivery-group-lock';
+import { setGroupStatus } from '../delivery/delivery-utils';
 import { Sequelize } from 'sequelize-typescript';
 import { Op, QueryTypes } from 'sequelize';
 import type {
@@ -16,6 +20,7 @@ import type {
   ArtisanOrderDto,
   OrderDto,
   OrderVendorGroupDto,
+  VendorOrderGroupWithNumberDto,
   PaymentEventDto,
 } from '@golden-abode/types';
 import { Role } from '@golden-abode/types';
@@ -25,7 +30,7 @@ import { PaymentEvent } from './models/payment-event.model';
 import { CustomersService } from '../customers/customers.service';
 import { NOTIFICATION_SERVICE, NotificationService } from '../notifications/notification.interface';
 import { OrderPaymentService } from './order-payment.service';
-import { LOCKED_PARENT_ORDER_STATUSES } from './refund-status';
+import { GROUP_LOCKED_MESSAGE, LOCKED_PARENT_ORDER_STATUSES } from './refund-status';
 import {
   PAYMENT_CAPTURE_WINDOW_MINUTES,
   ProviderPayment,
@@ -43,8 +48,10 @@ import {
   toOrderDto,
   toOrderVendorGroupDto,
   toPaymentEventDto,
+  toVendorOrderGroupWithNumberDto,
 } from './order-display.mapper';
 import { toAdminOrderDto } from './admin-order.mapper';
+import { VENDOR_GROUP_TRANSITIONS } from './vendor-group-transitions';
 
 // Decision 0049. Slightly above the typical 5-15 minute industry range
 // for a checkout hold, since payment.failed's own handling already
@@ -55,8 +62,6 @@ import { toAdminOrderDto } from './admin-order.mapper';
 // given up is auto-refunded by Razorpay instead of captured.
 const STALE_RESERVATION_TIMEOUT_MS = PAYMENT_CAPTURE_WINDOW_MINUTES * 60_000;
 
-const GROUP_LOCKED_MESSAGE =
-  'order is refunded, being refunded or cancelled, and its groups can no longer be updated';
 const IN_FLIGHT_PAYMENT_MESSAGE =
   'A payment is in progress for this order. Try again in a few minutes.';
 const PAYMENT_STATUS_UNVERIFIED_MESSAGE = 'Could not verify payment status. Try again shortly.';
@@ -71,6 +76,7 @@ export class OrdersService {
     @InjectModel(PaymentEvent) private readonly paymentEventModel: typeof PaymentEvent,
     @InjectModel(Artisan) private readonly artisanModel: typeof Artisan,
     @InjectModel(ArtisanHireRequest) private readonly hireRequestModel: typeof ArtisanHireRequest,
+    @InjectModel(DeliveryAssignment) private readonly assignmentModel: typeof DeliveryAssignment,
     private readonly sequelize: Sequelize,
     private readonly customersService: CustomersService,
     @Inject(NOTIFICATION_SERVICE) private readonly notifications: NotificationService,
@@ -85,7 +91,31 @@ export class OrdersService {
       include: customerOrderInclude(false),
       order: [['createdAt', 'DESC']],
     });
-    return orders.map((order) => toOrderDto(order, false));
+    const otps = await this.loadDeliveryOtps(orders);
+    return orders.map((order) => toOrderDto(order, false, otps));
+  }
+
+  // Decision 0060 rule 5: the code of each shipped group's open assignment, in
+  // one query. Customer paths only; vendor, admin and artisan views never
+  // call this, so the code cannot reach them through a shared include.
+  private async loadDeliveryOtps(orders: Order[]): Promise<Map<string, string>> {
+    const shippedGroupIds = orders
+      .flatMap((order) => order.vendorGroups ?? [])
+      .filter((group) => group.status === OrderVendorGroupStatus.SHIPPED)
+      .map((group) => group.id);
+    if (shippedGroupIds.length === 0) {
+      return new Map();
+    }
+    const open = await this.assignmentModel.findAll({
+      where: {
+        orderVendorGroupId: shippedGroupIds,
+        status: DELIVERY_ASSIGNMENT_STATUSES.PICKED_UP,
+      },
+      attributes: ['orderVendorGroupId', 'deliveryOtp'],
+    });
+    return new Map(
+      open.flatMap((a) => (a.deliveryOtp ? [[a.orderVendorGroupId, a.deliveryOtp] as const] : [])),
+    );
   }
 
   async getForCustomer(userId: string, orderId: string): Promise<OrderDto> {
@@ -97,7 +127,7 @@ export class OrdersService {
     if (!order) {
       throw new NotFoundException('order not found');
     }
-    return toOrderDto(order, true);
+    return toOrderDto(order, true, await this.loadDeliveryOtps([order]));
   }
 
   // Closes the "artisan can't open a linked order" gap: an artisan sees
@@ -308,16 +338,16 @@ export class OrdersService {
   // an order" answer this surface exists for: that answer is "once it's a
   // real, paid order," not "the moment a customer's cart becomes a
   // reservation."
-  async listForVendor(vendorId: string): Promise<OrderVendorGroupDto[]> {
+  async listForVendor(vendorId: string): Promise<VendorOrderGroupWithNumberDto[]> {
     const groups = await this.groupModel.findAll({
       where: { vendorId },
       include: vendorGroupInclude({ status: { [Op.ne]: OrderStatus.PENDING_PAYMENT } }),
       order: [['createdAt', 'DESC']],
     });
-    return groups.map(toOrderVendorGroupDto);
+    return groups.map(toVendorOrderGroupWithNumberDto);
   }
 
-  async getForVendor(vendorId: string, groupId: string): Promise<OrderVendorGroupDto> {
+  async getForVendor(vendorId: string, groupId: string): Promise<VendorOrderGroupWithNumberDto> {
     const group = await this.groupModel.findOne({
       where: { id: groupId, vendorId },
       include: vendorGroupInclude({ status: { [Op.ne]: OrderStatus.PENDING_PAYMENT } }),
@@ -325,14 +355,14 @@ export class OrdersService {
     if (!group) {
       throw new NotFoundException('order group not found');
     }
-    return toOrderVendorGroupDto(group);
+    return toVendorOrderGroupWithNumberDto(group);
   }
 
   async updateVendorGroupStatus(
     vendorId: string,
     groupId: string,
     status: OrderVendorGroupStatus,
-  ): Promise<OrderVendorGroupDto> {
+  ): Promise<VendorOrderGroupWithNumberDto> {
     const group = await this.groupModel.findOne({
       where: { id: groupId, vendorId },
       include: [
@@ -370,20 +400,7 @@ export class OrdersService {
     // to CONFIRMED in the same transaction that confirms the order), but
     // the table keeps the entry for defensiveness rather than assuming
     // that invariant holds forever.
-    const validNextStatuses: Record<OrderVendorGroupStatus, OrderVendorGroupStatus[]> = {
-      [OrderVendorGroupStatus.PENDING]: [
-        OrderVendorGroupStatus.CONFIRMED,
-        OrderVendorGroupStatus.CANCELLED,
-      ],
-      [OrderVendorGroupStatus.CONFIRMED]: [
-        OrderVendorGroupStatus.SHIPPED,
-        OrderVendorGroupStatus.CANCELLED,
-      ],
-      [OrderVendorGroupStatus.SHIPPED]: [OrderVendorGroupStatus.DELIVERED],
-      [OrderVendorGroupStatus.DELIVERED]: [],
-      [OrderVendorGroupStatus.CANCELLED]: [],
-    };
-    if (!validNextStatuses[group.status].includes(status)) {
+    if (!VENDOR_GROUP_TRANSITIONS[group.status].includes(status)) {
       throw new BadRequestException(
         `cannot transition order group from ${group.status} to ${status}`,
       );
@@ -558,31 +575,69 @@ export class OrdersService {
       throw new NotFoundException('order group not found');
     }
 
-    // Final-review fix (post-implementation, finding #5): the override
-    // never checked the parent order's status at all, so it could bring a
-    // group back to CONFIRMED/SHIPPED/DELIVERED under an order that was
-    // already REFUNDED or CANCELLED — exactly the state the vendor-facing
-    // guard above (finding #4's fix) now refuses. CANCELLED is the one
-    // exception: setting a group to CANCELLED under a refunded/cancelled
-    // order is cleanup in the safe direction, not a resurrection of a
-    // dead order, so it is still allowed.
-    const order = await this.orderModel.findByPk(group.orderId);
-    const parentIsClosed = !!order && LOCKED_PARENT_ORDER_STATUSES.includes(order.status);
-    if (parentIsClosed && status !== OrderVendorGroupStatus.CANCELLED) {
-      throw new BadRequestException(
-        'cannot override a group whose parent order is refunded, being refunded or cancelled',
+    // Everything below is decided from rows locked in one transaction, in the
+    // same order as the driver flow (open assignments first, then the group), so
+    // an override can neither deadlock a driver action nor act on a status a
+    // driver just committed.
+    const { customerId, orderId } = await this.sequelize.transaction(async (transaction) => {
+      const open = await this.assignmentModel.findAll({
+        where: {
+          orderVendorGroupId: groupId,
+          status: [DELIVERY_ASSIGNMENT_STATUSES.ASSIGNED, DELIVERY_ASSIGNMENT_STATUSES.PICKED_UP],
+        },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      const locked = await lockGroup(this.sequelize, groupId, transaction);
+
+      // Review of PR #45: forcing SHIPPED over a job the driver has not picked up
+      // leaves a job that can neither be picked up (the group is no longer ready)
+      // nor completed (it was never picked up), and gives the customer no code.
+      if (
+        status === OrderVendorGroupStatus.SHIPPED &&
+        open.some((a) => a.status === DELIVERY_ASSIGNMENT_STATUSES.ASSIGNED)
+      ) {
+        throw new BadRequestException(
+          'a driver is assigned but has not picked up; let the driver pick up, reassign, or cancel the group',
+        );
+      }
+
+      // Final-review fix (post-implementation, finding #5): the override never
+      // checked the parent order's status, so it could bring a group back to
+      // CONFIRMED/SHIPPED/DELIVERED under an order that was already REFUNDED or
+      // CANCELLED. CANCELLED is the one exception: setting a group to CANCELLED
+      // under a refunded/cancelled order is cleanup in the safe direction.
+      if (
+        LOCKED_PARENT_ORDER_STATUSES.includes(locked.orderStatus) &&
+        status !== OrderVendorGroupStatus.CANCELLED
+      ) {
+        throw new BadRequestException(
+          'cannot override a group whose parent order is refunded, being refunded or cancelled',
+        );
+      }
+
+      this.logger.warn(
+        `admin override: order_vendor_group ${groupId} forced from ${locked.status} to ${status} — reason: ${reason}`,
       );
-    }
+      await setGroupStatus(this.sequelize, groupId, status, transaction);
+      // Decision 0060 rule 8: forcing a group to anything other than
+      // ready_for_pickup/shipped means the driver's job is no longer valid, so
+      // the open assignment is closed in the same transaction as the status.
+      const keepsAssignmentOpen =
+        status === OrderVendorGroupStatus.READY_FOR_PICKUP ||
+        status === OrderVendorGroupStatus.SHIPPED;
+      if (!keepsAssignmentOpen) {
+        for (const assignment of open) {
+          await assignment.update(
+            { status: DELIVERY_ASSIGNMENT_STATUSES.CANCELLED, cancelledAt: new Date() },
+            { transaction },
+          );
+        }
+      }
+      return { customerId: locked.customerId, orderId: locked.orderId };
+    });
 
-    this.logger.warn(
-      `admin override: order_vendor_group ${groupId} forced from ${group.status} to ${status} — reason: ${reason}`,
-    );
-    group.status = status;
-    await group.save();
-
-    if (order) {
-      await this.notifications.sendOrderStatusChanged(order.customerId, order.id, status);
-    }
+    await this.notifications.sendOrderStatusChanged(customerId, orderId, status);
     const reloaded = await this.groupModel.findByPk(groupId, {
       include: ORDER_GROUP_DISPLAY_INCLUDE,
     });

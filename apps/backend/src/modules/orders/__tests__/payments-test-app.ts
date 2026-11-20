@@ -92,6 +92,12 @@ export class RecordingNotifications implements NotificationService {
   ): Promise<void> {
     return this.record('sendHireRequestStatusChanged', [recipientUserId, hireRequestId, status]);
   }
+  sendDeliveryAssigned(driverUserId: string, assignmentId: string): Promise<void> {
+    return this.record('sendDeliveryAssigned', [driverUserId, assignmentId]);
+  }
+  sendDeliveryOtp(customerId: string, orderId: string, otp: string): Promise<void> {
+    return this.record('sendDeliveryOtp', [customerId, orderId, otp]);
+  }
 }
 
 export type SeededOrder = {

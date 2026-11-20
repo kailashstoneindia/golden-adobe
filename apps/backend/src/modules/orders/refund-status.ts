@@ -11,6 +11,10 @@ export const REFUNDABLE_ORDER_STATUSES: readonly OrderStatus[] = [
   OrderStatus.REFUNDED,
 ];
 
+// Shown when a vendor, admin or driver tries to move a group under a locked parent.
+export const GROUP_LOCKED_MESSAGE =
+  'order is refunded, being refunded or cancelled, and its groups can no longer be updated';
+
 // A vendor or admin override may not advance a vendor group under an order in
 // one of these: the money is being, or has been, returned, or the order is
 // dead (decision 0054 rule 6).

@@ -34,4 +34,15 @@ export class LogNotificationService implements NotificationService {
       `[notify] hire request status changed: recipient=${recipientUserId} hireRequest=${hireRequestId} status=${status}`,
     );
   }
+
+  async sendDeliveryAssigned(driverUserId: string, assignmentId: string): Promise<void> {
+    this.logger.log(
+      `[notify] delivery assigned: driver=${driverUserId} assignment=${assignmentId}`,
+    );
+  }
+
+  // The code is deliberately not logged; it is a credential for handover.
+  async sendDeliveryOtp(customerId: string, orderId: string, _otp: string): Promise<void> {
+    this.logger.log(`[notify] delivery code issued: customer=${customerId} order=${orderId}`);
+  }
 }

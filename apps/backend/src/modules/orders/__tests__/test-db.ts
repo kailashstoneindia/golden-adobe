@@ -8,6 +8,9 @@ import { OrderVendorGroup } from '../models/order-vendor-group.model';
 import { OrderItem } from '../models/order-item.model';
 import { PaymentEvent } from '../models/payment-event.model';
 import { Refund } from '../models/refund.model';
+import { Vehicle } from '../../delivery/models/vehicle.model';
+import { Driver } from '../../delivery/models/driver.model';
+import { DeliveryAssignment } from '../../delivery/models/delivery-assignment.model';
 
 // Every model the orders module touches plus everything those associate
 // with, transitively — sequelize-typescript throws "X has not been defined"
@@ -26,4 +29,7 @@ export const PAYMENTS_TEST_MODELS = [
   OrderItem,
   PaymentEvent,
   Refund,
+  Vehicle,
+  Driver,
+  DeliveryAssignment,
 ];

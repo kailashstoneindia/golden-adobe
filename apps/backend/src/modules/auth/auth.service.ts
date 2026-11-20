@@ -184,9 +184,10 @@ export class AuthService {
   async register(dto: RegisterDto) {
     const { onboardingToken, name, role } = dto;
 
-    // Block ADMIN self-registration
-    if (role === Role.ADMIN) {
-      throw new BadRequestException('ADMIN role cannot be self-selected');
+    // Block ADMIN and DRIVER self-registration. Drivers are created by ops
+    // (decision 0060) and log in with the existing phone OTP.
+    if (role === Role.ADMIN || role === Role.DRIVER) {
+      throw new BadRequestException(`${role} role cannot be self-selected`);
     }
 
     // Verify onboarding token

@@ -18,8 +18,10 @@ export const PAYMENT_HOLD_MINUTES = 20;
 export const ORDER_VENDOR_GROUP_STATUSES = {
   PENDING: 'pending',
   CONFIRMED: 'confirmed',
+  READY_FOR_PICKUP: 'ready_for_pickup',
   SHIPPED: 'shipped',
   DELIVERED: 'delivered',
+  DELIVERY_FAILED: 'delivery_failed',
   CANCELLED: 'cancelled',
 } as const;
 
@@ -31,8 +33,12 @@ export const ORDER_VENDOR_GROUP_NEXT_STATUSES: Record<
   OrderVendorGroupStatus[]
 > = {
   pending: ['confirmed', 'cancelled'],
-  confirmed: ['shipped', 'cancelled'],
-  shipped: ['delivered'],
+  confirmed: ['ready_for_pickup', 'cancelled'],
+  // Decision 0060: after packing, the driver flow, ops and the admin override own
+  // the status. A vendor has no action here (the API answers 400 for any).
+  ready_for_pickup: [],
+  shipped: [],
+  delivery_failed: [],
   delivered: [],
   cancelled: [],
 };
@@ -113,6 +119,9 @@ export type OrderItemDto = {
   unitPriceSnapshot: number;
 };
 
+// What a vendor sees of a group: the number of the order it belongs to (decision 0061).
+export type VendorOrderGroupWithNumberDto = OrderVendorGroupDto & { orderNumber: string };
+
 export type OrderVendorGroupDto = {
   id: string;
   orderId: string;
@@ -125,6 +134,13 @@ export type OrderVendorGroupDto = {
 };
 
 export type VendorOrderGroupDto = OrderVendorGroupDto;
+
+// Decision 0060 rule 5: only the customer sees the delivery code, and only
+// while the group is out for delivery. The vendor, admin and artisan views
+// use OrderVendorGroupDto, which has no such field.
+export type CustomerOrderVendorGroupDto = OrderVendorGroupDto & {
+  deliveryOtp: string | null;
+};
 
 // Artisan-facing delivery address — built by explicit field listing, never
 // by spreading CustomerAddressDto and deleting keys, same discipline
@@ -150,6 +166,8 @@ export type ArtisanOrderAddressDto = {
 // what was ordered, and where to deliver.
 export type ArtisanOrderDto = {
   id: string;
+  // Decision 0061: the short number people quote, for example GA-10001.
+  orderNumber: string;
   grandTotal: number;
   status: OrderStatus;
   bookingId: string | null;
@@ -161,6 +179,8 @@ export type ArtisanOrderDto = {
 
 export type OrderDto = {
   id: string;
+  // Decision 0061: the short number people quote, for example GA-10001.
+  orderNumber: string;
   customerId: string;
   deliveryAddressId: string;
   grandTotal: number;
@@ -177,7 +197,7 @@ export type OrderDto = {
   createdAt: string;
   updatedAt: string;
   deliveryAddress: CustomerAddressDto | null;
-  vendorGroups: OrderVendorGroupDto[];
+  vendorGroups: CustomerOrderVendorGroupDto[];
 };
 
 export type UpdateVendorOrderGroupStatusRequest = {

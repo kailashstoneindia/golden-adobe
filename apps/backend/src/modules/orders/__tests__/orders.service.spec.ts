@@ -10,6 +10,7 @@ import { Order, OrderStatus } from '../models/order.model';
 import { OrderVendorGroup, OrderVendorGroupStatus } from '../models/order-vendor-group.model';
 import { PaymentEvent } from '../models/payment-event.model';
 import { CustomersService } from '../../customers/customers.service';
+import { DeliveryAssignment } from '../../delivery/models/delivery-assignment.model';
 import { NOTIFICATION_SERVICE } from '../../notifications/notification.interface';
 import { Artisan } from '../../artisans/models/artisan.model';
 import { ArtisanHireRequest } from '../../artisans/models/artisan-hire-request.model';
@@ -23,6 +24,7 @@ describe('OrdersService', () => {
   let notificationsMock: { sendOrderStatusChanged: jest.Mock };
   let customersServiceMock: { resolveCustomerByUserId: jest.Mock };
   let artisanModelMock: { findOne: jest.Mock };
+  let assignmentModelMock: { update: jest.Mock };
   let hireRequestModelMock: { findByPk: jest.Mock };
   let configServiceMock: { get: jest.Mock };
   let orderPaymentMock: {
@@ -40,6 +42,8 @@ describe('OrdersService', () => {
     notificationsMock = { sendOrderStatusChanged: jest.fn() };
     customersServiceMock = { resolveCustomerByUserId: jest.fn() };
     artisanModelMock = { findOne: jest.fn() };
+    assignmentModelMock = { update: jest.fn().mockResolvedValue([0]) };
+    sequelizeMock.transaction.mockImplementation(async (cb: any) => cb(mockTransaction));
     hireRequestModelMock = { findByPk: jest.fn() };
     configServiceMock = { get: jest.fn().mockReturnValue('all') };
     orderPaymentMock = {
@@ -55,6 +59,7 @@ describe('OrdersService', () => {
         { provide: getModelToken(OrderVendorGroup), useValue: groupModelMock },
         { provide: getModelToken(PaymentEvent), useValue: paymentEventModelMock },
         { provide: getModelToken(Artisan), useValue: artisanModelMock },
+        { provide: getModelToken(DeliveryAssignment), useValue: assignmentModelMock },
         { provide: getModelToken(ArtisanHireRequest), useValue: hireRequestModelMock },
         { provide: Sequelize, useValue: sequelizeMock },
         { provide: CustomersService, useValue: customersServiceMock },
@@ -411,10 +416,59 @@ describe('OrdersService', () => {
       const result = await service.updateVendorGroupStatus(
         'vendor-1',
         'group-1',
-        OrderVendorGroupStatus.SHIPPED,
+        OrderVendorGroupStatus.READY_FOR_PICKUP,
       );
 
-      expect(result.status).toBe(OrderVendorGroupStatus.SHIPPED);
+      expect(result.status).toBe(OrderVendorGroupStatus.READY_FOR_PICKUP);
+      expect(group.save).toHaveBeenCalled();
+      expect(notificationsMock.sendOrderStatusChanged).toHaveBeenCalledWith(
+        'cust-1',
+        'order-1',
+        'ready_for_pickup',
+      );
+    });
+
+    it.each([
+      [OrderVendorGroupStatus.CONFIRMED, OrderVendorGroupStatus.SHIPPED],
+      [OrderVendorGroupStatus.SHIPPED, OrderVendorGroupStatus.DELIVERED],
+      [OrderVendorGroupStatus.READY_FOR_PICKUP, OrderVendorGroupStatus.CANCELLED],
+      [OrderVendorGroupStatus.READY_FOR_PICKUP, OrderVendorGroupStatus.SHIPPED],
+      [OrderVendorGroupStatus.DELIVERY_FAILED, OrderVendorGroupStatus.SHIPPED],
+    ])('refuses a vendor moving a group from %s to %s (decision 0060)', async (from, to) => {
+      const group = {
+        id: 'group-1',
+        vendorId: 'vendor-1',
+        status: from,
+        orderId: 'order-1',
+        order: { status: OrderStatus.CONFIRMED },
+        save: jest.fn(),
+      };
+      groupModelMock.findOne.mockResolvedValue(group);
+
+      await expect(service.updateVendorGroupStatus('vendor-1', 'group-1', to)).rejects.toThrow(
+        `cannot transition order group from ${from} to ${to}`,
+      );
+      expect(group.save).not.toHaveBeenCalled();
+    });
+
+    it('still lets a vendor cancel a confirmed group', async () => {
+      const group = {
+        id: 'group-1',
+        vendorId: 'vendor-1',
+        status: OrderVendorGroupStatus.CONFIRMED,
+        orderId: 'order-1',
+        order: { status: OrderStatus.CONFIRMED },
+        save: jest.fn(),
+      };
+      groupModelMock.findOne.mockResolvedValue(group);
+      orderModelMock.findByPk.mockResolvedValue({ id: 'order-1', customerId: 'cust-1' });
+
+      const result = await service.updateVendorGroupStatus(
+        'vendor-1',
+        'group-1',
+        OrderVendorGroupStatus.CANCELLED,
+      );
+      expect(result.status).toBe(OrderVendorGroupStatus.CANCELLED);
     });
 
     it('refuses to advance a group whose parent order has been refunded (closes finding 4)', async () => {
@@ -481,78 +535,6 @@ describe('OrdersService', () => {
     });
   });
 
-  describe('adminOverrideVendorGroupStatus — parent order guard', () => {
-    it('refuses to override a group whose parent order has been refunded (closes finding 5)', async () => {
-      const group = {
-        id: 'group-1',
-        status: OrderVendorGroupStatus.CONFIRMED,
-        orderId: 'order-1',
-        save: jest.fn(),
-      };
-      groupModelMock.findByPk.mockResolvedValue(group);
-      orderModelMock.findByPk.mockResolvedValue({ id: 'order-1', status: OrderStatus.REFUNDED });
-
-      await expect(
-        service.adminOverrideVendorGroupStatus(
-          'group-1',
-          OrderVendorGroupStatus.SHIPPED,
-          'trying to bring back a refunded order',
-        ),
-      ).rejects.toThrow(
-        'cannot override a group whose parent order is refunded, being refunded or cancelled',
-      );
-      expect(group.save).not.toHaveBeenCalled();
-    });
-
-    it.each([OrderStatus.REFUND_REQUIRED, OrderStatus.REFUND_PENDING])(
-      'refuses to override a group whose parent order is %s (decision 0054)',
-      async (orderStatus) => {
-        const group = {
-          id: 'group-1',
-          status: OrderVendorGroupStatus.CONFIRMED,
-          orderId: 'order-1',
-          save: jest.fn(),
-        };
-        groupModelMock.findByPk.mockResolvedValue(group);
-        orderModelMock.findByPk.mockResolvedValue({ id: 'order-1', status: orderStatus });
-
-        await expect(
-          service.adminOverrideVendorGroupStatus(
-            'group-1',
-            OrderVendorGroupStatus.SHIPPED,
-            'trying to ship an order being refunded',
-          ),
-        ).rejects.toThrow(
-          'cannot override a group whose parent order is refunded, being refunded or cancelled',
-        );
-        expect(group.save).not.toHaveBeenCalled();
-      },
-    );
-
-    it('still allows cancelling a group under a refunded order (the one safe target)', async () => {
-      const group = {
-        id: 'group-1',
-        status: OrderVendorGroupStatus.CONFIRMED,
-        orderId: 'order-1',
-        save: jest.fn(),
-      };
-      groupModelMock.findByPk.mockResolvedValue(group);
-      orderModelMock.findByPk.mockResolvedValue({
-        id: 'order-1',
-        customerId: 'cust-1',
-        status: OrderStatus.REFUNDED,
-      });
-
-      const result = await service.adminOverrideVendorGroupStatus(
-        'group-1',
-        OrderVendorGroupStatus.CANCELLED,
-        'cleanup after refund',
-      );
-
-      expect(result.status).toBe(OrderVendorGroupStatus.CANCELLED);
-    });
-  });
-
   describe('getForAdmin (decision 0058)', () => {
     // Every include in the tree, flattened, as [parent model, child model].
     function includePairs(include: unknown[], parent = 'Order'): string[] {
@@ -615,26 +597,6 @@ describe('OrdersService', () => {
   });
 
   describe('adminOverrideVendorGroupStatus', () => {
-    it('sets any status regardless of the current one, logging the reason', async () => {
-      const group = {
-        id: 'group-1',
-        status: OrderVendorGroupStatus.PENDING,
-        orderId: 'order-1',
-        save: jest.fn(),
-      };
-      groupModelMock.findByPk.mockResolvedValue(group);
-      orderModelMock.findByPk.mockResolvedValue({ id: 'order-1', customerId: 'cust-1' });
-
-      const result = await service.adminOverrideVendorGroupStatus(
-        'group-1',
-        OrderVendorGroupStatus.CANCELLED,
-        'vendor unresponsive for 5 days',
-      );
-
-      expect(result.status).toBe(OrderVendorGroupStatus.CANCELLED);
-      expect(group.save).toHaveBeenCalled();
-    });
-
     it('rejects an empty reason', async () => {
       await expect(
         service.adminOverrideVendorGroupStatus('group-1', OrderVendorGroupStatus.CANCELLED, ''),

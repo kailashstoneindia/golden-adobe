@@ -1,0 +1,149 @@
+// Delivery module shared types (decision 0060).
+
+export const DELIVERY_ASSIGNMENT_STATUSES = {
+  ASSIGNED: 'assigned',
+  PICKED_UP: 'picked_up',
+  DELIVERED: 'delivered',
+  FAILED: 'failed',
+  CANCELLED: 'cancelled',
+} as const;
+
+export type DeliveryAssignmentStatus =
+  (typeof DELIVERY_ASSIGNMENT_STATUSES)[keyof typeof DELIVERY_ASSIGNMENT_STATUSES];
+
+export const DELIVERY_FAILURE_REASONS = [
+  'customer_unavailable',
+  'site_inaccessible',
+  'customer_refused',
+  'goods_damaged',
+  'other',
+] as const;
+
+export type DeliveryFailureReason = (typeof DELIVERY_FAILURE_REASONS)[number];
+
+// Wrong delivery OTPs allowed before the assignment locks and ops must step in.
+export const DELIVERY_OTP_MAX_ATTEMPTS = 5;
+
+// Used when real SMS is off (USE_MSG91_SMS !== 'true'), same switch as login.
+export const DEMO_DELIVERY_OTP = '123456';
+
+export const DELIVERY_PHOTO_KINDS = ['handover', 'delivered', 'failed'] as const;
+
+export type DeliveryPhotoKind = (typeof DELIVERY_PHOTO_KINDS)[number];
+
+// Frozen copy of the delivery address, written onto the order at checkout so
+// a later edit to the saved address cannot redirect a paid-for delivery.
+export interface DeliveryAddressSnapshot {
+  label: string | null;
+  addressLine1: string;
+  addressLine2: string | null;
+  city: string;
+  pincode: string;
+  lat: number | null;
+  lng: number | null;
+  recipientName: string | null;
+  recipientPhone: string | null;
+}
+
+export interface VehicleDto {
+  id: string;
+  registrationNumber: string;
+  type: string;
+  notes: string | null;
+  isActive: boolean;
+}
+
+export interface AdminDriverDto {
+  id: string;
+  userId: string;
+  name: string;
+  phone: string;
+  isActive: boolean;
+  licenceNumber: string;
+  helperName: string | null;
+  helperPhone: string | null;
+  vehicle: VehicleDto | null;
+  licenceDocViewUrl: string | null;
+  aadhaarDocViewUrl: string | null;
+}
+
+export interface QueueItemDto {
+  groupId: string;
+  orderId: string;
+  /** Decision 0061: the short number people quote, for example GA-10001. */
+  orderNumber: string;
+  vendorName: string;
+  vendorCity: string | null;
+  dropCity: string;
+  dropPincode: string;
+  itemCount: number;
+  /** When the vendor marked the goods ready (ISO). */
+  readyAt: string;
+}
+
+export interface AdminAssignmentDto {
+  id: string;
+  status: DeliveryAssignmentStatus;
+  attemptNo: number;
+  groupId: string;
+  orderId: string;
+  orderNumber: string;
+  vendorName: string;
+  driver: { id: string; name: string; phone: string };
+  assignedAt: string;
+  vendorHandedOverAt: string | null;
+  pickedUpAt: string | null;
+  deliveredAt: string | null;
+  failedAt: string | null;
+  failureReason: DeliveryFailureReason | null;
+  deliveryPhotoViewUrl: string | null;
+  failurePhotoViewUrl: string | null;
+  /** True once 5 wrong codes locked the job; ops can unlock it. */
+  locked: boolean;
+  /** True only for the latest attempt of a group whose delivery failed. */
+  canReattempt: boolean;
+}
+
+// Driver app (docs/delivery-mobile-api-contract.md section 1).
+export interface DeliveryJobDto {
+  id: string;
+  status: DeliveryAssignmentStatus;
+  attemptNo: number;
+  /** True when the order was refunded or cancelled: show STOP, actions return 400. */
+  blocked: boolean;
+  blockedReason: string | null;
+  orderId: string;
+  orderNumber: string;
+  groupId: string;
+  pickup: {
+    vendorName: string;
+    address: string;
+    lat: number | null;
+    lng: number | null;
+    phone: string;
+  };
+  drop: {
+    recipientName: string;
+    phone: string;
+    addressLine1: string;
+    addressLine2: string | null;
+    city: string;
+    pincode: string;
+    lat: number | null;
+    lng: number | null;
+  };
+  items: { orderItemId: string; name: string; quantity: number; unit: string }[];
+  vendorHandedOverAt: string | null;
+  pickedUpAt: string | null;
+  deliveredAt: string | null;
+  failedAt: string | null;
+  failureReason: DeliveryFailureReason | null;
+}
+
+export interface DriverProfileDto {
+  id: string;
+  name: string;
+  phone: string;
+  helper: { name: string; phone: string } | null;
+  vehicle: { registrationNumber: string; type: string } | null;
+}

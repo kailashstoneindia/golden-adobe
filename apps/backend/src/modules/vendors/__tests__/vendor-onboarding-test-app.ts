@@ -23,6 +23,7 @@ import { VendorCategoriesService } from '../../catalog/vendor-categories.service
 import { Category } from '../../catalog/models/category.model';
 import { VendorCategory } from '../../catalog/models/vendor-category.model';
 import { OrdersService } from '../../orders/orders.service';
+import { VendorHandoverService } from '../../delivery/vendor-handover.service';
 
 export const JWT_SECRET = 'vendor-onboarding-test-jwt-secret-1234567890';
 
@@ -95,6 +96,8 @@ export async function createVendorOnboardingTestApp(): Promise<VendorOnboardingT
       CityResolverService,
       VendorCategoriesService,
       { provide: OrdersService, useValue: {} },
+      // Stubbed too: only the handover routes use it (decision 0060).
+      { provide: VendorHandoverService, useValue: {} },
     ],
   }).compile();
 

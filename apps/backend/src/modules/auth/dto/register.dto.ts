@@ -22,7 +22,7 @@ export class RegisterDto {
   @ApiProperty({
     enum: [Role.CUSTOMER, Role.VENDOR, Role.ARTISAN],
     example: Role.CUSTOMER,
-    description: 'User role — ADMIN cannot be self-selected',
+    description: 'User role — ADMIN and DRIVER cannot be self-selected',
   })
   @IsEnum(Role, { message: 'Role must be CUSTOMER, VENDOR, or ARTISAN' })
   role: Role;

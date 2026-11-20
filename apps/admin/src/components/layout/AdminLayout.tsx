@@ -139,6 +139,30 @@ export function AdminLayout() {
             Orders
           </NavLink>
           <NavLink
+            to={ROUTES.deliveryQueue}
+            className={({ isActive }) =>
+              `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`
+            }
+          >
+            Ready to deliver
+          </NavLink>
+          <NavLink
+            to={ROUTES.deliveryBoard}
+            className={({ isActive }) =>
+              `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`
+            }
+          >
+            In transit
+          </NavLink>
+          <NavLink
+            to={ROUTES.drivers}
+            className={({ isActive }) =>
+              `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`
+            }
+          >
+            Drivers
+          </NavLink>
+          <NavLink
             to={ROUTES.catalogProducts}
             className={({ isActive }) =>
               `${styles.navLink} ${isActive || inSection(CATALOG_SECTION) ? styles.navLinkActive : ''}`

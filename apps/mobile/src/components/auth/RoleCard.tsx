@@ -4,7 +4,8 @@ import { Role } from '@golden-abode/types';
 import { Colors, Radius, Spacing } from '../../theme';
 import { Text } from '../ui';
 
-type RegisterableRole = Exclude<Role, Role.ADMIN>;
+// Admins and drivers cannot register themselves: ops create their accounts.
+type RegisterableRole = Exclude<Role, Role.ADMIN | Role.DRIVER>;
 
 export interface RoleOption {
   role: RegisterableRole;

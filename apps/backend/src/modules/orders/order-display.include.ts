@@ -39,7 +39,7 @@ export function vendorGroupInclude(orderWhere: WhereOptions): Includeable[] {
     ...ORDER_GROUP_DISPLAY_INCLUDE,
     {
       model: Order,
-      attributes: ['id', 'status'],
+      attributes: ['id', 'status', 'orderNumber'],
       where: orderWhere,
     },
   ];
