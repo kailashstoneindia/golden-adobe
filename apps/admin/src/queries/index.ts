@@ -87,6 +87,7 @@ export {
   useBrandQuery,
   useBrandsQuery,
   useCreateBrandMutation,
+  useMergeBrandMutation,
   useRemoveBrandAliasMutation,
   useSetBrandActiveMutation,
   useUpdateBrandMutation,

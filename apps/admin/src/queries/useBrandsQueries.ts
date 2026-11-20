@@ -94,3 +94,11 @@ export function useUploadBrandLogoMutation(brandId: string) {
     onSuccess: refresh,
   });
 }
+
+export function useMergeBrandMutation(brandId: string) {
+  const refresh = useRefreshBrands();
+  return useMutation({
+    mutationFn: (intoBrandId: string) => brandsService.merge(brandId, intoBrandId),
+    onSuccess: refresh,
+  });
+}

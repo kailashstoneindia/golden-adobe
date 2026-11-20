@@ -7,6 +7,7 @@ import styles from '@/styles/shared.module.css';
 import { BrandAliasesSection } from './BrandAliasesSection';
 import { BrandFormModal } from './BrandFormModal';
 import { BrandLogoSection } from './BrandLogoSection';
+import { BrandMergeModal } from './BrandMergeModal';
 
 const messageOf = (error: unknown, fallback: string) =>
   error instanceof ApiClientError ? error.message : fallback;
@@ -18,6 +19,7 @@ export function BrandDetailModal({ brandId, onClose }: { brandId: string; onClos
   const update = useUpdateBrandMutation(brandId);
   const setActive = useSetBrandActiveMutation(brandId);
   const [editing, setEditing] = useState(false);
+  const [merging, setMerging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const brand = brandQuery.data;
 
@@ -79,13 +81,22 @@ export function BrandDetailModal({ brandId, onClose }: { brandId: string; onClos
             </div>
             <div className={styles.actions}>
               {brand.mergedIntoId ? null : (
-                <button
-                  type="button"
-                  className={`${styles.button} ${styles.buttonGhost}`}
-                  onClick={() => setEditing(true)}
-                >
-                  Edit
-                </button>
+                <>
+                  <button
+                    type="button"
+                    className={`${styles.button} ${styles.buttonGhost}`}
+                    onClick={() => setMerging(true)}
+                  >
+                    Merge into…
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.button} ${styles.buttonGhost}`}
+                    onClick={() => setEditing(true)}
+                  >
+                    Edit
+                  </button>
+                </>
               )}
               <button
                 type="button"
@@ -98,6 +109,15 @@ export function BrandDetailModal({ brandId, onClose }: { brandId: string; onClos
           </>
         )}
       </div>
+      {merging && brand ? (
+        <div onClick={(event) => event.stopPropagation()} role="presentation">
+          <BrandMergeModal
+            brand={brand}
+            onMerged={() => setMerging(false)}
+            onClose={() => setMerging(false)}
+          />
+        </div>
+      ) : null}
       {editing && brand ? (
         <div onClick={(event) => event.stopPropagation()} role="presentation">
           <BrandFormModal

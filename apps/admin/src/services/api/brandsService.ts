@@ -1,4 +1,4 @@
-import type { BrandDto, PaginatedResponse } from '@golden-abode/types';
+import type { BrandDto, MergeBrandResultDto, PaginatedResponse } from '@golden-abode/types';
 
 import { API_ENDPOINTS } from '@/constants/apiEndpoints';
 import { deleteRequest, getRequest, patchRequest, postRequest } from '@/services/api/apiClient';
@@ -59,6 +59,13 @@ export const brandsService = {
     return postRequest<BrandLogoUploadTicket, { contentType: string }>(
       API_ENDPOINTS.brands.logoUploadUrl(brandId),
       { contentType },
+    );
+  },
+
+  merge(brandId: string, intoBrandId: string): Promise<MergeBrandResultDto> {
+    return postRequest<MergeBrandResultDto, { intoBrandId: string }>(
+      API_ENDPOINTS.brands.merge(brandId),
+      { intoBrandId },
     );
   },
 
