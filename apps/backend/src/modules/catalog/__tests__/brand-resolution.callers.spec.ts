@@ -199,5 +199,36 @@ describe('Brand resolution in admin import and add-product (integration)', () =>
         }),
       ).rejects.toThrow(new BadRequestException(`brand "Retired${suffix}" is deactivated`));
     });
+
+    // Decision 0063 / S6: the add-product form picks a brand by id.
+    it('accepts a brand id and links that brand, answering with brandId', async () => {
+      const product = await catalog.createProduct({
+        categoryId,
+        name: `BC By Id ${suffix}`,
+        brandId: activeBrand.id,
+        mfrPartNumber: `BC-ID-${suffix}`,
+      });
+
+      expect(product.brandId).toBe(activeBrand.id);
+      expect((await MasterProduct.findByPk(product.id))?.brandId).toBe(activeBrand.id);
+    });
+
+    it('refuses (400) a deactivated brand id and a brand given both ways', async () => {
+      await expect(
+        catalog.createProduct({
+          categoryId,
+          name: `BC Id Off ${suffix}`,
+          brandId: inactiveBrand.id,
+        }),
+      ).rejects.toThrow(new BadRequestException(`brand "Retired${suffix}" is deactivated`));
+      await expect(
+        catalog.createProduct({
+          categoryId,
+          name: `BC Both ${suffix}`,
+          brand: `Volta${suffix}`,
+          brandId: activeBrand.id,
+        }),
+      ).rejects.toThrow(new BadRequestException('give the brand by name or by id, not both'));
+    });
   });
 });

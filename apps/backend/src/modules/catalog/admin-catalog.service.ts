@@ -300,6 +300,8 @@ export class AdminCatalogService {
       category_id: string;
       category_path: string;
       brand: string | null;
+      brand_id: string | null;
+      merged_into_id: string | null;
       mfr_part_number: string | null;
       gtin: string | null;
       hsn_code: string | null;
@@ -321,7 +323,7 @@ export class AdminCatalogService {
     }>(
       `SELECT
          mp.id, mp.product_code, mp.name, mp.slug, mp.status::text AS status,
-         mp.category_id, cat.path AS category_path, b.name AS brand,
+         mp.category_id, cat.path AS category_path, b.name AS brand, mp.brand_id, mp.merged_into_id,
          mp.mfr_part_number, mp.gtin, mp.hsn_code, mp.gst_rate,
          mp.country_of_origin, mp.is_generic, mp.attributes_flat,
          mp.created_at, mp.updated_at,
@@ -397,6 +399,8 @@ export class AdminCatalogService {
       categoryId: product.category_id,
       categoryPath: product.category_path,
       brand: product.brand,
+      brandId: product.brand_id,
+      mergedIntoId: product.merged_into_id,
       mfrPartNumber: product.mfr_part_number,
       gtin: product.gtin,
       hsnCode: product.hsn_code,
@@ -716,14 +720,27 @@ export class AdminCatalogService {
 
     // Decision 0063: resolve like the importer does (case, suffixes, aliases,
     // merges) and refuse a deactivated brand.
-    const brand = dto.brand ? await this.brandResolver.resolve(dto.brand) : null;
+    if (dto.brand && dto.brandId) {
+      throw new BadRequestException('give the brand by name or by id, not both');
+    }
+    const brand = dto.brandId
+      ? await this.brandModel.findByPk(dto.brandId)
+      : dto.brand
+        ? await this.brandResolver.resolve(dto.brand)
+        : null;
+    if (dto.brandId && !brand) {
+      throw new BadRequestException(`brand ${dto.brandId} does not exist`);
+    }
+    if (dto.brandId && brand?.mergedIntoId) {
+      throw new BadRequestException(`brand "${brand.name}" was merged into another brand`);
+    }
     if (dto.brand && !brand) {
       throw new BadRequestException(
         `brand "${dto.brand}" is not in the catalog. Add it on the Brands page first`,
       );
     }
-    if (dto.brand && brand && !brand.isActive) {
-      throw new BadRequestException(`brand "${dto.brand}" is deactivated`);
+    if (brand && !brand.isActive) {
+      throw new BadRequestException(`brand "${dto.brand ?? brand.name}" is deactivated`);
     }
 
     const attributesByCode = await this.loadAttributesByCode(dto.categoryId);

@@ -39,6 +39,13 @@ export class CreateProductDto {
   @IsString()
   brand?: string;
 
+  @ApiPropertyOptional({
+    description: 'The brand by id (the admin form picks it). Give brand or brandId, not both.',
+  })
+  @IsOptional()
+  @IsUUID()
+  brandId?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
