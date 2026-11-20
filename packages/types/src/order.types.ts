@@ -34,9 +34,11 @@ export const ORDER_VENDOR_GROUP_NEXT_STATUSES: Record<
 > = {
   pending: ['confirmed', 'cancelled'],
   confirmed: ['ready_for_pickup', 'cancelled'],
-  ready_for_pickup: ['shipped', 'cancelled'],
-  shipped: ['delivered', 'delivery_failed'],
-  delivery_failed: ['shipped', 'cancelled'],
+  // Decision 0060: after packing, the driver flow, ops and the admin override own
+  // the status. A vendor has no action here (the API answers 400 for any).
+  ready_for_pickup: [],
+  shipped: [],
+  delivery_failed: [],
   delivered: [],
   cancelled: [],
 };

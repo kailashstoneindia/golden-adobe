@@ -11,6 +11,7 @@ import { InjectModel } from '@nestjs/sequelize';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { DELIVERY_ASSIGNMENT_STATUSES } from '@golden-abode/types';
 import { DeliveryAssignment } from '../delivery/models/delivery-assignment.model';
+import { lockGroup } from '../delivery/delivery-group-lock';
 import { Sequelize } from 'sequelize-typescript';
 import { Op, QueryTypes } from 'sequelize';
 import type {
@@ -49,6 +50,7 @@ import {
   toVendorOrderGroupWithNumberDto,
 } from './order-display.mapper';
 import { toAdminOrderDto } from './admin-order.mapper';
+import { VENDOR_GROUP_TRANSITIONS } from './vendor-group-transitions';
 
 // Decision 0049. Slightly above the typical 5-15 minute industry range
 // for a checkout hold, since payment.failed's own handling already
@@ -397,25 +399,7 @@ export class OrdersService {
     // to CONFIRMED in the same transaction that confirms the order), but
     // the table keeps the entry for defensiveness rather than assuming
     // that invariant holds forever.
-    const validNextStatuses: Record<OrderVendorGroupStatus, OrderVendorGroupStatus[]> = {
-      [OrderVendorGroupStatus.PENDING]: [
-        OrderVendorGroupStatus.CONFIRMED,
-        OrderVendorGroupStatus.CANCELLED,
-      ],
-      // Decision 0060: vendors only mark goods ready or cancel. Shipping and
-      // delivery belong to the driver flow, ops re-attempts and the admin
-      // override, so every later status is empty for a vendor.
-      [OrderVendorGroupStatus.CONFIRMED]: [
-        OrderVendorGroupStatus.READY_FOR_PICKUP,
-        OrderVendorGroupStatus.CANCELLED,
-      ],
-      [OrderVendorGroupStatus.READY_FOR_PICKUP]: [],
-      [OrderVendorGroupStatus.SHIPPED]: [],
-      [OrderVendorGroupStatus.DELIVERED]: [],
-      [OrderVendorGroupStatus.DELIVERY_FAILED]: [],
-      [OrderVendorGroupStatus.CANCELLED]: [],
-    };
-    if (!validNextStatuses[group.status].includes(status)) {
+    if (!VENDOR_GROUP_TRANSITIONS[group.status].includes(status)) {
       throw new BadRequestException(
         `cannot transition order group from ${group.status} to ${status}`,
       );
@@ -590,54 +574,72 @@ export class OrdersService {
       throw new NotFoundException('order group not found');
     }
 
-    // Final-review fix (post-implementation, finding #5): the override
-    // never checked the parent order's status at all, so it could bring a
-    // group back to CONFIRMED/SHIPPED/DELIVERED under an order that was
-    // already REFUNDED or CANCELLED — exactly the state the vendor-facing
-    // guard above (finding #4's fix) now refuses. CANCELLED is the one
-    // exception: setting a group to CANCELLED under a refunded/cancelled
-    // order is cleanup in the safe direction, not a resurrection of a
-    // dead order, so it is still allowed.
-    const order = await this.orderModel.findByPk(group.orderId);
-    const parentIsClosed = !!order && LOCKED_PARENT_ORDER_STATUSES.includes(order.status);
-    if (parentIsClosed && status !== OrderVendorGroupStatus.CANCELLED) {
-      throw new BadRequestException(
-        'cannot override a group whose parent order is refunded, being refunded or cancelled',
-      );
-    }
+    // Everything below is decided from rows locked in one transaction, in the
+    // same order as the driver flow (open assignments first, then the group), so
+    // an override can neither deadlock a driver action nor act on a status a
+    // driver just committed.
+    const { customerId, orderId } = await this.sequelize.transaction(async (transaction) => {
+      const open = await this.assignmentModel.findAll({
+        where: {
+          orderVendorGroupId: groupId,
+          status: [DELIVERY_ASSIGNMENT_STATUSES.ASSIGNED, DELIVERY_ASSIGNMENT_STATUSES.PICKED_UP],
+        },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      const locked = await lockGroup(this.sequelize, groupId, transaction);
 
-    this.logger.warn(
-      `admin override: order_vendor_group ${groupId} forced from ${group.status} to ${status} — reason: ${reason}`,
-    );
-    // Decision 0060 rule 8: forcing a group to anything other than
-    // ready_for_pickup/shipped means the driver's job is no longer valid, so
-    // the open assignment is closed in the same transaction as the status.
-    const keepsAssignmentOpen =
-      status === OrderVendorGroupStatus.READY_FOR_PICKUP ||
-      status === OrderVendorGroupStatus.SHIPPED;
-    await this.sequelize.transaction(async (transaction) => {
-      group.status = status;
-      await group.save({ transaction });
-      if (!keepsAssignmentOpen) {
-        await this.assignmentModel.update(
-          { status: DELIVERY_ASSIGNMENT_STATUSES.CANCELLED, cancelledAt: new Date() },
-          {
-            where: {
-              orderVendorGroupId: groupId,
-              status: [
-                DELIVERY_ASSIGNMENT_STATUSES.ASSIGNED,
-                DELIVERY_ASSIGNMENT_STATUSES.PICKED_UP,
-              ],
-            },
-            transaction,
-          },
+      // Review of PR #45: forcing SHIPPED over a job the driver has not picked up
+      // leaves a job that can neither be picked up (the group is no longer ready)
+      // nor completed (it was never picked up), and gives the customer no code.
+      if (
+        status === OrderVendorGroupStatus.SHIPPED &&
+        open.some((a) => a.status === DELIVERY_ASSIGNMENT_STATUSES.ASSIGNED)
+      ) {
+        throw new BadRequestException(
+          'a driver is assigned but has not picked up; let the driver pick up, reassign, or cancel the group',
         );
       }
+
+      // Final-review fix (post-implementation, finding #5): the override never
+      // checked the parent order's status, so it could bring a group back to
+      // CONFIRMED/SHIPPED/DELIVERED under an order that was already REFUNDED or
+      // CANCELLED. CANCELLED is the one exception: setting a group to CANCELLED
+      // under a refunded/cancelled order is cleanup in the safe direction.
+      if (
+        LOCKED_PARENT_ORDER_STATUSES.includes(locked.orderStatus) &&
+        status !== OrderVendorGroupStatus.CANCELLED
+      ) {
+        throw new BadRequestException(
+          'cannot override a group whose parent order is refunded, being refunded or cancelled',
+        );
+      }
+
+      this.logger.warn(
+        `admin override: order_vendor_group ${groupId} forced from ${locked.status} to ${status} — reason: ${reason}`,
+      );
+      await this.sequelize.query(
+        'UPDATE order_vendor_group SET status = :status, updated_at = NOW() WHERE id = :id',
+        { replacements: { status, id: groupId }, type: QueryTypes.UPDATE, transaction },
+      );
+      // Decision 0060 rule 8: forcing a group to anything other than
+      // ready_for_pickup/shipped means the driver's job is no longer valid, so
+      // the open assignment is closed in the same transaction as the status.
+      const keepsAssignmentOpen =
+        status === OrderVendorGroupStatus.READY_FOR_PICKUP ||
+        status === OrderVendorGroupStatus.SHIPPED;
+      if (!keepsAssignmentOpen) {
+        for (const assignment of open) {
+          await assignment.update(
+            { status: DELIVERY_ASSIGNMENT_STATUSES.CANCELLED, cancelledAt: new Date() },
+            { transaction },
+          );
+        }
+      }
+      return { customerId: locked.customerId, orderId: locked.orderId };
     });
 
-    if (order) {
-      await this.notifications.sendOrderStatusChanged(order.customerId, order.id, status);
-    }
+    await this.notifications.sendOrderStatusChanged(customerId, orderId, status);
     const reloaded = await this.groupModel.findByPk(groupId, {
       include: ORDER_GROUP_DISPLAY_INCLUDE,
     });
