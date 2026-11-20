@@ -10,7 +10,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/sequelize';
 import { Sequelize } from 'sequelize-typescript';
 import { QueryTypes, Transaction, UniqueConstraintError } from 'sequelize';
-import { DELIVERY_ASSIGNMENT_STATUSES } from '@golden-abode/types';
+import { DELIVERY_ASSIGNMENT_STATUSES, DELIVERY_OTP_MAX_ATTEMPTS } from '@golden-abode/types';
 import type {
   AdminAssignmentDto,
   DeliveryAssignmentStatus,
@@ -65,6 +65,9 @@ type AssignmentRow = {
   failure_reason: DeliveryFailureReason | null;
   delivery_photo_key: string | null;
   failure_photo_key: string | null;
+  otp_attempts: number;
+  group_status: string;
+  is_latest: boolean;
 };
 
 const OPEN_STATUSES = [
@@ -229,6 +232,9 @@ export class DeliveryAssignmentsService {
             attemptNo: current.attemptNo,
             assignedBy: adminUserId,
             assignedAt: new Date(),
+            // The goods may already have been handed over to the first driver.
+            vendorHandedOverAt: current.vendorHandedOverAt,
+            vendorHandoverPhotoKey: current.vendorHandoverPhotoKey,
           } as never,
           { transaction },
         );
@@ -414,7 +420,10 @@ export class DeliveryAssignmentsService {
       `SELECT a.id, a.status, a.attempt_no, g.id AS group_id, g.order_id, o.order_number, v.shop_name,
               dr.id AS driver_id, u.name AS driver_name, u.phone AS driver_phone,
               a.assigned_at, a.vendor_handed_over_at, a.picked_up_at, a.delivered_at,
-              a.failed_at, a.failure_reason, a.delivery_photo_key, a.failure_photo_key
+              a.failed_at, a.failure_reason, a.delivery_photo_key, a.failure_photo_key,
+              a.otp_attempts, g.status AS group_status,
+              (a.attempt_no = (SELECT MAX(x.attempt_no) FROM delivery_assignments x
+                                WHERE x.order_vendor_group_id = g.id)) AS is_latest
        FROM delivery_assignments a
        JOIN order_vendor_group g ON g.id = a.order_vendor_group_id
        JOIN orders o ON o.id = g.order_id
@@ -426,6 +435,37 @@ export class DeliveryAssignmentsService {
        ${paged ? 'LIMIT :limit OFFSET :offset' : ''}`,
       { replacements, type: QueryTypes.SELECT },
     );
+  }
+
+  // Review of PR #45: five wrong codes lock a job for the driver (rule 5), and
+  // nothing else could free it (reassign needs an assigned job, re-attempt needs a
+  // failed group). Ops confirm with the customer, then unlock: the tries reset
+  // and the customer gets a fresh code, so a code read out in the failed tries is
+  // not reused. The job stays with the same driver.
+  async unlock(_adminUserId: string, assignmentId: string): Promise<AdminAssignmentDto> {
+    const useRealSms = this.configService.get<boolean>('msg91.useSms', false);
+    const { orderId, customerId, otp } = await this.sequelize.transaction(async (transaction) => {
+      const current = await this.assignmentModel.findByPk(assignmentId, {
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      if (!current) {
+        throw new NotFoundException(`Delivery assignment ${assignmentId} not found`);
+      }
+      const group = await this.lockGroup(current.orderVendorGroupId, transaction);
+      if (
+        current.status !== DELIVERY_ASSIGNMENT_STATUSES.PICKED_UP ||
+        current.otpAttempts < DELIVERY_OTP_MAX_ATTEMPTS
+      ) {
+        throw new BadRequestException('only a job locked by wrong codes can be unlocked');
+      }
+      assertParentNotLocked(group.orderStatus);
+      const deliveryOtp = generateDeliveryOtp(useRealSms);
+      await current.update({ deliveryOtp, otpAttempts: 0 }, { transaction });
+      return { orderId: group.orderId, customerId: group.customerId, otp: deliveryOtp };
+    });
+    await this.notifyQuietly(() => this.notifications.sendDeliveryOtp(customerId, orderId, otp));
+    return this.getDto(assignmentId);
   }
 
   private signPhoto(key: string | null): Promise<string | null> {
@@ -448,6 +488,13 @@ export class DeliveryAssignmentsService {
       deliveredAt: iso(r.delivered_at),
       failedAt: iso(r.failed_at),
       failureReason: r.failure_reason,
+      locked:
+        r.status === DELIVERY_ASSIGNMENT_STATUSES.PICKED_UP &&
+        r.otp_attempts >= DELIVERY_OTP_MAX_ATTEMPTS,
+      canReattempt:
+        r.status === DELIVERY_ASSIGNMENT_STATUSES.FAILED &&
+        r.group_status === OrderVendorGroupStatus.DELIVERY_FAILED &&
+        r.is_latest,
       deliveryPhotoViewUrl: await this.signPhoto(
         r.status === DELIVERY_ASSIGNMENT_STATUSES.DELIVERED ? r.delivery_photo_key : null,
       ),

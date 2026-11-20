@@ -60,6 +60,17 @@ export class AdminDeliveryController {
     return this.assignments.reassign(adminUserId, id, dto.driverId);
   }
 
+  @Post('assignments/:id/unlock')
+  @ApiOperation({
+    summary: 'Unlock a job that five wrong codes locked',
+    description:
+      'Resets the tries and issues a new customer code. Confirm with the customer first; the job stays with the same driver.',
+  })
+  @ApiResponse({ status: 400, description: 'Job is not locked, or the order is locked' })
+  unlock(@CurrentUser('sub') adminUserId: string, @Param('id', ParseUUIDPipe) id: string) {
+    return this.assignments.unlock(adminUserId, id);
+  }
+
   @Post('groups/:groupId/reattempt')
   @ApiOperation({
     summary: 'Send a failed delivery out again with a chosen driver',

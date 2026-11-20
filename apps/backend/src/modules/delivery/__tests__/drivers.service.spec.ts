@@ -64,12 +64,14 @@ describe('DriversService create and read (decision 0060)', () => {
   it('409s on a phone used by any user and creates nothing', async () => {
     const dto = input();
     await drivers.create(dto as never);
-    const before = await driverModel.count();
+    // Only rows this test could have created: other specs add drivers in parallel,
+    // so a global count before and after is not stable.
+    const secondLicence = `TEST-${tag()}`;
 
-    await expect(
-      drivers.create({ ...dto, licenceNumber: `TEST-${tag()}` } as never),
-    ).rejects.toThrow(ConflictException);
-    expect(await driverModel.count()).toBe(before);
+    await expect(drivers.create({ ...dto, licenceNumber: secondLicence } as never)).rejects.toThrow(
+      ConflictException,
+    );
+    expect(await driverModel.count({ where: { licenceNumber: secondLicence } })).toBe(0);
   });
 
   it('400s on an unknown or inactive vehicle', async () => {

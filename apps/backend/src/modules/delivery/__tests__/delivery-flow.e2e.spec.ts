@@ -245,6 +245,47 @@ describe('Delivery flow end to end (decision 0060)', () => {
     expect(mine?.orderNumber).toBe(orderNumber);
   });
 
+  it('five wrong codes lock the job; ops unlock it and the driver delivers with the new code', async () => {
+    const g = await packedAndAssigned();
+    expect((await pickup(g.assignmentId, g.itemId)).status).toBe(201);
+    const photoKey = `delivery/${g.groupId}/delivered-${g.assignmentId}.jpg`;
+    f.storage.seed(photoKey);
+
+    for (let i = 0; i < 4; i += 1) {
+      const wrong = await driver().post(`/driver/deliveries/${g.assignmentId}/complete`, {
+        otp: '000000',
+        photoKey,
+      });
+      expect(wrong.status).toBe(400);
+    }
+    const locked = await driver().post(`/driver/deliveries/${g.assignmentId}/complete`, {
+      otp: '000000',
+      photoKey,
+    });
+    expect(locked.status).toBe(403);
+
+    // Ops see it as locked on the board.
+    const board = await admin().get(`/admin/delivery/assignments?orderId=${g.orderId}`);
+    expect(board.body.data.items[0].locked).toBe(true);
+
+    // A driver cannot unlock their own job.
+    const own = await driver().post(`/admin/delivery/assignments/${g.assignmentId}/unlock`);
+    expect(own.status).toBe(403);
+
+    const unlocked = await admin().post(`/admin/delivery/assignments/${g.assignmentId}/unlock`);
+    expect(unlocked.status).toBe(201);
+    expect(unlocked.body.data).toMatchObject({ id: g.assignmentId, locked: false });
+
+    const otp = await otpOf(g.assignmentId);
+    expect((await customerGroup(g.orderId, g.groupId)).deliveryOtp).toBe(otp);
+    const done = await driver().post(`/driver/deliveries/${g.assignmentId}/complete`, {
+      otp,
+      photoKey,
+    });
+    expect(done.status).toBe(201);
+    expect(await f.groupStatus(g.groupId)).toBe('delivered');
+  });
+
   it('failed delivery: fail, admin re-attempt (back on the road), then deliver', async () => {
     const g = await packedAndAssigned();
     expect((await pickup(g.assignmentId, g.itemId)).status).toBe(201);

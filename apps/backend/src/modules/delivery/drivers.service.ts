@@ -154,11 +154,10 @@ export class DriversService {
     const userWhere: WhereOptions = {};
     if (query.isActive !== undefined) Object.assign(userWhere, { isActive: query.isActive });
     if (query.search) {
+      // The text is matched literally: % and _ are LIKE wildcards, so escape them.
+      const pattern = `%${query.search.replace(/[\\%_]/g, '\\$&')}%`;
       Object.assign(userWhere, {
-        [Op.or]: [
-          { name: { [Op.iLike]: `%${query.search}%` } },
-          { phone: { [Op.iLike]: `%${query.search}%` } },
-        ],
+        [Op.or]: [{ name: { [Op.iLike]: pattern } }, { phone: { [Op.iLike]: pattern } }],
       });
     }
     const { rows, count } = await this.driverModel.findAndCountAll({

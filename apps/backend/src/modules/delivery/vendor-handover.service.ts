@@ -3,6 +3,8 @@ import { Sequelize } from 'sequelize-typescript';
 import { QueryTypes } from 'sequelize';
 import { PresignedPost } from '../catalog/media/object-storage';
 import { DeliveryPhotoService } from './delivery-photo.service';
+import { lockGroup } from './delivery-group-lock';
+import { assertParentNotLocked } from './delivery-rules';
 
 // Decision 0060 rule 9. The vendor tells us the goods went into the driver's
 // hands. It is a marker on the open assignment, not a status change: the
@@ -44,6 +46,10 @@ export class VendorHandoverService {
       if (!open) {
         throw new BadRequestException('no driver assigned yet');
       }
+      // Same rule as every driver and ops step: no handover under a refunded or
+      // cancelled order. The group is locked after the assignment, like the driver flow.
+      const group = await lockGroup(this.sequelize, groupId, transaction);
+      assertParentNotLocked(group.orderStatus);
       // COALESCE: a repeat call keeps the first timestamp (and the first photo
       // unless a new one is sent).
       const [stamped] = await this.sequelize.query<{ vendor_handed_over_at: Date }>(

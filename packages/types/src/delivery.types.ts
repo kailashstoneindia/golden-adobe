@@ -98,6 +98,10 @@ export interface AdminAssignmentDto {
   failureReason: DeliveryFailureReason | null;
   deliveryPhotoViewUrl: string | null;
   failurePhotoViewUrl: string | null;
+  /** True once 5 wrong codes locked the job; ops can unlock it. */
+  locked: boolean;
+  /** True only for the latest attempt of a group whose delivery failed. */
+  canReattempt: boolean;
 }
 
 // Driver app (docs/delivery-mobile-api-contract.md section 1).
