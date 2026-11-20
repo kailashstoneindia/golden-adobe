@@ -1,0 +1,176 @@
+<title>Delivery Open Questions</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap">
+<style>
+  /* Layout: one column of grouped lists; each question is a row that stacks on a phone. */
+  :root {
+    --bg: #f3f5f7;
+    --surface: #ffffff;
+    --fg: #14202b;
+    --muted: #55677a;
+    --line: #d9e0e7;
+    --accent: #0b6e69;
+    --accent-soft: #dff1ef;
+    --warn: #9a4a00;
+    --warn-soft: #fdebd6;
+    --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f171e; --surface: #17222c; --fg: #e6edf3; --muted: #93a4b5; --line: #2a3947;
+      --accent: #4fc3bb; --accent-soft: #14393a; --warn: #f0b072; --warn-soft: #3b2a14;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f171e; --surface: #17222c; --fg: #e6edf3; --muted: #93a4b5; --line: #2a3947;
+    --accent: #4fc3bb; --accent-soft: #14393a; --warn: #f0b072; --warn-soft: #3b2a14;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.55;
+    padding-block: 32px 56px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  main { max-width: 980px; margin: 0 auto; display: grid; gap: 28px; }
+  h1, h2 { font-family: var(--font-display); text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+  h1 { font-size: clamp(26px, 4.5vw, 36px); line-height: 1.15; }
+  h2 { font-size: 20px; }
+  .lede { color: var(--muted); margin: 8px 0 0; max-width: 62ch; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 14px; font-size: 13px; color: var(--muted); }
+  .meta strong { color: var(--fg); font-weight: 600; }
+  .summary { display: flex; flex-wrap: wrap; gap: 10px; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+  .pill.warn { background: var(--warn-soft); color: var(--warn); }
+  section { display: grid; gap: 10px; }
+  .group-note { color: var(--muted); font-size: 13.5px; margin: 0; }
+  .list { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .row { display: grid; grid-template-columns: 40px minmax(0, 1.5fr) minmax(0, 1.2fr) minmax(0, 1.2fr); gap: 6px 18px; padding: 14px 18px; border-top: 1px solid var(--line); align-items: start; }
+  .row:first-child { border-top: 0; }
+  .row.head { background: var(--bg); font-size: 11.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); padding-block: 9px; }
+  .list.two .row { grid-template-columns: 40px minmax(0, 1.4fr) minmax(0, 1.6fr); }
+  .num { font-family: var(--font-display); font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .q { font-weight: 600; min-width: 0; }
+  .cell { min-width: 0; color: var(--muted); font-size: 14px; }
+  .cell b { display: none; }
+  .row.done { opacity: 0.55; }
+  .row.done .q { text-decoration: line-through; }
+  .tick { display: flex; gap: 8px; align-items: center; margin-top: 8px; font-size: 12.5px; color: var(--muted); font-weight: 500; cursor: pointer; }
+  .tick input { width: 16px; height: 16px; accent-color: var(--accent); }
+  .tag { display: inline-block; margin-left: 8px; font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px; background: var(--warn-soft); color: var(--warn); vertical-align: 2px; }
+  footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); padding-top: 16px; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (max-width: 720px) {
+    .row, .list.two .row { grid-template-columns: 28px minmax(0, 1fr); }
+    .row.head { display: none; }
+    .cell { grid-column: 2; }
+    .cell b { display: block; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<main>
+  <header>
+    <h1>Delivery module: open questions</h1>
+    <p class="lede">What is still undecided on the delivery work and the order number (decisions 0060 and 0061), who has to answer, and what the system does until they do.</p>
+    <div class="meta">
+      <span><strong>PR #45</strong> open, not merged</span>
+      <span><strong>Updated</strong> 20 Nov 2026</span>
+      <span><strong>Source</strong> decisions 0060, 0061 and the PR review</span>
+    </div>
+  </header>
+
+  <div class="summary" aria-label="Summary">
+    <span class="pill">7 for the client</span>
+    <span class="pill">5 for you</span>
+    <span class="pill">6 calls I made that you can overrule</span>
+    <span class="pill warn" id="open-count">1 blocks the merge</span>
+  </div>
+
+  <section id="client">
+    <h2>For the client</h2>
+    <p class="group-note">None of these change the calls the mobile developer builds against. They change details and add states later.</p>
+    <div class="list" data-group="client">
+      <div class="row head"><span>#</span><span>Question</span><span>What the system does today</span><span>If the answer differs</span></div>
+      <div class="row" data-id="1"><span class="num">1</span><div><div class="q">After a failed delivery, where do the goods go that night: back to the vendor, a warehouse, or stay on the truck?</div></div><div class="cell"><b>Today</b>A re-attempt assumes the goods stay on the truck. There is no return or warehouse state.</div><div class="cell"><b>If different</b>A return job, a warehouse stop or a "received" scan, plus new statuses.</div></div>
+      <div class="row" data-id="2"><span class="num">2</span><div><div class="q">How many delivery attempts are allowed, and who pays for a repeat?</div></div><div class="cell"><b>Today</b>No limit. Ops can re-attempt as often as needed.</div><div class="cell"><b>If different</b>An attempt cap, and a fee or refund rule.</div></div>
+      <div class="row" data-id="3"><span class="num">3</span><div><div class="q">Do they want the customer's delivery code (OTP)?</div></div><div class="cell"><b>Today</b>Built in. The customer app shows it and the driver must enter it. SMS is off.</div><div class="cell"><b>If different</b>If kept, SMS needs a DLT template. If dropped, the driver closes with the photo only.</div></div>
+      <div class="row" data-id="4"><span class="num">4</span><div><div class="q">Who unloads at the site: the driver, the helper or the customer?</div></div><div class="cell"><b>Today</b>The loading and unloading fee is still ₹0 (decision 0036).</div><div class="cell"><b>If different</b>An unloading step and a fee in the flow.</div></div>
+      <div class="row" data-id="5"><span class="num">5</span><div><div class="q">Is there a delivery fee for customers?</div></div><div class="cell"><b>Today</b>Checkout charges none.</div><div class="cell"><b>If different</b>A fee line at checkout and on the order.</div></div>
+      <div class="row" data-id="6"><span class="num">6</span><div><div class="q">Does the helper need an identity check (Aadhaar or licence)?</div></div><div class="cell"><b>Today</b>None in the MVP. Only drivers have documents.</div><div class="cell"><b>If different</b>A document step like the driver's.</div></div>
+      <div class="row" data-id="7"><span class="num">7</span><div><div class="q">What should the customer be told when a delivery fails, and by what channel?</div></div><div class="cell"><b>Today</b>Ops phone the customer. The app only shows "Delivery attempt failed".</div><div class="cell"><b>If different</b>A notification template and a send step.</div></div>
+    </div>
+  </section>
+
+  <section id="you">
+    <h2>For you</h2>
+    <div class="list two" data-group="you">
+      <div class="row head"><span>#</span><span>Question</span><span>Notes</span></div>
+      <div class="row" data-id="8"><span class="num">8</span><div><div class="q">Has the mobile developer seen the contract and the guide?<span class="tag">Blocks the merge</span></div></div><div class="cell">Files: delivery-mobile-api-contract.md and delivery-mobile-developer-guide.md. Mobile also has two type errors from this branch to fix.</div></div>
+      <div class="row" data-id="9"><span class="num">9</span><div><div class="q">Which merge method for PR #45?</div></div><div class="cell">Recommended: a merge commit, to match <code>main</code>. It keeps the per-session commits and test history.</div></div>
+      <div class="row" data-id="10"><span class="num">10</span><div><div class="q">May I run the four migrations on prod through SSM after the merge?</div></div><div class="cell">Needs your permission each time. The fourth (one vehicle per driver) fails if two drivers already share a vehicle, which is unlikely on a new table.</div></div>
+      <div class="row" data-id="11"><span class="num">11</span><div><div class="q">Should ops confirm with the customer before unlocking a locked job?</div></div><div class="cell">The Unlock button is one click and issues a new code. A confirm dialog or a written rule is your call.</div></div>
+      <div class="row" data-id="12"><span class="num">12</span><div><div class="q">Who sends the client the cost and timeline?</div></div><div class="cell">Delivery needs its own estimate, not absorbed into Phase 3 or 4 (decision 0035).</div></div>
+    </div>
+  </section>
+
+  <section id="calls">
+    <h2>Calls I made that you can overrule</h2>
+    <div class="list two" data-group="calls">
+      <div class="row head"><span>#</span><span>Call</span><span>Default and how to change it</span></div>
+      <div class="row" data-id="13"><span class="num">13</span><div><div class="q">The helper is a standing pairing on the driver, not picked per delivery.</div></div><div class="cell">Ops can change the pairing on the driver at any time.</div></div>
+      <div class="row" data-id="14"><span class="num">14</span><div><div class="q">A driver is not notified when ops start a re-attempt.</div></div><div class="cell">The driver app pulls its list. Add a notice if drivers miss re-attempts.</div></div>
+      <div class="row" data-id="15"><span class="num">15</span><div><div class="q">No per-group number such as GA-10001-1.</div></div><div class="cell">The vendor name tells the groups of one order apart. Add it if drivers confuse them.</div></div>
+      <div class="row" data-id="16"><span class="num">16</span><div><div class="q">Notifications still receive the order UUID, not the order number.</div></div><div class="cell">They are log-only today. Use the number in the text once real templates exist.</div></div>
+      <div class="row" data-id="17"><span class="num">17</span><div><div class="q">Razorpay receipts and invoices do not carry the order number.</div></div><div class="cell">Razorpay keeps its own receipt id.</div></div>
+      <div class="row" data-id="18"><span class="num">18</span><div><div class="q">No push notifications to drivers.</div></div><div class="cell">Needs notification provider work. Until then the apps refresh by pull and polling.</div></div>
+    </div>
+  </section>
+
+  <footer>Tick a question to mark it answered. Ticks stay in this browser only and are not shared with anyone else.</footer>
+</main>
+
+<script>
+  (function () {
+    var KEY = 'delivery-open-questions-answered';
+    var done = {};
+    try { done = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { done = {}; }
+
+    function save() { try { localStorage.setItem(KEY, JSON.stringify(done)); } catch (e) {} }
+
+    function refreshCount() {
+      var rows = document.querySelectorAll('.row[data-id]');
+      var answered = 0;
+      rows.forEach(function (r) { if (done[r.getAttribute('data-id')]) answered += 1; });
+      var el = document.getElementById('open-count');
+      var blocker = done['8'];
+      el.textContent = blocker ? (rows.length - answered) + ' open, nothing blocks the merge' : '1 blocks the merge';
+    }
+
+    document.querySelectorAll('.row[data-id]').forEach(function (row) {
+      var id = row.getAttribute('data-id');
+      var label = document.createElement('label');
+      label.className = 'tick';
+      var box = document.createElement('input');
+      box.type = 'checkbox';
+      box.id = 'answered-' + id;
+      box.checked = !!done[id];
+      label.appendChild(box);
+      label.appendChild(document.createTextNode('Answered'));
+      row.children[1].appendChild(label);
+      row.classList.toggle('done', box.checked);
+      box.addEventListener('change', function () {
+        if (box.checked) done[id] = true; else delete done[id];
+        row.classList.toggle('done', box.checked);
+        save();
+        refreshCount();
+      });
+    });
+    refreshCount();
+  })();
+</script>
