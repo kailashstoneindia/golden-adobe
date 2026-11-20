@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 
+import { CategoryHsnDefault } from '@/components/catalog/CategoryHsnDefault';
 import { useCategoryAttributesQuery, useCategoryTreeQuery } from '@/queries/useCatalogQueries';
+import { flattenCategoryOptions } from '@/utils/catalogProducts';
 import styles from '@/styles/shared.module.css';
 import catalogStyles from '@/styles/catalog.module.css';
 import type {
@@ -105,12 +107,14 @@ function CategoryTreeRow({
                 <span className={catalogStyles.badgeLeaf}>Leaf</span>
                 {node.unitOfMeasure ? <span>{node.unitOfMeasure}</span> : null}
                 <span>{node.productCount} SKU</span>
+                <span>{node.hsnCodeDefault ? `HSN ${node.hsnCodeDefault}` : 'No default HSN'}</span>
               </>
             ) : (
               <>
                 <span className={catalogStyles.badgeBranch}>Group</span>
                 <span>{leafTotal} leaves</span>
                 <span>{productTotal} SKU</span>
+                {node.hsnCodeDefault ? <span>{`HSN ${node.hsnCodeDefault}`}</span> : null}
               </>
             )}
           </span>
@@ -162,13 +166,18 @@ function AttributeRow({ attribute }: CategoryAttributeRowProps) {
 }
 
 export function CatalogCategoriesPage() {
-  const [selected, setSelected] = useState<CategoryNode | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [searchText, setSearchText] = useState('');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
   const treeQuery = useCategoryTreeQuery();
-  const attributesQuery = useCategoryAttributesQuery(selected?.id ?? null);
+  const attributesQuery = useCategoryAttributesQuery(selectedId);
 
   const tree = useMemo(() => treeQuery.data ?? [], [treeQuery.data]);
+  // Looked up from the latest tree, so a saved HSN default shows at once.
+  const selected = useMemo(
+    () => flattenCategoryOptions(tree).find(({ node }) => node.id === selectedId)?.node ?? null,
+    [tree, selectedId],
+  );
   const normalizedQuery = searchText.trim().toLowerCase();
   const visibleTree = useMemo(() => filterTree(tree, normalizedQuery), [tree, normalizedQuery]);
   const leafCount = useMemo(() => countLeaves(tree), [tree]);
@@ -254,7 +263,7 @@ export function CatalogCategoriesPage() {
                   node={node}
                   selectedId={selected?.id ?? null}
                   expandedIds={effectiveExpandedIds}
-                  onSelect={setSelected}
+                  onSelect={(node) => setSelectedId(node.id)}
                   onToggle={handleToggle}
                 />
               ))}
@@ -280,6 +289,8 @@ export function CatalogCategoriesPage() {
                 {selected.productCount} products
                 {selected.unitOfMeasure ? ` · unit ${selected.unitOfMeasure}` : ''}
               </p>
+
+              <CategoryHsnDefault node={selected} tree={tree} />
 
               {attributesQuery.isLoading ? (
                 <p className={styles.pageSubtitle}>Loading attributes…</p>
