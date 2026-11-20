@@ -110,6 +110,14 @@ Details in [the spec](../superpowers/specs/2026-11-10-catalog-onboarding-design.
 | The admin product search matches the brand name too; the shared search clause used by vendors is unchanged.                                                                                                             | "Havells" should list Havells products on the admin screen.                                                            |
 | A blank HSN code takes the category default on add-product **and** on import, with that code's GST rate when no rate is given.                                                                                          | The spec covers both entry points.                                                                                     |
 
+### S5 (product merge)
+
+| Choice                                                                                                                                              | Why                                                                                                                        |
+| --------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| A vendor who lists both products keeps the target listing; the source listing is paused on the source product and reported, never deleted or moved. | Moving it would break the `(vendor, product, grade)` unique key; the vendor or an admin decides what to do with it.        |
+| The merge sets the target's `cached_best_price` / `cached_best_vendor_listing_id` itself (cheapest active listing).                                 | The plan pointed at a `StockService` helper, but nothing in the code maintains these columns; they are admin-visible only. |
+| A merged product cannot be restored (400), like a merged brand cannot be reactivated.                                                               | It only remains so references to it resolve.                                                                               |
+
 ## Open questions
 
 | Item                                                | Notes                                                                                                            |
