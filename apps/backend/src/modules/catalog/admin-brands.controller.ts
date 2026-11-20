@@ -19,7 +19,13 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { AdminBrandsService } from './admin-brands.service';
 import { CreateBrandDto } from './dto/create-brand.dto';
 import { ListBrandsQueryDto } from './dto/list-brands-query.dto';
-import { AddBrandAliasDto, SetBrandActiveDto, UpdateBrandDto } from './dto/update-brand.dto';
+import {
+  AddBrandAliasDto,
+  ConfirmBrandLogoDto,
+  CreateBrandLogoUploadDto,
+  SetBrandActiveDto,
+  UpdateBrandDto,
+} from './dto/update-brand.dto';
 
 // Decision 0063: brand management from the admin panel, so onboarding a new
 // brand no longer needs a developer and a seed script.
@@ -87,5 +93,24 @@ export class AdminBrandsController {
     @Param('aliasId', ParseUUIDPipe) aliasId: string,
   ) {
     return this.brands.removeAlias(id, aliasId);
+  }
+
+  @Post(':id/logo-upload-url')
+  @ApiOperation({
+    summary: 'Get a presigned upload for the brand logo',
+    description:
+      'JPEG, PNG or WebP up to 2 MB. Upload to the returned URL, then call logo/confirm with the key.',
+  })
+  async createLogoUploadUrl(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CreateBrandLogoUploadDto,
+  ) {
+    return this.brands.createLogoUploadUrl(id, dto.contentType);
+  }
+
+  @Post(':id/logo/confirm')
+  @ApiOperation({ summary: 'Set the brand logo once its upload has finished' })
+  async confirmLogo(@Param('id', ParseUUIDPipe) id: string, @Body() dto: ConfirmBrandLogoDto) {
+    return this.brands.confirmLogo(id, dto.key);
   }
 }

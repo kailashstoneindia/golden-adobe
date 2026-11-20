@@ -1,8 +1,11 @@
+import { randomUUID } from 'crypto';
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { Op, QueryTypes, UniqueConstraintError, WhereOptions } from 'sequelize';
@@ -14,6 +17,22 @@ import { BrandResolverService } from './brand-resolver.service';
 import { CreateBrandDto } from './dto/create-brand.dto';
 import { ListBrandsQueryDto } from './dto/list-brands-query.dto';
 import { UpdateBrandDto } from './dto/update-brand.dto';
+import {
+  MEDIA_STORAGE_CONFIG,
+  OBJECT_STORAGE,
+  ObjectStorage,
+  PresignedPost,
+} from './media/object-storage';
+import { StorageConfig } from '../../config/storage.config';
+
+const LOGO_CONTENT_TYPES: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+};
+const LOGO_MAX_BYTES = 2 * 1024 * 1024;
+const LOGO_PRESIGN_TTL_SECONDS = 600;
+const UUID_PATTERN = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
 
 // Decision 0063: brands are created and maintained from the admin panel
 // instead of seed scripts. Duplicate detection is the same
@@ -28,6 +47,8 @@ export class AdminBrandsService {
     @InjectModel(BrandAlias)
     private readonly brandAliasModel: typeof BrandAlias,
     private readonly brandResolver: BrandResolverService,
+    @Inject(OBJECT_STORAGE) private readonly storage: ObjectStorage,
+    @Inject(MEDIA_STORAGE_CONFIG) private readonly storageConfig: StorageConfig,
   ) {}
 
   private get sequelize() {
@@ -174,6 +195,56 @@ export class AdminBrandsService {
     await this.findOrFail(id);
     await this.brandResolver.removeAlias(id, aliasId);
     return this.get(id);
+  }
+
+  // Logos go under variants/brands/: the CDN serves only variants/* publicly
+  // (infra/aws/s3/media-bucket-policy.json), and the media sweep and the
+  // image Lambda only look at .../products/ keys, so a logo there is public
+  // and left alone. Uploaded as-is (no resizing); admins upload them.
+  async createLogoUploadUrl(
+    id: string,
+    contentType: string,
+  ): Promise<PresignedPost & { key: string }> {
+    this.assertStorageEnabled();
+    const extension = LOGO_CONTENT_TYPES[contentType];
+    if (!extension) {
+      throw new BadRequestException('contentType must be image/jpeg, image/png or image/webp');
+    }
+    await this.findOrFail(id);
+
+    const key = `variants/brands/${id}/logo-${randomUUID()}.${extension}`;
+    const post = await this.storage.presignPost({
+      key,
+      contentType,
+      maxBytes: LOGO_MAX_BYTES,
+      expiresInSeconds: LOGO_PRESIGN_TTL_SECONDS,
+    });
+    return { ...post, key };
+  }
+
+  async confirmLogo(id: string, key: string): Promise<BrandDto> {
+    this.assertStorageEnabled();
+    const brand = await this.findOrFail(id);
+
+    // Exactly the shape createLogoUploadUrl mints for this brand, so a caller
+    // can't point the logo at another brand's or a product's object.
+    const own = new RegExp(`^variants/brands/${id}/logo-${UUID_PATTERN}\\.(jpg|png|webp)$`);
+    if (!own.test(key)) {
+      throw new BadRequestException("key is not this brand's logo upload");
+    }
+    if (!(await this.storage.head(key))) {
+      throw new BadRequestException('no uploaded object found for this key');
+    }
+
+    const base = this.storageConfig.publicBaseUrl.replace(/\/+$/, '');
+    await brand.update({ logoUrl: `${base}/${key}` });
+    return this.get(id);
+  }
+
+  private assertStorageEnabled(): void {
+    if (!this.storageConfig.enabled) {
+      throw new ServiceUnavailableException('Media storage is not configured on this server');
+    }
   }
 
   private async findOrFail(id: string): Promise<Brand> {

@@ -26,3 +26,18 @@ export class AddBrandAliasDto {
   @MaxLength(160)
   alias!: string;
 }
+
+export class CreateBrandLogoUploadDto {
+  @ApiProperty({ enum: ['image/jpeg', 'image/png', 'image/webp'] })
+  @IsString()
+  @MinLength(1)
+  contentType!: string;
+}
+
+export class ConfirmBrandLogoDto {
+  @ApiProperty({ description: 'The key returned by logo-upload-url, after the upload finished.' })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(512)
+  key!: string;
+}

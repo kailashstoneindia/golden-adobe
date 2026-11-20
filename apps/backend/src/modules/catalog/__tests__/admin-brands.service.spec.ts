@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { SequelizeModule } from '@nestjs/sequelize';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Op } from 'sequelize';
@@ -10,6 +15,7 @@ import { Brand } from '../models/brand.model';
 import { BrandAlias } from '../models/brand-alias.model';
 import { Category } from '../models/category.model';
 import { MasterProduct, MasterProductStatus } from '../models/master-product.model';
+import { MEDIA_STORAGE_CONFIG, OBJECT_STORAGE } from '../media/object-storage';
 
 // Decision 0063 / S2: admin brand management. Real Postgres, because the
 // duplicate rule is the normalize_brand_name() unique index. The test DB has
@@ -20,6 +26,14 @@ describe('AdminBrandsService (integration)', () => {
   let resolver: BrandResolverService;
   const suffix = `ab${Date.now()}`;
   let categoryId: string;
+  const storage = {
+    presignPost: jest.fn(async (input: { key: string }) => ({
+      url: 'https://upload.example.test',
+      fields: { key: input.key },
+    })),
+    head: jest.fn(async (_key: string): Promise<{ contentLength: number } | null> => null),
+  };
+  const storageConfig = { enabled: true, publicBaseUrl: 'https://cdn.example.test/' };
 
   const compliance = {
     manufacturerName: 'Zorvex Electric Pvt Ltd',
@@ -43,7 +57,12 @@ describe('AdminBrandsService (integration)', () => {
         }),
         SequelizeModule.forFeature(CATALOG_TEST_MODELS),
       ],
-      providers: [AdminBrandsService, BrandResolverService],
+      providers: [
+        AdminBrandsService,
+        BrandResolverService,
+        { provide: OBJECT_STORAGE, useValue: storage },
+        { provide: MEDIA_STORAGE_CONFIG, useValue: storageConfig },
+      ],
     }).compile();
     service = moduleRef.get(AdminBrandsService);
     resolver = moduleRef.get(BrandResolverService);
@@ -274,6 +293,89 @@ describe('AdminBrandsService (integration)', () => {
 
       expect(result.aliases).toEqual([]);
       expect(await resolver.resolve(`drop me ${suffix}`)).toBeNull();
+    });
+  });
+
+  describe('logo', () => {
+    const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
+    let brandId: string;
+
+    beforeAll(async () => {
+      brandId = (await service.create({ name: `Logoed${suffix}`, ...compliance })).id;
+    });
+
+    beforeEach(() => jest.clearAllMocks());
+
+    it('presigns an upload under the brand’s own public logo prefix', async () => {
+      const result = await service.createLogoUploadUrl(brandId, 'image/png');
+
+      expect(result.key).toMatch(new RegExp(`^variants/brands/${brandId}/logo-${UUID}\\.png$`));
+      expect(storage.presignPost).toHaveBeenCalledWith(
+        expect.objectContaining({
+          key: result.key,
+          contentType: 'image/png',
+          maxBytes: 2 * 1024 * 1024,
+        }),
+      );
+    });
+
+    it.each(['application/pdf', 'image/svg+xml', 'text/html'])(
+      'refuses (400) content type %s',
+      async (contentType) => {
+        await expect(service.createLogoUploadUrl(brandId, contentType)).rejects.toBeInstanceOf(
+          BadRequestException,
+        );
+        expect(storage.presignPost).not.toHaveBeenCalled();
+      },
+    );
+
+    it('refuses (404) an upload URL for an unknown brand', async () => {
+      await expect(
+        service.createLogoUploadUrl('00000000-0000-4000-8000-000000000000', 'image/png'),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('refuses (503) when this server has no media storage', async () => {
+      storageConfig.enabled = false;
+      try {
+        await expect(service.createLogoUploadUrl(brandId, 'image/png')).rejects.toBeInstanceOf(
+          ServiceUnavailableException,
+        );
+      } finally {
+        storageConfig.enabled = true;
+      }
+    });
+
+    it('confirm refuses (400) a key outside this brand’s logo prefix', async () => {
+      const other = await service.create({ name: `OtherLogo${suffix}`, ...compliance });
+      storage.head.mockResolvedValue({ contentLength: 10 });
+
+      for (const key of [
+        `variants/brands/${other.id}/logo-x.png`,
+        `variants/products/${brandId}/x/thumb.webp`,
+        `variants/brands/${brandId}/../${other.id}/logo-x.png`,
+      ]) {
+        await expect(service.confirmLogo(brandId, key)).rejects.toBeInstanceOf(BadRequestException);
+      }
+      expect((await service.get(brandId)).logoUrl).toBeNull();
+    });
+
+    it('confirm refuses (400) a key with no uploaded object', async () => {
+      storage.head.mockResolvedValue(null);
+      const { key } = await service.createLogoUploadUrl(brandId, 'image/webp');
+
+      await expect(service.confirmLogo(brandId, key)).rejects.toBeInstanceOf(BadRequestException);
+      expect((await service.get(brandId)).logoUrl).toBeNull();
+    });
+
+    it('confirm sets the public logo URL', async () => {
+      const { key } = await service.createLogoUploadUrl(brandId, 'image/jpeg');
+      storage.head.mockResolvedValue({ contentLength: 2048 });
+
+      const result = await service.confirmLogo(brandId, key);
+
+      expect(storage.head).toHaveBeenCalledWith(key);
+      expect(result.logoUrl).toBe(`https://cdn.example.test/${key}`);
     });
   });
 });

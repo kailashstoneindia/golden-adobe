@@ -28,6 +28,8 @@ describe('AdminBrandsController', () => {
     setActive: jest.fn(async () => ({})),
     addAlias: jest.fn(async () => ({})),
     removeAlias: jest.fn(async () => ({})),
+    createLogoUploadUrl: jest.fn(async () => ({})),
+    confirmLogo: jest.fn(async () => ({})),
   };
   const ID = '11111111-1111-4111-8111-111111111111';
   const ALIAS_ID = '22222222-2222-4222-8222-222222222222';
@@ -161,6 +163,37 @@ describe('AdminBrandsController', () => {
 
     it('refuses a malformed alias id', async () => {
       expect((await http().delete(`/admin/brands/${ID}/aliases/nope`)).status).toBe(400);
+    });
+  });
+
+  describe('logo', () => {
+    const http = () => request(app.getHttpServer());
+
+    it('asks the service for an upload URL', async () => {
+      const res = await http()
+        .post(`/admin/brands/${ID}/logo-upload-url`)
+        .send({ contentType: 'image/png' });
+
+      expect(res.status).toBe(201);
+      expect(service.createLogoUploadUrl).toHaveBeenCalledWith(ID, 'image/png');
+    });
+
+    it('refuses an upload URL request with no content type', async () => {
+      expect((await http().post(`/admin/brands/${ID}/logo-upload-url`).send({})).status).toBe(400);
+    });
+
+    it('confirms an uploaded logo by key', async () => {
+      const key = `variants/brands/${ID}/logo-x.png`;
+      const res = await http().post(`/admin/brands/${ID}/logo/confirm`).send({ key });
+
+      expect(res.status).toBe(201);
+      expect(service.confirmLogo).toHaveBeenCalledWith(ID, key);
+    });
+
+    it('refuses a confirm with a blank key', async () => {
+      expect((await http().post(`/admin/brands/${ID}/logo/confirm`).send({ key: '' })).status).toBe(
+        400,
+      );
     });
   });
 
