@@ -208,8 +208,17 @@ export class AdminCatalogService {
       // Shared with VendorCatalogSearchService (decision 0053) via
       // product-search-filter.util.ts — see that file for why
       // word_similarity, not similarity.
-      where.push(buildProductSearchClause());
+      // Decision 0063: here (not in the shared clause, which the vendor search
+      // also uses) the brand name matches too, so "Havells" lists its products.
+      where.push(
+        `(${buildProductSearchClause()}
+          OR mp.brand_id IN (SELECT id FROM brand WHERE name ILIKE '%' || :search || '%'))`,
+      );
       replacements.search = query.search;
+    }
+    if (query.brandId) {
+      where.push('mp.brand_id = :brandId');
+      replacements.brandId = query.brandId;
     }
     if (query.categoryId) {
       // Subtree match, so picking a top-level category shows everything under it.

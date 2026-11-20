@@ -26,6 +26,7 @@ describe('AdminCatalogController onboarding routes', () => {
     retireProduct: jest.fn(async () => ({ id: ID })),
     restoreProduct: jest.fn(async () => ({ id: ID })),
     deleteProduct: jest.fn(async () => undefined),
+    listProducts: jest.fn(async () => ({ items: [], total: 0 })),
   };
   const readiness = { getReadiness: jest.fn(async () => ({ ready: true, checks: [] })) };
 
@@ -133,6 +134,14 @@ describe('AdminCatalogController onboarding routes', () => {
       expect(catalog.deleteProduct).not.toHaveBeenCalled();
       expect(catalog.retireProduct).not.toHaveBeenCalled();
     });
+  });
+
+  it('GET products passes a brand filter and refuses a malformed one', async () => {
+    const BRAND = '22222222-2222-4222-8222-222222222222';
+    expect((await http().get(`/admin/catalog/products?brandId=${BRAND}`)).status).toBe(200);
+    expect(catalog.listProducts).toHaveBeenCalledWith({ brandId: BRAND });
+
+    expect((await http().get('/admin/catalog/products?brandId=nope')).status).toBe(400);
   });
 
   it('GET readiness refuses a malformed id and non-admins', async () => {

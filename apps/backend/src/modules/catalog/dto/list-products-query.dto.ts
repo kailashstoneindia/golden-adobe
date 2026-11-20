@@ -16,6 +16,11 @@ export class ListProductsQueryDto {
   @IsUUID()
   categoryId?: string;
 
+  @ApiPropertyOptional({ description: 'Only this brand’s products (decision 0063).' })
+  @IsOptional()
+  @IsUUID()
+  brandId?: string;
+
   @ApiPropertyOptional({ enum: PRODUCT_STATUSES })
   @IsOptional()
   @IsIn(PRODUCT_STATUSES as unknown as string[])
