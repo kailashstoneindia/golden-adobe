@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { AdminDriverDto } from '@golden-abode/types';
 
 import { useDriversQuery } from '@/queries';
@@ -28,11 +28,25 @@ export function DriverPickerModal({
   onConfirm: (driverId: string) => Promise<void>;
   onClose: () => void;
 }) {
-  const driversQuery = useDriversQuery({ isActive: true, page: 1, limit: 100 });
+  const [search, setSearch] = useState('');
+  const [debounced, setDebounced] = useState('');
+  // Wait for a pause in typing, so the list is asked once and not per keystroke.
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(search.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+  const driversQuery = useDriversQuery({
+    isActive: true,
+    page: 1,
+    limit: 100,
+    ...(debounced ? { search: debounced } : {}),
+  });
   const [driverId, setDriverId] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const shownCount = driversQuery.data?.items.length ?? 0;
+  const total = driversQuery.data?.total ?? 0;
   const drivers = (driversQuery.data?.items ?? []).filter((d) => d.id !== excludeDriverId);
 
   const confirm = async () => {
@@ -57,6 +71,18 @@ export function DriverPickerModal({
       >
         <h2 className={styles.modalTitle}>{title}</h2>
         <div className={styles.modalBody}>
+          <label className={styles.label} htmlFor="driver-search">
+            Search drivers
+          </label>
+          <input
+            id="driver-search"
+            className={styles.input}
+            type="search"
+            placeholder="Name or phone"
+            value={search}
+            disabled={busy}
+            onChange={(event) => setSearch(event.target.value)}
+          />
           <label className={styles.label} htmlFor="driver-picker">
             Driver
           </label>
@@ -74,6 +100,11 @@ export function DriverPickerModal({
               </option>
             ))}
           </select>
+          {total > shownCount ? (
+            <p className={styles.meta}>
+              Showing the first {shownCount} of {total} active drivers. Search to narrow the list.
+            </p>
+          ) : null}
           {driversQuery.isError ? <p className={styles.error}>Could not load drivers.</p> : null}
           {error ? <p className={styles.error}>{error}</p> : null}
         </div>

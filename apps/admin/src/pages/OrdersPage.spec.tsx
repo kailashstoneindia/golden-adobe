@@ -891,6 +891,8 @@ describe('OrdersPage delivery', () => {
       groupId: 'g1',
       orderId: 'o1',
       orderNumber: 'o1',
+      locked: false,
+      canReattempt: false,
       vendorName: 'Stone Mart',
       driver: { id: 'd1', name: 'Ramesh Kumar', phone: '9876543210' },
       assignedAt: '2026-11-04T09:00:00.000Z',

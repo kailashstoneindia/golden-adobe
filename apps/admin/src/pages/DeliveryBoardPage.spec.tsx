@@ -29,6 +29,8 @@ function assignment(over: Partial<AdminAssignmentDto> = {}): AdminAssignmentDto 
     failureReason: null,
     deliveryPhotoViewUrl: null,
     failurePhotoViewUrl: null,
+    locked: false,
+    canReattempt: false,
     ...over,
   };
 }
@@ -37,6 +39,8 @@ let rows: Record<string, AdminAssignmentDto[]>;
 let drivers: AdminDriverDto[];
 let listUrls: string[];
 let posted: { path: string; body: unknown }[];
+let driverUrls: string[];
+let driversTotal: number | null;
 
 beforeEach(() => {
   rows = {
@@ -62,6 +66,7 @@ beforeEach(() => {
         failedAt: '2026-11-12T11:00:00.000Z',
         failureReason: 'customer_unavailable',
         failurePhotoViewUrl: 'https://signed.test/failed.jpg',
+        canReattempt: true,
       }),
     ],
     delivered: [
@@ -82,6 +87,8 @@ beforeEach(() => {
   ];
   listUrls = [];
   posted = [];
+  driverUrls = [];
+  driversTotal = null;
   server.use(
     http.get('/api/admin/delivery/assignments', ({ request }) => {
       listUrls.push(request.url);
@@ -92,12 +99,23 @@ beforeEach(() => {
         data: { items, total: items.length, page: 1, limit: 20, totalPages: 1 },
       });
     }),
-    http.get('/api/admin/drivers', () =>
-      HttpResponse.json({
+    http.get('/api/admin/drivers', ({ request }) => {
+      driverUrls.push(request.url);
+      return HttpResponse.json({
         success: true,
-        data: { items: drivers, total: drivers.length, page: 1, limit: 100, totalPages: 1 },
-      }),
-    ),
+        data: {
+          items: drivers,
+          total: driversTotal ?? drivers.length,
+          page: 1,
+          limit: 100,
+          totalPages: 1,
+        },
+      });
+    }),
+    http.post('/api/admin/delivery/assignments/:id/unlock', async ({ params }) => {
+      posted.push({ path: 'unlock/' + params.id, body: null });
+      return HttpResponse.json({ success: true, data: {} }, { status: 201 });
+    }),
     http.post('/api/admin/delivery/assignments/:id/reassign', async ({ request, params }) => {
       posted.push({ path: `reassign/${params.id}`, body: await request.json() });
       return HttpResponse.json({ success: true, data: {} }, { status: 201 });
@@ -236,5 +254,65 @@ describe('DeliveryBoardPage (decision 0060)', () => {
     await user.click(await screen.findByRole('button', { name: 'Delivered' }));
     const row = (await screen.findByText('No Photo Co')).closest('tr')!;
     expect(within(row).queryByRole('link', { name: 'View photo' })).toBeNull();
+  });
+
+  it('an old failed attempt that a later attempt replaced has no Re-attempt', async () => {
+    const user = userEvent.setup();
+    rows.failed = [
+      assignment({
+        id: 'a6',
+        status: 'failed',
+        vendorName: 'Old Attempt Co',
+        attemptNo: 1,
+        failureReason: 'other',
+        canReattempt: false,
+      }),
+      assignment({
+        id: 'a7',
+        status: 'failed',
+        vendorName: 'Latest Attempt Co',
+        attemptNo: 2,
+        failureReason: 'other',
+        canReattempt: true,
+      }),
+    ];
+    renderPage();
+    await user.click(await screen.findByRole('button', { name: 'Failed' }));
+    const old = (await screen.findByText('Old Attempt Co')).closest('tr')!;
+    const latest = screen.getByText('Latest Attempt Co').closest('tr')!;
+    expect(within(old).queryByRole('button', { name: 'Re-attempt' })).toBeNull();
+    expect(within(latest).getByRole('button', { name: 'Re-attempt' })).toBeInTheDocument();
+  });
+
+  it('a job locked by wrong codes says so and can be unlocked', async () => {
+    const user = userEvent.setup();
+    rows.picked_up = [
+      assignment({ id: 'a8', status: 'picked_up', vendorName: 'Locked Co', locked: true }),
+      assignment({ id: 'a9', status: 'picked_up', vendorName: 'Fine Co' }),
+    ];
+    renderPage();
+    await user.click(await screen.findByRole('button', { name: 'Picked up' }));
+    const locked = (await screen.findByText('Locked Co')).closest('tr')!;
+    expect(within(locked).getByText(/Locked after 5 wrong codes/)).toBeInTheDocument();
+    const fine = screen.getByText('Fine Co').closest('tr')!;
+    expect(within(fine).queryByRole('button', { name: 'Unlock' })).toBeNull();
+
+    await user.click(within(locked).getByRole('button', { name: 'Unlock' }));
+    await waitFor(() => expect(posted).toEqual([{ path: 'unlock/a8', body: null }]));
+  });
+
+  it('the driver picker can search by name, and says when more drivers exist than shown', async () => {
+    const user = userEvent.setup();
+    driversTotal = 250;
+    renderPage();
+    const row = (await screen.findByText('Kailash Stones')).closest('tr')!;
+    await user.click(within(row).getByRole('button', { name: 'Reassign' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Reassign driver' });
+
+    expect(await within(dialog).findByText(/Showing the first 2 of 250/)).toBeInTheDocument();
+    await user.type(within(dialog).getByLabelText('Search drivers'), 'Solo');
+    await waitFor(() =>
+      expect(new URL(driverUrls[driverUrls.length - 1]).searchParams.get('search')).toBe('Solo'),
+    );
   });
 });

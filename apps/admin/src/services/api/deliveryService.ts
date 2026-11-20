@@ -63,6 +63,12 @@ export const deliveryService = {
         { driverId },
       );
     },
+    unlock(assignmentId: string): Promise<AdminAssignmentDto> {
+      return postRequest<AdminAssignmentDto, Record<string, never>>(
+        endpoints.assignmentUnlock(assignmentId),
+        {},
+      );
+    },
     reattempt(groupId: string, driverId: string): Promise<AdminAssignmentDto> {
       return postRequest<AdminAssignmentDto, { driverId: string }>(
         endpoints.groupReattempt(groupId),

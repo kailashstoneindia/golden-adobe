@@ -62,6 +62,8 @@ export const API_ENDPOINTS = {
     assignments: '/admin/delivery/assignments',
     assignmentReassign: (assignmentId: string) =>
       `/admin/delivery/assignments/${assignmentId}/reassign`,
+    assignmentUnlock: (assignmentId: string) =>
+      '/admin/delivery/assignments/' + assignmentId + '/unlock',
     groupReattempt: (groupId: string) => `/admin/delivery/groups/${groupId}/reattempt`,
   },
   catalog: {

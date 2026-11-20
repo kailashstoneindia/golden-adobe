@@ -52,6 +52,7 @@ export {
   useDeliveryQueueQuery,
   useReassignMutation,
   useReattemptMutation,
+  useUnlockAssignmentMutation,
   useCreateDriverMutation,
   useCreateVehicleMutation,
   useDriverQuery,

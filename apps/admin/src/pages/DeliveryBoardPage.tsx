@@ -8,7 +8,12 @@ import {
   DELIVERY_BOARD_TABS,
   DELIVERY_FAILURE_REASON_LABELS,
 } from '@/constants/delivery.constants';
-import { useAssignmentsQuery, useReassignMutation, useReattemptMutation } from '@/queries';
+import {
+  useAssignmentsQuery,
+  useReassignMutation,
+  useReattemptMutation,
+  useUnlockAssignmentMutation,
+} from '@/queries';
 import styles from '@/styles/shared.module.css';
 import { formatDateTime } from '@/utils/date';
 
@@ -39,6 +44,8 @@ export function DeliveryBoardPage() {
   });
   const reassign = useReassignMutation();
   const reattempt = useReattemptMutation();
+  const unlock = useUnlockAssignmentMutation();
+  const [unlockError, setUnlockError] = useState<string | null>(null);
 
   const rows = listQuery.data?.items ?? [];
 
@@ -111,6 +118,9 @@ export function DeliveryBoardPage() {
                       {row.failureReason ? (
                         <div>{DELIVERY_FAILURE_REASON_LABELS[row.failureReason]}</div>
                       ) : null}
+                      {row.locked ? (
+                        <div className={styles.error}>Locked after 5 wrong codes</div>
+                      ) : null}
                       {row.status === 'assigned' && row.vendorHandedOverAt ? (
                         <div className={styles.meta}>Vendor handed over</div>
                       ) : null}
@@ -130,7 +140,23 @@ export function DeliveryBoardPage() {
                           Reassign
                         </button>
                       ) : null}
-                      {row.status === 'failed' ? (
+                      {row.locked ? (
+                        <button
+                          type="button"
+                          className={`${styles.button} ${styles.buttonPrimary}`}
+                          disabled={unlock.isPending}
+                          onClick={() => {
+                            setUnlockError(null);
+                            unlock.mutate(
+                              { assignmentId: row.id },
+                              { onError: (e: Error) => setUnlockError(e.message) },
+                            );
+                          }}
+                        >
+                          Unlock
+                        </button>
+                      ) : null}
+                      {row.canReattempt ? (
                         <button
                           type="button"
                           className={`${styles.button} ${styles.buttonPrimary}`}
@@ -147,6 +173,8 @@ export function DeliveryBoardPage() {
           </table>
         </div>
       )}
+
+      {unlockError ? <p className={styles.error}>{unlockError}</p> : null}
 
       {picking ? (
         <DriverPickerModal

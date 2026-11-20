@@ -130,6 +130,13 @@ export function useReassignMutation() {
   );
 }
 
+export function useUnlockAssignmentMutation() {
+  return useDeliveryMutation(
+    (v: { assignmentId: string }) => deliveryService.assignments.unlock(v.assignmentId),
+    [['orders']],
+  );
+}
+
 export function useReattemptMutation() {
   return useDeliveryMutation(
     (v: { groupId: string; driverId: string }) =>
