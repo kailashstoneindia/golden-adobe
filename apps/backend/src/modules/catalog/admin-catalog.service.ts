@@ -3,6 +3,8 @@ import { InjectModel } from '@nestjs/sequelize';
 import { QueryTypes } from 'sequelize';
 
 import { Category } from './models/category.model';
+import { Brand } from './models/brand.model';
+import { HsnCode } from './models/hsn-code.model';
 import { BrandResolverService } from './brand-resolver.service';
 import { ProductReadinessService } from './product-readiness.service';
 import { Attribute, AttributeDataType } from './models/attribute.model';
@@ -47,6 +49,10 @@ export class AdminCatalogService {
     private readonly categoryModel: typeof Category,
     @InjectModel(MasterProductAttributeValue)
     private readonly attributeValueModel: typeof MasterProductAttributeValue,
+    @InjectModel(Brand)
+    private readonly brandModel: typeof Brand,
+    @InjectModel(HsnCode)
+    private readonly hsnCodeModel: typeof HsnCode,
     private readonly attributeResolver: CatalogAttributeResolverService,
     private readonly media: MediaService,
     private readonly brandResolver: BrandResolverService,
@@ -617,11 +623,9 @@ export class AdminCatalogService {
     if (!product) throw new NotFoundException('Product not found');
 
     // Decision 0058 Task 13: only what actually changes is written and logged.
-    // typeof, not !== undefined: a null must never reach the column.
-    const newName = typeof dto.name === 'string' ? dto.name.trim() : undefined;
-    const nameChanged = newName !== undefined && newName !== product.name;
+    const changes = await this.scalarChanges(product, dto);
     const changedFields = [
-      ...(nameChanged ? ['name'] : []),
+      ...Object.keys(changes),
       ...(dto.attributeValues !== undefined ? ['attributeValues'] : []),
     ];
     if (changedFields.length === 0) return this.getProduct(productId);
@@ -638,8 +642,8 @@ export class AdminCatalogService {
 
     try {
       await this.sequelize.transaction(async (transaction) => {
-        if (nameChanged) {
-          await product.update({ name: newName }, { transaction });
+        if (Object.keys(changes).length > 0) {
+          await product.update(changes, { transaction });
         }
 
         if (dto.attributeValues !== undefined) {
@@ -663,6 +667,58 @@ export class AdminCatalogService {
     this.logger.log(`admin ${adminUserId} update product ${productId} ${changedFields.join(',')}`);
 
     return this.getProduct(productId);
+  }
+
+  // The column changes an edit asks for, after checking each one (decision
+  // 0063). Product code, slug and category never change; duplicates of
+  // brand + part number or GTIN are left to the unique indexes and come back
+  // as friendly 400s through translateWriteError.
+  private async scalarChanges(
+    product: MasterProduct,
+    dto: UpdateProductDto,
+  ): Promise<Partial<MasterProduct>> {
+    const changes: Record<string, unknown> = {};
+    const differs = <K extends keyof MasterProduct>(key: K, value: unknown) =>
+      value !== undefined && value !== product[key];
+
+    // typeof, not !== undefined: a null must never reach the name column.
+    const name = typeof dto.name === 'string' ? dto.name.trim() : undefined;
+    if (differs('name', name)) changes.name = name;
+
+    if (differs('brandId', dto.brandId)) {
+      if (product.isGeneric) throw new BadRequestException('a generic product has no brand');
+      const brand = await this.brandModel.findByPk(dto.brandId);
+      if (!brand) throw new BadRequestException(`brand ${dto.brandId} does not exist`);
+      if (brand.mergedIntoId) {
+        throw new BadRequestException(`brand "${brand.name}" was merged into another brand`);
+      }
+      if (!brand.isActive) throw new BadRequestException(`brand "${brand.name}" is deactivated`);
+      changes.brandId = brand.id;
+    }
+
+    for (const key of ['mfrPartNumber', 'gtin', 'importerDetails', 'countryOfOrigin'] as const) {
+      if (differs(key, dto[key])) changes[key] = dto[key];
+    }
+
+    if (differs('hsnCode', dto.hsnCode)) {
+      if (dto.hsnCode !== null) {
+        const hsn = await this.hsnCodeModel.findOne({ where: { code: dto.hsnCode } });
+        if (!hsn) {
+          throw new BadRequestException(
+            `HSN code "${dto.hsnCode}" is not in the list. Add it first`,
+          );
+        }
+        // Decision 0010: the code carries its GST rate, unless the admin sets one.
+        if (dto.gstRate === undefined) changes.gstRate = hsn.gstRate;
+      }
+      changes.hsnCode = dto.hsnCode;
+    }
+
+    if (dto.gstRate !== undefined && dto.gstRate !== Number(product.gstRate)) {
+      changes.gstRate = dto.gstRate;
+    }
+
+    return changes as Partial<MasterProduct>;
   }
 
   private async loadAttributesByCode(categoryId: string): Promise<Map<string, Attribute>> {

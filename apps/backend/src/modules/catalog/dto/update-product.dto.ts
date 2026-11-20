@@ -2,13 +2,19 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
+  IsNumber,
   IsString,
+  IsUUID,
+  Max,
   MaxLength,
+  Min,
   MinLength,
   ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { AttributeValueInputDto } from './attribute-value-input.dto';
+
+const trim = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value);
 
 // Correction, not re-classification (decision 0023): category is
 // deliberately not editable here. Changing a product's category changes
@@ -43,4 +49,61 @@ export class UpdateProductDto {
   @ValidateNested({ each: true })
   @Type(() => AttributeValueInputDto)
   attributeValues?: AttributeValueInputDto[];
+
+  // Decision 0063: the rest of the identity and compliance fields. Category,
+  // product code and slug stay fixed.
+
+  @ApiPropertyOptional({ description: 'Move a branded product to another active brand.' })
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsUUID()
+  brandId?: string;
+
+  @ApiPropertyOptional({ nullable: true, description: 'null clears it.' })
+  @ValidateIf((_object, value) => value !== undefined && value !== null)
+  @Transform(trim)
+  @IsString()
+  @MinLength(1)
+  @MaxLength(64)
+  mfrPartNumber?: string | null;
+
+  @ApiPropertyOptional({ nullable: true, description: 'null clears it.' })
+  @ValidateIf((_object, value) => value !== undefined && value !== null)
+  @Transform(trim)
+  @IsString()
+  @MinLength(1)
+  @MaxLength(20)
+  gtin?: string | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description: "Copies the code's GST rate unless gstRate is sent too. null clears it.",
+  })
+  @ValidateIf((_object, value) => value !== undefined && value !== null)
+  @Transform(trim)
+  @IsString()
+  @MinLength(1)
+  @MaxLength(16)
+  hsnCode?: string | null;
+
+  @ApiPropertyOptional({ minimum: 0, maximum: 100 })
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  gstRate?: number;
+
+  @ApiPropertyOptional()
+  @ValidateIf((_object, value) => value !== undefined)
+  @Transform(trim)
+  @IsString()
+  @MinLength(1)
+  @MaxLength(64)
+  countryOfOrigin?: string;
+
+  @ApiPropertyOptional({ nullable: true, description: 'null clears it.' })
+  @ValidateIf((_object, value) => value !== undefined && value !== null)
+  @Transform(trim)
+  @IsString()
+  @MaxLength(1000)
+  importerDetails?: string | null;
 }

@@ -21,7 +21,7 @@ const ID = '11111111-1111-4111-8111-111111111111';
 // Decision 0063 / S4: the product onboarding routes over HTTP.
 describe('AdminCatalogController onboarding routes', () => {
   let app: INestApplication;
-  const catalog = {};
+  const catalog = { updateProduct: jest.fn(async () => ({ id: ID })) };
   const readiness = { getReadiness: jest.fn(async () => ({ ready: true, checks: [] })) };
 
   beforeAll(async () => {
@@ -58,6 +58,50 @@ describe('AdminCatalogController onboarding routes', () => {
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ ready: true, checks: [] });
     expect(readiness.getReadiness).toHaveBeenCalledWith(ID);
+  });
+
+  describe('PATCH product, all fields', () => {
+    const patch = (body: object) =>
+      request(app.getHttpServer()).patch(`/admin/catalog/products/${ID}`).send(body);
+    const BRAND = '22222222-2222-4222-8222-222222222222';
+
+    it('passes the new fields through, trimmed, with nulls that clear', async () => {
+      const res = await patch({
+        brandId: BRAND,
+        mfrPartNumber: ' MCB-10 ',
+        gtin: null,
+        hsnCode: '8536',
+        gstRate: 18,
+        countryOfOrigin: ' India ',
+        importerDetails: null,
+      });
+
+      expect(res.status).toBe(200);
+      expect(catalog.updateProduct).toHaveBeenCalledWith(ID, 'admin-1', {
+        brandId: BRAND,
+        mfrPartNumber: 'MCB-10',
+        gtin: null,
+        hsnCode: '8536',
+        gstRate: 18,
+        countryOfOrigin: 'India',
+        importerDetails: null,
+      });
+    });
+
+    it.each([
+      ['a category (never editable)', { categoryId: BRAND }],
+      ['a malformed brand id', { brandId: 'nope' }],
+      ['a null brand', { brandId: null }],
+      ['a GST rate over 100', { gstRate: 150 }],
+      ['a negative GST rate', { gstRate: -1 }],
+      ['a blank country of origin', { countryOfOrigin: ' ' }],
+      ['a null country of origin', { countryOfOrigin: null }],
+      ['a product code', { productCode: 'GA-0000001' }],
+      ['a slug', { slug: 'x' }],
+    ])('refuses %s with 400', async (_label, body) => {
+      expect((await patch(body)).status).toBe(400);
+      expect(catalog.updateProduct).not.toHaveBeenCalled();
+    });
   });
 
   it('GET readiness refuses a malformed id and non-admins', async () => {
