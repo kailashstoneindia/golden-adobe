@@ -30,7 +30,7 @@ describe('admin labels', () => {
       draft: 'Draft',
       pending_review: 'Pending review',
       live: 'Live',
-      deprecated: 'Deprecated',
+      deprecated: 'Retired',
     });
   });
 

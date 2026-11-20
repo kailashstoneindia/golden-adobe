@@ -4,7 +4,7 @@ export const PRODUCT_STATUS_FILTERS: Array<{ label: string; value: ProductStatus
   { label: 'All', value: 'all' },
   { label: 'Draft', value: 'draft' },
   { label: 'Live', value: 'live' },
-  { label: 'Deprecated', value: 'deprecated' },
+  { label: 'Retired', value: 'deprecated' },
 ];
 
 export function flattenCategoryOptions(

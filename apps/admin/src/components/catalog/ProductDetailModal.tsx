@@ -2,7 +2,15 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { isEmpty } from 'lodash';
 
 import { ProductMediaPanel } from '@/components/catalog/media/ProductMediaPanel';
-import { useProductQuery } from '@/queries/useCatalogQueries';
+import {
+  useDeleteProductMutation,
+  useProductQuery,
+  useRestoreProductMutation,
+  useRetireProductMutation,
+} from '@/queries/useCatalogQueries';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { MergeProductDialog } from '@/components/catalog/MergeProductDialog';
+import { ApiClientError } from '@/services';
 import { ProductNameEditor } from '@/components/catalog/ProductNameEditor';
 import { ProductForm, type ProductFormValues } from '@/components/catalog/ProductForm';
 import { ReadinessChecklist, useHasBlockingGap } from '@/components/catalog/ReadinessChecklist';
@@ -31,6 +39,24 @@ export function ProductDetailModal({
   const productQuery = useProductQuery(productId);
   const product = productQuery.data;
   const [editing, setEditing] = useState(false);
+  const [confirming, setConfirming] = useState<'retire' | 'delete' | null>(null);
+  const [merging, setMerging] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const retire = useRetireProductMutation();
+  const restore = useRestoreProductMutation();
+  const remove = useDeleteProductMutation();
+  const acting = retire.isPending || restore.isPending || remove.isPending;
+  // Decision 0063: retire, restore and delete, with the server's reason on refusal.
+  const run = async (action: () => Promise<unknown>, after?: () => void) => {
+    setActionError(null);
+    try {
+      await action();
+      setConfirming(null);
+      after?.();
+    } catch (caught) {
+      setActionError(caught instanceof ApiClientError ? caught.message : 'That did not work');
+    }
+  };
   const isDraft = product?.status === 'draft';
   // Decision 0063: a draft shows what it still needs; Publish waits for it.
   const blocked = useHasBlockingGap(isDraft ? productId : null);
@@ -169,15 +195,51 @@ export function ProductDetailModal({
                 Close
               </button>
               {product.status !== 'deprecated' ? (
+                <>
+                  <button
+                    type="button"
+                    className={styles.buttonGhost}
+                    onClick={() => setEditing(true)}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.buttonGhost}
+                    onClick={() => setMerging(true)}
+                  >
+                    Merge into…
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.buttonGhost}
+                    disabled={acting}
+                    onClick={() => setConfirming('retire')}
+                  >
+                    Retire
+                  </button>
+                </>
+              ) : product.mergedIntoId ? null : (
                 <button
                   type="button"
                   className={styles.buttonGhost}
-                  onClick={() => setEditing(true)}
+                  disabled={acting}
+                  onClick={() => void run(() => restore.mutateAsync(product.id))}
                 >
-                  Edit
+                  Restore
+                </button>
+              )}
+              {isDraft ? (
+                <button
+                  type="button"
+                  className={styles.buttonDanger}
+                  disabled={acting}
+                  onClick={() => setConfirming('delete')}
+                >
+                  Delete
                 </button>
               ) : null}
-              {product.status === 'live' ? (
+              {product.status === 'deprecated' ? null : product.status === 'live' ? (
                 <button
                   type="button"
                   className={styles.buttonDanger}
@@ -197,6 +259,33 @@ export function ProductDetailModal({
                 </button>
               )}
             </div>
+            {actionError && !confirming ? <p className={styles.error}>{actionError}</p> : null}
+
+            {confirming === 'retire' ? (
+              <ConfirmDialog
+                title="Retire this product?"
+                message="It leaves the catalog. Active vendor listings will be paused, so nobody can buy it. You can restore it later as a draft."
+                confirmLabel="Retire product"
+                busy={acting}
+                error={actionError}
+                onConfirm={() => void run(() => retire.mutateAsync(product.id))}
+                onCancel={() => setConfirming(null)}
+              />
+            ) : null}
+            {confirming === 'delete' ? (
+              <ConfirmDialog
+                title="Delete this draft?"
+                message="The draft and its images are removed for good."
+                confirmLabel="Delete draft"
+                busy={acting}
+                error={actionError}
+                onConfirm={() => void run(() => remove.mutateAsync(product.id), onClose)}
+                onCancel={() => setConfirming(null)}
+              />
+            ) : null}
+            {merging ? (
+              <MergeProductDialog source={product} onDone={() => setMerging(false)} />
+            ) : null}
           </>
         )}
       </div>

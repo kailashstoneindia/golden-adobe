@@ -33,7 +33,8 @@ export const PRODUCT_STATUS_LABELS: Record<ProductStatus, string> = {
   draft: 'Draft',
   pending_review: 'Pending review',
   live: 'Live',
-  deprecated: 'Deprecated',
+  // Decision 0063: shown to admins as Retired.
+  deprecated: 'Retired',
 };
 
 export const VENDOR_STATUS_LABELS: Record<VendorProfileDto['status'], string> = {
