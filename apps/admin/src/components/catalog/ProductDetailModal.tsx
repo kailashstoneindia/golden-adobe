@@ -1,9 +1,11 @@
-import type { ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { isEmpty } from 'lodash';
 
 import { ProductMediaPanel } from '@/components/catalog/media/ProductMediaPanel';
 import { useProductQuery } from '@/queries/useCatalogQueries';
 import { ProductNameEditor } from '@/components/catalog/ProductNameEditor';
+import { ProductForm, type ProductFormValues } from '@/components/catalog/ProductForm';
+import { ReadinessChecklist, useHasBlockingGap } from '@/components/catalog/ReadinessChecklist';
 import { labelFor, PRODUCT_STATUS_LABELS } from '@/constants/labels';
 import styles from '@/styles/shared.module.css';
 import catalogStyles from '@/styles/catalog.module.css';
@@ -28,6 +30,11 @@ export function ProductDetailModal({
 }: ProductDetailModalProps) {
   const productQuery = useProductQuery(productId);
   const product = productQuery.data;
+  const [editing, setEditing] = useState(false);
+  const isDraft = product?.status === 'draft';
+  // Decision 0063: a draft shows what it still needs; Publish waits for it.
+  const blocked = useHasBlockingGap(isDraft ? productId : null);
+  const initial = useMemo(() => (product ? toFormValues(product) : undefined), [product]);
 
   return (
     <div className={styles.overlay} onClick={onClose} role="presentation">
@@ -36,6 +43,19 @@ export function ProductDetailModal({
           <p className={styles.pageSubtitle}>Loading product…</p>
         ) : productQuery.isError || !product ? (
           <p className={styles.error}>Could not load this product.</p>
+        ) : editing ? (
+          <>
+            <h2 className={styles.modalTitle}>Edit {product.productCode}</h2>
+            <ProductForm
+              mode="edit"
+              productId={product.id}
+              initial={initial}
+              categoryPath={product.categoryPath}
+              isGeneric={product.isGeneric}
+              onSaved={() => setEditing(false)}
+              onCancel={() => setEditing(false)}
+            />
+          </>
         ) : (
           <>
             <ProductNameEditor productId={product.id} name={product.name} />
@@ -135,12 +155,28 @@ export function ProductDetailModal({
               />
 
               <ProductMediaPanel productId={product.id} />
+
+              {isDraft ? (
+                <section aria-label="Ready to publish">
+                  <h4 className={catalogStyles.detailTitle}>Ready to publish?</h4>
+                  <ReadinessChecklist productId={product.id} />
+                </section>
+              ) : null}
             </div>
 
             <div className={styles.actions}>
               <button type="button" className={styles.buttonGhost} onClick={onClose}>
                 Close
               </button>
+              {product.status !== 'deprecated' ? (
+                <button
+                  type="button"
+                  className={styles.buttonGhost}
+                  onClick={() => setEditing(true)}
+                >
+                  Edit
+                </button>
+              ) : null}
               {product.status === 'live' ? (
                 <button
                   type="button"
@@ -154,7 +190,7 @@ export function ProductDetailModal({
                 <button
                   type="button"
                   className={styles.buttonPrimary}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || (isDraft && blocked)}
                   onClick={() => onPublish(product.id)}
                 >
                   {isSubmitting ? 'Working…' : 'Publish'}
@@ -267,4 +303,18 @@ function VendorListings({
       )}
     </section>
   );
+}
+
+function toFormValues(product: ProductDetail): Partial<ProductFormValues> {
+  return {
+    categoryId: product.categoryId,
+    name: product.name,
+    brandId: product.brandId,
+    mfrPartNumber: product.mfrPartNumber ?? '',
+    gtin: product.gtin ?? '',
+    hsnCode: product.hsnCode,
+    gstRate: String(product.gstRate),
+    countryOfOrigin: product.countryOfOrigin,
+    attributes: Object.fromEntries(product.attributeValues.map((a) => [a.code, a.value])),
+  };
 }
