@@ -7,6 +7,7 @@ import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { AdminCatalogController } from '../admin-catalog.controller';
 import { AdminCatalogService } from '../admin-catalog.service';
 import { ProductReadinessService } from '../product-readiness.service';
+import { ProductMergeService } from '../product-merge.service';
 
 // Stands in for JWT: the caller's role comes from a header, so the real
 // RolesGuard still decides who gets in.
@@ -31,6 +32,7 @@ describe('AdminCatalogController product edit', () => {
       providers: [
         { provide: AdminCatalogService, useValue: service },
         { provide: ProductReadinessService, useValue: {} },
+        { provide: ProductMergeService, useValue: {} },
       ],
     })
       .overrideGuard(JwtAuthGuard)

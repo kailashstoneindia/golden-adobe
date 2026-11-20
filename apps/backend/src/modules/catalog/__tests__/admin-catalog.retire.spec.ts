@@ -99,6 +99,20 @@ describe('Retire, restore and delete products (integration)', () => {
       expect(await statusOf(product.id)).toBe(MasterProductStatus.DRAFT);
     });
 
+    it('refuses (400) to restore a product that was merged into another', async () => {
+      const target = await fx.product(categoryId);
+      const merged = await fx.product(categoryId, {
+        status: MasterProductStatus.DEPRECATED,
+        mergedIntoId: target.id,
+        mergedAt: new Date(),
+      });
+
+      await expect(service.restoreProduct(merged.id, 'admin-1')).rejects.toThrow(
+        new BadRequestException('This product was merged into another and cannot be restored'),
+      );
+      expect(await statusOf(merged.id)).toBe(MasterProductStatus.DEPRECATED);
+    });
+
     it('refuses (400) to restore a product that is not retired', async () => {
       const product = await fx.product(categoryId);
 

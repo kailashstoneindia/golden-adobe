@@ -594,6 +594,10 @@ export class AdminCatalogService {
     if (product.status !== MasterProductStatus.DEPRECATED) {
       throw new BadRequestException('Only a retired product can be restored');
     }
+    // A merged product only remains so references to it resolve (decision 0063).
+    if (product.mergedIntoId) {
+      throw new BadRequestException('This product was merged into another and cannot be restored');
+    }
 
     await product.update({ status: MasterProductStatus.DRAFT });
     this.logger.log(`admin ${adminUserId} restore product ${productId}`);

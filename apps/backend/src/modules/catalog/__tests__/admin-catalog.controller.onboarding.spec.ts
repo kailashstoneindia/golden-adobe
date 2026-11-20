@@ -7,6 +7,7 @@ import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { AdminCatalogController } from '../admin-catalog.controller';
 import { AdminCatalogService } from '../admin-catalog.service';
 import { ProductReadinessService } from '../product-readiness.service';
+import { ProductMergeService } from '../product-merge.service';
 
 class HeaderAuthGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
@@ -32,6 +33,7 @@ describe('AdminCatalogController onboarding routes', () => {
     setCategoryHsnDefault: jest.fn(async () => ({})),
   };
   const readiness = { getReadiness: jest.fn(async () => ({ ready: true, checks: [] })) };
+  const merger = { merge: jest.fn(async () => ({ movedListings: 0 })) };
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -39,6 +41,7 @@ describe('AdminCatalogController onboarding routes', () => {
       providers: [
         { provide: AdminCatalogService, useValue: catalog },
         { provide: ProductReadinessService, useValue: readiness },
+        { provide: ProductMergeService, useValue: merger },
       ],
     })
       .overrideGuard(JwtAuthGuard)
@@ -188,6 +191,22 @@ describe('AdminCatalogController onboarding routes', () => {
         expect(catalog.setCategoryHsnDefault).not.toHaveBeenCalled();
       },
     );
+  });
+
+  describe('merge', () => {
+    const INTO = '33333333-3333-4333-8333-333333333333';
+    const post = (body: object) =>
+      request(app.getHttpServer()).post(`/admin/catalog/products/${ID}/merge`).send(body);
+
+    it('merges into the given product as the calling admin', async () => {
+      expect((await post({ intoProductId: INTO })).status).toBe(201);
+      expect(merger.merge).toHaveBeenCalledWith('admin-1', ID, INTO);
+    });
+
+    it.each([[{}], [{ intoProductId: 'nope' }]])('refuses a body of %j', async (body) => {
+      expect((await post(body)).status).toBe(400);
+      expect(merger.merge).not.toHaveBeenCalled();
+    });
   });
 
   it('GET readiness refuses a malformed id and non-admins', async () => {

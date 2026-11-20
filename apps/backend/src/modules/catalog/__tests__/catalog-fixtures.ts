@@ -138,6 +138,7 @@ export function catalogFixtures(suffix: string) {
       vendorId: string,
       productId: string,
       status: VendorListingStatus = VendorListingStatus.ACTIVE,
+      over: Record<string, unknown> = {},
     ) {
       return track(
         VendorListing,
@@ -147,6 +148,7 @@ export function catalogFixtures(suffix: string) {
           price: 900,
           mrp: 1000,
           status,
+          ...over,
         } as never),
       );
     },

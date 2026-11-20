@@ -20,6 +20,8 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { AdminCatalogService } from './admin-catalog.service';
 import { ProductReadinessService } from './product-readiness.service';
+import { ProductMergeService } from './product-merge.service';
+import { MergeProductDto } from './dto/merge-product.dto';
 import { ListProductsQueryDto } from './dto/list-products-query.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -44,6 +46,7 @@ export class AdminCatalogController {
   constructor(
     private readonly adminCatalog: AdminCatalogService,
     private readonly readiness: ProductReadinessService,
+    private readonly merger: ProductMergeService,
   ) {}
 
   @Get('categories')
@@ -181,6 +184,22 @@ export class AdminCatalogController {
     @CurrentUser('sub') adminUserId: string,
   ) {
     return this.adminCatalog.retireProduct(productId, adminUserId);
+  }
+
+  @Post('products/:productId/merge')
+  @ApiOperation({
+    summary: 'Merge this product into another (same category)',
+    description:
+      'Listings, vendor SKU mappings and (if the target has none) images move to the target; a ' +
+      'vendor who lists both keeps the target listing and the source one is paused, never deleted. ' +
+      'This product is retired and points at the target (decision 0063).',
+  })
+  async mergeProduct(
+    @Param('productId', ParseUUIDPipe) productId: string,
+    @Body() dto: MergeProductDto,
+    @CurrentUser('sub') adminUserId: string,
+  ) {
+    return this.merger.merge(adminUserId, productId, dto.intoProductId);
   }
 
   @Patch('products/:productId/restore')
