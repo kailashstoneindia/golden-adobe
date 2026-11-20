@@ -9,6 +9,8 @@ export type CategoryNode = {
   level: number;
   isLeaf: boolean;
   unitOfMeasure: string | null;
+  /** This category's own default HSN code (decision 0063); children inherit it. */
+  hsnCodeDefault: string | null;
   productCount: number;
   children: CategoryNode[];
 };
@@ -114,6 +116,8 @@ export type ProductDetail = {
   categoryId: string;
   categoryPath: string;
   brand: string | null;
+  brandId: string | null;
+  mergedIntoId: string | null;
   mfrPartNumber: string | null;
   gtin: string | null;
   hsnCode: string | null;
@@ -224,4 +228,33 @@ export type BulkPublishResult = {
   published: number;
   failed: BulkPublishFailure[];
   skipped: BulkPublishSkipped[];
+};
+
+// ── Decision 0063: create, edit, HSN codes ───────────────────────────────
+export type HsnCodeOption = { code: string; description: string; gstRate: number };
+
+export type AttributeValueInput = { code: string; value: string };
+
+export type CreateProductRequest = {
+  categoryId: string;
+  name: string;
+  brandId?: string;
+  mfrPartNumber?: string;
+  gtin?: string;
+  hsnCode?: string;
+  gstRate?: number;
+  countryOfOrigin?: string;
+  attributeValues?: AttributeValueInput[];
+};
+
+export type UpdateProductRequest = {
+  name?: string;
+  brandId?: string;
+  mfrPartNumber?: string | null;
+  gtin?: string | null;
+  hsnCode?: string | null;
+  gstRate?: number;
+  countryOfOrigin?: string;
+  importerDetails?: string | null;
+  attributeValues?: AttributeValueInput[];
 };

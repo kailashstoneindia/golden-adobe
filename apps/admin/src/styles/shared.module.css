@@ -1083,3 +1083,31 @@ textarea.input {
   font-size: 13px;
   color: var(--color-ink);
 }
+
+/* Readiness checklist (decision 0063). */
+.checklist {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+}
+
+.checklist li {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.check_ok {
+  color: #2e7d4f;
+}
+
+.check_blocking {
+  color: #b3261e;
+}
+
+.check_warning {
+  color: #a8731f;
+}

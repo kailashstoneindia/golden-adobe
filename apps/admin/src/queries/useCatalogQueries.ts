@@ -2,7 +2,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { APP_CONSTANTS } from '@/constants/appConstants';
 import { catalogService } from '@/services';
-import type { BulkPublishRequest, ListProductsQuery } from '@/types/catalog.types';
+import type {
+  BulkPublishRequest,
+  CreateProductRequest,
+  HsnCodeOption,
+  ListProductsQuery,
+  UpdateProductRequest,
+} from '@/types/catalog.types';
 
 export const CATALOG_QUERY_KEYS = {
   all: ['catalog'] as const,
@@ -117,4 +123,68 @@ export function useRenameProductMutation() {
       catalogService.renameProduct(options.productId, options.name),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: CATALOG_QUERY_KEYS.all }),
   });
+}
+
+// ── Decision 0063: readiness, create/edit, retire/restore/delete, merge, HSN ──
+
+export function useProductReadinessQuery(productId: string | null) {
+  return useQuery({
+    queryKey: ['catalog', 'readiness', productId ?? ''] as const,
+    queryFn: () => catalogService.fetchReadiness(productId!),
+    enabled: Boolean(productId),
+  });
+}
+
+function useCatalogMutation<TArgs, TResult>(fn: (args: TArgs) => Promise<TResult>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: CATALOG_QUERY_KEYS.all }),
+  });
+}
+
+export function useCreateProductMutation() {
+  return useCatalogMutation((body: CreateProductRequest) => catalogService.createProduct(body));
+}
+
+export function useUpdateProductMutation(productId: string) {
+  return useCatalogMutation((body: UpdateProductRequest) =>
+    catalogService.updateProduct(productId, body),
+  );
+}
+
+export function useRetireProductMutation() {
+  return useCatalogMutation((productId: string) => catalogService.retireProduct(productId));
+}
+
+export function useRestoreProductMutation() {
+  return useCatalogMutation((productId: string) => catalogService.restoreProduct(productId));
+}
+
+export function useDeleteProductMutation() {
+  return useCatalogMutation((productId: string) => catalogService.deleteProduct(productId));
+}
+
+export function useMergeProductMutation(productId: string) {
+  return useCatalogMutation((intoProductId: string) =>
+    catalogService.mergeProduct(productId, intoProductId),
+  );
+}
+
+export function useHsnCodesQuery(search: string) {
+  return useQuery({
+    queryKey: ['catalog', 'hsn-codes', search] as const,
+    queryFn: () => catalogService.listHsnCodes(search),
+    staleTime: APP_CONSTANTS.staleTimeMs,
+  });
+}
+
+export function useCreateHsnCodeMutation() {
+  return useCatalogMutation((body: HsnCodeOption) => catalogService.createHsnCode(body));
+}
+
+export function useSetCategoryHsnDefaultMutation() {
+  return useCatalogMutation((args: { categoryId: string; hsnCodeDefault: string | null }) =>
+    catalogService.setCategoryHsnDefault(args.categoryId, args.hsnCodeDefault),
+  );
 }

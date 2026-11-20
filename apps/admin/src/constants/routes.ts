@@ -17,6 +17,7 @@ export const ROUTES = {
   drivers: '/drivers',
   catalogCategories: '/catalog/categories',
   catalogProducts: '/catalog/products',
+  catalogProductNew: '/catalog/products/new',
   catalogImport: '/catalog/import',
   catalogReview: '/catalog/review-queue',
   brands: '/catalog/brands',

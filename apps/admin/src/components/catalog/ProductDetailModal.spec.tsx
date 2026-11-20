@@ -21,6 +21,8 @@ function product(over: Partial<ProductDetail> = {}): ProductDetail {
     categoryId: 'c1',
     categoryPath: 'stone.granite',
     brand: null,
+    brandId: null,
+    mergedIntoId: null,
     mfrPartNumber: null,
     gtin: null,
     hsnCode: '6802',

@@ -8,10 +8,15 @@ import type {
   ReviewQueueRow,
   BulkPublishRequest,
   BulkPublishResult,
+  CreateProductRequest,
+  HsnCodeOption,
+  UpdateProductRequest,
 } from '@/types/catalog.types';
+import type { MergeResultDto, ProductReadinessDto } from '@golden-abode/types';
 
 import { API_ENDPOINTS } from '@/constants/apiEndpoints';
 import {
+  deleteRequest,
   downloadRequest,
   getRequest,
   patchRequest,
@@ -85,6 +90,57 @@ export const catalogService = {
 
   uploadImport(categoryId: string, file: File): Promise<ImportResult> {
     return uploadRequest<ImportResult>(API_ENDPOINTS.catalogImport.upload(categoryId), file);
+  },
+
+  // ── Decision 0063 ──────────────────────────────────────────────────────
+  fetchReadiness(productId: string): Promise<ProductReadinessDto> {
+    return getRequest<ProductReadinessDto>(API_ENDPOINTS.catalog.readiness(productId));
+  },
+
+  createProduct(body: CreateProductRequest): Promise<ProductDetail> {
+    return postRequest<ProductDetail, CreateProductRequest>(API_ENDPOINTS.catalog.products, body);
+  },
+
+  updateProduct(productId: string, body: UpdateProductRequest): Promise<ProductDetail> {
+    return patchRequest<ProductDetail, UpdateProductRequest>(
+      API_ENDPOINTS.catalog.productById(productId),
+      body,
+    );
+  },
+
+  retireProduct(productId: string): Promise<ProductDetail> {
+    return patchRequest<ProductDetail, undefined>(API_ENDPOINTS.catalog.retire(productId));
+  },
+
+  restoreProduct(productId: string): Promise<ProductDetail> {
+    return patchRequest<ProductDetail, undefined>(API_ENDPOINTS.catalog.restore(productId));
+  },
+
+  deleteProduct(productId: string): Promise<void> {
+    return deleteRequest(API_ENDPOINTS.catalog.productById(productId));
+  },
+
+  mergeProduct(productId: string, intoProductId: string): Promise<MergeResultDto> {
+    return postRequest<MergeResultDto, { intoProductId: string }>(
+      API_ENDPOINTS.catalog.merge(productId),
+      { intoProductId },
+    );
+  },
+
+  listHsnCodes(search: string): Promise<HsnCodeOption[]> {
+    const query = search.trim() ? `?search=${encodeURIComponent(search.trim())}` : '';
+    return getRequest<HsnCodeOption[]>(`${API_ENDPOINTS.catalog.hsnCodes}${query}`);
+  },
+
+  createHsnCode(body: HsnCodeOption): Promise<HsnCodeOption> {
+    return postRequest<HsnCodeOption, HsnCodeOption>(API_ENDPOINTS.catalog.hsnCodes, body);
+  },
+
+  setCategoryHsnDefault(categoryId: string, hsnCodeDefault: string | null): Promise<unknown> {
+    return patchRequest<unknown, { hsnCodeDefault: string | null }>(
+      API_ENDPOINTS.catalog.categoryById(categoryId),
+      { hsnCodeDefault },
+    );
   },
 
   fetchReviewQueue(): Promise<ReviewQueueRow[]> {

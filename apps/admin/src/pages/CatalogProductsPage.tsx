@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { isEmpty } from 'lodash';
 
 import { BrandFilter } from '@/components/catalog/BrandFilter';
@@ -13,6 +14,7 @@ import {
   useUnpublishProductMutation,
 } from '@/queries/useCatalogQueries';
 import { labelFor, PRODUCT_STATUS_LABELS } from '@/constants/labels';
+import { ROUTES } from '@/constants/routes';
 import styles from '@/styles/shared.module.css';
 import catalogStyles from '@/styles/catalog.module.css';
 import {
@@ -132,7 +134,12 @@ export function CatalogProductsPage() {
 
   return (
     <section>
-      <h2 className={styles.pageTitle}>Products</h2>
+      <div className={catalogStyles.filterBar}>
+        <h2 className={styles.pageTitle}>Products</h2>
+        <Link className={`${styles.button} ${styles.buttonPrimary}`} to={ROUTES.catalogProductNew}>
+          New product
+        </Link>
+      </div>
       <p className={styles.pageSubtitle}>
         Every catalog product, including drafts. Drafts have no vendor listing and are not
         searchable by customers until published.

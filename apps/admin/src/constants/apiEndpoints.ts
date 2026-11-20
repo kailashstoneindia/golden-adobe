@@ -86,6 +86,12 @@ export const API_ENDPOINTS = {
     publishProduct: (productId: string) => `/admin/catalog/products/${productId}/publish`,
     unpublishProduct: (productId: string) => `/admin/catalog/products/${productId}/unpublish`,
     bulkPublish: '/admin/catalog/products/bulk-publish',
+    readiness: (productId: string) => `/admin/catalog/products/${productId}/readiness`,
+    retire: (productId: string) => `/admin/catalog/products/${productId}/retire`,
+    restore: (productId: string) => `/admin/catalog/products/${productId}/restore`,
+    merge: (productId: string) => `/admin/catalog/products/${productId}/merge`,
+    hsnCodes: '/admin/catalog/hsn-codes',
+    categoryById: (categoryId: string) => `/admin/catalog/categories/${categoryId}`,
   },
   // Product images (decision 0033).
   media: {
