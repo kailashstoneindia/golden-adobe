@@ -96,6 +96,20 @@ driver payouts, delivery fee to the customer, customer-facing tracking beyond th
 
 - **Admin delivery UI details (S8).** The order modal lists delivery attempts through a new `orderId` filter on `GET /admin/delivery/assignments`, not through the admin order DTO, so photo links keep being signed in one place. Assign shows "Already assigned" on a 409 and refreshes the queue. Reassign hides the current driver; re-attempt may pick the same driver again, as the API allows.
 
+## Review of PR #45 (2026-11-20)
+
+A code review found ten issues; each was fixed test-first except one.
+
+- **Vendor transitions.** The shared `ORDER_VENDOR_GROUP_NEXT_STATUSES` offered buttons the API always rejected. There is now one `VENDOR_GROUP_TRANSITIONS` table in the backend and a test that the shared map equals it.
+- **Admin override.** It locks the open assignments first and then the group (the driver flow's order), and decides from the locked rows. Forcing `shipped` while a driver is assigned but has not picked up is now refused, because that left a job that could neither be picked up nor completed. My call.
+- **Unlock (my call).** A job locked by 5 wrong codes had no way out. Ops can now `POST /admin/delivery/assignments/:id/unlock`: the tries reset, the customer gets a new code, the driver stays. Ops should confirm with the customer first. Only a locked `picked_up` job can be unlocked, and not under a refunded or cancelled order.
+- **Re-attempt button.** `AdminAssignmentDto` gains `canReattempt` (latest failed attempt of a failed group only) and `locked`.
+- **Reassign** keeps the vendor handover time and photo. **Vendor handover** is refused under a refunded or cancelled order.
+- **One vehicle per driver** is now a unique index (migration `20261120100000`), not only a check.
+- **Driver search** escapes `%` and `_`; the driver picker has a search box and says when more than 100 drivers exist.
+- **Shared helpers** (`notifyQuietly`, `iso`, the group status update, the photo link lifetime) live in `delivery-utils.ts`.
+- **Declined: the extra reads in `complete` and `fail`.** The assignment is read before the locked read on purpose: a photo that does not belong to the job must be refused before a wrong code is counted ("a bad photo is the driver's upload problem, not a guess at the code"). The cost is two small reads per driver action. Revisit only if it shows up in a profile.
+
 ## Open follow-ups
 
 | Item | Blocked on | Notes |

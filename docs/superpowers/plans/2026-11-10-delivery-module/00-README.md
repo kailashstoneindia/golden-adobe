@@ -78,7 +78,7 @@ S2 and S3 can run in either order; S7 can run any time after S3, S8 after S4.
 
 **Branch:** `feat/delivery-module`. Done: S1-S9 (plan complete; NOT merged or deployed). `.claude/settings.json` is modified and deliberately NOT committed; never stage it.
 
-**Next step: none in the plan.** Remaining: sync with the mobile developer, then ask the user which merge method, then the pre-live checklist (three migrations on prod via SSM (delivery tables, address snapshot, order number), which needs the user's permission; create the first driver in the admin panel).
+**Next step: none in the plan.** Remaining: sync with the mobile developer, then ask the user which merge method, then the pre-live checklist (four migrations on prod via SSM (delivery tables, address snapshot, order number, unique vehicle per driver), which needs the user's permission; create the first driver in the admin panel).
 
 Backend API for all admin screens exists (S3, S4). Run the full backend suite and `tsc --noEmit` before the S9 sign-off.
 
@@ -121,3 +121,5 @@ Backend API for all admin screens exists (S3, S4). Run the full backend suite an
 - S9: `delivery-flow.e2e.spec.ts` walks the full flow over HTTP (also the first HTTP test of the vendor handover routes). A re-attempt creates the new job already `picked_up` (no second pickup). `docs/order-flow.md` named in S9 does not exist in the repo; the flow lives in decision 0060 and `docs/delivery-mobile-api-contract.md`. The shared fixture no longer deletes `unit_of_measure` by pattern (it raced other specs); the one spec that creates its unit removes it.
 
 - Decision 0061 (order number GA-10001): migration `20261120090000` numbers existing orders oldest first and adds a sequence default. `orderNumber` is on the customer/artisan/admin order, queue, assignment, driver job and vendor group DTOs. New shared type `VendorOrderGroupWithNumberDto`; the old `VendorOrderGroupDto` alias is unchanged because mobile uses it. Migrations for local DBs: `npx sequelize-cli db:migrate` (dev) or `--env test`; `DB_NAME` is ignored outside production.
+
+- PR #45 review (2026-11-20): all findings fixed except the extra reads in complete/fail (declined, see decision 0060 "Review of PR #45"). New: `POST /admin/delivery/assignments/:id/unlock`, `AdminAssignmentDto.locked` and `.canReattempt`, `delivery-utils.ts`, migration `20261120100000`. Windows note: run admin vitest from an uppercase `Z:` path (a lowercase `z:` loads two copies of React).
