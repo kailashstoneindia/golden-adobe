@@ -163,6 +163,7 @@ export type ProductListing = {
 export type ListProductsQuery = {
   search?: string;
   categoryId?: string;
+  brandId?: string;
   status?: ProductStatus;
   page?: number;
   limit?: number;
@@ -203,6 +204,7 @@ export type ReviewQueueRow = {
 export type BulkPublishRequest = {
   productIds?: string[];
   categoryId?: string;
+  brandId?: string;
 };
 
 export type BulkPublishFailure = {
@@ -210,8 +212,16 @@ export type BulkPublishFailure = {
   reason: string;
 };
 
+// Decision 0063: a product that is not ready is skipped, with its reasons.
+export type BulkPublishSkipped = {
+  productId: string;
+  productCode: string;
+  reasons: string[];
+};
+
 export type BulkPublishResult = {
   requested: number;
   published: number;
   failed: BulkPublishFailure[];
+  skipped: BulkPublishSkipped[];
 };

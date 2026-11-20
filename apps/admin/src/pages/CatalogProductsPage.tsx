@@ -1,7 +1,10 @@
 import { useMemo, useState } from 'react';
 import { isEmpty } from 'lodash';
 
+import { BrandFilter } from '@/components/catalog/BrandFilter';
 import { ProductDetailModal } from '@/components/catalog/ProductDetailModal';
+import { useBrandQuery } from '@/queries';
+import type { BulkPublishSkipped } from '@/types/catalog.types';
 import {
   useBulkPublishProductsMutation,
   useCategoryTreeQuery,
@@ -25,6 +28,8 @@ export function CatalogProductsPage() {
   const [submittedSearch, setSubmittedSearch] = useState('');
   const [status, setStatus] = useState<(typeof PRODUCT_STATUS_FILTERS)[number]['value']>('all');
   const [categoryId, setCategoryId] = useState('');
+  const [brandId, setBrandId] = useState<string | null>(null);
+  const [skipped, setSkipped] = useState<BulkPublishSkipped[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -35,8 +40,10 @@ export function CatalogProductsPage() {
     search: submittedSearch || undefined,
     status: status === 'all' ? undefined : status,
     categoryId: categoryId || undefined,
+    brandId: brandId ?? undefined,
     limit: 50,
   });
+  const brandQuery = useBrandQuery(brandId);
   const publishMutation = usePublishProductMutation();
   const unpublishMutation = useUnpublishProductMutation();
   const bulkPublishMutation = useBulkPublishProductsMutation();
@@ -58,6 +65,7 @@ export function CatalogProductsPage() {
   const handlePublish = async (productId: string): Promise<void> => {
     setActionError(null);
     setBulkMessage(null);
+    setSkipped([]);
     try {
       await publishMutation.mutateAsync(productId);
     } catch (error) {
@@ -68,6 +76,7 @@ export function CatalogProductsPage() {
   const handleUnpublish = async (productId: string): Promise<void> => {
     setActionError(null);
     setBulkMessage(null);
+    setSkipped([]);
     try {
       await unpublishMutation.mutateAsync(productId);
     } catch (error) {
@@ -79,9 +88,11 @@ export function CatalogProductsPage() {
     if (isEmpty(selectedDraftIds)) return;
     setActionError(null);
     setBulkMessage(null);
+    setSkipped([]);
     try {
       const result = await bulkPublishMutation.mutateAsync({ productIds: selectedDraftIds });
       setBulkMessage(formatBulkPublishResult(result));
+      setSkipped(result.skipped ?? []);
       setSelectedProductIds([]);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Could not bulk-publish products.');
@@ -92,12 +103,30 @@ export function CatalogProductsPage() {
     if (!categoryId) return;
     setActionError(null);
     setBulkMessage(null);
+    setSkipped([]);
     try {
       const result = await bulkPublishMutation.mutateAsync({ categoryId });
       setBulkMessage(formatBulkPublishResult(result));
+      setSkipped(result.skipped ?? []);
       setSelectedProductIds([]);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Could not bulk-publish category.');
+    }
+  };
+
+  // Decision 0063: after onboarding a brand, publish all of its drafts at once.
+  const handleBulkPublishBrand = async (): Promise<void> => {
+    if (!brandId) return;
+    setActionError(null);
+    setBulkMessage(null);
+    setSkipped([]);
+    try {
+      const result = await bulkPublishMutation.mutateAsync({ brandId });
+      setBulkMessage(formatBulkPublishResult(result));
+      setSkipped(result.skipped ?? []);
+      setSelectedProductIds([]);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Could not bulk-publish the brand.');
     }
   };
 
@@ -138,6 +167,9 @@ export function CatalogProductsPage() {
           Search
         </button>
       </form>
+      <div className={catalogStyles.filterBar}>
+        <BrandFilter value={brandId} onChange={setBrandId} />
+      </div>
 
       <div className={styles.tabs}>
         {PRODUCT_STATUS_FILTERS.map((filter) => (
@@ -187,10 +219,27 @@ export function CatalogProductsPage() {
             Publish all drafts in category
           </button>
         ) : null}
+        {brandId && status === 'draft' && brandQuery.data ? (
+          <button
+            type="button"
+            className={styles.buttonPrimary}
+            disabled={isSubmitting}
+            onClick={() => void handleBulkPublishBrand()}
+          >
+            Publish all drafts of {brandQuery.data.name}
+          </button>
+        ) : null}
       </div>
 
       {actionError ? <p className={styles.error}>{actionError}</p> : null}
       {bulkMessage ? <p className={styles.hint}>{bulkMessage}</p> : null}
+      {skipped.length > 0 ? (
+        <ul className={styles.skippedList}>
+          {skipped.map((entry) => (
+            <li key={entry.productId}>{`${entry.productCode}: ${entry.reasons.join('; ')}`}</li>
+          ))}
+        </ul>
+      ) : null}
 
       {productsQuery.isLoading ? (
         <p className={styles.pageSubtitle}>Loading products…</p>

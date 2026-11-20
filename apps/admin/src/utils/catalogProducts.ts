@@ -26,9 +26,11 @@ export function toggleProductId(currentIds: string[], productId: string): string
 
 export function formatBulkPublishResult(result: BulkPublishResult): string {
   const failureCount = result.failed.length;
+  const skippedCount = result.skipped?.length ?? 0;
+  const skipped = skippedCount ? ` Skipped ${skippedCount} not ready:` : '';
   if (failureCount === 0) {
-    return `Published ${result.published} of ${result.requested}.`;
+    return `Published ${result.published} of ${result.requested}.${skipped}`;
   }
   const firstReason = result.failed[0]?.reason ?? 'unknown error';
-  return `Published ${result.published} of ${result.requested}. ${failureCount} failed (e.g. ${firstReason}).`;
+  return `Published ${result.published} of ${result.requested}. ${failureCount} failed (e.g. ${firstReason}).${skipped}`;
 }

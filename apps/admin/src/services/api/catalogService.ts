@@ -23,6 +23,7 @@ function buildProductsQueryString(query: ListProductsQuery): string {
   const params = new URLSearchParams();
   if (query.search) params.set('search', query.search);
   if (query.categoryId) params.set('categoryId', query.categoryId);
+  if (query.brandId) params.set('brandId', query.brandId);
   if (query.status) params.set('status', query.status);
   if (query.page) params.set('page', String(query.page));
   if (query.limit) params.set('limit', String(query.limit));
