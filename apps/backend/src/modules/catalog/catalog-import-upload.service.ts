@@ -3,7 +3,7 @@ import { InjectModel } from '@nestjs/sequelize';
 import ExcelJS from 'exceljs';
 import { CatalogImportRowError, CatalogImportResult } from '@golden-abode/types';
 import { Category } from './models/category.model';
-import { Brand } from './models/brand.model';
+import { BrandResolverService } from './brand-resolver.service';
 import { HsnCode } from './models/hsn-code.model';
 import { Attribute, AttributeDataType } from './models/attribute.model';
 import { MasterProduct, MasterProductStatus } from './models/master-product.model';
@@ -41,8 +41,6 @@ export class CatalogImportUploadService {
   constructor(
     @InjectModel(Category)
     private readonly categoryModel: typeof Category,
-    @InjectModel(Brand)
-    private readonly brandModel: typeof Brand,
     @InjectModel(HsnCode)
     private readonly hsnCodeModel: typeof HsnCode,
     @InjectModel(MasterProduct)
@@ -50,6 +48,7 @@ export class CatalogImportUploadService {
     @InjectModel(MasterProductAttributeValue)
     private readonly attributeValueModel: typeof MasterProductAttributeValue,
     private readonly attributeResolver: CatalogAttributeResolverService,
+    private readonly brandResolver: BrandResolverService,
   ) {}
 
   async importFile(leafCategoryId: string, fileBuffer: Buffer): Promise<CatalogImportResult> {
@@ -266,16 +265,25 @@ export class CatalogImportUploadService {
     // consumer_care_email/phone are all NOT NULL) that a catalog import row
     // has no column for, so "flagged for creation" here means "rejected
     // with a clear reason", not an auto-created incomplete brand row.
+    //
+    // Decision 0063: resolved through BrandResolverService (case, corporate
+    // suffixes, aliases, merges) rather than an exact name match, and a
+    // deactivated brand is refused.
     const brandName = row.values['brand'];
+    const brand =
+      brandName !== undefined ? await this.brandResolver.resolve(String(brandName)) : null;
     if (brandName !== undefined) {
-      const brand = await this.brandModel.findOne({
-        where: { name: String(brandName) },
-      });
       if (!brand) {
         errors.push({
           row: row.rowNumber,
           column: 'brand',
-          message: `brand "${brandName}" does not exist — create it first (admin brand management), then re-upload`,
+          message: `brand "${brandName}" is not in the catalog. Add it on the Brands page first, then re-upload`,
+        });
+      } else if (!brand.isActive) {
+        errors.push({
+          row: row.rowNumber,
+          column: 'brand',
+          message: `brand "${brandName}" is deactivated`,
         });
       }
     }
@@ -308,7 +316,6 @@ export class CatalogImportUploadService {
     // to the DB constraint rather than duplicated in application code.)
     const mfrPartNumber = row.values['mfr_part_number'];
     if (brandName !== undefined && mfrPartNumber !== undefined) {
-      const brand = await this.brandModel.findOne({ where: { name: String(brandName) } });
       if (brand) {
         const existing = await this.masterProductModel.findOne({
           where: {
@@ -350,9 +357,7 @@ export class CatalogImportUploadService {
     leafCategoryId: string,
   ): Promise<string> {
     const brandName = row.values['brand'];
-    const brand = brandName
-      ? await this.brandModel.findOne({ where: { name: String(brandName) } })
-      : null;
+    const brand = brandName ? await this.brandResolver.resolve(String(brandName)) : null;
 
     const name = String(row.values['name']);
     const slug = this.slugify(name, row.rowNumber);

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { QueryTypes } from 'sequelize';
 import { Sequelize } from 'sequelize-typescript';
@@ -22,6 +22,9 @@ import { BrandAlias } from './models/brand-alias.model';
 //      admin brand creation); this service NEVER creates a brand.
 @Injectable()
 export class BrandResolverService {
+  private static readonly MAX_MERGE_HOPS = 5;
+  private readonly logger = new Logger(BrandResolverService.name);
+
   constructor(
     @InjectModel(Brand)
     private readonly brandModel: typeof Brand,
@@ -31,6 +34,30 @@ export class BrandResolverService {
   ) {}
 
   async resolve(typedName: string): Promise<Brand | null> {
+    const matched = await this.matchTypedName(typedName);
+    return matched ? this.followMerges(matched) : null;
+  }
+
+  // A merged brand keeps its row (deactivated, merged_into_id set) so its
+  // old name and aliases still match; the caller must get the brand that
+  // survived the merge (decision 0063). Merges can chain, so walk the
+  // pointer, capped so a corrupt cycle can't loop forever.
+  private async followMerges(start: Brand): Promise<Brand | null> {
+    let current = start;
+    for (let hop = 0; hop < BrandResolverService.MAX_MERGE_HOPS; hop++) {
+      if (!current.mergedIntoId) return current;
+      const next = await this.brandModel.findByPk(current.mergedIntoId);
+      if (!next) return null;
+      current = next;
+    }
+    if (!current.mergedIntoId) return current;
+    this.logger.error(
+      `brand ${start.id} ("${start.name}") did not reach a final brand within ${BrandResolverService.MAX_MERGE_HOPS} merge hops — merge cycle or chain too long`,
+    );
+    return null;
+  }
+
+  private async matchTypedName(typedName: string): Promise<Brand | null> {
     const normalized = this.normalizeLoosely(typedName);
     if (!normalized) return null;
 
@@ -64,6 +91,19 @@ export class BrandResolverService {
     const normalized = this.normalizeLoosely(aliasText);
     if (!normalized) return;
     await this.brandAliasModel.upsert({ brandId, alias: normalized } as never);
+  }
+
+  async listAliases(brandId: string): Promise<BrandAlias[]> {
+    return this.brandAliasModel.findAll({ where: { brandId }, order: [['alias', 'ASC']] });
+  }
+
+  // Scoped to the brand so a stale or tampered alias id can't remove another
+  // brand's alias through this brand's endpoint.
+  async removeAlias(brandId: string, aliasId: string): Promise<void> {
+    const removed = await this.brandAliasModel.destroy({ where: { id: aliasId, brandId } });
+    if (removed === 0) {
+      throw new NotFoundException(`alias ${aliasId} not found on brand ${brandId}`);
+    }
   }
 
   // Light JS-side normalisation for the alias table lookup only (lowercase

@@ -4,6 +4,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { CATALOG_TEST_MODELS } from './test-db';
 import { AdminCatalogService } from '../admin-catalog.service';
+import { BrandResolverService } from '../brand-resolver.service';
 import { CatalogAttributeResolverService } from '../catalog-attribute-resolver.service';
 import { MediaService } from '../media/media.service';
 import { Category } from '../models/category.model';
@@ -35,6 +36,7 @@ describe('AdminCatalogService.updateProduct (integration)', () => {
       ],
       providers: [
         AdminCatalogService,
+        BrandResolverService,
         {
           provide: CatalogAttributeResolverService,
           useValue: { resolveEffectiveAttributes: async () => [] },

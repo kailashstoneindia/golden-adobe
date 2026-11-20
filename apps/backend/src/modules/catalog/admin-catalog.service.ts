@@ -3,7 +3,7 @@ import { InjectModel } from '@nestjs/sequelize';
 import { QueryTypes } from 'sequelize';
 
 import { Category } from './models/category.model';
-import { Brand } from './models/brand.model';
+import { BrandResolverService } from './brand-resolver.service';
 import { Attribute, AttributeDataType } from './models/attribute.model';
 import { MasterProduct, MasterProductStatus } from './models/master-product.model';
 import { MasterProductAttributeValue } from './models/master-product-attribute-value.model';
@@ -44,12 +44,11 @@ export class AdminCatalogService {
     private readonly masterProductModel: typeof MasterProduct,
     @InjectModel(Category)
     private readonly categoryModel: typeof Category,
-    @InjectModel(Brand)
-    private readonly brandModel: typeof Brand,
     @InjectModel(MasterProductAttributeValue)
     private readonly attributeValueModel: typeof MasterProductAttributeValue,
     private readonly attributeResolver: CatalogAttributeResolverService,
     private readonly media: MediaService,
+    private readonly brandResolver: BrandResolverService,
   ) {}
 
   private get sequelize() {
@@ -520,11 +519,16 @@ export class AdminCatalogService {
       );
     }
 
-    const brand = dto.brand ? await this.brandModel.findOne({ where: { name: dto.brand } }) : null;
+    // Decision 0063: resolve like the importer does (case, suffixes, aliases,
+    // merges) and refuse a deactivated brand.
+    const brand = dto.brand ? await this.brandResolver.resolve(dto.brand) : null;
     if (dto.brand && !brand) {
       throw new BadRequestException(
-        `brand "${dto.brand}" does not exist — create it first (admin brand management)`,
+        `brand "${dto.brand}" is not in the catalog. Add it on the Brands page first`,
       );
+    }
+    if (dto.brand && brand && !brand.isActive) {
+      throw new BadRequestException(`brand "${dto.brand}" is deactivated`);
     }
 
     const attributesByCode = await this.loadAttributesByCode(dto.categoryId);
