@@ -4,6 +4,7 @@ import { QueryTypes } from 'sequelize';
 
 import { Category } from './models/category.model';
 import { BrandResolverService } from './brand-resolver.service';
+import { ProductReadinessService } from './product-readiness.service';
 import { Attribute, AttributeDataType } from './models/attribute.model';
 import { MasterProduct, MasterProductStatus } from './models/master-product.model';
 import { MasterProductAttributeValue } from './models/master-product-attribute-value.model';
@@ -49,6 +50,7 @@ export class AdminCatalogService {
     private readonly attributeResolver: CatalogAttributeResolverService,
     private readonly media: MediaService,
     private readonly brandResolver: BrandResolverService,
+    private readonly readiness: ProductReadinessService,
   ) {}
 
   private get sequelize() {
@@ -411,6 +413,15 @@ export class AdminCatalogService {
     const product = await this.masterProductModel.findByPk(productId);
     if (!product) throw new NotFoundException('Product not found');
 
+    // Decision 0063: going live needs every blocking readiness check.
+    // Unpublishing is never blocked.
+    if (status === 'live') {
+      const unmet = await this.unmetBlockingChecks(productId);
+      if (unmet.length > 0) {
+        throw new BadRequestException(`Cannot publish: ${unmet.join('; ')}`);
+      }
+    }
+
     try {
       await product.update({
         status: status === 'live' ? MasterProductStatus.LIVE : MasterProductStatus.DRAFT,
@@ -441,6 +452,7 @@ export class AdminCatalogService {
     requested: number;
     published: number;
     failed: { productId: string; reason: string }[];
+    skipped: { productId: string; productCode: string; reasons: string[] }[];
   }> {
     if (!dto.productIds?.length && !dto.categoryId && !dto.brandId) {
       throw new BadRequestException('provide productIds, categoryId, or brandId');
@@ -485,10 +497,21 @@ export class AdminCatalogService {
     }
 
     const failed: { productId: string; reason: string }[] = [];
+    const skipped: { productId: string; productCode: string; reasons: string[] }[] = [];
     let published = 0;
 
     for (const productId of productIds) {
       try {
+        // Not ready is an expected outcome in a brand-sized batch, reported
+        // per product with its reasons rather than as an error (decision 0063).
+        const unmet = await this.unmetBlockingChecks(productId);
+        if (unmet.length > 0) {
+          const product = await this.masterProductModel.findByPk(productId, {
+            attributes: ['productCode'],
+          });
+          skipped.push({ productId, productCode: product?.productCode ?? '', reasons: unmet });
+          continue;
+        }
         await this.setProductStatus(productId, 'live');
         published++;
       } catch (err) {
@@ -497,7 +520,14 @@ export class AdminCatalogService {
       }
     }
 
-    return { requested: productIds.length, published, failed };
+    return { requested: productIds.length, published, failed, skipped };
+  }
+
+  private async unmetBlockingChecks(productId: string): Promise<string[]> {
+    const readiness = await this.readiness.getReadiness(productId);
+    return readiness.checks
+      .filter((check) => check.blocking && !check.passed)
+      .map((check) => check.detail ?? check.label);
   }
 
   // Single-product create (decision 0023) — the correction/addition path

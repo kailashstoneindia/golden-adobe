@@ -6,6 +6,7 @@ import ExcelJS from 'exceljs';
 import { CATALOG_TEST_MODELS } from './test-db';
 import { AdminCatalogService } from '../admin-catalog.service';
 import { BrandResolverService } from '../brand-resolver.service';
+import { ProductReadinessService } from '../product-readiness.service';
 import { CatalogAttributeResolverService } from '../catalog-attribute-resolver.service';
 import { CatalogImportUploadService } from '../catalog-import-upload.service';
 import { MediaService } from '../media/media.service';
@@ -70,6 +71,7 @@ describe('Brand resolution in admin import and add-product (integration)', () =>
         CatalogImportUploadService,
         AdminCatalogService,
         BrandResolverService,
+        ProductReadinessService,
         {
           provide: CatalogAttributeResolverService,
           useValue: { resolveEffectiveAttributes: async () => [] },
