@@ -50,6 +50,7 @@ import { VendorCatalogImportController } from './vendor-catalog-import.controlle
 import { CatalogReviewQueueController } from './catalog-review-queue.controller';
 import { AdminCatalogController } from './admin-catalog.controller';
 import { AdminCatalogService } from './admin-catalog.service';
+import { ProductReadinessService } from './product-readiness.service';
 import { AdminBrandsController } from './admin-brands.controller';
 import { AdminBrandsService } from './admin-brands.service';
 import { AdminCitiesController } from './admin-cities.controller';
@@ -170,6 +171,7 @@ import { UsersModule } from '../users/users.module';
     BrandResolverService,
     VendorCategoriesService,
     AdminCatalogService,
+    ProductReadinessService,
     AdminBrandsService,
     CitiesService,
     StockService,

@@ -6,6 +6,7 @@ import { Role } from '@golden-abode/types';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { AdminCatalogController } from '../admin-catalog.controller';
 import { AdminCatalogService } from '../admin-catalog.service';
+import { ProductReadinessService } from '../product-readiness.service';
 
 // Stands in for JWT: the caller's role comes from a header, so the real
 // RolesGuard still decides who gets in.
@@ -27,7 +28,10 @@ describe('AdminCatalogController product edit', () => {
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       controllers: [AdminCatalogController],
-      providers: [{ provide: AdminCatalogService, useValue: service }],
+      providers: [
+        { provide: AdminCatalogService, useValue: service },
+        { provide: ProductReadinessService, useValue: {} },
+      ],
     })
       .overrideGuard(JwtAuthGuard)
       .useClass(HeaderAuthGuard)

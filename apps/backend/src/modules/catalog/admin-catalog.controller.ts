@@ -17,6 +17,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { AdminCatalogService } from './admin-catalog.service';
+import { ProductReadinessService } from './product-readiness.service';
 import { ListProductsQueryDto } from './dto/list-products-query.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -33,7 +34,10 @@ import { BulkPublishProductsDto } from './dto/bulk-publish-products.dto';
 @Roles(Role.ADMIN)
 @ApiBearerAuth()
 export class AdminCatalogController {
-  constructor(private readonly adminCatalog: AdminCatalogService) {}
+  constructor(
+    private readonly adminCatalog: AdminCatalogService,
+    private readonly readiness: ProductReadinessService,
+  ) {}
 
   @Get('categories')
   @ApiOperation({
@@ -76,6 +80,17 @@ export class AdminCatalogController {
   })
   async product(@Param('productId') productId: string) {
     return this.adminCatalog.getProduct(productId);
+  }
+
+  @Get('products/:productId/readiness')
+  @ApiOperation({
+    summary: 'What the product still needs before it can go live',
+    description:
+      'Blocking checks (an image, the required attributes) stop publishing; the HSN code and a ' +
+      'vendor listing are warnings (decision 0063).',
+  })
+  async productReadiness(@Param('productId', ParseUUIDPipe) productId: string) {
+    return this.readiness.getReadiness(productId);
   }
 
   @Post('products')
