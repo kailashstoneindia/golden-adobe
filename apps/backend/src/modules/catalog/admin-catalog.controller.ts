@@ -1,7 +1,9 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -123,7 +125,7 @@ export class AdminCatalogController {
 
   @Patch('products/:productId')
   @ApiOperation({
-    summary: "Edit a product's name and/or attribute values",
+    summary: 'Edit a product (any field except its category)',
     description:
       'Category is not editable here — a category change alters the entire effective ' +
       'attribute set and is a re-classification, not a correction (decision 0023). ' +
@@ -135,6 +137,43 @@ export class AdminCatalogController {
     @CurrentUser('sub') adminUserId: string,
   ) {
     return this.adminCatalog.updateProduct(productId, adminUserId, dto);
+  }
+
+  @Patch('products/:productId/retire')
+  @ApiOperation({
+    summary: 'Retire a product',
+    description:
+      'Status becomes deprecated and every active vendor listing is paused (decision 0063).',
+  })
+  async retireProduct(
+    @Param('productId', ParseUUIDPipe) productId: string,
+    @CurrentUser('sub') adminUserId: string,
+  ) {
+    return this.adminCatalog.retireProduct(productId, adminUserId);
+  }
+
+  @Patch('products/:productId/restore')
+  @ApiOperation({ summary: 'Bring a retired product back as a draft' })
+  async restoreProduct(
+    @Param('productId', ParseUUIDPipe) productId: string,
+    @CurrentUser('sub') adminUserId: string,
+  ) {
+    return this.adminCatalog.restoreProduct(productId, adminUserId);
+  }
+
+  @Delete('products/:productId')
+  @HttpCode(204)
+  @ApiOperation({
+    summary: 'Delete a draft product',
+    description:
+      'Only a draft with no vendor listing, order or import row; anything else answers 409 ' +
+      '"retire it instead". Its images and their stored files are removed too.',
+  })
+  async deleteProduct(
+    @Param('productId', ParseUUIDPipe) productId: string,
+    @CurrentUser('sub') adminUserId: string,
+  ) {
+    await this.adminCatalog.deleteProduct(productId, adminUserId);
   }
 
   @Patch('products/:productId/publish')

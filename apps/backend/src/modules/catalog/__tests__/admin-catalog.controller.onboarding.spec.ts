@@ -21,7 +21,12 @@ const ID = '11111111-1111-4111-8111-111111111111';
 // Decision 0063 / S4: the product onboarding routes over HTTP.
 describe('AdminCatalogController onboarding routes', () => {
   let app: INestApplication;
-  const catalog = { updateProduct: jest.fn(async () => ({ id: ID })) };
+  const catalog = {
+    updateProduct: jest.fn(async () => ({ id: ID })),
+    retireProduct: jest.fn(async () => ({ id: ID })),
+    restoreProduct: jest.fn(async () => ({ id: ID })),
+    deleteProduct: jest.fn(async () => undefined),
+  };
   const readiness = { getReadiness: jest.fn(async () => ({ ready: true, checks: [] })) };
 
   beforeAll(async () => {
@@ -101,6 +106,32 @@ describe('AdminCatalogController onboarding routes', () => {
     ])('refuses %s with 400', async (_label, body) => {
       expect((await patch(body)).status).toBe(400);
       expect(catalog.updateProduct).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('retire, restore, delete', () => {
+    const server = () => request(app.getHttpServer());
+
+    it('retires and restores as the calling admin', async () => {
+      expect((await server().patch(`/admin/catalog/products/${ID}/retire`)).status).toBe(200);
+      expect(catalog.retireProduct).toHaveBeenCalledWith(ID, 'admin-1');
+      expect((await server().patch(`/admin/catalog/products/${ID}/restore`)).status).toBe(200);
+      expect(catalog.restoreProduct).toHaveBeenCalledWith(ID, 'admin-1');
+    });
+
+    it('deletes, answering 204', async () => {
+      expect((await server().delete(`/admin/catalog/products/${ID}`)).status).toBe(204);
+      expect(catalog.deleteProduct).toHaveBeenCalledWith(ID, 'admin-1');
+    });
+
+    it('refuses malformed ids and non-admins', async () => {
+      expect((await server().delete('/admin/catalog/products/nope')).status).toBe(400);
+      expect(
+        (await server().patch(`/admin/catalog/products/${ID}/retire`).set('x-role', Role.VENDOR))
+          .status,
+      ).toBe(403);
+      expect(catalog.deleteProduct).not.toHaveBeenCalled();
+      expect(catalog.retireProduct).not.toHaveBeenCalled();
     });
   });
 

@@ -1,10 +1,18 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { QueryTypes } from 'sequelize';
 
 import { Category } from './models/category.model';
 import { Brand } from './models/brand.model';
 import { HsnCode } from './models/hsn-code.model';
+import { MasterProductMedia } from './models/master-product-media.model';
+import { VendorListing, VendorListingStatus } from './models/vendor-listing.model';
 import { BrandResolverService } from './brand-resolver.service';
 import { ProductReadinessService } from './product-readiness.service';
 import { Attribute, AttributeDataType } from './models/attribute.model';
@@ -53,6 +61,10 @@ export class AdminCatalogService {
     private readonly brandModel: typeof Brand,
     @InjectModel(HsnCode)
     private readonly hsnCodeModel: typeof HsnCode,
+    @InjectModel(VendorListing)
+    private readonly listingModel: typeof VendorListing,
+    @InjectModel(MasterProductMedia)
+    private readonly mediaModel: typeof MasterProductMedia,
     private readonly attributeResolver: CatalogAttributeResolverService,
     private readonly media: MediaService,
     private readonly brandResolver: BrandResolverService,
@@ -419,6 +431,10 @@ export class AdminCatalogService {
     const product = await this.masterProductModel.findByPk(productId);
     if (!product) throw new NotFoundException('Product not found');
 
+    if (product.status === MasterProductStatus.DEPRECATED) {
+      throw new BadRequestException('This product is retired. Restore it to draft first');
+    }
+
     // Decision 0063: going live needs every blocking readiness check.
     // Unpublishing is never blocked.
     if (status === 'live') {
@@ -527,6 +543,77 @@ export class AdminCatalogService {
     }
 
     return { requested: productIds.length, published, failed, skipped };
+  }
+
+  // Decision 0063: a mistaken product leaves the catalog without losing its
+  // history. Its active listings are paused in the same transaction, so
+  // nothing retired can be bought.
+  async retireProduct(productId: string, adminUserId: string) {
+    const product = await this.masterProductModel.findByPk(productId);
+    if (!product) throw new NotFoundException('Product not found');
+    if (product.status === MasterProductStatus.DEPRECATED) {
+      throw new BadRequestException('This product is already retired');
+    }
+
+    const paused = await this.sequelize.transaction(async (transaction) => {
+      await product.update({ status: MasterProductStatus.DEPRECATED }, { transaction });
+      const [count] = await this.listingModel.update(
+        { status: VendorListingStatus.PAUSED },
+        {
+          where: { masterProductId: productId, status: VendorListingStatus.ACTIVE },
+          transaction,
+        },
+      );
+      return count;
+    });
+
+    this.logger.log(`admin ${adminUserId} retire product ${productId} (paused ${paused} listings)`);
+    return this.getProduct(productId);
+  }
+
+  // Back to draft only: going live again goes through the readiness checks.
+  // Listings paused by the retire stay paused for their vendors to resume.
+  async restoreProduct(productId: string, adminUserId: string) {
+    const product = await this.masterProductModel.findByPk(productId);
+    if (!product) throw new NotFoundException('Product not found');
+    if (product.status !== MasterProductStatus.DEPRECATED) {
+      throw new BadRequestException('Only a retired product can be restored');
+    }
+
+    await product.update({ status: MasterProductStatus.DRAFT });
+    this.logger.log(`admin ${adminUserId} restore product ${productId}`);
+    return this.getProduct(productId);
+  }
+
+  // Only for a draft nothing depends on: no vendor listing (even paused), no
+  // order line, no vendor import row matched to it. Anything else is retired.
+  async deleteProduct(productId: string, adminUserId: string): Promise<void> {
+    const product = await this.masterProductModel.findByPk(productId);
+    if (!product) throw new NotFoundException('Product not found');
+
+    const [links] = await this.sequelize.query<{ listings: string; orders: string; rows: string }>(
+      `SELECT
+         (SELECT count(*) FROM vendor_listing WHERE master_product_id = :id) AS listings,
+         (SELECT count(*) FROM order_items WHERE master_product_id = :id) AS orders,
+         (SELECT count(*) FROM catalog_import_row WHERE matched_master_product_id = :id) AS rows`,
+      { replacements: { id: productId }, type: QueryTypes.SELECT },
+    );
+    const linked = Number(links.listings) + Number(links.orders) + Number(links.rows) > 0;
+    if (product.status !== MasterProductStatus.DRAFT || linked) {
+      throw new ConflictException(
+        'Only a draft with no listings, orders or import rows can be deleted. Retire it instead',
+      );
+    }
+
+    // Through MediaService so the stored files go too.
+    const images = await this.mediaModel.findAll({
+      where: { masterProductId: productId },
+      attributes: ['id'],
+    });
+    for (const image of images) await this.media.remove(productId, image.id);
+
+    await product.destroy();
+    this.logger.log(`admin ${adminUserId} delete product ${productId} (${product.productCode})`);
   }
 
   private async unmetBlockingChecks(productId: string): Promise<string[]> {
