@@ -80,3 +80,10 @@ export {
   useVendorCategoriesQuery,
   useVendorsQuery,
 } from './useVendorsQueries';
+
+export {
+  brandKeys,
+  useBrandQuery,
+  useBrandsQuery,
+  useCreateBrandMutation,
+} from './useBrandsQueries';

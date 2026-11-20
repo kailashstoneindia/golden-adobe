@@ -19,4 +19,5 @@ export const ROUTES = {
   catalogProducts: '/catalog/products',
   catalogImport: '/catalog/import',
   catalogReview: '/catalog/review-queue',
+  brands: '/catalog/brands',
 } as const;

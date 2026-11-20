@@ -18,6 +18,7 @@ import { CatalogCategoriesPage } from '@/pages/CatalogCategoriesPage';
 import { CatalogProductsPage } from '@/pages/CatalogProductsPage';
 import { CatalogImportPage } from '@/pages/CatalogImportPage';
 import { CatalogReviewQueuePage } from '@/pages/CatalogReviewQueuePage';
+import { BrandsPage } from '@/pages/BrandsPage';
 import { VendorsPage } from '@/pages/VendorsPage';
 import { OrdersPage } from '@/pages/OrdersPage';
 import { DriversPage } from '@/pages/DriversPage';
@@ -73,6 +74,7 @@ export function AppRouter() {
           <Route path={ROUTES.catalogProducts} element={<CatalogProductsPage />} />
           <Route path={ROUTES.catalogImport} element={<CatalogImportPage />} />
           <Route path={ROUTES.catalogReview} element={<CatalogReviewQueuePage />} />
+          <Route path={ROUTES.brands} element={<BrandsPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to={ROUTES.dashboard} replace />} />

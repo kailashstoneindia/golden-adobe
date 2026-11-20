@@ -66,6 +66,17 @@ export const API_ENDPOINTS = {
       '/admin/delivery/assignments/' + assignmentId + '/unlock',
     groupReattempt: (groupId: string) => `/admin/delivery/groups/${groupId}/reattempt`,
   },
+  // Decision 0063: brand management.
+  brands: {
+    list: '/admin/brands',
+    byId: (brandId: string) => `/admin/brands/${brandId}`,
+    active: (brandId: string) => `/admin/brands/${brandId}/active`,
+    aliases: (brandId: string) => `/admin/brands/${brandId}/aliases`,
+    alias: (brandId: string, aliasId: string) => `/admin/brands/${brandId}/aliases/${aliasId}`,
+    logoUploadUrl: (brandId: string) => `/admin/brands/${brandId}/logo-upload-url`,
+    logoConfirm: (brandId: string) => `/admin/brands/${brandId}/logo/confirm`,
+    merge: (brandId: string) => `/admin/brands/${brandId}/merge`,
+  },
   catalog: {
     categories: '/admin/catalog/categories',
     categoryAttributes: (categoryId: string) =>

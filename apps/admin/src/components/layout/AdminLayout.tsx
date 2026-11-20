@@ -180,6 +180,14 @@ export function AdminLayout() {
               Products
             </NavLink>
             <NavLink
+              to={ROUTES.brands}
+              className={({ isActive }) =>
+                `${styles.subNavLink} ${isActive ? styles.subNavLinkActive : ''}`
+              }
+            >
+              Brands
+            </NavLink>
+            <NavLink
               to={ROUTES.catalogCategories}
               className={({ isActive }) =>
                 `${styles.subNavLink} ${isActive ? styles.subNavLinkActive : ''}`
