@@ -17,6 +17,7 @@ export const CATALOG_QUERY_KEYS = {
     ['catalog', 'category-attributes', categoryId] as const,
   products: (query: ListProductsQuery) => ['catalog', 'products', query] as const,
   product: (productId: string) => ['catalog', 'product', productId] as const,
+  readiness: (productId: string) => ['catalog', 'readiness', productId] as const,
   reviewQueue: ['catalog', 'review-queue'] as const,
 };
 
@@ -129,7 +130,7 @@ export function useRenameProductMutation() {
 
 export function useProductReadinessQuery(productId: string | null) {
   return useQuery({
-    queryKey: ['catalog', 'readiness', productId ?? ''] as const,
+    queryKey: CATALOG_QUERY_KEYS.readiness(productId ?? ''),
     queryFn: () => catalogService.fetchReadiness(productId!),
     enabled: Boolean(productId),
   });

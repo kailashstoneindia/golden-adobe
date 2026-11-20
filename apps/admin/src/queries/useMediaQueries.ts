@@ -22,14 +22,16 @@ export function useProductMediaQuery(productId: string) {
   });
 }
 
-// Refreshes everything that shows this product's images: the panel's own list
-// and the product detail, which carries the same list.
+// Refreshes everything that shows this product's images: the panel's own list,
+// the product detail, which carries the same list, and the readiness checklist,
+// whose image check they decide (decision 0063).
 export function useRefreshProductMedia(productId: string) {
   const queryClient = useQueryClient();
   return () =>
     Promise.all([
       queryClient.invalidateQueries({ queryKey: MEDIA_QUERY_KEYS.list(productId) }),
       queryClient.invalidateQueries({ queryKey: CATALOG_QUERY_KEYS.product(productId) }),
+      queryClient.invalidateQueries({ queryKey: CATALOG_QUERY_KEYS.readiness(productId) }),
     ]);
 }
 
