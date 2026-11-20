@@ -24,6 +24,11 @@ import { ListProductsQueryDto } from './dto/list-products-query.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { BulkPublishProductsDto } from './dto/bulk-publish-products.dto';
+import {
+  CreateHsnCodeDto,
+  ListHsnCodesQueryDto,
+  SetCategoryHsnDefaultDto,
+} from './dto/hsn-code.dto';
 
 // Read + publish + create/edit surface for the admin panel's catalog
 // screens. Bulk seeding still goes through Phase 3's generated Excel
@@ -50,6 +55,32 @@ export class AdminCatalogController {
   })
   async categories() {
     return this.adminCatalog.listCategoryTree();
+  }
+
+  @Patch('categories/:categoryId')
+  @ApiOperation({
+    summary: "Set or clear a category's default HSN code",
+    description:
+      'A product created in this category (or a sub-category without its own default) with no ' +
+      'HSN code gets this one and its GST rate (decision 0063).',
+  })
+  async setCategoryHsnDefault(
+    @Param('categoryId', ParseUUIDPipe) categoryId: string,
+    @Body() dto: SetCategoryHsnDefaultDto,
+  ) {
+    return this.adminCatalog.setCategoryHsnDefault(categoryId, dto.hsnCodeDefault);
+  }
+
+  @Get('hsn-codes')
+  @ApiOperation({ summary: 'Search HSN codes by code prefix or description (up to 50)' })
+  async hsnCodes(@Query() query: ListHsnCodesQueryDto) {
+    return this.adminCatalog.listHsnCodes(query.search);
+  }
+
+  @Post('hsn-codes')
+  @ApiOperation({ summary: 'Add an HSN code with its GST rate' })
+  async createHsnCode(@Body() dto: CreateHsnCodeDto) {
+    return this.adminCatalog.createHsnCode(dto);
   }
 
   @Get('categories/:categoryId/attributes')

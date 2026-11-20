@@ -4,6 +4,7 @@ import ExcelJS from 'exceljs';
 import { CatalogImportRowError, CatalogImportResult } from '@golden-abode/types';
 import { Category } from './models/category.model';
 import { BrandResolverService } from './brand-resolver.service';
+import { resolveCategoryHsnDefault } from './category-hsn-default';
 import { HsnCode } from './models/hsn-code.model';
 import { Attribute, AttributeDataType } from './models/attribute.model';
 import { MasterProduct, MasterProductStatus } from './models/master-product.model';
@@ -362,6 +363,13 @@ export class CatalogImportUploadService {
     const name = String(row.values['name']);
     const slug = this.slugify(name, row.rowNumber);
 
+    // Decision 0063: a blank HSN code takes the category default and, when the
+    // row gives no GST rate, that code's rate.
+    const typedHsn = row.values['hsn_code'] ? String(row.values['hsn_code']) : null;
+    const hsnDefault = typedHsn
+      ? null
+      : await resolveCategoryHsnDefault(this.masterProductModel.sequelize!, leafCategoryId);
+
     const product = await this.masterProductModel.create({
       categoryId: leafCategoryId,
       brandId: brand?.id ?? null,
@@ -369,8 +377,11 @@ export class CatalogImportUploadService {
       slug,
       mfrPartNumber: row.values['mfr_part_number'] ? String(row.values['mfr_part_number']) : null,
       gtin: row.values['gtin'] ? String(row.values['gtin']) : null,
-      hsnCode: row.values['hsn_code'] ? String(row.values['hsn_code']) : null,
-      gstRate: row.values['gst_rate'] !== undefined ? Number(row.values['gst_rate']) : 18.0,
+      hsnCode: typedHsn ?? hsnDefault?.code ?? null,
+      gstRate:
+        row.values['gst_rate'] !== undefined
+          ? Number(row.values['gst_rate'])
+          : (hsnDefault?.gstRate ?? 18.0),
       countryOfOrigin: row.values['country_of_origin']
         ? String(row.values['country_of_origin'])
         : 'India',

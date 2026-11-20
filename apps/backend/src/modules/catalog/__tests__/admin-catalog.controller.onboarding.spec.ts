@@ -27,6 +27,9 @@ describe('AdminCatalogController onboarding routes', () => {
     restoreProduct: jest.fn(async () => ({ id: ID })),
     deleteProduct: jest.fn(async () => undefined),
     listProducts: jest.fn(async () => ({ items: [], total: 0 })),
+    listHsnCodes: jest.fn(async () => []),
+    createHsnCode: jest.fn(async () => ({})),
+    setCategoryHsnDefault: jest.fn(async () => ({})),
   };
   const readiness = { getReadiness: jest.fn(async () => ({ ready: true, checks: [] })) };
 
@@ -142,6 +145,49 @@ describe('AdminCatalogController onboarding routes', () => {
     expect(catalog.listProducts).toHaveBeenCalledWith({ brandId: BRAND });
 
     expect((await http().get('/admin/catalog/products?brandId=nope')).status).toBe(400);
+  });
+
+  describe('HSN codes and category defaults', () => {
+    const server = () => request(app.getHttpServer());
+
+    it('searches HSN codes', async () => {
+      expect((await server().get('/admin/catalog/hsn-codes?search=69')).status).toBe(200);
+      expect(catalog.listHsnCodes).toHaveBeenCalledWith('69');
+    });
+
+    it('adds an HSN code', async () => {
+      const body = { code: '69072100', description: 'Glazed ceramic tiles', gstRate: 18 };
+      expect((await server().post('/admin/catalog/hsn-codes').send(body)).status).toBe(201);
+      expect(catalog.createHsnCode).toHaveBeenCalledWith(body);
+    });
+
+    it.each([
+      ['a code that is too short', { code: '12', description: 'x', gstRate: 5 }],
+      ['a code with letters', { code: 'abc1', description: 'x', gstRate: 5 }],
+      ['a code that is too long', { code: '123456789', description: 'x', gstRate: 5 }],
+      ['a GST rate over 100', { code: '6907', description: 'x', gstRate: 150 }],
+      ['no description', { code: '6907', gstRate: 5 }],
+    ])('refuses %s', async (_label, body) => {
+      expect((await server().post('/admin/catalog/hsn-codes').send(body)).status).toBe(400);
+      expect(catalog.createHsnCode).not.toHaveBeenCalled();
+    });
+
+    it('sets and clears a category default', async () => {
+      const url = `/admin/catalog/categories/${ID}`;
+      expect((await server().patch(url).send({ hsnCodeDefault: '6907' })).status).toBe(200);
+      expect(catalog.setCategoryHsnDefault).toHaveBeenCalledWith(ID, '6907');
+      expect((await server().patch(url).send({ hsnCodeDefault: null })).status).toBe(200);
+      expect(catalog.setCategoryHsnDefault).toHaveBeenLastCalledWith(ID, null);
+    });
+
+    it.each([[{}], [{ hsnCodeDefault: 'ab' }], [{ hsnCodeDefault: '6907', name: 'x' }]])(
+      'refuses a category body of %j',
+      async (body) => {
+        const res = await server().patch(`/admin/catalog/categories/${ID}`).send(body);
+        expect(res.status).toBe(400);
+        expect(catalog.setCategoryHsnDefault).not.toHaveBeenCalled();
+      },
+    );
   });
 
   it('GET readiness refuses a malformed id and non-admins', async () => {

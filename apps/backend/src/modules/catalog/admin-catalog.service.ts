@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
-import { QueryTypes } from 'sequelize';
+import { Op, QueryTypes } from 'sequelize';
 
 import { Category } from './models/category.model';
 import { Brand } from './models/brand.model';
@@ -15,6 +15,8 @@ import { MasterProductMedia } from './models/master-product-media.model';
 import { VendorListing, VendorListingStatus } from './models/vendor-listing.model';
 import { BrandResolverService } from './brand-resolver.service';
 import { ProductReadinessService } from './product-readiness.service';
+import { resolveCategoryHsnDefault } from './category-hsn-default';
+import { CreateHsnCodeDto } from './dto/hsn-code.dto';
 import { Attribute, AttributeDataType } from './models/attribute.model';
 import { MasterProduct, MasterProductStatus } from './models/master-product.model';
 import { MasterProductAttributeValue } from './models/master-product-attribute-value.model';
@@ -42,6 +44,8 @@ export type CategoryNode = {
   level: number;
   isLeaf: boolean;
   unitOfMeasure: string | null;
+  // This category's own default (decision 0063); children inherit it when unset.
+  hsnCodeDefault: string | null;
   productCount: number;
   children: CategoryNode[];
 };
@@ -87,10 +91,11 @@ export class AdminCatalogService {
       level: number;
       is_leaf: boolean;
       uom: string | null;
+      hsn_code_default: string | null;
       product_count: string;
     }>(
       `SELECT
-         c.id, c.parent_id, c.name, c.slug, c.path, c.level, c.is_leaf,
+         c.id, c.parent_id, c.name, c.slug, c.path, c.level, c.is_leaf, c.hsn_code_default,
          u.code AS uom,
          (SELECT COUNT(*) FROM master_product mp WHERE mp.category_id = c.id) AS product_count
        FROM category c
@@ -113,6 +118,7 @@ export class AdminCatalogService {
         level: row.level,
         isLeaf: row.is_leaf,
         unitOfMeasure: row.uom,
+        hsnCodeDefault: row.hsn_code_default,
         productCount: Number(row.product_count),
         children: [],
       });
@@ -625,6 +631,59 @@ export class AdminCatalogService {
     this.logger.log(`admin ${adminUserId} delete product ${productId} (${product.productCode})`);
   }
 
+  // ─── HSN codes and category defaults (decision 0063) ─────────────────
+
+  async listHsnCodes(search?: string) {
+    const term = search?.trim() ?? '';
+    const rows = await this.hsnCodeModel.findAll({
+      where: term
+        ? {
+            [Op.or]: [
+              { code: { [Op.like]: `${term.replace(/[\\%_]/g, '')}%` } },
+              { description: { [Op.iLike]: `%${term.replace(/[\\%_]/g, '')}%` } },
+            ],
+          }
+        : {},
+      order: [['code', 'ASC']],
+      limit: 50,
+    });
+    return rows.map((h) => ({
+      code: h.code,
+      description: h.description,
+      gstRate: Number(h.gstRate),
+    }));
+  }
+
+  async createHsnCode(dto: CreateHsnCodeDto) {
+    if (await this.hsnCodeModel.findByPk(dto.code)) {
+      throw new ConflictException(`HSN code ${dto.code} already exists`);
+    }
+    const created = await this.hsnCodeModel.create({
+      code: dto.code,
+      description: dto.description,
+      gstRate: dto.gstRate,
+    } as never);
+    return {
+      code: created.code,
+      description: created.description,
+      gstRate: Number(created.gstRate),
+    };
+  }
+
+  async setCategoryHsnDefault(categoryId: string, code: string | null) {
+    const category = await this.categoryModel.findByPk(categoryId);
+    if (!category) throw new NotFoundException('Category not found');
+    if (code !== null && !(await this.hsnCodeModel.findByPk(code))) {
+      throw new BadRequestException(`HSN code "${code}" is not in the list. Add it first`);
+    }
+    await category.update({ hsnCodeDefault: code });
+    return { id: category.id, hsnCodeDefault: code };
+  }
+
+  async resolveCategoryHsnDefault(categoryId: string): Promise<string | null> {
+    return (await resolveCategoryHsnDefault(this.sequelize, categoryId))?.code ?? null;
+  }
+
   private async unmetBlockingChecks(productId: string): Promise<string[]> {
     const readiness = await this.readiness.getReadiness(productId);
     return readiness.checks
@@ -672,6 +731,12 @@ export class AdminCatalogService {
       throw new BadRequestException(attributeErrors.join('; '));
     }
 
+    // Decision 0063: a blank HSN code takes the category default and its GST
+    // rate (unless a rate is given). An explicit code wins.
+    const hsnDefault = dto.hsnCode
+      ? null
+      : await resolveCategoryHsnDefault(this.sequelize, dto.categoryId);
+
     const sequelize = this.sequelize;
     try {
       return await sequelize
@@ -684,8 +749,8 @@ export class AdminCatalogService {
               slug: this.slugify(dto.name),
               mfrPartNumber: dto.mfrPartNumber ?? null,
               gtin: dto.gtin ?? null,
-              hsnCode: dto.hsnCode ?? null,
-              gstRate: dto.gstRate ?? 18.0,
+              hsnCode: dto.hsnCode ?? hsnDefault?.code ?? null,
+              gstRate: dto.gstRate ?? hsnDefault?.gstRate ?? 18.0,
               countryOfOrigin: dto.countryOfOrigin ?? 'India',
               status: MasterProductStatus.DRAFT,
             } as any,
