@@ -2,13 +2,13 @@ import { randomUUID } from 'crypto';
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import type { DeliveryPhotoKind } from '@golden-abode/types';
 import { OBJECT_STORAGE, ObjectStorage, PresignedPost } from '../catalog/media/object-storage';
+import { PHOTO_PRESIGN_TTL_SECONDS } from './delivery-utils';
 
 const PHOTO_CONTENT_TYPES: Record<string, string> = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
 };
 const PHOTO_MAX_BYTES = 10 * 1024 * 1024;
-const PHOTO_PRESIGN_TTL_SECONDS = 300;
 
 // Proof photos (handover, delivered, failed). Keys are minted per group and
 // kind, and a key is only accepted back if it carries that same prefix, so a

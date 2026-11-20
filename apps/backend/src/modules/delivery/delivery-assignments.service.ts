@@ -24,6 +24,7 @@ import { Driver } from './models/driver.model';
 import { User } from '../users/models/user.model';
 import { DeliveryAssignment } from './models/delivery-assignment.model';
 import { assertParentNotLocked } from './delivery-rules';
+import { iso, notifyQuietly, PHOTO_PRESIGN_TTL_SECONDS, setGroupStatus } from './delivery-utils';
 import { lockGroup } from './delivery-group-lock';
 import { generateDeliveryOtp } from './delivery-otp';
 import { NOTIFICATION_SERVICE, NotificationService } from '../notifications/notification.interface';
@@ -76,9 +77,6 @@ const OPEN_STATUSES = [
 ];
 
 // Photo links are short-lived; the board is refreshed often enough.
-const PHOTO_PRESIGN_TTL_SECONDS = 300;
-
-const iso = (d: Date | null): string | null => (d ? new Date(d).toISOString() : null);
 
 @Injectable()
 export class DeliveryAssignmentsService {
@@ -289,13 +287,11 @@ export class DeliveryAssignmentsService {
             } as never,
             { transaction },
           );
-          await this.sequelize.query(
-            `UPDATE order_vendor_group SET status = :shipped, updated_at = NOW() WHERE id = :id`,
-            {
-              replacements: { shipped: OrderVendorGroupStatus.SHIPPED, id: group.id },
-              type: QueryTypes.UPDATE,
-              transaction,
-            },
+          await setGroupStatus(
+            this.sequelize,
+            group.id,
+            OrderVendorGroupStatus.SHIPPED,
+            transaction,
           );
           return {
             id: created.id,
@@ -332,12 +328,8 @@ export class DeliveryAssignmentsService {
     });
   }
 
-  private async notifyQuietly(send: () => Promise<void>): Promise<void> {
-    try {
-      await send();
-    } catch (error) {
-      this.logger.warn(`notification failed: ${error instanceof Error ? error.message : error}`);
-    }
+  private notifyQuietly(send: () => Promise<void>): Promise<void> {
+    return notifyQuietly(this.logger, send);
   }
 
   // The ops board: every assignment, newest first, optionally narrowed by

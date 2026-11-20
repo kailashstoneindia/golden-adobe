@@ -31,6 +31,7 @@ import { Vehicle } from './models/vehicle.model';
 import { User } from '../users/models/user.model';
 import { OrderVendorGroupStatus } from '../orders/models/order-vendor-group.model';
 import { DeliveryPhotoService } from './delivery-photo.service';
+import { iso, notifyQuietly, setGroupStatus } from './delivery-utils';
 import { lockGroup } from './delivery-group-lock';
 import { generateDeliveryOtp } from './delivery-otp';
 import { assertParentNotLocked } from './delivery-rules';
@@ -83,7 +84,6 @@ type ItemRow = {
   unit: string | null;
 };
 
-const iso = (d: Date | null): string | null => (d ? new Date(d).toISOString() : null);
 const num = (v: string | number | null | undefined): number | null =>
   v === null || v === undefined ? null : Number(v);
 
@@ -347,18 +347,11 @@ export class DriverDeliveriesService {
     status: OrderVendorGroupStatus,
     transaction: Transaction,
   ): Promise<void> {
-    await this.sequelize.query(
-      `UPDATE order_vendor_group SET status = :status, updated_at = NOW() WHERE id = :id`,
-      { replacements: { status, id: groupId }, type: QueryTypes.UPDATE, transaction },
-    );
+    await setGroupStatus(this.sequelize, groupId, status, transaction);
   }
 
-  private async notifyQuietly(send: () => Promise<void>): Promise<void> {
-    try {
-      await send();
-    } catch (error) {
-      this.logger.warn(`notification failed: ${error instanceof Error ? error.message : error}`);
-    }
+  private notifyQuietly(send: () => Promise<void>): Promise<void> {
+    return notifyQuietly(this.logger, send);
   }
 
   private readonly logger = new Logger(DriverDeliveriesService.name);

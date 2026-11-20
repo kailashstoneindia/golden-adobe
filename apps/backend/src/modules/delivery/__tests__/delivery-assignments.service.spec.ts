@@ -5,7 +5,6 @@ import { DriversService } from '../drivers.service';
 import { createDeliveryTestModule } from './delivery-test-app';
 import {
   createPaymentsTestApp,
-  PaymentsTestApp,
   RecordingNotifications,
 } from '../../orders/__tests__/payments-test-app';
 import { NOTIFICATION_SERVICE } from '../../notifications/notification.interface';

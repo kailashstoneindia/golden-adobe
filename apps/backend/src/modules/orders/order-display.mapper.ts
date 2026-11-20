@@ -19,7 +19,6 @@ import {
 import { OrderItem } from './models/order-item.model';
 import { PaymentEvent } from './models/payment-event.model';
 import { Refund } from './models/refund.model';
-import { CustomerAddress } from '../customers/models/customer-address.model';
 import { toCustomerAddressDto } from '../customers/customer-address.mapper';
 import { snapshotToAddressDto } from './delivery-address-snapshot';
 import { toFiniteNumber, toIsoDate } from '../../common/utils/display-number.util';

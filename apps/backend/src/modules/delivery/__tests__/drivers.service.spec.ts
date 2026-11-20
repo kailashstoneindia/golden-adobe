@@ -263,7 +263,7 @@ describe('DriversService documents (decision 0060)', () => {
       const post = await drivers.createDocumentUploadUrl(d.id, kind, 'image/jpeg');
 
       const input = (spy.mock.calls[0] as unknown[])[0] as { key: string; contentType: string };
-      expect(input.key).toMatch(new RegExp(`^drivers/${d.id}/${kind}-[0-9a-f-]{36}\.jpg$`));
+      expect(input.key).toMatch(new RegExp(`^drivers/${d.id}/${kind}-[0-9a-f-]{36}\\.jpg$`));
       expect(input.contentType).toBe('image/jpeg');
       expect(post.key).toBe(input.key);
       spy.mockRestore();

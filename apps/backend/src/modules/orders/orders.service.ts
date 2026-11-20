@@ -12,6 +12,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { DELIVERY_ASSIGNMENT_STATUSES } from '@golden-abode/types';
 import { DeliveryAssignment } from '../delivery/models/delivery-assignment.model';
 import { lockGroup } from '../delivery/delivery-group-lock';
+import { setGroupStatus } from '../delivery/delivery-utils';
 import { Sequelize } from 'sequelize-typescript';
 import { Op, QueryTypes } from 'sequelize';
 import type {
@@ -618,10 +619,7 @@ export class OrdersService {
       this.logger.warn(
         `admin override: order_vendor_group ${groupId} forced from ${locked.status} to ${status} — reason: ${reason}`,
       );
-      await this.sequelize.query(
-        'UPDATE order_vendor_group SET status = :status, updated_at = NOW() WHERE id = :id',
-        { replacements: { status, id: groupId }, type: QueryTypes.UPDATE, transaction },
-      );
+      await setGroupStatus(this.sequelize, groupId, status, transaction);
       // Decision 0060 rule 8: forcing a group to anything other than
       // ready_for_pickup/shipped means the driver's job is no longer valid, so
       // the open assignment is closed in the same transaction as the status.
