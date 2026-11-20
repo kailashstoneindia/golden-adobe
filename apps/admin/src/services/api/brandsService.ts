@@ -1,8 +1,12 @@
 import type { BrandDto, PaginatedResponse } from '@golden-abode/types';
 
 import { API_ENDPOINTS } from '@/constants/apiEndpoints';
-import { getRequest, patchRequest, postRequest } from '@/services/api/apiClient';
-import type { BrandFormValues, BrandListFilters } from '@/types/brands.types';
+import { deleteRequest, getRequest, patchRequest, postRequest } from '@/services/api/apiClient';
+import type {
+  BrandFormValues,
+  BrandListFilters,
+  BrandLogoUploadTicket,
+} from '@/types/brands.types';
 
 function queryString(filters: BrandListFilters): string {
   const params = new URLSearchParams();
@@ -38,6 +42,29 @@ export const brandsService = {
   setActive(brandId: string, isActive: boolean): Promise<BrandDto> {
     return patchRequest<BrandDto, { isActive: boolean }>(API_ENDPOINTS.brands.active(brandId), {
       isActive,
+    });
+  },
+
+  addAlias(brandId: string, alias: string): Promise<BrandDto> {
+    return postRequest<BrandDto, { alias: string }>(API_ENDPOINTS.brands.aliases(brandId), {
+      alias,
+    });
+  },
+
+  removeAlias(brandId: string, aliasId: string): Promise<void> {
+    return deleteRequest(API_ENDPOINTS.brands.alias(brandId, aliasId));
+  },
+
+  createLogoUploadUrl(brandId: string, contentType: string): Promise<BrandLogoUploadTicket> {
+    return postRequest<BrandLogoUploadTicket, { contentType: string }>(
+      API_ENDPOINTS.brands.logoUploadUrl(brandId),
+      { contentType },
+    );
+  },
+
+  confirmLogo(brandId: string, key: string): Promise<BrandDto> {
+    return postRequest<BrandDto, { key: string }>(API_ENDPOINTS.brands.logoConfirm(brandId), {
+      key,
     });
   },
 };

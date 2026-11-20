@@ -83,9 +83,12 @@ export {
 
 export {
   brandKeys,
+  useAddBrandAliasMutation,
   useBrandQuery,
   useBrandsQuery,
   useCreateBrandMutation,
+  useRemoveBrandAliasMutation,
   useSetBrandActiveMutation,
   useUpdateBrandMutation,
+  useUploadBrandLogoMutation,
 } from './useBrandsQueries';

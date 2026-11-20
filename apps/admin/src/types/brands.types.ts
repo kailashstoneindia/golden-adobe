@@ -14,3 +14,11 @@ export type BrandFormValues = {
   consumerCareEmail: string;
   consumerCarePhone: string;
 };
+
+// POST /admin/brands/:id/logo-upload-url: a presigned S3 POST plus the key to
+// confirm once the upload has finished.
+export type BrandLogoUploadTicket = {
+  url: string;
+  fields: Record<string, string>;
+  key: string;
+};

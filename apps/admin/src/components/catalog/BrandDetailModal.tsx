@@ -4,7 +4,9 @@ import { useBrandQuery, useSetBrandActiveMutation, useUpdateBrandMutation } from
 import { ApiClientError } from '@/services';
 import styles from '@/styles/shared.module.css';
 
+import { BrandAliasesSection } from './BrandAliasesSection';
 import { BrandFormModal } from './BrandFormModal';
+import { BrandLogoSection } from './BrandLogoSection';
 
 const messageOf = (error: unknown, fallback: string) =>
   error instanceof ApiClientError ? error.message : fallback;
@@ -68,6 +70,12 @@ export function BrandDetailModal({ brandId, onClose }: { brandId: string; onClos
                 </label>
               )}
               {error ? <p className={styles.error}>{error}</p> : null}
+              {brand.mergedIntoId ? null : (
+                <>
+                  <BrandLogoSection brand={brand} />
+                  <BrandAliasesSection brand={brand} />
+                </>
+              )}
             </div>
             <div className={styles.actions}>
               {brand.mergedIntoId ? null : (

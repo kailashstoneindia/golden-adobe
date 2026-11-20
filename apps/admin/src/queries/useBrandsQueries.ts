@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { APP_CONSTANTS } from '@/constants/appConstants';
 import { brandsService } from '@/services';
+import { uploadToS3 } from '@/services/api/mediaService';
 import type { BrandFormValues, BrandListFilters } from '@/types/brands.types';
 
 import { CATALOG_QUERY_KEYS } from './useCatalogQueries';
@@ -61,6 +62,35 @@ export function useSetBrandActiveMutation(brandId: string) {
   const refresh = useRefreshBrands();
   return useMutation({
     mutationFn: (isActive: boolean) => brandsService.setActive(brandId, isActive),
+    onSuccess: refresh,
+  });
+}
+
+export function useAddBrandAliasMutation(brandId: string) {
+  const refresh = useRefreshBrands();
+  return useMutation({
+    mutationFn: (alias: string) => brandsService.addAlias(brandId, alias),
+    onSuccess: refresh,
+  });
+}
+
+export function useRemoveBrandAliasMutation(brandId: string) {
+  const refresh = useRefreshBrands();
+  return useMutation({
+    mutationFn: (aliasId: string) => brandsService.removeAlias(brandId, aliasId),
+    onSuccess: refresh,
+  });
+}
+
+// Ticket, then the file straight to storage, then confirm (decision 0063).
+export function useUploadBrandLogoMutation(brandId: string) {
+  const refresh = useRefreshBrands();
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const ticket = await brandsService.createLogoUploadUrl(brandId, file.type);
+      await uploadToS3({ url: ticket.url, fields: ticket.fields }, file);
+      return brandsService.confirmLogo(brandId, ticket.key);
+    },
     onSuccess: refresh,
   });
 }
