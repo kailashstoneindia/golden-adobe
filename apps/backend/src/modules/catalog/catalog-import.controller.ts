@@ -1,16 +1,5 @@
-import {
-  BadRequestException,
-  Controller,
-  Get,
-  Param,
-  Post,
-  Res,
-  UploadedFile,
-  UseGuards,
-  UseInterceptors,
-} from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Controller, Get, Param, Res, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
 import { Role } from '@golden-abode/types';
 
@@ -18,12 +7,6 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { CatalogImportTemplateService } from './catalog-import-template.service';
-import { CatalogImportUploadService } from './catalog-import-upload.service';
-
-const XLSX_MIME_TYPES = new Set([
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'application/octet-stream', // some browsers/proxies mislabel .xlsx as this
-]);
 
 // Phase 3 — admin catalog import (Flow 1, catalog-excel-flows.md).
 // Deliberately NOT under /admin/catalog-import as a sub-route of
@@ -36,10 +19,10 @@ const XLSX_MIME_TYPES = new Set([
 @Roles(Role.ADMIN)
 @ApiBearerAuth()
 export class CatalogImportController {
-  constructor(
-    private readonly templateService: CatalogImportTemplateService,
-    private readonly uploadService: CatalogImportUploadService,
-  ) {}
+  constructor(private readonly templateService: CatalogImportTemplateService) {}
+
+  // Uploads moved to CatalogImportJobsController (decision 0063): they run in
+  // the background now.
 
   @Get('template/:categoryId')
   @ApiOperation({
@@ -55,24 +38,5 @@ export class CatalogImportController {
       'Content-Disposition': `attachment; filename="${filename}"`,
     });
     res.send(buffer);
-  }
-
-  @Post(':categoryId')
-  @UseInterceptors(FileInterceptor('file'))
-  @ApiConsumes('multipart/form-data')
-  @ApiOperation({
-    summary: 'Upload a completed import template',
-    description:
-      'Validates every row (required columns, enum values, numeric parsing, brand resolution, dedup against existing products). Rows that pass land as draft master_product rows — publishing is a separate step. Rows that fail are returned as an error-annotated workbook plus a structured error list; nothing is written for a rejected row.',
-  })
-  async upload(@Param('categoryId') categoryId: string, @UploadedFile() file: Express.Multer.File) {
-    if (!file) {
-      throw new BadRequestException('file is required (multipart field name: "file")');
-    }
-    if (!XLSX_MIME_TYPES.has(file.mimetype)) {
-      throw new BadRequestException(`expected an .xlsx file, got mimetype "${file.mimetype}"`);
-    }
-
-    return this.uploadService.importFile(categoryId, file.buffer);
   }
 }

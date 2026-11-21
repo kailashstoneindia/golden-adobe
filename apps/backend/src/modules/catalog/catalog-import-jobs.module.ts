@@ -8,12 +8,14 @@ import {
   IMPORT_JOB_QUEUE,
 } from './catalog-import-jobs.service';
 import { CatalogImportProcessor } from './catalog-import.processor';
+import { CatalogImportJobsController } from './catalog-import-jobs.controller';
 
 // Decision 0063: background admin imports. Kept out of CatalogModule so the
 // catalog (and every test that builds it) does not need a queue connection;
 // the BullMQ connection itself is configured once in SearchModule.
 @Module({
   imports: [CatalogModule, BullModule.registerQueue({ name: CATALOG_IMPORT_QUEUE })],
+  controllers: [CatalogImportJobsController],
   providers: [
     CatalogImportJobsService,
     CatalogImportProcessor,
