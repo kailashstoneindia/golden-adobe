@@ -70,8 +70,8 @@ valid when circumstances change.
 | [0059](0059-server-side-approval-gate.md)                    | Server-side approval gate for vendors and ustaads                                                | 2026-11-04 | Accepted                                                      |
 | [0060](0060-delivery-module-mvp-flow.md)                     | Delivery module: MVP flow for the in-house team                                                  | 2026-11-10 | Accepted and built (pending merge)                            |
 | [0061](0061-human-readable-order-number.md)                  | Human-readable order number (GA-10001)                                                           | 2026-11-20 | Accepted and built (pending merge)                            |
-| [0062](0062-catalog-onboarding-review.md)                    | Admin brand and product onboarding: review findings                                              | 2026-11-10 | Findings. Superseded by 0063                                  |
-| [0063](0063-catalog-onboarding-design.md)                    | Admin brand and product onboarding: design                                                       | 2026-11-10 | Draft (nothing built)                                         |
+| [0062](0062-catalog-onboarding-review.md)                    | Admin brand and product onboarding: review findings                                              | 2026-11-10 | Superseded by 0063                                            |
+| [0063](0063-catalog-onboarding-design.md)                    | Admin brand and product onboarding: design                                                       | 2026-11-10 | Implemented (pending merge)                                   |
 
 **Numbering note (corrected 2026-10-19):** 0034 was written 2026-10-15 but existed only as an
 uncommitted file until recovered and committed here alongside 0035–0037 — it was never missing

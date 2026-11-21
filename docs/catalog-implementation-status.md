@@ -353,7 +353,9 @@ not resolved here.
 ### Real product data seeded
 
 Two vendors run end-to-end through the full pipeline (taxonomy → Excel template → real
-`POST /admin/catalog-import/:categoryId` upload → DB verification), not inserted directly:
+`POST /admin/catalog-import/:categoryId` upload → DB verification), not inserted directly. (Since decision 0063 that
+upload runs as a background job: it answers `202 { jobId }` and progress is read from
+`GET /admin/catalog-import/jobs/:jobId`.)
 
 | Vendor                         | Products | Images (verified real)    | Data + images stored at               |
 | ------------------------------ | -------: | ------------------------- | ------------------------------------- |

@@ -1,7 +1,7 @@
 # 0062 — Admin brand and product onboarding: review findings
 
 - **Date:** 2026-11-10
-- **Status:** Findings recorded. Superseded by [0063](0063-catalog-onboarding-design.md) (design)
+- **Status:** Superseded by [0063](0063-catalog-onboarding-design.md), which fixes all twelve findings (implemented, pending merge)
 - **Supersedes / Superseded by:** Superseded by 0063
 
 ## Context

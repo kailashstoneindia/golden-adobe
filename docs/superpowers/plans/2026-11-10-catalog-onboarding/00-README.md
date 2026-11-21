@@ -70,7 +70,7 @@ S2/S4/S7 can run in any order after S1. S3 can run alongside S4.
 - [x] S8 import UI
 - [x] S9 review queue create
 - [x] S10 bulk images
-- [ ] S11 wrap-up
+- [x] S11 wrap-up
 
 ## Starting a session (paste this)
 
