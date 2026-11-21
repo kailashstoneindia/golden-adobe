@@ -140,6 +140,15 @@ Details in [the spec](../superpowers/specs/2026-11-10-catalog-onboarding-design.
 | Undo removes only the job's drafts with no listing, order or vendor import row (the same rule as deleting a product) and reports what it kept.                                                          | Nothing anyone has touched is lost.                                                                                                            |
 | End-to-end checked on 2026-11-21 against the test DB, Redis and MinIO: upload → 202 → queue → 25 accepted / 1 rejected → error workbook downloads → history → undo (25 deleted) → second undo refused.  | —                                                                                                                                              |
 
+### S8 (import screen)
+
+| Choice                                                                                                                                                                                                                                                                     | Why                                                      |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `CatalogImportJobDto` gains `failureMessage`.                                                                                                                                                                                                                              | The screen shows why an import failed.                   |
+| The upload card shows live progress for the import just started (polled every 2 s while queued or running) and the accepted / rejected counts at the end.                                                                                                                  | Fixes the blank summary (review finding 5).              |
+| "Past imports" lists every import with who ran it, counts and status; rejected rows download through a short-lived signed link; undo asks first and reports deleted / kept.                                                                                                | Rejected rows can be fixed and re-uploaded on their own. |
+| Browser-checked on 2026-11-21 (worker, test DB, Redis, MinIO): six rows with one misspelt brand → 5 accepted, 1 rejected; the downloaded workbook carries the reason; the fixed row re-imported on its own; undo deleted the first import's 5 drafts and marked it Undone. | —                                                        |
+
 ## Open questions
 
 | Item                                                | Notes                                                                                                            |
