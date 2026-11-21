@@ -6,6 +6,7 @@ import styles from '@/styles/shared.module.css';
 import catalogStyles from '@/styles/catalog.module.css';
 import type { CategoryNode } from '@/types/catalog.types';
 import { ImportJobProgress } from '@/components/catalog/ImportJobProgress';
+import { ImportHistory } from '@/components/catalog/ImportHistory';
 
 // Only leaves — a product cannot attach to a group category, so offering one
 // would produce a template nothing could use.
@@ -181,6 +182,8 @@ export function CatalogImportPage() {
       {error ? <p className={styles.error}>{error}</p> : null}
 
       {jobId ? <ImportJobProgress jobId={jobId} /> : null}
+
+      <ImportHistory />
     </section>
   );
 }
