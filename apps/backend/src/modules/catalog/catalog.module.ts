@@ -182,6 +182,9 @@ import { UsersModule } from '../users/users.module';
   ],
   exports: [
     SequelizeModule,
+    // For CatalogImportJobsModule (decision 0063).
+    CatalogImportUploadService,
+    AdminCatalogService,
     CatalogAttributeResolverService,
     VendorMatchLadderService,
     CityResolverService,

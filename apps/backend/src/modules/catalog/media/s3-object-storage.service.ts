@@ -104,6 +104,13 @@ export class S3ObjectStorage implements ObjectStorage {
     return Buffer.from(await out.Body!.transformToByteArray());
   }
 
+  async get(key: string): Promise<Buffer> {
+    const out = await this.client.send(
+      new GetObjectCommand({ Bucket: this.config.bucket, Key: key }),
+    );
+    return Buffer.from(await out.Body!.transformToByteArray());
+  }
+
   async put(key: string, body: Buffer, contentType: string): Promise<void> {
     await this.client.send(
       new PutObjectCommand({

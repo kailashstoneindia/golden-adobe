@@ -142,6 +142,14 @@ describe('S3ObjectStorage (real MinIO)', () => {
       expect(bytes).toEqual(Buffer.from([0xff, 0xd8, 0xff, 0xe0]));
     });
 
+    // Decision 0063: the background import reads the whole uploaded workbook.
+    it('put then get returns the whole object', async () => {
+      const key = newKey();
+      const body = jpegOfSize(300);
+      await storage.put(key, body, 'image/jpeg');
+      expect(await storage.get(key)).toEqual(body);
+    });
+
     it('lists objects under a prefix with their modified time', async () => {
       const prefix = `original/products/${randomUUID()}`;
       const key = `${prefix}/${randomUUID()}.jpg`;

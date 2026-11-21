@@ -47,6 +47,8 @@ export interface ObjectStorage {
   head(key: string): Promise<ObjectHead | null>;
   // Inclusive byte range, like the HTTP Range header.
   readRange(key: string, start: number, end: number): Promise<Buffer>;
+  // The whole object (decision 0063: an uploaded import workbook, up to 20 MB).
+  get(key: string): Promise<Buffer>;
   put(key: string, body: Buffer, contentType: string): Promise<void>;
   // Rewrites the object onto itself. S3 emits a fresh ObjectCreated event, which
   // re-triggers the variants Lambda without re-uploading anything.

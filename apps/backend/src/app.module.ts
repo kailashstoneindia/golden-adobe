@@ -10,6 +10,7 @@ import { ArtisansModule } from './modules/artisans/artisans.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { CatalogModule } from './modules/catalog/catalog.module';
 import { SearchModule } from './modules/search/search.module';
+import { CatalogImportJobsModule } from './modules/catalog/catalog-import-jobs.module';
 import { CustomersModule } from './modules/customers/customers.module';
 import { CartModule } from './modules/cart/cart.module';
 import { OrdersModule } from './modules/orders/orders.module';
@@ -31,6 +32,7 @@ import { DeliveryModule } from './modules/delivery/delivery.module';
     AdminModule,
     CatalogModule,
     SearchModule,
+    CatalogImportJobsModule,
     CustomersModule,
     CartModule,
     OrdersModule,
