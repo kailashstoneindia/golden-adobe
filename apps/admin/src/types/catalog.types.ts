@@ -177,24 +177,7 @@ export type ListProductsQuery = {
 // Decision 0063: an upload starts a background job; its state is CatalogImportJobDto.
 export type ImportUploadResult = { jobId: string };
 
-// ── Review queue ──────────────────────────────────────────────────────────
-export type ReviewCandidate = {
-  masterProductId: string;
-  productName?: string;
-  productCode?: string;
-  score: number;
-  method?: string;
-};
-
-export type ReviewQueueRow = {
-  id: string;
-  vendorId: string;
-  vendorName?: string | null;
-  rawRowJson: Record<string, unknown>;
-  matchCandidates: ReviewCandidate[];
-  status: string;
-  createdAt?: string;
-};
+// ── Review queue: the API shape (ReviewQueueItem) lives in @golden-abode/types.
 
 export type BulkPublishRequest = {
   productIds?: string[];

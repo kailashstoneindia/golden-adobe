@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { isEmpty } from 'lodash';
+import type { ReviewQueueItem } from '@golden-abode/types';
 
+import { CreateFromRowDialog } from '@/components/catalog/CreateFromRowDialog';
 import {
   useLinkReviewRowMutation,
   useRejectReviewRowMutation,
@@ -8,7 +10,6 @@ import {
 } from '@/queries/useCatalogQueries';
 import styles from '@/styles/shared.module.css';
 import catalogStyles from '@/styles/catalog.module.css';
-import type { ReviewQueueRow } from '@/types/catalog.types';
 
 // Renders whatever the vendor actually typed. The row is free-form by design
 // (decision 0011: a vendor identifies a product however they already do —
@@ -30,21 +31,26 @@ function RawRow({ raw }: { raw: Record<string, unknown> }) {
   );
 }
 
+const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`;
+
 export function CatalogReviewQueuePage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [creatingId, setCreatingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
 
   const queueQuery = useReviewQueueQuery();
   const linkMutation = useLinkReviewRowMutation();
   const rejectMutation = useRejectReviewRowMutation();
 
-  const rows: ReviewQueueRow[] = queueQuery.data ?? [];
+  const rows: ReviewQueueItem[] = queueQuery.data ?? [];
   const isSubmitting = linkMutation.isPending || rejectMutation.isPending;
 
   const handleLink = async (importRowId: string, masterProductId: string) => {
     setError(null);
+    setMessage(null);
     try {
       await linkMutation.mutateAsync({ importRowId, masterProductId });
       setExpandedId(null);
@@ -55,6 +61,7 @@ export function CatalogReviewQueuePage() {
 
   const handleReject = async (importRowId: string) => {
     setError(null);
+    setMessage(null);
     try {
       await rejectMutation.mutateAsync({
         importRowId,
@@ -84,6 +91,7 @@ export function CatalogReviewQueuePage() {
       </p>
 
       {error ? <p className={styles.error}>{error}</p> : null}
+      {message ? <p className={styles.hint}>{message}</p> : null}
 
       {isEmpty(rows) ? (
         <div className={styles.empty}>
@@ -93,19 +101,20 @@ export function CatalogReviewQueuePage() {
       ) : (
         <div className={styles.grid}>
           {rows.map((row) => {
-            const isExpanded = expandedId === row.id;
+            const isExpanded = expandedId === row.importRowId;
+            const productName = row.rawRow?.productName ? String(row.rawRow.productName) : null;
             return (
-              <div key={row.id} className={catalogStyles.reviewCard}>
+              <div key={row.importRowId} className={catalogStyles.reviewCard}>
                 <button
                   type="button"
                   className={styles.collapsibleTrigger}
-                  onClick={() => setExpandedId(isExpanded ? null : row.id)}
+                  onClick={() => setExpandedId(isExpanded ? null : row.importRowId)}
                 >
                   <span>
-                    <strong>{String(row.rawRowJson?.productRef ?? 'Unnamed row')}</strong>
+                    <strong>{String(row.rawRow?.productRef ?? 'Unnamed row')}</strong>
+                    {productName ? ` · ${productName}` : ''}
                     <span className={catalogStyles.attrMeta}>
-                      {row.matchCandidates.length} candidate
-                      {row.matchCandidates.length === 1 ? '' : 's'}
+                      {` ${row.vendorName} · ${plural(row.candidates.length, 'candidate')}`}
                     </span>
                   </span>
                   <span className={styles.collapsibleChevron}>{isExpanded ? '▾' : '▸'}</span>
@@ -114,33 +123,42 @@ export function CatalogReviewQueuePage() {
                 {isExpanded ? (
                   <div className={styles.collapsibleBody}>
                     <h4 className={catalogStyles.detailTitle}>What the vendor sent</h4>
-                    <RawRow raw={row.rawRowJson} />
+                    <RawRow raw={row.rawRow} />
 
                     <h4 className={catalogStyles.detailTitle}>Candidates</h4>
-                    {isEmpty(row.matchCandidates) ? (
+                    {isEmpty(row.candidates) ? (
                       <div className={styles.sectionEmpty}>
-                        No candidates were found. This is effectively a request for a new product —
-                        reject it here, and add the product through import.
+                        No existing product matches. If the product is new, create it from this row:
+                        the vendor&apos;s details are filled in, and the row is linked to it.
+                        <div className={styles.actions}>
+                          <button
+                            type="button"
+                            className={styles.buttonPrimary}
+                            onClick={() => setCreatingId(row.importRowId)}
+                          >
+                            Create product from this row
+                          </button>
+                        </div>
                       </div>
                     ) : (
                       <ul className={catalogStyles.attrList}>
-                        {row.matchCandidates.map((candidate) => (
+                        {row.candidates.map((candidate) => (
                           <li key={candidate.masterProductId} className={catalogStyles.attrItem}>
                             <div className={catalogStyles.attrHead}>
-                              <strong>{candidate.productName ?? candidate.masterProductId}</strong>
+                              <strong>{candidate.productName}</strong>
                               <span className={catalogStyles.badgeVariant}>
-                                {Math.round((candidate.score ?? 0) * 100)}%
+                                {Math.round(candidate.score * 100)}%
                               </span>
                             </div>
                             <div className={catalogStyles.attrMeta}>
                               {candidate.productCode ? <code>{candidate.productCode}</code> : null}
-                              {candidate.method ? ` · matched on ${candidate.method}` : ''}
+                              {candidate.matchedOn ? ` · matched on ${candidate.matchedOn}` : ''}
                             </div>
                             <button
                               type="button"
                               className={styles.buttonPrimary}
                               disabled={isSubmitting}
-                              onClick={() => handleLink(row.id, candidate.masterProductId)}
+                              onClick={() => handleLink(row.importRowId, candidate.masterProductId)}
                             >
                               Link to this product
                             </button>
@@ -149,7 +167,7 @@ export function CatalogReviewQueuePage() {
                       </ul>
                     )}
 
-                    {rejectingId === row.id ? (
+                    {rejectingId === row.importRowId ? (
                       <div className={catalogStyles.stepCard}>
                         <input
                           className={styles.input}
@@ -169,7 +187,7 @@ export function CatalogReviewQueuePage() {
                             type="button"
                             className={styles.buttonDanger}
                             disabled={isSubmitting}
-                            onClick={() => handleReject(row.id)}
+                            onClick={() => handleReject(row.importRowId)}
                           >
                             Confirm reject
                           </button>
@@ -179,7 +197,7 @@ export function CatalogReviewQueuePage() {
                       <button
                         type="button"
                         className={styles.buttonDanger}
-                        onClick={() => setRejectingId(row.id)}
+                        onClick={() => setRejectingId(row.importRowId)}
                       >
                         Reject row
                       </button>
@@ -191,6 +209,18 @@ export function CatalogReviewQueuePage() {
           })}
         </div>
       )}
+
+      {creatingId ? (
+        <CreateFromRowDialog
+          importRowId={creatingId}
+          onDone={(done) => {
+            setMessage(done);
+            setCreatingId(null);
+            setExpandedId(null);
+          }}
+          onClose={() => setCreatingId(null)}
+        />
+      ) : null}
     </section>
   );
 }

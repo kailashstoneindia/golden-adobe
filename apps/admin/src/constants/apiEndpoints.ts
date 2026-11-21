@@ -116,5 +116,6 @@ export const API_ENDPOINTS = {
     list: '/admin/catalog-review-queue',
     link: (importRowId: string) => `/admin/catalog-review-queue/${importRowId}/link`,
     reject: (importRowId: string) => `/admin/catalog-review-queue/${importRowId}/reject`,
+    prefill: (importRowId: string) => `/admin/catalog-review-queue/${importRowId}/prefill`,
   },
 } as const;

@@ -5,7 +5,6 @@ import type {
   ListProductsQuery,
   ProductDetail,
   ProductListResponse,
-  ReviewQueueRow,
   BulkPublishRequest,
   BulkPublishResult,
   CreateProductRequest,
@@ -17,6 +16,8 @@ import type {
   MergeResultDto,
   PaginatedResponse,
   ProductReadinessDto,
+  ReviewQueueItem,
+  ReviewRowPrefillDto,
 } from '@golden-abode/types';
 
 import { API_ENDPOINTS } from '@/constants/apiEndpoints';
@@ -167,8 +168,12 @@ export const catalogService = {
     );
   },
 
-  fetchReviewQueue(): Promise<ReviewQueueRow[]> {
-    return getRequest<ReviewQueueRow[]>(API_ENDPOINTS.catalogReview.list);
+  fetchReviewQueue(): Promise<ReviewQueueItem[]> {
+    return getRequest<ReviewQueueItem[]>(API_ENDPOINTS.catalogReview.list);
+  },
+
+  fetchReviewPrefill(importRowId: string): Promise<ReviewRowPrefillDto> {
+    return getRequest<ReviewRowPrefillDto>(API_ENDPOINTS.catalogReview.prefill(importRowId));
   },
 
   linkReviewRow(importRowId: string, masterProductId: string): Promise<unknown> {

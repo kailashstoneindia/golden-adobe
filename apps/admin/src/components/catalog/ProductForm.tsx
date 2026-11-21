@@ -12,6 +12,7 @@ import styles from '@/styles/shared.module.css';
 import type {
   CategoryNode,
   CreateProductRequest,
+  ProductDetail,
   UpdateProductRequest,
 } from '@/types/catalog.types';
 import { flattenCategoryOptions } from '@/utils/catalogProducts';
@@ -112,7 +113,8 @@ export function ProductForm({
   initial?: Partial<ProductFormValues>;
   categoryPath?: string;
   isGeneric?: boolean;
-  onSaved: (productId: string) => void;
+  // On create, the saved product comes too (it carries the new product code).
+  onSaved: (productId: string, product?: ProductDetail) => void;
   onCancel?: () => void;
 }) {
   const start = useMemo(() => ({ ...EMPTY, ...initial }), [initial]);
@@ -164,7 +166,7 @@ export function ProductForm({
           attributeValues: attributeList(values),
         };
         const created = await create.mutateAsync(body);
-        onSaved(created.id);
+        onSaved(created.id, created);
       } else {
         const changes = changesFrom(start, values);
         if (Object.keys(changes).length > 0) await update.mutateAsync(changes);

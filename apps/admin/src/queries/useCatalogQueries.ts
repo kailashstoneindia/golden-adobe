@@ -231,3 +231,12 @@ export function useSetCategoryHsnDefaultMutation() {
     catalogService.setCategoryHsnDefault(args.categoryId, args.hsnCodeDefault),
   );
 }
+
+// Decision 0063: a vendor row's details for creating a new product from it.
+export function useReviewRowPrefillQuery(importRowId: string | null) {
+  return useQuery({
+    queryKey: ['catalog', 'review-prefill', importRowId ?? ''] as const,
+    queryFn: () => catalogService.fetchReviewPrefill(importRowId!),
+    enabled: Boolean(importRowId),
+  });
+}
