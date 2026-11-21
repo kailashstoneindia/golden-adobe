@@ -149,6 +149,15 @@ Details in [the spec](../superpowers/specs/2026-11-10-catalog-onboarding-design.
 | "Past imports" lists every import with who ran it, counts and status; rejected rows download through a short-lived signed link; undo asks first and reports deleted / kept.                                                                                                | Rejected rows can be fixed and re-uploaded on their own. |
 | Browser-checked on 2026-11-21 (worker, test DB, Redis, MinIO): six rows with one misspelt brand → 5 accepted, 1 rejected; the downloaded workbook carries the reason; the fixed row re-imported on its own; undo deleted the first import's 5 drafts and marked it Undone. | —                                                        |
 
+### S9 (create a product from a review-queue row)
+
+| Choice                                                                                                                                                                           | Why                                                                                |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| The vendor upload now keeps the `product_name` and `brand` columns on the staged row (it kept only the product reference, price and stock).                                      | Otherwise there is nothing but the vendor's reference to start a new product from. |
+| The prefill offers the name, brand text, a suggested **active** brand (through aliases and merges), the vendor's reference and vendor name; category and attributes start empty. | Vendors never send category or attributes; the admin picks them in the form.       |
+| The admin review queue page now reads the API's real shape (`importRowId`, `rawRow`, `candidates`).                                                                              | It read fields the API never sent and broke as soon as a row existed.              |
+| A product created from a row is saved first, then the row is linked; if the link fails, the page says so and offers "Link now" without creating the product again.               | Nothing is created twice.                                                          |
+
 ## Open questions
 
 | Item                                                | Notes                                                                                                            |
