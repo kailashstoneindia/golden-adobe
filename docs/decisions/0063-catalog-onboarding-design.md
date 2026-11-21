@@ -158,6 +158,15 @@ Details in [the spec](../superpowers/specs/2026-11-10-catalog-onboarding-design.
 | The admin review queue page now reads the API's real shape (`importRowId`, `rawRow`, `candidates`).                                                                              | It read fields the API never sent and broke as soon as a row existed.              |
 | A product created from a row is saved first, then the row is linked; if the link fails, the page says so and offers "Link now" without creating the product again.               | Nothing is created twice.                                                          |
 
+### S10 (bulk images)
+
+| Choice                                                                                                                                                                                                                 | Why                                                                                          |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| The key lookup also returns the product's name and code.                                                                                                                                                               | The preview shows which product each file goes to.                                           |
+| A file name is tried whole first, then without a trailing `_<n>`; a code wins over a part number; a part number several brands use is "Matches several brands" unless a brand is picked; retired products are skipped. | Some part numbers end in `_<digits>` themselves; nothing goes to a wrong or retired product. |
+| Uploads run 4 at a time through the usual presign / confirm flow, each file with its own result.                                                                                                                       | Same checks as a single image; one bad file does not stop the rest.                          |
+| Browser-checked on 2026-11-21 (test DB + MinIO): one file by product code, two by part number (`_2` for the second), one unmatched → 3 uploaded, 1 skipped; each product shows its images in the popup.                | —                                                                                            |
+
 ## Open questions
 
 | Item                                                | Notes                                                                                                            |
