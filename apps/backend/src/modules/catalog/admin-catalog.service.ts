@@ -468,15 +468,12 @@ export class AdminCatalogService {
         status: status === 'live' ? MasterProductStatus.LIVE : MasterProductStatus.DRAFT,
       });
     } catch (err) {
-      // The required-variant-attributes trigger (Phase 7 risk 3) raises a
-      // plain SQL exception naming the missing attributes. Surfacing its
-      // message is far more useful to an admin than a generic 500 — it tells
-      // them exactly which field to fill in.
-      const message = err instanceof Error ? err.message : String(err);
-      if (message.includes('variant-defining') || message.includes('variant_defining')) {
-        throw new BadRequestException(message.replace(/^.*?ERROR:\s*/i, ''));
-      }
-      throw err;
+      // The required-variant-attributes trigger (Phase 7 risk 3) names the
+      // missing attributes, and going live can clash with an identical live
+      // product (master_product_generic_identity). translateWriteError turns
+      // both into a 400 that says what is wrong (decision 0063: it used to
+      // surface the identity clash as a bare "Validation error").
+      throw this.translateWriteError(err);
     }
 
     return this.getProduct(productId);

@@ -100,4 +100,31 @@ describe('Publishing enforces readiness (integration)', () => {
     expect(await statusOf(ready.id)).toBe(MasterProductStatus.LIVE);
     expect(await statusOf(bare.id)).toBe(MasterProductStatus.DRAFT);
   });
+
+  // Found in the S11 end-to-end run: a clash with a live product said only
+  // "Validation error".
+  it('explains a clash with an identical live product instead of "Validation error"', async () => {
+    const leaf = (await fx.category()).id;
+    const finish = (await fx.variantAttribute(leaf, 'Finish')).id;
+    const live = await fx.product(leaf);
+    await fx.attributeValue(live.id, finish, 'Matte');
+    await fx.image(live.id);
+    await service.setProductStatus(live.id, 'live');
+    const twin = await fx.product(leaf);
+    await fx.attributeValue(twin.id, finish, 'Matte');
+    await fx.image(twin.id);
+
+    await expect(service.setProductStatus(twin.id, 'live')).rejects.toThrow(
+      new BadRequestException(
+        'a product with the same category and attribute combination already exists',
+      ),
+    );
+    const result = await service.bulkPublish({ productIds: [twin.id] });
+    expect(result.failed).toEqual([
+      {
+        productId: twin.id,
+        reason: 'a product with the same category and attribute combination already exists',
+      },
+    ]);
+  });
 });
