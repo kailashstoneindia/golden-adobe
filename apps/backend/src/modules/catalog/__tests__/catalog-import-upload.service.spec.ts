@@ -177,5 +177,6 @@ describe('CatalogImportUploadService.processRows (integration)', () => {
     expect(result.acceptedCount).toBe(45);
     expect(progress).toEqual([20, 40, 45]);
     expect(result.errorWorkbook).toBeNull();
-  });
+    // 45 rows, each its own real transaction: slow when the whole suite runs in parallel.
+  }, 30_000);
 });
