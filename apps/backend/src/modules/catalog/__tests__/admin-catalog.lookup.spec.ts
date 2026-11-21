@@ -69,6 +69,8 @@ describe('AdminCatalogService.lookupProductKeys (integration)', () => {
           matchedBy: 'code',
           hasPrimary: true,
           status: 'draft',
+          productName: product.name,
+          productCode: product.productCode,
         },
       ],
       ambiguousKeys: [],
@@ -90,6 +92,8 @@ describe('AdminCatalogService.lookupProductKeys (integration)', () => {
         matchedBy: 'mpn',
         hasPrimary: false,
         status: 'draft',
+        productName: product.name,
+        productCode: product.productCode,
       },
     ]);
     expect(result.ambiguousKeys).toEqual([]);

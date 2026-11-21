@@ -654,8 +654,10 @@ export class AdminCatalogService {
       status: string;
       matched_by: 'code' | 'mpn';
       has_primary: boolean;
+      name: string;
+      product_code: string;
     }>(
-      `SELECT k.key, mp.id, mp.status::text AS status,
+      `SELECT k.key, mp.id, mp.status::text AS status, mp.name, mp.product_code,
               CASE WHEN upper(mp.product_code) = upper(k.key) THEN 'code' ELSE 'mpn' END AS matched_by,
               EXISTS (SELECT 1 FROM master_product_media m
                        WHERE m.master_product_id = mp.id AND m.is_primary) AS has_primary
@@ -673,6 +675,8 @@ export class AdminCatalogService {
       matchedBy: 'code' | 'mpn';
       hasPrimary: boolean;
       status: string;
+      productName: string;
+      productCode: string;
     }[] = [];
     const ambiguousKeys: string[] = [];
     for (const key of keys) {
@@ -687,6 +691,8 @@ export class AdminCatalogService {
           matchedBy: hit.matched_by,
           hasPrimary: hit.has_primary,
           status: hit.status,
+          productName: hit.name,
+          productCode: hit.product_code,
         });
       } else if (pick.length > 1) {
         ambiguousKeys.push(key);
