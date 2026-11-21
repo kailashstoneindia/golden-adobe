@@ -201,6 +201,7 @@ export class CatalogImportJobsService {
       acceptedCount: job.acceptedCount,
       rejectedCount: job.rejectedCount,
       hasErrorFile: Boolean(job.errorFileKey),
+      failureMessage: job.failureMessage,
       createdAt: job.createdAt.toISOString(),
       finishedAt: job.finishedAt ? job.finishedAt.toISOString() : null,
       createdByName: job.creator?.name ?? '',

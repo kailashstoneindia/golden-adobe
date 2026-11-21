@@ -174,6 +174,10 @@ describe('CatalogImportJobsService (integration)', () => {
       failureMessage: 'The file could not be read as an Excel workbook (.xlsx)',
     });
     expect(await productsOf(jobId)).toBe(0);
+    // The admin screen shows why (decision 0063, S8).
+    expect((await service.get(jobId)).failureMessage).toBe(
+      'The file could not be read as an Excel workbook (.xlsx)',
+    );
   });
 
   it('running a finished job again does nothing', async () => {

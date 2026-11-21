@@ -54,6 +54,8 @@ export type CatalogImportJobDto = {
   acceptedCount: number;
   rejectedCount: number;
   hasErrorFile: boolean;
+  // Why a failed job failed, in words an admin can act on.
+  failureMessage: string | null;
   createdAt: string;
   finishedAt: string | null;
   createdByName: string;
