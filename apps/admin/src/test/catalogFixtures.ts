@@ -1,5 +1,5 @@
 import type { CategoryAttribute, CategoryNode, ProductDetail } from '@/types/catalog.types';
-import type { ProductReadinessDto } from '@golden-abode/types';
+import type { CatalogImportJobDto, ProductReadinessDto } from '@golden-abode/types';
 
 export const LEAF_ID = 'c2222222-2222-4222-8222-222222222222';
 export const PARENT_ID = 'c1111111-1111-4111-8111-111111111111';
@@ -135,4 +135,26 @@ export function productDetail(over: Partial<ProductDetail> = {}): ProductDetail 
     listings: [],
     ...over,
   } as ProductDetail;
+}
+
+export const JOB_ID = 'j1111111-1111-4111-8111-111111111111';
+
+export function importJob(over: Partial<CatalogImportJobDto> = {}): CatalogImportJobDto {
+  return {
+    id: JOB_ID,
+    categoryId: LEAF_ID,
+    categoryPath: 'electrical/switches',
+    status: 'running',
+    totalRows: 400,
+    processedRows: 120,
+    acceptedCount: 0,
+    rejectedCount: 0,
+    hasErrorFile: false,
+    failureMessage: null,
+    createdAt: '2026-11-21T09:00:00.000Z',
+    finishedAt: null,
+    createdByName: 'Asha Admin',
+    undone: false,
+    ...over,
+  };
 }

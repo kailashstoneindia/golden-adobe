@@ -19,6 +19,8 @@ export const CATALOG_QUERY_KEYS = {
   product: (productId: string) => ['catalog', 'product', productId] as const,
   readiness: (productId: string) => ['catalog', 'readiness', productId] as const,
   reviewQueue: ['catalog', 'review-queue'] as const,
+  importJobs: ['catalog', 'import-jobs'] as const,
+  importJob: (jobId: string) => ['catalog', 'import-job', jobId] as const,
 };
 
 export function useCategoryTreeQuery() {
@@ -86,6 +88,46 @@ export function useUploadImportMutation() {
   return useMutation({
     mutationFn: (options: { categoryId: string; file: File }) =>
       catalogService.uploadImport(options.categoryId, options.file),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: CATALOG_QUERY_KEYS.importJobs }),
+  });
+}
+
+// Decision 0063: import history, one job's live progress, and undo.
+export function useImportJobsQuery(page: number) {
+  return useQuery({
+    queryKey: [...CATALOG_QUERY_KEYS.importJobs, page] as const,
+    queryFn: () => catalogService.listImportJobs(page),
+  });
+}
+
+const IMPORT_POLL_MS = 2000;
+
+export function useImportJobQuery(jobId: string | null) {
+  const queryClient = useQueryClient();
+  return useQuery({
+    queryKey: CATALOG_QUERY_KEYS.importJob(jobId ?? ''),
+    queryFn: async () => {
+      const job = await catalogService.getImportJob(jobId!);
+      // A finished job changes the history and the product lists.
+      if (job.status === 'done' || job.status === 'failed') {
+        void queryClient.invalidateQueries({ queryKey: CATALOG_QUERY_KEYS.importJobs });
+        void queryClient.invalidateQueries({ queryKey: ['catalog', 'products'] });
+      }
+      return job;
+    },
+    enabled: Boolean(jobId),
+    // Poll while the job is waiting or running; stop once it has finished.
+    refetchInterval: (query) =>
+      query.state.data?.status === 'queued' || query.state.data?.status === 'running'
+        ? IMPORT_POLL_MS
+        : false,
+  });
+}
+
+export function useUndoImportMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (jobId: string) => catalogService.undoImportJob(jobId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: CATALOG_QUERY_KEYS.all }),
   });
 }

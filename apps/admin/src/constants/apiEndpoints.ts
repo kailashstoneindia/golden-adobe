@@ -106,6 +106,11 @@ export const API_ENDPOINTS = {
   catalogImport: {
     template: (categoryId: string) => `/admin/catalog-import/template/${categoryId}`,
     upload: (categoryId: string) => `/admin/catalog-import/${categoryId}`,
+    // Decision 0063: imports run as background jobs.
+    jobs: '/admin/catalog-import/jobs',
+    job: (jobId: string) => `/admin/catalog-import/jobs/${jobId}`,
+    jobErrors: (jobId: string) => `/admin/catalog-import/jobs/${jobId}/errors`,
+    jobUndo: (jobId: string) => `/admin/catalog-import/jobs/${jobId}/undo`,
   },
   catalogReview: {
     list: '/admin/catalog-review-queue',

@@ -174,17 +174,8 @@ export type ListProductsQuery = {
 };
 
 // ── Import ────────────────────────────────────────────────────────────────
-export type ImportRowError = {
-  row: number;
-  column?: string;
-  message: string;
-};
-
-export type ImportResult = {
-  createdCount: number;
-  errorCount: number;
-  errors: ImportRowError[];
-};
+// Decision 0063: an upload starts a background job; its state is CatalogImportJobDto.
+export type ImportUploadResult = { jobId: string };
 
 // ── Review queue ──────────────────────────────────────────────────────────
 export type ReviewCandidate = {

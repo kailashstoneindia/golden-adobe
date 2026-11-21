@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { isEmpty } from 'lodash';
 
 import { catalogService } from '@/services';
 import { useCategoryTreeQuery, useUploadImportMutation } from '@/queries/useCatalogQueries';
 import styles from '@/styles/shared.module.css';
 import catalogStyles from '@/styles/catalog.module.css';
-import type { CategoryNode, ImportResult } from '@/types/catalog.types';
+import type { CategoryNode } from '@/types/catalog.types';
+import { ImportJobProgress } from '@/components/catalog/ImportJobProgress';
 
 // Only leaves — a product cannot attach to a group category, so offering one
 // would produce a template nothing could use.
@@ -17,7 +17,7 @@ export function CatalogImportPage() {
   const [categoryId, setCategoryId] = useState('');
   const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
-  const [result, setResult] = useState<ImportResult | null>(null);
+  const [jobId, setJobId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -51,7 +51,6 @@ export function CatalogImportPage() {
   const handleCategorySelect = (nextCategoryId: string): void => {
     setCategoryId(nextCategoryId);
     setIsCategoryMenuOpen(false);
-    setResult(null);
     setError(null);
   };
 
@@ -71,10 +70,13 @@ export function CatalogImportPage() {
   const handleUpload = async () => {
     if (!selected || !file) return;
     setError(null);
-    setResult(null);
+    setJobId(null);
     try {
-      const uploadResult = await uploadMutation.mutateAsync({ categoryId: selected.id, file });
-      setResult(uploadResult);
+      const { jobId: started } = await uploadMutation.mutateAsync({
+        categoryId: selected.id,
+        file,
+      });
+      setJobId(started);
       setFile(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (err) {
@@ -155,9 +157,11 @@ export function CatalogImportPage() {
         <h3 className={catalogStyles.stepTitle}>3 · Upload the filled template</h3>
         <p className={styles.hint}>
           Every row is validated — required fields, enum values, numeric parsing, brand resolution
-          and duplicate detection. Nothing is written for a row that fails.
+          and duplicate detection. Nothing is written for a row that fails. The import runs in the
+          background (files up to 20 MB); you can leave this page and check it below later.
         </p>
         <input
+          aria-label="Filled template (.xlsx)"
           ref={fileInputRef}
           type="file"
           accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -176,41 +180,7 @@ export function CatalogImportPage() {
 
       {error ? <p className={styles.error}>{error}</p> : null}
 
-      {result ? (
-        <div className={catalogStyles.stepCard}>
-          <h3 className={catalogStyles.stepTitle}>Result</h3>
-          <p className={styles.detailValue}>
-            <strong>{result.createdCount}</strong> draft product
-            {result.createdCount === 1 ? '' : 's'} created
-            {result.errorCount > 0 ? `, ${result.errorCount} row(s) rejected` : ''}.
-          </p>
-
-          {!isEmpty(result.errors) ? (
-            <div className={styles.tableWrap}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th>Row</th>
-                    <th>Column</th>
-                    <th>Problem</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {result.errors.map((rowError, index) => (
-                    <tr key={`${rowError.row}-${rowError.column ?? index}`}>
-                      <td>{rowError.row}</td>
-                      <td>{rowError.column ?? '—'}</td>
-                      <td>{rowError.message}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className={styles.sectionEmpty}>Every row was accepted.</div>
-          )}
-        </div>
-      ) : null}
+      {jobId ? <ImportJobProgress jobId={jobId} /> : null}
     </section>
   );
 }

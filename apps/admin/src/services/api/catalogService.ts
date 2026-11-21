@@ -1,7 +1,7 @@
 import type {
   CategoryAttributesResponse,
   CategoryNode,
-  ImportResult,
+  ImportUploadResult,
   ListProductsQuery,
   ProductDetail,
   ProductListResponse,
@@ -12,7 +12,12 @@ import type {
   HsnCodeOption,
   UpdateProductRequest,
 } from '@/types/catalog.types';
-import type { MergeResultDto, ProductReadinessDto } from '@golden-abode/types';
+import type {
+  CatalogImportJobDto,
+  MergeResultDto,
+  PaginatedResponse,
+  ProductReadinessDto,
+} from '@golden-abode/types';
 
 import { API_ENDPOINTS } from '@/constants/apiEndpoints';
 import {
@@ -88,8 +93,27 @@ export const catalogService = {
     );
   },
 
-  uploadImport(categoryId: string, file: File): Promise<ImportResult> {
-    return uploadRequest<ImportResult>(API_ENDPOINTS.catalogImport.upload(categoryId), file);
+  uploadImport(categoryId: string, file: File): Promise<ImportUploadResult> {
+    return uploadRequest<ImportUploadResult>(API_ENDPOINTS.catalogImport.upload(categoryId), file);
+  },
+
+  listImportJobs(page: number): Promise<PaginatedResponse<CatalogImportJobDto>> {
+    return getRequest(`${API_ENDPOINTS.catalogImport.jobs}?page=${page}&limit=10`);
+  },
+
+  getImportJob(jobId: string): Promise<CatalogImportJobDto> {
+    return getRequest(API_ENDPOINTS.catalogImport.job(jobId));
+  },
+
+  getImportErrorUrl(jobId: string): Promise<{ url: string }> {
+    return getRequest(API_ENDPOINTS.catalogImport.jobErrors(jobId));
+  },
+
+  undoImportJob(jobId: string): Promise<{ deleted: number; kept: number }> {
+    return postRequest<{ deleted: number; kept: number }, undefined>(
+      API_ENDPOINTS.catalogImport.jobUndo(jobId),
+      undefined,
+    );
   },
 
   // ── Decision 0063 ──────────────────────────────────────────────────────

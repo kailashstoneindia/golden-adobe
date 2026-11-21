@@ -1111,3 +1111,9 @@ textarea.input {
 .check_warning {
   color: #a8731f;
 }
+
+.progressBar {
+  width: 100%;
+  height: 10px;
+  margin: 6px 0 4px;
+}
