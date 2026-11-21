@@ -232,3 +232,16 @@ export type UpdateProductRequest = {
   importerDetails?: string | null;
   attributeValues?: AttributeValueInput[];
 };
+
+// Decision 0063: POST /admin/catalog/products/lookup-codes.
+export type ProductKeyMatch = {
+  key: string;
+  productId: string;
+  matchedBy: 'code' | 'mpn';
+  hasPrimary: boolean;
+  status: ProductStatus;
+  productName: string;
+  productCode: string;
+};
+
+export type ProductKeyLookup = { items: ProductKeyMatch[]; ambiguousKeys: string[] };

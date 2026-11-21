@@ -123,4 +123,13 @@ describe('CatalogProductsPage brand filter (decision 0063)', () => {
       screen.getByText('GA-0000102: needs at least one image; Missing: Rated current'),
     ).toBeInTheDocument();
   });
+
+  it('opens the bulk image upload from the products page', async () => {
+    renderPage();
+    await screen.findByText('Havells MCB 10A');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Upload images' }));
+
+    expect(screen.getByRole('dialog', { name: 'Upload images in bulk' })).toBeInTheDocument();
+  });
 });

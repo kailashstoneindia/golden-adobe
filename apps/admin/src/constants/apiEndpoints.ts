@@ -86,6 +86,7 @@ export const API_ENDPOINTS = {
     publishProduct: (productId: string) => `/admin/catalog/products/${productId}/publish`,
     unpublishProduct: (productId: string) => `/admin/catalog/products/${productId}/unpublish`,
     bulkPublish: '/admin/catalog/products/bulk-publish',
+    lookupCodes: '/admin/catalog/products/lookup-codes',
     readiness: (productId: string) => `/admin/catalog/products/${productId}/readiness`,
     retire: (productId: string) => `/admin/catalog/products/${productId}/retire`,
     restore: (productId: string) => `/admin/catalog/products/${productId}/restore`,

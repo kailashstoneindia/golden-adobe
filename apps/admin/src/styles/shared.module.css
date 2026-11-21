@@ -1117,3 +1117,8 @@ textarea.input {
   height: 10px;
   margin: 6px 0 4px;
 }
+
+.modalWide {
+  width: min(900px, 94vw);
+  max-width: 900px;
+}

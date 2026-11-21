@@ -9,6 +9,7 @@ import type {
   BulkPublishResult,
   CreateProductRequest,
   HsnCodeOption,
+  ProductKeyLookup,
   UpdateProductRequest,
 } from '@/types/catalog.types';
 import type {
@@ -118,6 +119,13 @@ export const catalogService = {
   },
 
   // ── Decision 0063 ──────────────────────────────────────────────────────
+  lookupProductKeys(keys: string[], brandId?: string | null): Promise<ProductKeyLookup> {
+    return postRequest<ProductKeyLookup, { keys: string[]; brandId?: string }>(
+      API_ENDPOINTS.catalog.lookupCodes,
+      brandId ? { keys, brandId } : { keys },
+    );
+  },
+
   fetchReadiness(productId: string): Promise<ProductReadinessDto> {
     return getRequest<ProductReadinessDto>(API_ENDPOINTS.catalog.readiness(productId));
   },

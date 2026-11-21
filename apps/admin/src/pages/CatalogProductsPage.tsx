@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { isEmpty } from 'lodash';
 
 import { BrandFilter } from '@/components/catalog/BrandFilter';
+import { BulkImageDialog } from '@/components/catalog/media/BulkImageDialog';
 import { ProductDetailModal } from '@/components/catalog/ProductDetailModal';
 import { useBrandQuery } from '@/queries';
 import type { BulkPublishSkipped } from '@/types/catalog.types';
@@ -32,6 +33,7 @@ export function CatalogProductsPage() {
   const [categoryId, setCategoryId] = useState('');
   const [brandId, setBrandId] = useState<string | null>(null);
   const [skipped, setSkipped] = useState<BulkPublishSkipped[]>([]);
+  const [bulkImages, setBulkImages] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -139,6 +141,13 @@ export function CatalogProductsPage() {
         <Link className={`${styles.button} ${styles.buttonPrimary}`} to={ROUTES.catalogProductNew}>
           New product
         </Link>
+        <button
+          type="button"
+          className={`${styles.button} ${styles.buttonGhost}`}
+          onClick={() => setBulkImages(true)}
+        >
+          Upload images
+        </button>
       </div>
       <p className={styles.pageSubtitle}>
         Every catalog product, including drafts. Drafts have no vendor listing and are not
@@ -319,6 +328,8 @@ export function CatalogProductsPage() {
           </div>
         </>
       )}
+
+      {bulkImages ? <BulkImageDialog onClose={() => setBulkImages(false)} /> : null}
 
       {selectedId ? (
         <ProductDetailModal
