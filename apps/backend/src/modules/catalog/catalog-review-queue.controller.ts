@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Role } from '@golden-abode/types';
 
@@ -28,6 +28,17 @@ export class CatalogReviewQueueController {
   @ApiOperation({ summary: 'List needs_review vendor import rows with ranked candidates' })
   async list() {
     return this.importService.listReviewQueue();
+  }
+
+  @Get(':importRowId/prefill')
+  @ApiOperation({
+    summary: 'Start a new product from a row that matched nothing',
+    description:
+      "The vendor's product name, brand text (with a suggested brand when it resolves) and " +
+      'reference, for the add-product form (decision 0063).',
+  })
+  async prefill(@Param('importRowId', ParseUUIDPipe) importRowId: string) {
+    return this.importService.prefillReviewRow(importRowId);
   }
 
   @Post(':importRowId/link')

@@ -1,8 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import ExcelJS from 'exceljs';
 import {
   PendingConfirmation,
+  ReviewRowPrefillDto,
   ReviewQueueItem,
   VendorImportResult,
   VendorImportRowOutcome,
@@ -20,6 +21,7 @@ import { Vendor } from '../vendors/models/vendor.model';
 import { Attribute } from './models/attribute.model';
 import { MasterProductAttributeValue } from './models/master-product-attribute-value.model';
 import { VendorMatchLadderService } from './vendor-match-ladder.service';
+import { BrandResolverService } from './brand-resolver.service';
 
 type ParsedRow = {
   rowNumber: number;
@@ -32,6 +34,9 @@ type ParsedRow = {
   gradeRaw?: string;
   statusRaw?: string;
   colourFamily?: string; // paint-specific extra column
+  // Decision 0063: kept so an unmatched row can become a new product.
+  productName?: string;
+  brand?: string;
 };
 
 // Flow 2 — vendor inventory upload (catalog-excel-flows.md, decision 0011).
@@ -69,6 +74,7 @@ export class VendorCatalogImportService {
     @InjectModel(Attribute)
     private readonly attributeModel: typeof Attribute,
     private readonly matchLadder: VendorMatchLadderService,
+    private readonly brandResolver: BrandResolverService,
   ) {}
 
   async importFile(vendorId: string, fileBuffer: Buffer): Promise<VendorImportResult> {
@@ -576,6 +582,33 @@ export class VendorCatalogImportService {
     return result;
   }
 
+  // Decision 0063: what the admin starts from when a vendor row matched
+  // nothing and should become a new product.
+  async prefillReviewRow(importRowId: string): Promise<ReviewRowPrefillDto> {
+    const row = await this.importRowModel.findByPk(importRowId, { include: [Vendor] });
+    if (!row) throw new NotFoundException(`import row ${importRowId} not found`);
+    if (row.status !== ImportRowStatus.NEEDS_REVIEW) {
+      throw new BadRequestException('This row has already been resolved');
+    }
+
+    const raw = row.rawRowJson as { productRef?: string; productName?: string; brand?: string };
+    const brandText = raw.brand?.trim() || null;
+    const resolved = brandText ? await this.brandResolver.resolve(brandText) : null;
+    // A deactivated brand cannot take new products, so it is not suggested.
+    const suggested = resolved?.isActive ? resolved : null;
+
+    return {
+      name: raw.productName?.trim() || raw.productRef?.trim() || '',
+      brandText,
+      suggestedBrandId: suggested?.id ?? null,
+      suggestedBrandName: suggested?.name ?? null,
+      productRef: raw.productRef ?? null,
+      categoryId: null,
+      attributeValues: {},
+      vendorName: row.vendor?.shopName ?? '(unknown)',
+    };
+  }
+
   // Admin links a review-queue row to an existing product — "It exists,
   // matcher missed it" (catalog-excel-flows.md Flow 3, outcome 1). Writes
   // vendor_product_map so the SAME vendor_sku matches automatically next
@@ -746,6 +779,8 @@ export class VendorCatalogImportService {
       grade: row.gradeRaw,
       status: row.statusRaw,
       colourFamily: row.colourFamily,
+      productName: row.productName,
+      brand: row.brand,
     };
   }
 
@@ -795,6 +830,8 @@ export class VendorCatalogImportService {
         gradeRaw: str(get(row, 'grade')),
         statusRaw: str(get(row, 'status')),
         colourFamily: str(get(row, 'colour_family')),
+        productName: str(get(row, 'product_name')),
+        brand: str(get(row, 'brand')),
       });
     });
 

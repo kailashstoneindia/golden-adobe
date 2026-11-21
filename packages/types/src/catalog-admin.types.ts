@@ -70,3 +70,18 @@ export type MergeResultDto = {
   // target product. They are paused for review, never deleted.
   pausedListings: { listingId: string; vendorName: string; reason: string }[];
 };
+
+// Decision 0063 / S9: a starting point for creating a product from a vendor
+// row that matched nothing. Vendors send no category or attributes, so those
+// start empty; the admin chooses them.
+export type ReviewRowPrefillDto = {
+  name: string;
+  brandText: string | null;
+  suggestedBrandId: string | null;
+  suggestedBrandName: string | null;
+  // What the vendor typed to identify the product (a code, part number or name).
+  productRef: string | null;
+  categoryId: string | null;
+  attributeValues: Record<string, string | number | boolean>;
+  vendorName: string;
+};
