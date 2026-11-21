@@ -28,6 +28,18 @@ type ColumnPlan = {
   >;
 };
 
+const PROGRESS_EVERY = 20;
+
+export type ProcessRowsOptions = {
+  importJobId?: string | null;
+  // Called every PROGRESS_EVERY rows and once at the end with the rows done.
+  onProgress?: (processed: number) => Promise<void>;
+};
+
+export type ProcessRowsResult = Omit<CatalogImportResult, 'errorFileBase64'> & {
+  errorWorkbook: Buffer | null;
+};
+
 // Flow 1 — admin master catalog upload (catalog-excel-flows.md). Parses a
 // completed template, validates every row against the 5 documented rules,
 // creates draft master_product rows for the rows that pass, and returns an
@@ -52,7 +64,41 @@ export class CatalogImportUploadService {
     private readonly brandResolver: BrandResolverService,
   ) {}
 
-  async importFile(leafCategoryId: string, fileBuffer: Buffer): Promise<CatalogImportResult> {
+  async importFile(
+    leafCategoryId: string,
+    fileBuffer: Buffer,
+    options: ProcessRowsOptions = {},
+  ): Promise<CatalogImportResult> {
+    const sheet = await this.loadSheet(fileBuffer);
+    const result = await this.processRows(leafCategoryId, sheet, options);
+    const { errorWorkbook, ...rest } = result;
+    return errorWorkbook ? { ...rest, errorFileBase64: errorWorkbook.toString('base64') } : rest;
+  }
+
+  // The first worksheet of an uploaded .xlsx. A file that is not a workbook
+  // throws with a message an admin can act on.
+  async loadSheet(fileBuffer: Buffer): Promise<ExcelJS.Worksheet> {
+    const workbook = new ExcelJS.Workbook();
+    try {
+      await workbook.xlsx.load(fileBuffer as unknown as ExcelJS.Buffer);
+    } catch {
+      throw new Error('The file could not be read as an Excel workbook (.xlsx)');
+    }
+    const sheet = workbook.worksheets[0];
+    if (!sheet) {
+      throw new Error('uploaded file has no worksheet');
+    }
+    return sheet;
+  }
+
+  // Decision 0063: the row loop, shared by the background import job. Each
+  // valid row becomes a draft (stamped with importJobId when given); a row the
+  // database refuses becomes that row's error instead of stopping the import.
+  async processRows(
+    leafCategoryId: string,
+    sheet: ExcelJS.Worksheet,
+    options: ProcessRowsOptions = {},
+  ): Promise<ProcessRowsResult> {
     const leaf = await this.categoryModel.findByPk(leafCategoryId);
     if (!leaf) {
       throw new NotFoundException(`category ${leafCategoryId} does not exist`);
@@ -66,54 +112,57 @@ export class CatalogImportUploadService {
     const blocks = await this.attributeResolver.resolveEffectiveAttributes(leafCategoryId);
     const plan = this.buildColumnPlan(blocks);
 
-    const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(fileBuffer as unknown as ExcelJS.Buffer);
-    const sheet = workbook.worksheets[0];
-    if (!sheet) {
-      throw new Error('uploaded file has no worksheet');
-    }
-
     const { headerToColumnIndex, headerRowValues } = this.readHeader(sheet);
     const rows = this.readDataRows(sheet, headerToColumnIndex);
 
     const errors: CatalogImportRowError[] = [];
     const createdProductIds: string[] = [];
     const rowErrorsByRowNumber = new Map<number, CatalogImportRowError[]>();
+    const reject = (rowNumber: number, rowErrors: CatalogImportRowError[]) => {
+      errors.push(...rowErrors);
+      rowErrorsByRowNumber.set(rowNumber, rowErrors);
+    };
 
+    let processed = 0;
     for (const row of rows) {
       const rowErrors = await this.validateRow(row, plan);
       if (rowErrors.length > 0) {
-        errors.push(...rowErrors);
-        rowErrorsByRowNumber.set(row.rowNumber, rowErrors);
-        continue;
+        reject(row.rowNumber, rowErrors);
+      } else {
+        try {
+          createdProductIds.push(
+            await this.createDraftProduct(row, plan, leaf.id, options.importJobId ?? null),
+          );
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          reject(row.rowNumber, [
+            { row: row.rowNumber, column: '', message: `could not save this row: ${message}` },
+          ]);
+        }
       }
-
-      const productId = await this.createDraftProduct(row, plan, leaf.id);
-      createdProductIds.push(productId);
+      processed++;
+      if (processed % PROGRESS_EVERY === 0) await options.onProgress?.(processed);
     }
+    if (processed % PROGRESS_EVERY !== 0 || processed === 0) await options.onProgress?.(processed);
 
-    const result: CatalogImportResult = {
+    const errorWorkbook =
+      rowErrorsByRowNumber.size > 0
+        ? await this.buildErrorWorkbook(sheet, headerRowValues, rowErrorsByRowNumber)
+        : null;
+
+    this.logger.log(
+      `catalog import for category ${leafCategoryId}: ${createdProductIds.length} accepted, ${rowErrorsByRowNumber.size} rejected of ${rows.length}`,
+    );
+
+    return {
       categoryId: leafCategoryId,
       totalRows: rows.length,
       acceptedCount: createdProductIds.length,
       rejectedCount: rowErrorsByRowNumber.size,
       createdProductIds,
       errors,
+      errorWorkbook,
     };
-
-    if (rowErrorsByRowNumber.size > 0) {
-      result.errorFileBase64 = await this.buildErrorWorkbook(
-        sheet,
-        headerRowValues,
-        rowErrorsByRowNumber,
-      );
-    }
-
-    this.logger.log(
-      `catalog import for category ${leafCategoryId}: ${result.acceptedCount} accepted, ${result.rejectedCount} rejected of ${result.totalRows}`,
-    );
-
-    return result;
   }
 
   private buildColumnPlan(blocks: ResolvedAttributeBlock[]): ColumnPlan {
@@ -356,6 +405,7 @@ export class CatalogImportUploadService {
     row: ParsedRow,
     plan: ColumnPlan,
     leafCategoryId: string,
+    importJobId: string | null,
   ): Promise<string> {
     const brandName = row.values['brand'];
     const brand = brandName ? await this.brandResolver.resolve(String(brandName)) : null;
@@ -370,36 +420,49 @@ export class CatalogImportUploadService {
       ? null
       : await resolveCategoryHsnDefault(this.masterProductModel.sequelize!, leafCategoryId);
 
-    const product = await this.masterProductModel.create({
-      categoryId: leafCategoryId,
-      brandId: brand?.id ?? null,
-      name,
-      slug,
-      mfrPartNumber: row.values['mfr_part_number'] ? String(row.values['mfr_part_number']) : null,
-      gtin: row.values['gtin'] ? String(row.values['gtin']) : null,
-      hsnCode: typedHsn ?? hsnDefault?.code ?? null,
-      gstRate:
-        row.values['gst_rate'] !== undefined
-          ? Number(row.values['gst_rate'])
-          : (hsnDefault?.gstRate ?? 18.0),
-      countryOfOrigin: row.values['country_of_origin']
-        ? String(row.values['country_of_origin'])
-        : 'India',
-      packContentQty: row.values['pack_qty'] !== undefined ? Number(row.values['pack_qty']) : null,
-      status: MasterProductStatus.DRAFT, // accepted rows land as draft; publishing is a separate deliberate step
-    } as any);
+    // One transaction per row, so a row the database refuses leaves nothing behind.
+    return this.masterProductModel.sequelize!.transaction(async (transaction) => {
+      const product = await this.masterProductModel.create(
+        {
+          categoryId: leafCategoryId,
+          brandId: brand?.id ?? null,
+          importJobId,
+          name,
+          slug,
+          mfrPartNumber: row.values['mfr_part_number']
+            ? String(row.values['mfr_part_number'])
+            : null,
+          gtin: row.values['gtin'] ? String(row.values['gtin']) : null,
+          hsnCode: typedHsn ?? hsnDefault?.code ?? null,
+          gstRate:
+            row.values['gst_rate'] !== undefined
+              ? Number(row.values['gst_rate'])
+              : (hsnDefault?.gstRate ?? 18.0),
+          countryOfOrigin: row.values['country_of_origin']
+            ? String(row.values['country_of_origin'])
+            : 'India',
+          packContentQty:
+            row.values['pack_qty'] !== undefined ? Number(row.values['pack_qty']) : null,
+          status: MasterProductStatus.DRAFT, // accepted rows land as draft; publishing is a separate deliberate step
+        } as any,
+        { transaction },
+      );
 
-    for (const [code, { attribute }] of plan.attributeByCode.entries()) {
-      const value = row.values[code];
-      if (value === undefined) continue;
-      await this.attributeValueModel.create({
-        masterProductId: product.id,
-        attributeId: attribute.id,
-        value: String(value),
-      } as any);
-    }
+      for (const [code, { attribute }] of plan.attributeByCode.entries()) {
+        const value = row.values[code];
+        if (value === undefined) continue;
+        await this.attributeValueModel.create(
+          {
+            masterProductId: product.id,
+            attributeId: attribute.id,
+            value: String(value),
+          } as any,
+          { transaction },
+        );
+      }
 
-    return product.id;
+      return product.id;
+    });
   }
 
   private slugify(name: string, rowNumber: number): string {
@@ -419,7 +482,7 @@ export class CatalogImportUploadService {
     sourceSheet: ExcelJS.Worksheet,
     headerRowValues: string[],
     rowErrorsByRowNumber: Map<number, CatalogImportRowError[]>,
-  ): Promise<string> {
+  ): Promise<Buffer> {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Products');
 
@@ -446,6 +509,6 @@ export class CatalogImportUploadService {
     headerRow.commit();
 
     const buffer = await workbook.xlsx.writeBuffer();
-    return Buffer.from(buffer as unknown as ArrayBuffer).toString('base64');
+    return Buffer.from(buffer as unknown as ArrayBuffer);
   }
 }
