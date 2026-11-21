@@ -1,0 +1,712 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- Repo copy of the Catalog Onboarding Flow artifact (decision 0063). Open this file in a browser; screenshots live in assets/catalog-onboarding/. -->
+<title>Catalog Onboarding Flow</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: one reading column (max 1080px) with a wrapping section index; step cards pair text with the real admin screenshot. Palette follows the admin panel: navy sidebar, ember buttons, sand ground. */
+:root {
+  --bg: #f1ebe2;
+  --paper: #fbf8f3;
+  --ink: #1b2230;
+  --muted: #5e6675;
+  --line: #ddd3c5;
+  --navy: #17345f;
+  --navy-soft: #e3e9f2;
+  --ember: #c4501d;
+  --ember-soft: #f6e2d7;
+  --ok: #2e7d4f;
+  --ok-soft: #e1f0e6;
+  --warn: #9a6a14;
+  --warn-soft: #f6ecd3;
+  --bad: #b3261e;
+  --bad-soft: #f7e0dd;
+  --display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+  --body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11151d; --paper: #181e29; --ink: #e8ecf3; --muted: #a2abba; --line: #2b3342;
+    --navy: #9fbde8; --navy-soft: #1d2a40; --ember: #f08a55; --ember-soft: #3a2419;
+    --ok: #6fcf97; --ok-soft: #173023; --warn: #e3b25a; --warn-soft: #362b14; --bad: #f2867d; --bad-soft: #3b1d1a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11151d; --paper: #181e29; --ink: #e8ecf3; --muted: #a2abba; --line: #2b3342;
+  --navy: #9fbde8; --navy-soft: #1d2a40; --ember: #f08a55; --ember-soft: #3a2419;
+  --ok: #6fcf97; --ok-soft: #173023; --warn: #e3b25a; --warn-soft: #362b14; --bad: #f2867d; --bad-soft: #3b1d1a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.6 var(--body); }
+.wrap { max-width: 1080px; margin: 0 auto; padding-block: 40px 80px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 56px; }
+h1, h2, h3 { font-family: var(--display); line-height: 1.15; margin: 0; text-wrap: balance; color: var(--ink); }
+h1 { font-size: clamp(32px, 5.4vw, 52px); font-weight: 700; letter-spacing: -0.02em; }
+h2 { font-size: clamp(24px, 3.2vw, 32px); font-weight: 600; }
+h3 { font-size: 18px; font-weight: 600; }
+p { margin: 0; max-width: 68ch; }
+code, .mono { font-family: var(--mono); font-size: 0.86em; }
+code { background: var(--navy-soft); color: var(--navy); padding: 1px 6px; border-radius: 5px; overflow-wrap: anywhere; }
+a { color: var(--ember); }
+:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; }
+.eyebrow { font: 600 12px/1 var(--display); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ember); }
+.lede { color: var(--muted); font-size: 17px; }
+section { display: grid; gap: 20px; min-width: 0; }
+.head { display: grid; gap: 8px; }
+
+/* hero */
+.hero { display: grid; gap: 18px; }
+.hero .meta { display: flex; flex-wrap: wrap; gap: 8px; }
+.pill { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--paper); border-radius: 999px; padding: 4px 12px; font-size: 13px; color: var(--muted); }
+.pill b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.index { display: flex; flex-wrap: wrap; gap: 6px 14px; padding-top: 6px; border-top: 1px solid var(--line); }
+.index a { font: 500 13px var(--display); color: var(--navy); text-decoration: none; padding: 4px 0; }
+.index a:hover { color: var(--ember); }
+
+/* tables */
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; vertical-align: top; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+th { font: 600 11px var(--display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+tr:last-child td { border-bottom: none; }
+td.num { font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; }
+.was { color: var(--muted); }
+.now { color: var(--ink); }
+
+/* diagrams */
+.diagram { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 18px; overflow-x: auto; }
+.diagram pre.mermaid { margin: 0; background: transparent; min-width: 640px; }
+.rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.rule { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 6px; min-width: 0; }
+.rule h3 { font-size: 15px; }
+.rule p { font-size: 14px; color: var(--muted); }
+
+/* demos */
+.demo { background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 16px; }
+.demo-note { font-size: 13px; color: var(--muted); }
+.field { display: grid; gap: 6px; }
+.field label { font: 600 12px var(--display); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+input[type="text"] { font: 16px var(--body); padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); width: 100%; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: 13px var(--mono); padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer; }
+.chip:hover { border-color: var(--ember); }
+.trace { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; counter-reset: s; }
+.trace li { display: grid; grid-template-columns: 28px 1fr; gap: 10px; align-items: start; padding: 10px 12px; border-radius: 10px; background: var(--bg); font-size: 14px; }
+.trace li::before { counter-increment: s; content: counter(s); font: 600 13px var(--display); width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--navy-soft); color: var(--navy); }
+.trace li.hit { background: var(--ok-soft); }
+.trace li.hit::before { background: var(--ok); color: var(--paper); }
+.trace li.skip { opacity: 0.55; }
+.verdict { padding: 12px 14px; border-radius: 10px; font-weight: 600; }
+.verdict.ok { background: var(--ok-soft); color: var(--ok); }
+.verdict.bad { background: var(--bad-soft); color: var(--bad); }
+.verdict.warn { background: var(--warn-soft); color: var(--warn); }
+.verdict small { display: block; font-weight: 400; color: var(--ink); margin-top: 4px; }
+.toggles { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 8px; }
+.toggle { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line); font-size: 14px; cursor: pointer; }
+.toggle input { accent-color: var(--ember); width: 18px; height: 18px; }
+.checklist { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.checklist li { display: grid; grid-template-columns: 22px 1fr auto; gap: 8px; align-items: baseline; font-size: 14px; padding: 8px 12px; border-radius: 8px; }
+.checklist .ok { background: var(--ok-soft); }
+.checklist .bad { background: var(--bad-soft); }
+.checklist .warn { background: var(--warn-soft); }
+.checklist .mark { font-weight: 700; }
+.checklist .ok .mark { color: var(--ok); }
+.checklist .bad .mark { color: var(--bad); }
+.checklist .warn .mark { color: var(--warn); }
+.tag { font: 600 11px var(--display); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.btnrow { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.fakebtn { font: 600 14px var(--display); padding: 10px 18px; border-radius: 10px; border: none; background: var(--ember); color: #fff; }
+.fakebtn[disabled] { opacity: 0.45; }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; align-items: start; }
+.two > * { min-width: 0; }
+
+/* steps */
+.steps { display: grid; gap: 18px; }
+.step { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 22px; background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 20px; }
+.step .num { font: 700 13px var(--display); color: var(--ember); letter-spacing: 0.08em; }
+.step .txt { display: grid; gap: 10px; align-content: start; min-width: 0; }
+.step .where { font: 500 13px var(--display); color: var(--navy); }
+.step ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; }
+.step ul li::marker { color: var(--ember); }
+.shot { margin: 0; display: grid; gap: 6px; min-width: 0; }
+.shot button { padding: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--bg); cursor: zoom-in; display: block; width: 100%; }
+.shot img { display: block; width: 100%; height: 260px; object-fit: cover; object-position: top left; }
+.shot figcaption { font-size: 12px; color: var(--muted); }
+.branch { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.branch .rule { border-left: 4px solid var(--ember); }
+@media (max-width: 760px) { .step { grid-template-columns: 1fr; } .shot img { height: 200px; } }
+
+/* lightbox */
+.lightbox { position: fixed; inset: 0; z-index: 50; background: rgba(10, 14, 22, 0.86); display: grid; place-items: center; padding: calc(16px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.lightbox img { max-width: min(1200px, 100%); max-height: 88vh; object-fit: contain; border-radius: 10px; background: #fff; }
+.lightbox .close { position: absolute; top: calc(12px + env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); font: 600 14px var(--display); background: #fff; color: #111; border: none; border-radius: 999px; padding: 8px 14px; cursor: pointer; }
+
+.status { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.stat { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; gap: 2px; }
+.stat b { font: 700 26px var(--display); font-variant-numeric: tabular-nums; color: var(--navy); }
+.stat span { font-size: 13px; color: var(--muted); }
+.todo { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.todo li { display: grid; grid-template-columns: 24px 1fr; gap: 10px; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; font-size: 14px; }
+.todo li span:first-child { font-weight: 700; color: var(--warn); }
+footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); padding-top: 16px; }
+@media (prefers-reduced-motion: no-preference) { .trace li, .checklist li { transition: background 160ms ease, opacity 160ms ease; } }
+</style>
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)} body{margin:0} img{max-width:100%} [hidden]{display:none!important}</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<header class="hero">
+  <span class="eyebrow">Kailash Stones admin · Catalog · Decision 0063</span>
+  <h1>Brand and product onboarding, start to finish</h1>
+  <p class="lede">How a new brand and its products now get into the catalog without a developer: the screens in order, how brands and products are tied together in the data, the rules every step enforces, and how a mistake is undone. Screenshots are from the real admin panel, taken during the end-to-end test runs on the test database.</p>
+  <div class="meta">
+    <span class="pill">Branch <b class="mono">feat/catalog-onboarding-impl</b></span>
+    <span class="pill"><b>11</b> build sessions done</span>
+    <span class="pill"><b>12 of 12</b> review findings fixed</span>
+    <span class="pill">Not merged or deployed yet</span>
+  </div>
+  <nav class="index" aria-label="Sections">
+    <a href="#model">Brands ↔ products</a>
+    <a href="#resolver">Brand name matching</a>
+    <a href="#flow">The flow, step by step</a>
+    <a href="#readiness">Publishing rules</a>
+    <a href="#import">Background import</a>
+    <a href="#fix">Fixing mistakes</a>
+    <a href="#before">Before → after</a>
+    <a href="#api">API</a>
+    <a href="#status">Where it stands</a>
+  </nav>
+</header>
+
+<section id="model">
+  <div class="head">
+    <span class="eyebrow">The data</span>
+    <h2>How brands are connected to products</h2>
+    <p class="lede">A brand owns its products through <code>master_product.brand_id</code>. Everything else in onboarding (spellings, merges, duplicate checks, imports) hangs off that link.</p>
+  </div>
+  <div class="diagram">
+<pre class="mermaid">
+erDiagram
+  BRAND ||--o{ BRAND_ALIAS : "other spellings"
+  BRAND ||--o{ MASTER_PRODUCT : "brand_id"
+  BRAND |o--o| BRAND : "merged_into_id"
+  CATEGORY ||--o{ MASTER_PRODUCT : "category_id (leaf only)"
+  CATEGORY ||--o{ ATTRIBUTE : "variant-defining = starred"
+  HSN_CODE |o--o{ CATEGORY : "hsn_code_default"
+  HSN_CODE |o--o{ MASTER_PRODUCT : "hsn_code + gst_rate"
+  MASTER_PRODUCT ||--o{ ATTRIBUTE_VALUE : "has"
+  MASTER_PRODUCT ||--o{ PRODUCT_MEDIA : "images"
+  MASTER_PRODUCT ||--o{ VENDOR_LISTING : "sold by vendors"
+  MASTER_PRODUCT |o--o| MASTER_PRODUCT : "merged_into_id"
+  CATALOG_IMPORT_JOB |o--o{ MASTER_PRODUCT : "import_job_id"
+  VENDOR ||--o{ VENDOR_LISTING : "price + stock"
+  BRAND {
+    uuid id
+    text name "unique after normalising"
+    text manufacturer_name "required by law"
+    text manufacturer_address "required by law"
+    text consumer_care_email "required by law"
+    text consumer_care_phone "required by law"
+    text logo_url "public CDN link"
+    bool is_active
+    uuid merged_into_id "set on merge"
+  }
+  MASTER_PRODUCT {
+    uuid id
+    text product_code "GA-0110919, never changes"
+    uuid brand_id "null for generic products"
+    text mfr_part_number "unique per brand"
+    text gtin "unique"
+    text status "draft, live, retired"
+    uuid import_job_id
+  }
+  BRAND_ALIAS {
+    text alias "lowercase, unique across brands"
+  }
+</pre>
+  </div>
+  <div class="rules">
+    <div class="rule"><h3>One brand, many products</h3><p>A branded product points at exactly one brand. A <b>generic</b> product (loose stone, unbranded hardware) has no brand, and the database forbids giving it one.</p></div>
+    <div class="rule"><h3>Part numbers are per brand</h3><p><code>(brand_id, mfr_part_number)</code> is unique. Two brands may both sell "MCB-10"; one brand cannot have it twice. This is the main duplicate check on import and edit.</p></div>
+    <div class="rule"><h3>One brand, one name</h3><p>Brand names are unique after normalising: "HAVELLS", "Havells Ltd" and "Havells India" are the same brand. Other spellings live in <code>brand_alias</code>, each owned by one brand only.</p></div>
+    <div class="rule"><h3>Merged, not deleted</h3><p>Merging a duplicate brand moves its products and aliases to the one that stays. The old row is kept, deactivated, with <code>merged_into_id</code>, so its old name still finds the right brand.</p></div>
+    <div class="rule"><h3>Compliance lives on the brand</h3><p>Manufacturer name and address and consumer-care contacts are stored once per brand and shown on every one of its products (Legal Metrology, decision 0010).</p></div>
+    <div class="rule"><h3>Vendors sell, the platform owns</h3><p>Vendors never create brands or products. They add a <b>listing</b> (price, stock, grade) on a catalog product. A product can go live before any vendor lists it.</p></div>
+  </div>
+</section>
+
+<section id="resolver">
+  <div class="head">
+    <span class="eyebrow">Brand name matching</span>
+    <h2>Any spelling finds the right brand</h2>
+    <p class="lede">Every place a brand is typed (spreadsheet import, add-product, a vendor's row in the review queue) goes through the same resolver. Try a spelling below.</p>
+  </div>
+  <div class="demo">
+    <div class="field">
+      <label for="brand-input">Brand as someone typed it</label>
+      <input id="brand-input" type="text" value="HAVELLS INDIA" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="chips" aria-label="Examples">
+      <button class="chip" type="button">HAVELLS INDIA</button>
+      <button class="chip" type="button">havells india ltd</button>
+      <button class="chip" type="button">H.I.L</button>
+      <button class="chip" type="button">Havels Old</button>
+      <button class="chip" type="button">Retired Co</button>
+      <button class="chip" type="button">Polycab Ltd</button>
+      <button class="chip" type="button">Zorvex</button>
+    </div>
+    <ol class="trace" id="trace"></ol>
+    <div id="verdict" class="verdict"></div>
+    <p class="demo-note">Example catalog for this demo: Havells (also spelled "havells india ltd", "h.i.l"), Polycab, "Havels Old" (merged into Havells), "Retired Co" (deactivated). The name rule matches the database's own <code>normalize_brand_name()</code>: lowercase, spaces collapsed, one trailing "Pvt Ltd", "Ltd", "Limited", "India" or "Electricals" removed.</p>
+  </div>
+</section>
+
+<section id="flow">
+  <div class="head">
+    <span class="eyebrow">The flow</span>
+    <h2>Onboarding a brand, step by step</h2>
+    <p class="lede">The order a staff member follows, all under <b>Catalog</b> in the admin sidebar. Products come in one at a time through a form, or in bulk through a spreadsheet; both land as drafts and go live only when they are ready.</p>
+  </div>
+  <div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  A["Brands<br/>add brand, logo,<br/>other spellings"] --> B["Categories<br/>default HSN code<br/>(optional)"]
+  B --> C1["Products › New product<br/>one at a time"]
+  B --> C2["Import<br/>spreadsheet,<br/>runs in background"]
+  C2 --> D{"Rows rejected?"}
+  D -- yes --> E["Download rejected rows,<br/>fix, upload them again"]
+  E --> C2
+  D -- no --> F
+  C1 --> F["Products › Upload images<br/>named by code or part number"]
+  F --> G["Brand filter › Draft ›<br/>Publish all drafts of the brand"]
+  G --> H(["Live in the catalog<br/>vendors add listings"])
+  R["Review queue<br/>vendor row matched nothing"] -. "Create product<br/>from this row" .-> C1
+</pre>
+  </div>
+
+  <div class="steps">
+    <article class="step">
+      <div class="txt">
+        <span class="num">STEP 1</span>
+        <h3>Add the brand</h3>
+        <span class="where">Catalog › Brands › Add brand</span>
+        <ul>
+          <li>Name plus the four compliance fields, checked as you type (email shape, phone pattern).</li>
+          <li>A name that matches an existing brand after normalising, or another brand's spelling, is refused and the existing brand is named.</li>
+          <li>Open the brand to upload a logo (JPEG, PNG or WebP, up to 2 MB) and add other spellings.</li>
+          <li>Deactivate a brand to stop new products using it; its existing products are untouched.</li>
+        </ul>
+      </div>
+      <figure class="shot"><button type="button" data-full="brand"><img src="assets/catalog-onboarding/01-brand.webp" alt="Brands page with a brand's detail: logo, other spellings, Merge into, Edit" loading="lazy"></button><figcaption>Brand detail: compliance details, logo, other spellings, Merge into…</figcaption></figure>
+    </article>
+
+    <article class="step">
+      <div class="txt">
+        <span class="num">STEP 2</span>
+        <h3>Give the category a default HSN code</h3>
+        <span class="where">Catalog › Categories › pick a category › Set default</span>
+        <ul>
+          <li>Optional. New products in the category (or a sub-category without its own default) start with this HSN code and its GST rate.</li>
+          <li>Missing HSN codes can be added from the picker (4 to 8 digits, rate 0 to 100).</li>
+          <li>The panel says where a default comes from, for example "8536 (from Electrical)".</li>
+        </ul>
+      </div>
+      <figure class="shot"><button type="button" data-full="categoryHsn"><img src="assets/catalog-onboarding/02-category-hsn.webp" alt="Categories page with the default HSN code panel" loading="lazy"></button><figcaption>The category panel with its default HSN code.</figcaption></figure>
+    </article>
+
+    <article class="step">
+      <div class="txt">
+        <span class="num">STEP 3A</span>
+        <h3>Add one product through the form</h3>
+        <span class="where">Catalog › Products › New product</span>
+        <ul>
+          <li>Pick a leaf category: a field appears for each of its attributes; starred ones are needed to publish.</li>
+          <li>Pick the brand (or add one without leaving the form). HSN code and GST rate are pre-filled from the category default.</li>
+          <li>Save the draft, add at least one image, and the checklist turns green. Publish stays disabled until then.</li>
+        </ul>
+      </div>
+      <figure class="shot"><button type="button" data-full="form"><img src="assets/catalog-onboarding/03-new-product-form.webp" alt="New product form with category, brand picker, HSN picker and attributes" loading="lazy"></button><figcaption>The add-product form: brand picker, HSN pre-filled from the category, starred attributes.</figcaption></figure>
+    </article>
+
+    <article class="step">
+      <div class="txt">
+        <span class="num">STEP 3B</span>
+        <h3>Or import a spreadsheet</h3>
+        <span class="where">Catalog › Import</span>
+        <ul>
+          <li>Choose the category, download its template, fill it, upload it (.xlsx, up to 20 MB).</li>
+          <li>The import runs in the background. The page shows "120 of 400 rows", then the accepted and rejected counts.</li>
+          <li>Brands in the sheet are matched by any spelling. Each valid row becomes a draft product stamped with its import.</li>
+        </ul>
+      </div>
+      <figure class="shot"><button type="button" data-full="import1"><img src="assets/catalog-onboarding/04-import-done.webp" alt="Import page showing Done: 4 accepted, 2 rejected and the past imports list" loading="lazy"></button><figcaption>Six rows uploaded: 4 accepted (one brand typed as its alias), 2 rejected.</figcaption></figure>
+    </article>
+
+    <article class="step">
+      <div class="txt">
+        <span class="num">STEP 4</span>
+        <h3>Fix the rejected rows</h3>
+        <span class="where">Catalog › Import › Past imports › Download rejected rows</span>
+        <ul>
+          <li>The download is the same sheet with only the rejected rows and an <code>import_errors</code> column saying what is wrong.</li>
+          <li>Typical fixes: add the missing brand, pick a value from the dropdown, correct a duplicate part number.</li>
+          <li>Upload the fixed file on its own: rows already imported are not touched again.</li>
+        </ul>
+      </div>
+      <figure class="shot"><button type="button" data-full="import2"><img src="assets/catalog-onboarding/05-import-fixed-rows.webp" alt="Import page after the fixed rows were uploaded: 2 accepted, 0 rejected" loading="lazy"></button><figcaption>After adding the missing brand and fixing the value: 2 accepted, 0 rejected.</figcaption></figure>
+    </article>
+
+    <article class="step">
+      <div class="txt">
+        <span class="num">STEP 5</span>
+        <h3>Upload the pictures in bulk</h3>
+        <span class="where">Catalog › Products › Upload images</span>
+        <ul>
+          <li>Name each file by product code (<code>GA-0110919.jpg</code>) or by the brand's part number (<code>MCB-10.jpg</code>); <code>_2</code>, <code>_3</code> for more pictures.</li>
+          <li>The preview shows the product each file goes to, "Will become primary" for a product with no picture yet, or why a file is skipped.</li>
+          <li>Uploads run four at a time, each with its own result.</li>
+        </ul>
+      </div>
+      <figure class="shot"><button type="button" data-full="bulk"><img src="assets/catalog-onboarding/06-bulk-images.webp" alt="Bulk image dialog previewing files matched to products" loading="lazy"></button><figcaption>Files matched by code and by part number; the unmatched one is skipped.</figcaption></figure>
+    </article>
+
+    <article class="step">
+      <div class="txt">
+        <span class="num">STEP 6</span>
+        <h3>Publish the brand's drafts</h3>
+        <span class="where">Catalog › Products › Brand filter › Draft</span>
+        <ul>
+          <li>"Publish all drafts of <i>brand</i>" publishes every draft that is ready.</li>
+          <li>Drafts that are not ready are listed with their product code and what they still need, for example "needs at least one image".</li>
+          <li>A single product can also be published from its popup; the button stays disabled while something blocking is missing.</li>
+        </ul>
+      </div>
+      <figure class="shot"><button type="button" data-full="byBrand"><img src="assets/catalog-onboarding/07-publish-by-brand.webp" alt="Products filtered by brand after publishing: Published 3 of 5, 2 skipped with reasons" loading="lazy"></button><figcaption>Published 3 of 5; the two without images are listed with the reason.</figcaption></figure>
+    </article>
+  </div>
+</section>
+
+<section id="readiness">
+  <div class="head">
+    <span class="eyebrow">Publishing rules</span>
+    <h2>What a product needs before it goes live</h2>
+    <p class="lede">The same four checks drive the checklist on screen, the Publish button, single publish and publish-by-brand. Toggle them to see what an admin would see.</p>
+  </div>
+  <div class="two">
+    <div class="demo">
+      <div class="toggles">
+        <label class="toggle" for="t-image"><input id="t-image" type="checkbox"> At least one image</label>
+        <label class="toggle" for="t-attrs"><input id="t-attrs" type="checkbox" checked> Starred attributes filled</label>
+        <label class="toggle" for="t-hsn"><input id="t-hsn" type="checkbox"> HSN code set</label>
+        <label class="toggle" for="t-listing"><input id="t-listing" type="checkbox"> A vendor lists it</label>
+        <label class="toggle" for="t-retired"><input id="t-retired" type="checkbox"> Product is retired</label>
+      </div>
+      <p class="demo-note">Example product: a modular switch whose starred attribute is "Finish".</p>
+    </div>
+    <div class="demo" aria-live="polite">
+      <span class="tag">Ready to publish?</span>
+      <ul class="checklist" id="checklist"></ul>
+      <div class="btnrow"><button class="fakebtn" id="publish-btn" type="button" disabled>Publish</button><span id="publish-note" class="demo-note"></span></div>
+    </div>
+  </div>
+  <div class="rules">
+    <div class="rule"><h3>Blocking</h3><p>An image (not a spec sheet, not a failed upload) and every starred attribute. Publishing without them is refused, also through the API.</p></div>
+    <div class="rule"><h3>Warning only</h3><p>HSN code (needed once invoices exist) and an active vendor listing. The product can go live without them.</p></div>
+    <div class="rule"><h3>Duplicates</h3><p>A product identical to a live one (same category and starred attribute values) is refused with "a product with the same category and attribute combination already exists". Merge it instead.</p></div>
+  </div>
+  <figure class="shot"><button type="button" data-full="refused"><img src="assets/catalog-onboarding/08-publish-refused.webp" alt="Product popup for a draft with no image: checklist shows the missing image and Publish is disabled" loading="lazy"></button><figcaption>A draft with no image: the checklist shows what is missing and Publish is disabled.</figcaption></figure>
+</section>
+
+<section id="import">
+  <div class="head">
+    <span class="eyebrow">Background import</span>
+    <h2>What happens after Upload</h2>
+    <p class="lede">The upload answers straight away with a job number. A worker on the server reads the file row by row; the page keeps checking every two seconds.</p>
+  </div>
+  <div class="two">
+    <div class="diagram">
+<pre class="mermaid">
+stateDiagram-v2
+  direction LR
+  [*] --> queued: Upload (202 + jobId)
+  queued --> running: worker picks it up
+  running --> done: every row checked
+  running --> failed: file unreadable or not a leaf category
+  done --> undone: Undo
+  failed --> undone: Undo
+  done --> [*]
+  failed --> [*]
+</pre>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Rule</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td>Each row saves in its own transaction</td><td>A row the database refuses becomes that row's error; the others still import.</td></tr>
+          <tr><td>Progress every 20 rows</td><td>"120 of 400 rows" on the page and in Past imports.</td></tr>
+          <tr><td>Rejected rows saved as a workbook</td><td>Downloaded through a 5-minute signed link, fixed, uploaded again.</td></tr>
+          <tr><td>A finished job never runs twice</td><td>A repeated queue message changes nothing. A job cut off by a restart runs again and its saved rows come back as duplicates.</td></tr>
+          <tr><td>Undo deletes only untouched drafts</td><td>Products with a vendor listing, an order or a vendor's import row are kept and counted.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <figure class="shot"><button type="button" data-full="undo"><img src="assets/catalog-onboarding/09-import-undo.webp" alt="Past imports after an undo: Deleted 2, kept 0 and the job marked Undone" loading="lazy"></button><figcaption>Undo of an import: "Deleted 2, kept 0." and the job marked Undone.</figcaption></figure>
+</section>
+
+<section id="fix">
+  <div class="head">
+    <span class="eyebrow">Fixing mistakes</span>
+    <h2>Every mistake has a way back</h2>
+    <p class="lede">Nothing that a vendor or customer depends on is ever deleted. Products are retired or merged; brands are deactivated or merged.</p>
+  </div>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Mistake</th><th>Where</th><th>What happens</th></tr></thead>
+      <tbody>
+        <tr><td>Wrong brand, part number, GTIN, HSN code, origin</td><td>Product popup › Edit</td><td>Only changed fields are saved. Duplicates are refused with a clear message. Category, product code and slug never change.</td></tr>
+        <tr><td>Product should not be sold</td><td>Product popup › Retire</td><td>Status becomes Retired and its active vendor listings are paused in the same step. Restore brings it back as a draft.</td></tr>
+        <tr><td>Draft made by mistake</td><td>Product popup › Delete</td><td>Only a draft with no listing, order or vendor import row; otherwise "retire it instead". Its images are removed too.</td></tr>
+        <tr><td>The same product twice</td><td>Product popup › Merge into…</td><td>Listings, vendor codes and (if needed) images move to the kept product; the extra one is retired and points at it.</td></tr>
+        <tr><td>The same brand twice</td><td>Brands › Merge into…</td><td>Products and spellings move to the kept brand; the old name becomes another spelling. Refused if both brands use the same part number.</td></tr>
+        <tr><td>A whole upload was wrong</td><td>Import › Past imports › Undo</td><td>Deletes the import's untouched drafts, reports what was kept.</td></tr>
+        <tr><td>A vendor's row matched nothing</td><td>Review queue › Create product from this row</td><td>The form opens with the vendor's name, brand and reference; after saving, the row is linked so the vendor's code matches next time.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="two">
+    <div class="diagram">
+<pre class="mermaid">
+flowchart TB
+  S["Duplicate product<br/>(being merged)"] --> L1["Listing by Stone Mart"]
+  S --> L2["Listing by Rock House"]
+  K["Product that stays"] --> L3["Listing by Stone Mart"]
+  L1 -. "same vendor already lists the kept product" .-> P(["paused on the duplicate,<br/>reported, never deleted"])
+  L2 == "moved" ==> K
+  S -. "retired, merged_into_id" .-> K
+</pre>
+    </div>
+    <figure class="shot"><button type="button" data-full="merged"><img src="assets/catalog-onboarding/10-product-merge.webp" alt="Merge result: moved listings and one paused listing with the vendor name" loading="lazy"></button><figcaption>Merge result: the vendor that sold both keeps its listing on the kept product; the other one is paused.</figcaption></figure>
+  </div>
+</section>
+
+<section id="before">
+  <div class="head">
+    <span class="eyebrow">Before → after</span>
+    <h2>The twelve gaps from the review, closed</h2>
+  </div>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>#</th><th>Before</th><th>Now</th></tr></thead>
+      <tbody>
+        <tr><td class="num">1</td><td class="was">Brands only via seed scripts or SQL</td><td class="now">Brands page: add, edit, deactivate, logo, spellings, merge</td></tr>
+        <tr><td class="num">2</td><td class="was">No add-product form</td><td class="now">New product page with attributes, brand and HSN pickers</td></tr>
+        <tr><td class="num">3</td><td class="was">Only the name could be corrected</td><td class="now">Every field except the category can be edited</td></tr>
+        <tr><td class="num">4</td><td class="was">"havells ltd" rejected although Havells exists</td><td class="now">Any spelling, alias or merged name resolves</td></tr>
+        <tr><td class="num">5</td><td class="was">Blank import summary, error file thrown away</td><td class="now">Counts shown; rejected rows downloadable</td></tr>
+        <tr><td class="num">6</td><td class="was">A product with nothing filled in could go live</td><td class="now">Image and starred attributes required; checklist on screen</td></tr>
+        <tr><td class="num">7</td><td class="was">A mistaken product could not be removed</td><td class="now">Retire, restore, delete drafts, merge duplicates</td></tr>
+        <tr><td class="num">8</td><td class="was">No import history or undo</td><td class="now">Past imports with who, when, counts, undo</td></tr>
+        <tr><td class="num">9</td><td class="was">Large files held the web request open</td><td class="now">Background jobs with progress; 20 MB limit</td></tr>
+        <tr><td class="num">10</td><td class="was">No way to see one brand's products</td><td class="now">Brand filter and publish all drafts of a brand</td></tr>
+        <tr><td class="num">11</td><td class="was">Images one product at a time</td><td class="now">Bulk upload by product code or part number</td></tr>
+        <tr><td class="num">12</td><td class="was">Unmatched vendor rows were a dead end</td><td class="now">Create the product from the row; it links itself</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="api">
+  <div class="head">
+    <span class="eyebrow">For developers</span>
+    <h2>New and changed admin API</h2>
+    <p class="lede">All routes are admin-only. Shared request and response types live in <code>packages/types/src/catalog-admin.types.ts</code>.</p>
+  </div>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Route</th><th>Does</th></tr></thead>
+      <tbody>
+        <tr><td><code>GET/POST /admin/brands</code>, <code>GET/PATCH /admin/brands/:id</code></td><td>List (search, active filter, product counts), get, create, edit</td></tr>
+        <tr><td><code>PATCH /admin/brands/:id/active</code></td><td>Activate or deactivate</td></tr>
+        <tr><td><code>POST /admin/brands/:id/aliases</code>, <code>DELETE …/aliases/:aliasId</code></td><td>Add or remove another spelling</td></tr>
+        <tr><td><code>POST /admin/brands/:id/logo-upload-url</code>, <code>…/logo/confirm</code></td><td>Presigned logo upload, then confirm</td></tr>
+        <tr><td><code>POST /admin/brands/:id/merge</code></td><td>Merge into another brand</td></tr>
+        <tr><td><code>POST /admin/catalog/products</code> (now takes <code>brandId</code>), <code>PATCH …/products/:id</code></td><td>Create; edit any field except category</td></tr>
+        <tr><td><code>GET …/products/:id/readiness</code></td><td>The four publish checks</td></tr>
+        <tr><td><code>PATCH …/:id/retire</code>, <code>…/:id/restore</code>, <code>DELETE …/:id</code>, <code>POST …/:id/merge</code></td><td>Retire, restore, delete a draft, merge</td></tr>
+        <tr><td><code>GET …/products?brandId=</code>, <code>PATCH …/products/bulk-publish</code> (now reports <code>skipped</code>)</td><td>Brand filter; publish by brand</td></tr>
+        <tr><td><code>POST …/products/lookup-codes</code></td><td>Image file names to products (code or part number)</td></tr>
+        <tr><td><code>GET/POST /admin/catalog/hsn-codes</code>, <code>PATCH /admin/catalog/categories/:id</code></td><td>HSN codes; a category's default</td></tr>
+        <tr><td><code>POST /admin/catalog-import/:categoryId</code> → <code>202 { jobId }</code></td><td>Upload; runs on the <code>catalog-import</code> queue</td></tr>
+        <tr><td><code>GET /admin/catalog-import/jobs</code>, <code>…/jobs/:id</code>, <code>…/jobs/:id/errors</code>, <code>POST …/jobs/:id/undo</code></td><td>History, progress, rejected rows, undo</td></tr>
+        <tr><td><code>GET /admin/catalog-review-queue/:rowId/prefill</code></td><td>Starting point for a product from a vendor row</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="status">
+  <div class="head">
+    <span class="eyebrow">Where it stands</span>
+    <h2>Built, tested, waiting to go live</h2>
+  </div>
+  <div class="status">
+    <div class="stat"><b>1205</b><span>backend tests passing</span></div>
+    <div class="stat"><b>47</b><span>admin test files passing</span></div>
+    <div class="stat"><b>12 / 12</b><span>end-to-end browser checks</span></div>
+    <div class="stat"><b>0</b><span>mobile app files changed</span></div>
+  </div>
+  <h3>Before it goes live</h3>
+  <ul class="todo">
+    <li><span>1</span><span>A fresh review of the whole branch (so far only the author has read the full diff).</span></li>
+    <li><span>2</span><span>Run the migration <code>20261120110000-catalog-onboarding-schema</code> on production, through the usual SSM path.</span></li>
+    <li><span>3</span><span>Confirm Redis is reachable for the new import worker on the AWS server (search indexing already uses it).</span></li>
+    <li><span>4</span><span>Choose how to merge the branch.</span></li>
+  </ul>
+  <h3>Still open by choice</h3>
+  <div class="branch">
+    <div class="rule"><h3>Senior admin role</h3><p>Any admin can merge and retire for now; every merge is logged so a stricter role can be added later.</p></div>
+    <div class="rule"><h3>Brand spreadsheet import</h3><p>Brands are added by form. Revisit if the client brings many brands at once.</p></div>
+    <div class="rule"><h3>Images from the client</h3><p>Publishing needs at least one image per product; the client still has to confirm they can supply them.</p></div>
+  </div>
+</section>
+
+<footer>Source of truth: decisions 0062 (review) and 0063 (design and build notes), and the staff guide <code>docs/catalog-onboarding-guide.md</code>. Screenshots come from test runs on the local test database; names such as "PW11Brand…" are test data.</footer>
+</div>
+
+<div class="lightbox" id="lightbox" hidden role="dialog" aria-label="Screenshot">
+  <button class="close" type="button" id="lightbox-close">Close</button>
+  <img id="lightbox-img" alt="">
+</div>
+
+<script>
+(() => {
+  // Brand resolver demo (mirrors BrandResolverService + normalize_brand_name()).
+  const brands = [
+    { name: 'Havells', active: true, mergedInto: null, aliases: ['havells india ltd', 'h.i.l'] },
+    { name: 'Polycab', active: true, mergedInto: null, aliases: [] },
+    { name: 'Havels Old', active: false, mergedInto: 'Havells', aliases: [] },
+    { name: 'Retired Co', active: false, mergedInto: null, aliases: [] },
+  ];
+  const loose = (s) => s.trim().toLowerCase().replace(/\s+/g, ' ');
+  const normalize = (s) =>
+    s.toLowerCase().replace(/\s+(pvt\.?\s*ltd\.?|ltd\.?|limited|india|electricals?)\s*$/i, '').replace(/\s+/g, ' ').trim();
+  const byName = (n) => brands.find((b) => b.name === n);
+  const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+  const input = document.getElementById('brand-input');
+  const trace = document.getElementById('trace');
+  const verdict = document.getElementById('verdict');
+
+  function resolve() {
+    const typed = input.value;
+    const steps = [];
+    let found = null;
+    const l = loose(typed);
+    const alias = brands.find((b) => b.aliases.includes(l));
+    steps.push({ hit: Boolean(alias), text: alias ? `Spelling table: "${esc(l)}" is a saved spelling of <b>${alias.name}</b>.` : `Spelling table: no saved spelling "${esc(l)}".` });
+    if (alias) found = alias;
+    if (!found) {
+      const n = normalize(typed);
+      const named = brands.find((b) => normalize(b.name) === n);
+      steps.push({ hit: Boolean(named), text: named ? `Name rule: "${esc(typed.trim())}" normalises to "${esc(n)}", the same as <b>${named.name}</b>.` : `Name rule: "${esc(typed.trim())}" normalises to "${esc(n)}"; no brand has that name.` });
+      if (named) found = named;
+    } else {
+      steps.push({ skip: true, text: 'Name rule: not needed.' });
+    }
+    if (found && found.mergedInto) {
+      const target = byName(found.mergedInto);
+      steps.push({ hit: true, text: `${found.name} was merged into <b>${target.name}</b>; following the merge.` });
+      found = target;
+    } else {
+      steps.push({ skip: !found, text: found ? `${found.name} was not merged.` : 'Merge check: nothing to follow.' });
+    }
+    trace.innerHTML = steps.map((s) => `<li class="${s.hit ? 'hit' : s.skip ? 'skip' : ''}"><span>${s.text}</span></li>`).join('');
+
+    if (!typed.trim()) {
+      verdict.className = 'verdict warn';
+      verdict.innerHTML = 'Type a brand name.';
+    } else if (!found) {
+      verdict.className = 'verdict bad';
+      verdict.innerHTML = `Not found<small>Import row and add-product: brand "${esc(typed.trim())}" is not in the catalog. Add it on the Brands page first.</small>`;
+    } else if (!found.active) {
+      verdict.className = 'verdict bad';
+      verdict.innerHTML = `${found.name} is deactivated<small>Refused: brand "${esc(typed.trim())}" is deactivated. Reactivate it on the Brands page or use another brand.</small>`;
+    } else {
+      verdict.className = 'verdict ok';
+      verdict.innerHTML = `Resolves to ${found.name}<small>The product is created under ${found.name}; duplicate part numbers are checked against ${found.name}'s products.</small>`;
+    }
+  }
+  input.addEventListener('input', resolve);
+  document.querySelectorAll('.chip').forEach((chip) =>
+    chip.addEventListener('click', () => { input.value = chip.textContent; resolve(); input.focus(); }),
+  );
+  resolve();
+
+  // Publish readiness demo (mirrors ProductReadinessService + setProductStatus).
+  const t = (id) => document.getElementById(id);
+  const list = t('checklist');
+  const btn = t('publish-btn');
+  const note = t('publish-note');
+  function readiness() {
+    const checks = [
+      { label: 'At least one image', blocking: true, passed: t('t-image').checked, detail: 'needs at least one image' },
+      { label: 'Required attributes', blocking: true, passed: t('t-attrs').checked, detail: 'Missing: Finish' },
+      { label: 'HSN code', blocking: false, passed: t('t-hsn').checked, detail: 'needed on invoices; publishing is allowed without it' },
+      { label: 'At least one active vendor listing', blocking: false, passed: t('t-listing').checked, detail: 'customers can buy it once a vendor lists it' },
+    ];
+    list.innerHTML = checks.map((c) => {
+      const state = c.passed ? 'ok' : c.blocking ? 'bad' : 'warn';
+      const mark = c.passed ? '✓' : c.blocking ? '✗' : '!';
+      const tail = c.passed ? '' : `: ${c.detail}`;
+      return `<li class="${state}"><span class="mark">${mark}</span><span>${c.label}${tail}</span><span class="tag">${c.passed ? 'met' : c.blocking ? 'required' : 'warning'}</span></li>`;
+    }).join('');
+    const retired = t('t-retired').checked;
+    const unmet = checks.filter((c) => c.blocking && !c.passed).map((c) => c.detail);
+    if (retired) {
+      btn.hidden = true;
+      note.textContent = 'A retired product shows Restore instead. It comes back as a draft, never straight to live.';
+    } else {
+      btn.hidden = false;
+      btn.disabled = unmet.length > 0;
+      note.textContent = unmet.length ? `Cannot publish: ${unmet.join('; ')}` : 'Ready. Publishing makes it visible to customers.';
+    }
+  }
+  ['t-image', 't-attrs', 't-hsn', 't-listing', 't-retired'].forEach((id) => t(id).addEventListener('change', readiness));
+  readiness();
+
+  // Screenshot lightbox.
+  const box = t('lightbox');
+  const boxImg = t('lightbox-img');
+  document.querySelectorAll('.shot button').forEach((b) =>
+    b.addEventListener('click', () => {
+      const img = b.querySelector('img');
+      boxImg.src = img.src;
+      boxImg.alt = img.alt;
+      box.hidden = false;
+      t('lightbox-close').focus();
+    }),
+  );
+  const close = () => { box.hidden = true; boxImg.removeAttribute('src'); };
+  t('lightbox-close').addEventListener('click', close);
+  box.addEventListener('click', (e) => { if (e.target === box) close(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !box.hidden) close(); });
+})();
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<script>
+  // The artifact viewer renders mermaid itself; a plain browser needs the library.
+  mermaid.initialize({ startOnLoad: true, theme: matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "default" });
+</script>
+</body>
+</html>

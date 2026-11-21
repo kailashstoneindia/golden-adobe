@@ -1,7 +1,8 @@
 # Onboarding a brand and its products
 
 A one-page guide for the staff who add brands and products in the admin panel. Everything below is under
-**Catalog** in the left-hand menu. Background: [decision 0063](decisions/0063-catalog-onboarding-design.md).
+**Catalog** in the left-hand menu. Background: [decision 0063](decisions/0063-catalog-onboarding-design.md). A visual walkthrough with screenshots and the
+brand-to-product data model: [catalog-onboarding-flow.html](catalog-onboarding-flow.html) (open it in a browser).
 
 ## The steps, in order
 

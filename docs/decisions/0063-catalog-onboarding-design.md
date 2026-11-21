@@ -1,7 +1,7 @@
 # 0063 — Admin brand and product onboarding: design
 
 - **Date:** 2026-11-10
-- **Status:** Implemented (pending merge) on `feat/catalog-onboarding-impl`, 2026-11-21. Build notes per session below; staff guide in [catalog-onboarding-guide.md](../catalog-onboarding-guide.md)
+- **Status:** Implemented (pending merge) on `feat/catalog-onboarding-impl`, 2026-11-21. Build notes per session below; staff guide in [catalog-onboarding-guide.md](../catalog-onboarding-guide.md); visual walkthrough in [catalog-onboarding-flow.html](../catalog-onboarding-flow.html)
 - **Supersedes / Superseded by:** Follows up the findings in [0062](0062-catalog-onboarding-review.md)
 
 ## Context
