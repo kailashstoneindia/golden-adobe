@@ -66,7 +66,7 @@ S2/S4/S7 can run in any order after S1. S3 can run alongside S4.
 - [x] S4 product API
 - [x] S5 product merge
 - [x] S6 product UI
-- [ ] S7 background import API
+- [x] S7 background import API
 - [ ] S8 import UI
 - [ ] S9 review queue create
 - [ ] S10 bulk images
