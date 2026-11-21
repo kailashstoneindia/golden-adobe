@@ -31,6 +31,7 @@ describe('AdminCatalogController onboarding routes', () => {
     listHsnCodes: jest.fn(async () => []),
     createHsnCode: jest.fn(async () => ({})),
     setCategoryHsnDefault: jest.fn(async () => ({})),
+    lookupProductKeys: jest.fn(async () => ({ items: [], ambiguousKeys: [] })),
   };
   const readiness = { getReadiness: jest.fn(async () => ({ ready: true, checks: [] })) };
   const merger = { merge: jest.fn(async () => ({ movedListings: 0 })) };
@@ -206,6 +207,32 @@ describe('AdminCatalogController onboarding routes', () => {
     it.each([[{}], [{ intoProductId: 'nope' }]])('refuses a body of %j', async (body) => {
       expect((await post(body)).status).toBe(400);
       expect(merger.merge).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('lookup codes (bulk images)', () => {
+    const post = (body: object) =>
+      request(app.getHttpServer()).post('/admin/catalog/products/lookup-codes').send(body);
+    const BRAND = '22222222-2222-4222-8222-222222222222';
+
+    it('passes the keys and an optional brand', async () => {
+      const res = await post({ keys: ['GA-0110919', 'MCB-10'], brandId: BRAND });
+
+      expect(res.status).toBe(200);
+      expect(catalog.lookupProductKeys).toHaveBeenCalledWith({
+        keys: ['GA-0110919', 'MCB-10'],
+        brandId: BRAND,
+      });
+    });
+
+    it.each([
+      ['more than 500 keys', { keys: Array.from({ length: 501 }, (_, i) => `K${i}`) }],
+      ['no keys', { keys: [] }],
+      ['a key that is not text', { keys: [12] }],
+      ['a malformed brand id', { keys: ['A'], brandId: 'nope' }],
+    ])('refuses %s', async (_label, body) => {
+      expect((await post(body)).status).toBe(400);
+      expect(catalog.lookupProductKeys).not.toHaveBeenCalled();
     });
   });
 

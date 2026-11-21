@@ -22,6 +22,7 @@ import { AdminCatalogService } from './admin-catalog.service';
 import { ProductReadinessService } from './product-readiness.service';
 import { ProductMergeService } from './product-merge.service';
 import { MergeProductDto } from './dto/merge-product.dto';
+import { LookupProductKeysDto } from './dto/lookup-product-keys.dto';
 import { ListProductsQueryDto } from './dto/list-products-query.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -116,6 +117,18 @@ export class AdminCatalogController {
   })
   async product(@Param('productId') productId: string) {
     return this.adminCatalog.getProduct(productId);
+  }
+
+  @Post('products/lookup-codes')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Match product codes or part numbers to products (bulk image upload)',
+    description:
+      'A code wins over a part number; a part number used by several brands is listed under ' +
+      'ambiguousKeys unless brandId is given. Keys that match nothing are left out (decision 0063).',
+  })
+  async lookupProductKeys(@Body() dto: LookupProductKeysDto) {
+    return this.adminCatalog.lookupProductKeys(dto);
   }
 
   @Get('products/:productId/readiness')

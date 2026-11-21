@@ -639,6 +639,62 @@ export class AdminCatalogService {
     this.logger.log(`admin ${adminUserId} delete product ${productId} (${product.productCode})`);
   }
 
+  // ─── Bulk images: file names to products (decision 0063) ─────────────
+
+  // A key is a product code or a brand's part number, any case. A code wins
+  // over a part number; a part number that several brands use is ambiguous
+  // unless a brand is given. Keys that match nothing are left out.
+  async lookupProductKeys(dto: { keys: string[]; brandId?: string }) {
+    const keys = [...new Set(dto.keys.map((k) => k.trim()).filter(Boolean))];
+    if (keys.length === 0) return { items: [], ambiguousKeys: [] };
+
+    const rows = await this.sequelize.query<{
+      key: string;
+      id: string;
+      status: string;
+      matched_by: 'code' | 'mpn';
+      has_primary: boolean;
+    }>(
+      `SELECT k.key, mp.id, mp.status::text AS status,
+              CASE WHEN upper(mp.product_code) = upper(k.key) THEN 'code' ELSE 'mpn' END AS matched_by,
+              EXISTS (SELECT 1 FROM master_product_media m
+                       WHERE m.master_product_id = mp.id AND m.is_primary) AS has_primary
+         FROM unnest(ARRAY[:keys]::text[]) AS k(key)
+         JOIN master_product mp
+           ON upper(mp.product_code) = upper(k.key)
+           OR (lower(mp.mfr_part_number) = lower(k.key)
+               AND (CAST(:brandId AS uuid) IS NULL OR mp.brand_id = CAST(:brandId AS uuid)))`,
+      { replacements: { keys, brandId: dto.brandId ?? null }, type: QueryTypes.SELECT },
+    );
+
+    const items: {
+      key: string;
+      productId: string;
+      matchedBy: 'code' | 'mpn';
+      hasPrimary: boolean;
+      status: string;
+    }[] = [];
+    const ambiguousKeys: string[] = [];
+    for (const key of keys) {
+      const hits = rows.filter((r) => r.key === key);
+      const chosen = hits.filter((r) => r.matched_by === 'code');
+      const pick = chosen.length > 0 ? chosen : hits;
+      if (pick.length === 1) {
+        const [hit] = pick;
+        items.push({
+          key,
+          productId: hit.id,
+          matchedBy: hit.matched_by,
+          hasPrimary: hit.has_primary,
+          status: hit.status,
+        });
+      } else if (pick.length > 1) {
+        ambiguousKeys.push(key);
+      }
+    }
+    return { items, ambiguousKeys };
+  }
+
   // ─── HSN codes and category defaults (decision 0063) ─────────────────
 
   async listHsnCodes(search?: string) {
