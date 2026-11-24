@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { ORDER_STATUS_LABELS } from '../../constants';
 import { Colors, Spacing } from '../../theme';
 import type { OrderListRowProps } from '../../types';
-import { formatInr } from '../../utils';
+import { formatInr, formatOrderTitle } from '../../utils';
 import { Badge, Card, Text } from '../ui';
 import type { BadgeVariant } from '../ui';
 import type { OrderStatus } from '@golden-abode/types';
@@ -17,7 +17,7 @@ function OrderListRowComponent({ order, onPress }: OrderListRowProps) {
     <Pressable onPress={handlePress}>
       <Card>
         <View style={styles.header}>
-          <Text variant="bodyMedium">Order {order.id.slice(0, 8)}</Text>
+          <Text variant="bodyMedium">{formatOrderTitle(order)}</Text>
           <Badge label={ORDER_STATUS_LABELS[order.status]} variant={toBadgeVariant(order.status)} />
         </View>
         <Text variant="caption" color={Colors.inkSoft} style={styles.meta}>

@@ -40,6 +40,12 @@ const VENDOR_TABS: TabItem[] = [
   { routeName: 'shop', label: 'SHOP', Icon: ShopIcon },
 ];
 
+// Decision 0060: drivers are created by ops and only run deliveries.
+const DRIVER_TABS: TabItem[] = [
+  { routeName: 'index', label: 'JOBS', Icon: OrdersIcon },
+  { routeName: 'you', label: 'PROFILE', Icon: YouIcon },
+];
+
 const ARTISAN_TABS: TabItem[] = [
   { routeName: 'index', label: 'HOME', Icon: HomeIcon },
   { routeName: 'orders', label: 'JOBS', Icon: OrdersIcon },
@@ -53,6 +59,10 @@ export function getTabsForRole(role?: Role): TabItem[] {
 
   if (role === Role.ARTISAN) {
     return ARTISAN_TABS;
+  }
+
+  if (role === Role.DRIVER) {
+    return DRIVER_TABS;
   }
 
   return CUSTOMER_TABS;

@@ -13,3 +13,10 @@ export { openRazorpayCheckout } from './razorpay.service';
 export { CatalogFileToolsError, pickCatalogWorkbook, saveAndShareCatalogExport } from './catalog';
 export { artisansService } from './artisans.service';
 export { ArtisanDocumentError, pickArtisanDocument, uploadToPresignedPost } from './artisans';
+export {
+  captureDeliveryPhoto,
+  deliveryService,
+  DeliveryPhotoError,
+  uploadDeliveryPhoto,
+} from './delivery';
+export type { CapturedPhoto } from './delivery';

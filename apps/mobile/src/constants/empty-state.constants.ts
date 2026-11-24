@@ -22,4 +22,7 @@ export const EMPTY_STATE_MESSAGES = {
   attributedOrdersEmpty: 'No material orders linked to this job yet.',
   helpSupportUnavailable:
     'Live support isn’t connected yet. Check back soon for FAQs and contact options.',
+  driverActiveJobsEmpty:
+    'New jobs appear here once ops assign them to you. Pull down to check again.',
+  driverHistoryEmpty: 'Delivered, failed and cancelled jobs show up here.',
 } as const;

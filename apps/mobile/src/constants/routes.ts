@@ -40,5 +40,9 @@ export const ROUTES = {
     hireRequests: '/(screens)/hire-requests',
     findUstaad: '/(screens)/find-ustaad',
     hireRequestDetail: '/(screens)/hire-request/[id]',
+    deliveryDetail: '/(screens)/delivery/[id]',
+    deliveryPickup: '/(screens)/delivery/pickup',
+    deliveryComplete: '/(screens)/delivery/complete',
+    deliveryFail: '/(screens)/delivery/fail',
   },
 } as const;
