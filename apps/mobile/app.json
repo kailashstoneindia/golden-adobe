@@ -48,6 +48,14 @@
         {
           "locationWhenInUsePermission": "Allow Kailash Stones to use your location to pin your shop."
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Allow Kailash Stones to use your camera to photograph deliveries.",
+          "photosPermission": "Allow Kailash Stones to choose a delivery photo from your library.",
+          "microphonePermission": false
+        }
       ]
     ],
     "extra": {

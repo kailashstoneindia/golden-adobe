@@ -3,6 +3,7 @@ import { ORDER_STATUSES, Role } from '@golden-abode/types';
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback } from 'react';
 
+import { VendorHandoverCard } from '../../../src/components/delivery';
 import { DemoScreen } from '../../../src/components/demo/DemoScreen';
 import { OrderVendorSection, VendorStatusActions } from '../../../src/components/orders';
 import { Button, EmptyStateCard, Text } from '../../../src/components/ui';
@@ -74,7 +75,7 @@ function notifyCancelResult(
 }
 
 function CustomerOrderDetail({ orderId }: CustomerOrderDetailProps) {
-  const orderQuery = useOrderQuery(orderId);
+  const orderQuery = useOrderQuery(orderId, { trackDelivery: true });
   const refresh = () => orderQuery.refetch();
   const cancelOrder = useCancelOrderMutation();
   const { payExistingOrder } = usePlaceOrder();
@@ -117,7 +118,7 @@ function CustomerOrderDetail({ orderId }: CustomerOrderDetailProps) {
   }
 
   return (
-    <DemoScreen onRefresh={refresh} title="Order details" showBack>
+    <DemoScreen onRefresh={refresh} title={order.orderNumber} subtitle="Order details" showBack>
       <Text variant="bodyMedium">{ORDER_STATUS_LABELS[order.status]}</Text>
       <Text variant="caption" color={Colors.inkSoft}>
         Total {formatInr(order.grandTotal)}
@@ -129,7 +130,7 @@ function CustomerOrderDetail({ orderId }: CustomerOrderDetailProps) {
         </Text>
       ) : null}
       {order.vendorGroups.map((group) => (
-        <OrderVendorSection key={group.id} group={group} />
+        <OrderVendorSection key={group.id} group={group} audience="customer" />
       ))}
       {canPay ? <Button title="Pay now" onPress={handlePay} /> : null}
       {canCancel ? (
@@ -172,7 +173,7 @@ function ArtisanOrderDetail({ orderId }: ArtisanOrderDetailProps) {
   return (
     <DemoScreen
       onRefresh={refresh}
-      title="Order details"
+      title={order.orderNumber}
       subtitle="Materials ordered for your job"
       showBack
     >
@@ -207,7 +208,12 @@ function VendorOrderDetail({ groupId }: VendorOrderDetailProps) {
       updateStatus.mutate(
         { groupId: nextGroupId, status },
         {
-          onSuccess: () => showSuccess(TOAST_MESSAGES.vendorGroupStatusUpdated),
+          onSuccess: () =>
+            showSuccess(
+              status === 'ready_for_pickup'
+                ? TOAST_MESSAGES.vendorPackedReady
+                : TOAST_MESSAGES.vendorGroupStatusUpdated,
+            ),
           onError: (error) =>
             showError(getApiErrorMessage(error, ERROR_MESSAGES.vendorGroupStatusFailed)),
         },
@@ -235,13 +241,14 @@ function VendorOrderDetail({ groupId }: VendorOrderDetailProps) {
   }
 
   return (
-    <DemoScreen onRefresh={refresh} title="Order details" showBack>
+    <DemoScreen onRefresh={refresh} title={group.orderNumber} subtitle="Order details" showBack>
       <OrderVendorSection group={group} />
       <VendorStatusActions
         group={group}
         isUpdating={updateStatus.isPending}
         onSelectStatus={handleSelectStatus}
       />
+      {group.status === 'ready_for_pickup' ? <VendorHandoverCard groupId={group.id} /> : null}
     </DemoScreen>
   );
 }

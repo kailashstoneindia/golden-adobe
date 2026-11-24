@@ -84,12 +84,15 @@ export type OrderListRowProps = {
 };
 
 export type VendorGroupListRowProps = {
-  group: VendorOrderGroupDto;
+  group: VendorOrderGroupDto & { orderNumber?: string };
   onPress: (groupId: string) => void;
 };
 
 export type OrderVendorSectionProps = {
-  group: OrderVendorGroupDto;
+  // deliveryOtp is present only on the customer's own order (decision 0060).
+  group: OrderVendorGroupDto & { deliveryOtp?: string | null };
+  /** Customer wording for statuses; vendors and Ustaads see the short labels. */
+  audience?: 'customer' | 'other';
 };
 
 export type OrderItemRowProps = {
@@ -98,6 +101,7 @@ export type OrderItemRowProps = {
 
 export type FulfilmentStepperProps = {
   status: OrderVendorGroupDto['status'];
+  audience?: 'customer' | 'other';
 };
 
 export type VendorStatusActionsProps = {

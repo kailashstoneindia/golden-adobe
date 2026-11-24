@@ -10,11 +10,20 @@ export { Env } from './env';
 export { QUERY_KEYS } from './query-keys';
 export {
   CART_LINE_WARNINGS,
+  CUSTOMER_GROUP_STATUS_LABELS,
   ORDER_STATUS_LABELS,
   PRICE_SUMMARY_LABELS,
+  VENDOR_GROUP_ACTION_LABELS,
   VENDOR_GROUP_STATUS_LABELS,
   VENDOR_GROUP_STATUS_STEPS,
 } from './order.constants';
+export {
+  DELIVERY_CONSTANTS,
+  DELIVERY_FAILURE_REASON_LABELS,
+  DELIVERY_JOB_STATUS_LABELS,
+  DRIVER_JOB_SCOPES,
+} from './delivery.constants';
+export type { DriverJobScope } from './delivery.constants';
 export { ROUTES } from './routes';
 export {
   ARTISAN_CONSTANTS,

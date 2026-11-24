@@ -2,6 +2,7 @@ import { Role } from '@golden-abode/types';
 import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { DriverProfileCard } from '../../src/components/delivery';
 import { MenuRow } from '../../src/components/demo/MenuRow';
 import { Screen } from '../../src/components/layout/Screen';
 import { Badge, Text } from '../../src/components/ui';
@@ -27,13 +28,23 @@ const ARTISAN_MENU_ROUTES = [
   { label: 'Help & Support', route: ROUTES.screens.helpSupport },
 ] as const;
 
+const DRIVER_MENU_ROUTES = [
+  { label: 'Help & Support', route: ROUTES.screens.helpSupport },
+] as const;
+
 export default function YouTabScreen() {
   const { user } = useAuth();
   const logout = useLogout();
   const { showSuccess, showError } = useToast();
   const isArtisan = user?.role === Role.ARTISAN;
-  const menuRoutes = isArtisan ? ARTISAN_MENU_ROUTES : MENU_ROUTES;
-  const profileRoute = isArtisan ? ROUTES.screens.artisanProfile : ROUTES.screens.myProjects;
+  const isDriver = user?.role === Role.DRIVER;
+  const menuRoutes = isDriver ? DRIVER_MENU_ROUTES : isArtisan ? ARTISAN_MENU_ROUTES : MENU_ROUTES;
+  // Drivers have no editable profile in the app; ops maintain it.
+  const profileRoute = isDriver
+    ? null
+    : isArtisan
+      ? ROUTES.screens.artisanProfile
+      : ROUTES.screens.myProjects;
 
   const initials = user?.name
     .split(' ')
@@ -59,7 +70,11 @@ export default function YouTabScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <Pressable style={styles.profileRow} onPress={() => router.push(profileRoute)}>
+        <Pressable
+          style={styles.profileRow}
+          disabled={!profileRoute}
+          onPress={() => (profileRoute ? router.push(profileRoute) : undefined)}
+        >
           <View style={styles.avatar}>
             <Text variant="h2" color={Colors.ember}>
               {initials ?? '?'}
@@ -81,6 +96,8 @@ export default function YouTabScreen() {
             ) : null}
           </View>
         </Pressable>
+
+        {isDriver ? <DriverProfileCard /> : null}
 
         <View style={styles.menu}>
           {menuRoutes.map((item) => (

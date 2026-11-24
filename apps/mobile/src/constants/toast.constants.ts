@@ -43,4 +43,9 @@ export const TOAST_MESSAGES = {
   jobStarted: 'Job marked as started',
   jobCompleted: 'Job marked as completed',
   estimateAdded: 'Estimate added',
+  deliveryPickedUp: 'Picked up. The customer now sees their delivery code.',
+  deliveryCompleted: 'Delivery completed',
+  deliveryFailedReported: 'Reported. Ops will call the customer.',
+  vendorPackedReady: 'Marked packed & ready. Ops will assign a driver.',
+  vendorHandedOver: 'Handover recorded',
 } as const;

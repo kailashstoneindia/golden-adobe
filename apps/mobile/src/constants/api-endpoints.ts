@@ -20,6 +20,17 @@ export const API_ENDPOINTS = {
     orderGroups: '/vendors/order-groups',
     orderGroupById: (groupId: string) => `/vendors/order-groups/${groupId}`,
     orderGroupStatus: (groupId: string) => `/vendors/order-groups/${groupId}/status`,
+    orderGroupHandover: (groupId: string) => `/vendors/order-groups/${groupId}/handover`,
+    orderGroupPhotoUrl: (groupId: string) => `/vendors/order-groups/${groupId}/photo-url`,
+  },
+  driver: {
+    me: '/driver/me',
+    deliveries: '/driver/deliveries',
+    deliveryById: (jobId: string) => `/driver/deliveries/${jobId}`,
+    deliveryPickup: (jobId: string) => `/driver/deliveries/${jobId}/pickup`,
+    deliveryPhotoUrl: (jobId: string) => `/driver/deliveries/${jobId}/photo-url`,
+    deliveryComplete: (jobId: string) => `/driver/deliveries/${jobId}/complete`,
+    deliveryFail: (jobId: string) => `/driver/deliveries/${jobId}/fail`,
   },
   cart: {
     root: '/cart',

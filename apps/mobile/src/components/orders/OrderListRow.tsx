@@ -17,7 +17,7 @@ function OrderListRowComponent({ order, onPress }: OrderListRowProps) {
     <Pressable onPress={handlePress}>
       <Card>
         <View style={styles.header}>
-          <Text variant="bodyMedium">Order {order.id.slice(0, 8)}</Text>
+          <Text variant="bodyMedium">{order.orderNumber}</Text>
           <Badge label={ORDER_STATUS_LABELS[order.status]} variant={toBadgeVariant(order.status)} />
         </View>
         <Text variant="caption" color={Colors.inkSoft} style={styles.meta}>

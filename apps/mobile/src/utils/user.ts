@@ -53,6 +53,8 @@ export function formatRoleLabel(role: Role | undefined): string {
       return 'Vendor';
     case Role.ARTISAN:
       return 'Ustaad';
+    case Role.DRIVER:
+      return 'Driver';
     case Role.ADMIN:
       return 'Admin';
     default:

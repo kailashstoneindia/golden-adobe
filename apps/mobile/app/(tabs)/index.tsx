@@ -6,6 +6,7 @@ import { Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ArtisanCard } from '../../src/components/artisans';
+import { DriverJobsScreen } from '../../src/components/delivery';
 import { CategoryGrid } from '../../src/components/customer/CategoryGrid';
 import { ProjectPill } from '../../src/components/customer/ProjectPill';
 import { SearchBar } from '../../src/components/customer/SearchBar';
@@ -61,6 +62,10 @@ export default function HomeTabScreen() {
 
   if (user?.role === Role.ARTISAN) {
     return <ArtisanHome />;
+  }
+
+  if (user?.role === Role.DRIVER) {
+    return <DriverJobsScreen />;
   }
 
   return <CustomerHome firstName={user?.name.split(' ')[0] ?? 'there'} />;

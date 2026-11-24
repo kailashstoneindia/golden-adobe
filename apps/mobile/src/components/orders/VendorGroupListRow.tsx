@@ -17,7 +17,7 @@ function VendorGroupListRowComponent({ group, onPress }: VendorGroupListRowProps
     <Pressable onPress={handlePress}>
       <Card>
         <View style={styles.header}>
-          <Text variant="bodyMedium">{group.shopName}</Text>
+          <Text variant="bodyMedium">{group.orderNumber ?? group.shopName}</Text>
           <Badge
             label={VENDOR_GROUP_STATUS_LABELS[group.status]}
             variant={toGroupBadgeVariant(group.status)}
@@ -36,10 +36,16 @@ function toGroupBadgeVariant(status: OrderVendorGroupStatus): BadgeVariant {
   if (status === ORDER_VENDOR_GROUP_STATUSES.DELIVERED) {
     return 'success';
   }
-  if (status === ORDER_VENDOR_GROUP_STATUSES.CANCELLED) {
+  if (
+    status === ORDER_VENDOR_GROUP_STATUSES.CANCELLED ||
+    status === ORDER_VENDOR_GROUP_STATUSES.DELIVERY_FAILED
+  ) {
     return 'error';
   }
-  if (status === ORDER_VENDOR_GROUP_STATUSES.SHIPPED) {
+  if (
+    status === ORDER_VENDOR_GROUP_STATUSES.SHIPPED ||
+    status === ORDER_VENDOR_GROUP_STATUSES.READY_FOR_PICKUP
+  ) {
     return 'info';
   }
   return 'pending';

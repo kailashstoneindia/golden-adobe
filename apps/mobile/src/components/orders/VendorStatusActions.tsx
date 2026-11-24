@@ -2,7 +2,7 @@ import { ORDER_VENDOR_GROUP_NEXT_STATUSES } from '@golden-abode/types';
 import { memo, useCallback } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { VENDOR_GROUP_STATUS_LABELS } from '../../constants';
+import { VENDOR_GROUP_ACTION_LABELS, VENDOR_GROUP_STATUS_LABELS } from '../../constants';
 import { Spacing } from '../../theme';
 import type { StatusActionButtonProps, VendorStatusActionsProps } from '../../types';
 import { Button } from '../ui';
@@ -44,8 +44,8 @@ function StatusActionButton({
 
   return (
     <Button
-      title={VENDOR_GROUP_STATUS_LABELS[status]}
-      variant="secondary"
+      title={VENDOR_GROUP_ACTION_LABELS[status] ?? VENDOR_GROUP_STATUS_LABELS[status]}
+      variant={status === 'cancelled' ? 'ghost' : 'secondary'}
       disabled={isUpdating}
       onPress={handlePress}
     />

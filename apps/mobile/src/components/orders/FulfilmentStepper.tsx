@@ -1,17 +1,26 @@
 import { memo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { VENDOR_GROUP_STATUS_LABELS, VENDOR_GROUP_STATUS_STEPS } from '../../constants';
+import {
+  CUSTOMER_GROUP_STATUS_LABELS,
+  VENDOR_GROUP_STATUS_LABELS,
+  VENDOR_GROUP_STATUS_STEPS,
+} from '../../constants';
 import { Colors, Spacing } from '../../theme';
 import type { FulfilmentStepperProps } from '../../types';
 import { Text } from '../ui';
 import { ORDER_VENDOR_GROUP_STATUSES } from '@golden-abode/types';
 
-function FulfilmentStepperComponent({ status }: FulfilmentStepperProps) {
-  if (status === ORDER_VENDOR_GROUP_STATUSES.CANCELLED) {
+function FulfilmentStepperComponent({ status, audience = 'other' }: FulfilmentStepperProps) {
+  const labels =
+    audience === 'customer' ? CUSTOMER_GROUP_STATUS_LABELS : VENDOR_GROUP_STATUS_LABELS;
+  if (
+    status === ORDER_VENDOR_GROUP_STATUSES.CANCELLED ||
+    status === ORDER_VENDOR_GROUP_STATUSES.DELIVERY_FAILED
+  ) {
     return (
       <Text variant="caption" color={Colors.brick}>
-        Cancelled
+        {labels[status]}
       </Text>
     );
   }
@@ -27,7 +36,9 @@ function FulfilmentStepperComponent({ status }: FulfilmentStepperProps) {
           color={stepIndex <= currentIndex ? Colors.navy : Colors.subtle}
         >
           {stepIndex > 0 ? ' → ' : ''}
-          {VENDOR_GROUP_STATUS_LABELS[step]}
+          {step === ORDER_VENDOR_GROUP_STATUSES.PENDING && audience === 'customer'
+            ? 'Placed'
+            : labels[step]}
         </Text>
       ))}
     </View>

@@ -4,6 +4,7 @@ import type {
   OrderDto,
   OrderVendorGroupStatus,
   VendorOrderGroupDto,
+  VendorOrderGroupWithNumberDto,
 } from '@golden-abode/types';
 
 import { apiClient } from '../api/client';
@@ -32,12 +33,14 @@ export const ordersService = {
     return apiClient.patch<OrderDto>(API_ENDPOINTS.orders.cancel(orderId));
   },
 
-  fetchVendorOrderGroups(): Promise<VendorOrderGroupDto[]> {
-    return apiClient.get<VendorOrderGroupDto[]>(API_ENDPOINTS.vendors.orderGroups);
+  fetchVendorOrderGroups(): Promise<VendorOrderGroupWithNumberDto[]> {
+    return apiClient.get<VendorOrderGroupWithNumberDto[]>(API_ENDPOINTS.vendors.orderGroups);
   },
 
-  fetchVendorOrderGroup(groupId: string): Promise<VendorOrderGroupDto> {
-    return apiClient.get<VendorOrderGroupDto>(API_ENDPOINTS.vendors.orderGroupById(groupId));
+  fetchVendorOrderGroup(groupId: string): Promise<VendorOrderGroupWithNumberDto> {
+    return apiClient.get<VendorOrderGroupWithNumberDto>(
+      API_ENDPOINTS.vendors.orderGroupById(groupId),
+    );
   },
 
   updateVendorOrderGroupStatus(

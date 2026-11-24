@@ -60,6 +60,12 @@ export const QUERY_KEYS = {
     all: ['addresses'] as const,
     list: () => [...QUERY_KEYS.addresses.all, 'list'] as const,
   },
+  driver: {
+    all: ['driver'] as const,
+    profile: () => [...QUERY_KEYS.driver.all, 'profile'] as const,
+    deliveries: (scope: string) => [...QUERY_KEYS.driver.all, 'deliveries', scope] as const,
+    delivery: (jobId: string) => [...QUERY_KEYS.driver.all, 'delivery', jobId] as const,
+  },
   vendorOrderGroups: {
     all: ['vendorOrderGroups'] as const,
     list: () => [...QUERY_KEYS.vendorOrderGroups.all, 'list'] as const,

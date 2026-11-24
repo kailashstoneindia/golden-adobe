@@ -7,6 +7,12 @@ export const APP_CONSTANTS = {
   defaultCartQuantity: 1,
   cartStaleTimeMs: 15_000,
   ordersStaleTimeMs: 15_000,
+  // No push yet (decision 0060): the driver's job list and the customer's
+  // tracking screen poll while open.
+  driverJobsPollMs: 60_000,
+  orderTrackingPollMs: 30_000,
+  // Keeps proof photos well under the 10 MB upload limit.
+  deliveryPhotoQuality: 0.5,
   addressesStaleTimeMs: 60_000,
   vendorProfileStaleTimeMs: 60_000,
   artisanProfileStaleTimeMs: 60_000,

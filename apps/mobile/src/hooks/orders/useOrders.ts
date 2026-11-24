@@ -3,7 +3,7 @@ import type {
   CheckoutRequest,
   OrderDto,
   OrderVendorGroupStatus,
-  VendorOrderGroupDto,
+  VendorOrderGroupWithNumberDto,
 } from '@golden-abode/types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -19,12 +19,26 @@ export function useOrdersQuery(isEnabled: boolean) {
   });
 }
 
-export function useOrderQuery(orderId: string | null) {
+// Groups whose delivery is moving without the customer doing anything.
+const IN_DELIVERY_GROUP_STATUSES: readonly string[] = ['ready_for_pickup', 'shipped'];
+
+/**
+ * `trackDelivery` polls while any group is packed or out for delivery: there
+ * is no push yet, and the delivery code changes on a re-attempt.
+ */
+export function useOrderQuery(orderId: string | null, options?: { trackDelivery?: boolean }) {
   return useQuery<OrderDto>({
     queryKey: QUERY_KEYS.orders.detail(orderId ?? ''),
     queryFn: () => ordersService.fetchOrder(orderId!),
     enabled: Boolean(orderId),
     staleTime: APP_CONSTANTS.ordersStaleTimeMs,
+    refetchInterval: (query) =>
+      options?.trackDelivery &&
+      query.state.data?.vendorGroups.some((group) =>
+        IN_DELIVERY_GROUP_STATUSES.includes(group.status),
+      )
+        ? APP_CONSTANTS.orderTrackingPollMs
+        : false,
   });
 }
 
@@ -60,7 +74,7 @@ export function useCancelOrderMutation() {
 }
 
 export function useVendorOrderGroupsQuery(isEnabled: boolean) {
-  return useQuery<VendorOrderGroupDto[]>({
+  return useQuery<VendorOrderGroupWithNumberDto[]>({
     queryKey: QUERY_KEYS.vendorOrderGroups.list(),
     queryFn: () => ordersService.fetchVendorOrderGroups(),
     enabled: isEnabled,
@@ -69,7 +83,7 @@ export function useVendorOrderGroupsQuery(isEnabled: boolean) {
 }
 
 export function useVendorOrderGroupQuery(groupId: string | null) {
-  return useQuery<VendorOrderGroupDto>({
+  return useQuery<VendorOrderGroupWithNumberDto>({
     queryKey: QUERY_KEYS.vendorOrderGroups.detail(groupId ?? ''),
     queryFn: () => ordersService.fetchVendorOrderGroup(groupId!),
     enabled: Boolean(groupId),
