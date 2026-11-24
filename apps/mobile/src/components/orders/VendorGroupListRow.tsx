@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { VENDOR_GROUP_STATUS_LABELS } from '../../constants';
 import { Colors, Spacing } from '../../theme';
 import type { VendorGroupListRowProps } from '../../types';
-import { formatInr } from '../../utils';
+import { formatInr, formatOrderTitle } from '../../utils';
 import { Badge, Card, Text } from '../ui';
 import type { BadgeVariant } from '../ui';
 import type { OrderVendorGroupStatus } from '@golden-abode/types';
@@ -17,7 +17,9 @@ function VendorGroupListRowComponent({ group, onPress }: VendorGroupListRowProps
     <Pressable onPress={handlePress}>
       <Card>
         <View style={styles.header}>
-          <Text variant="bodyMedium">{group.orderNumber ?? group.shopName}</Text>
+          <Text variant="bodyMedium">
+            {formatOrderTitle({ id: group.orderId, orderNumber: group.orderNumber })}
+          </Text>
           <Badge
             label={VENDOR_GROUP_STATUS_LABELS[group.status]}
             variant={toGroupBadgeVariant(group.status)}

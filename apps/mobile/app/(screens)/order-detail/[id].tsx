@@ -29,7 +29,7 @@ import type {
   CustomerOrderDetailProps,
   VendorOrderDetailProps,
 } from '../../../src/types';
-import { formatInr, getApiErrorMessage } from '../../../src/utils';
+import { formatInr, formatOrderTitle, getApiErrorMessage } from '../../../src/utils';
 
 export default function OrderDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -118,7 +118,12 @@ function CustomerOrderDetail({ orderId }: CustomerOrderDetailProps) {
   }
 
   return (
-    <DemoScreen onRefresh={refresh} title={order.orderNumber} subtitle="Order details" showBack>
+    <DemoScreen
+      onRefresh={refresh}
+      title={formatOrderTitle(order)}
+      subtitle="Order details"
+      showBack
+    >
       <Text variant="bodyMedium">{ORDER_STATUS_LABELS[order.status]}</Text>
       <Text variant="caption" color={Colors.inkSoft}>
         Total {formatInr(order.grandTotal)}
@@ -173,7 +178,7 @@ function ArtisanOrderDetail({ orderId }: ArtisanOrderDetailProps) {
   return (
     <DemoScreen
       onRefresh={refresh}
-      title={order.orderNumber}
+      title={formatOrderTitle(order)}
       subtitle="Materials ordered for your job"
       showBack
     >
@@ -241,7 +246,12 @@ function VendorOrderDetail({ groupId }: VendorOrderDetailProps) {
   }
 
   return (
-    <DemoScreen onRefresh={refresh} title={group.orderNumber} subtitle="Order details" showBack>
+    <DemoScreen
+      onRefresh={refresh}
+      title={formatOrderTitle({ id: group.orderId, orderNumber: group.orderNumber })}
+      subtitle="Order details"
+      showBack
+    >
       <OrderVendorSection group={group} />
       <VendorStatusActions
         group={group}
